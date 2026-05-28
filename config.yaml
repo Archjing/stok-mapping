@@ -1,0 +1,46 @@
+phase0:
+  benchmark_symbol: "SH.000300"
+  years: 5
+  symbols:
+    - "SZ.300750"
+    - "SZ.002594"
+    - "SH.688981"
+    - "SZ.002475"
+    - "SH.600519"
+  data_sources:
+    yfinance:
+      us_indices:
+        - "^NDX"
+        - "^GSPC"
+        - "^VIX"
+      us_equities:
+        - "NVDA"
+        - "AAPL"
+        - "TSLA"
+      cnh_proxy:
+        - "CNY=X"
+    akshare:
+      cn_symbols:
+        - "SZ.300750"
+        - "SH.600519"
+      hk_symbols:
+        - "HK.00700"
+        - "HK.09988"
+  walk_forward:
+    train_years: 2
+    validate_years: 1
+    min_samples: 200
+    initial_cash: 1000000
+    commission: 0.00025
+    stamp_duty_sell: 0.0005
+    slippage: 0.001
+    strategy_v2:
+      mode: "compare"
+      top_n: 2
+      mom_windows: [3, 5, 10, 20]
+      mom_quantiles: [0.5, 0.6]
+      trend_windows: [20, 60]
+      vol_window: 20
+      vol_quantiles: [0.6, 0.75]
+      target_vol: 0.18
+      train_min_trades: 5

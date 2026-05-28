@@ -1,0 +1,22 @@
+[project]
+name = "stok-mapping"
+version = "0.1.0"
+description = "Phase 0 pipeline for cross-market mapping validation"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "akshare>=1.18.62",
+  "numpy>=2.1.0",
+  "pandas>=2.2.0",
+  "pyyaml>=6.0.2",
+  "rich>=13.9.0",
+  "yfinance>=0.2.40",
+]
+
+[project.scripts]
+stok-phase0 = "phase0.cli:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0.3",
+]
