@@ -2,7 +2,7 @@
 
 > 文档目标：定义 `stok-mapping` 的**最终产品蓝图**，不受当前 Phase 0 实现边界约束。  
 > 设计依据：
-> - `refdocs/markdown/` 与 `refdocs/cn_a_share/markdown/` 下的论文材料
+> - `refdocs/papers/en/INDEX.md` 与 `refdocs/papers/cn/cn_INDEX.md` 索引的论文材料
 > - `/reports/` 下的研究报告与变更日志
 > - `DEVELOPMENT_PLAN.md` 当前主线与边界
 > - Tushare 文档 `63 / 68 / 90` 所代表的目标能力

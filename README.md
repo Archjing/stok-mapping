@@ -142,10 +142,10 @@ bash .codex/run_claude_agent.sh
 ## 计划文档
 
 - 主计划：`DEVELOPMENT_PLAN.md`
-- 当前统一周执行附件：`refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md`
-- 策略候选整理：`refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES.md`
-- FRED 接入任务单：`refdocs/cn_a_share/FRED_IMPLEMENTATION_TASKS.md`
-- Tiingo 接入任务单：`refdocs/cn_a_share/TIINGO_IMPLEMENTATION_TASKS.md`
+- 当前统一周执行附件：`refdocs/todo/WEEKLY_EXECUTION_CHECKLIST.md`
+- 策略候选整理：`refdocs/todo/PHASE0_CANDIDATE_STRATEGIES.md`
+- FRED 接入任务单：`refdocs/todo/FRED_IMPLEMENTATION_TASKS.md`
+- Tiingo 接入任务单：`refdocs/todo/TIINGO_IMPLEMENTATION_TASKS.md`
 
 ## 输出文件
 

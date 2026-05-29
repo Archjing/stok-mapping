@@ -84,9 +84,9 @@
 
 以下内容是本项目功能设计与策略扩展的重要理论依据：
 
-- `refdocs/cn_a_share/INDEX.md` 索引的论文资料
-- `refdocs/cn_a_share/markdown/` 下的中文 A 股论文整理
-- `refdocs/markdown/` 下的英文/国际论文整理
+- `refdocs/papers/cn/cn_INDEX.md` 索引的中文 A 股论文资料
+- `refdocs/papers/cn/` 下的中文 A 股论文索引与元数据
+- `refdocs/papers/en/INDEX.md` 索引的英文/国际论文资料
 - `/reports/` 下的 `.md` 研究报告与策略输出
 
 这些资料用于：
@@ -557,7 +557,7 @@ stok-mapping/
 
 ## 十四、当前一周执行摘要
 
-> 当前统一周执行附件见：`refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md`
+> 当前统一周执行附件见：`refdocs/todo/WEEKLY_EXECUTION_CHECKLIST.md`
 
 ### 本周目标
 
