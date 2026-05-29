@@ -307,19 +307,19 @@ DeepSeek 审查器
 相当于：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli run --config config.yaml
+./.venv/bin/python -m phase0.cli run --config config.yaml
 ```
 
 ### Tool 3: `build_universe`
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli build-universe --config config.yaml
+./.venv/bin/python -m phase0.cli build-universe --config config.yaml
 ```
 
 ### Tool 4: `update_history_check`
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-history --config config.yaml --check-only
+./.venv/bin/python -m phase0.cli update-history --config config.yaml --check-only
 ```
 
 ### Tool 5: `read_config`
@@ -337,7 +337,7 @@ DeepSeek 审查器
 ### Tool 7: `update_financials`
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-financials --config config.yaml
+./.venv/bin/python -m phase0.cli update-financials --config config.yaml
 ```
 
 ### Tool 8: `read_universe_snapshot`

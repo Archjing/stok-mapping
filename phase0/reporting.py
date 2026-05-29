@@ -106,6 +106,22 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
                 ]
             )
 
+    candidate_summary_rows = summary.get("candidate_summary_rows", []) or []
+    summary_table_rows = [[k, str(v)] for k, v in summary.items() if k != "candidate_summary_rows"]
+    candidate_rows = [
+        [
+            str(row.get("candidate", "")),
+            f"{float(row.get('score', 0.0)):.4f}",
+            str(int(row.get("fold_count", 0))),
+            f"{float(row.get('annualized_return_mean', 0.0)):.4f}",
+            f"{float(row.get('sharpe_mean', 0.0)):.4f}",
+            f"{float(row.get('max_drawdown_mean', 0.0)):.4f}",
+            f"{float(row.get('win_rate_mean', 0.0)):.4f}",
+            f"{float(row.get('turnover_annual_mean', 0.0)):.2f}",
+        ]
+        for row in candidate_summary_rows
+    ]
+
     lines = [
         "# Phase 0 Walk-Forward Report",
         "",
@@ -113,30 +129,55 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
         "",
         "## Summary",
         "",
-        _md_table(["metric", "value"], [[k, str(v)] for k, v in summary.items()]),
-        "",
-        "## Fold Details",
-        "",
-        _md_table(
-            [
-                "symbol",
-                "fold",
-                "train_start",
-                "train_end",
-                "valid_start",
-                "valid_end",
-                "annual_ret",
-                "sharpe",
-                "max_dd",
-                "win_rate",
-                "turnover_annual",
-                "trades",
-                "selected_params",
-            ],
-            rows,
-        ),
+        _md_table(["metric", "value"], summary_table_rows),
         "",
     ]
+    if candidate_rows:
+        lines.extend(
+            [
+                "## Candidate Summary",
+                "",
+                _md_table(
+                    [
+                        "candidate",
+                        "score",
+                        "fold_count",
+                        "annualized_return_mean",
+                        "sharpe_mean",
+                        "max_drawdown_mean",
+                        "win_rate_mean",
+                        "turnover_annual_mean",
+                    ],
+                    candidate_rows,
+                ),
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Fold Details",
+            "",
+            _md_table(
+                [
+                    "symbol",
+                    "fold",
+                    "train_start",
+                    "train_end",
+                    "valid_start",
+                    "valid_end",
+                    "annual_ret",
+                    "sharpe",
+                    "max_dd",
+                    "win_rate",
+                    "turnover_annual",
+                    "trades",
+                    "selected_params",
+                ],
+                rows,
+            ),
+            "",
+        ]
+    )
     path.write_text("\n".join(lines), encoding="utf-8")
 
 

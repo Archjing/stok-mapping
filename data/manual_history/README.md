@@ -51,19 +51,19 @@ data/manual_history/a_share_history.sqlite
 完整重建全部离线历史库：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli import-history --config config.yaml
+./.venv/bin/python -m phase0.cli import-history --config config.yaml
 ```
 
 只重建指数元数据和指数日线表：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli import-index-history --config config.yaml
+./.venv/bin/python -m phase0.cli import-index-history --config config.yaml
 ```
 
 更新季度财务因子：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-financials --config config.yaml
+./.venv/bin/python -m phase0.cli update-financials --config config.yaml
 ```
 
 `import-index-history` 用于修复或刷新 `market_indices` / `market_index_bars`，不会改动股票日线、股票列表、交易日历和退市表。
@@ -105,7 +105,7 @@ CSI.000300
 开发期间使用以下命令维护本地库新鲜度：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-history --config config.yaml
+./.venv/bin/python -m phase0.cli update-history --config config.yaml
 ```
 
 增量更新先按交易日历判断目标交易日，再检查 `market_daily_bars` 的最新日期和覆盖率。默认阈值来自 `config.yaml`：

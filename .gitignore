@@ -2,6 +2,8 @@
 __pycache__/
 .pytest_cache/
 .env
+.claude/settings.local.json
+.codex/claude_agent.local.json
 data/raw_data/
 data/features/
 data/manual_history.lnk
@@ -10,3 +12,4 @@ data/manual_history/*
 !data/manual_history/README.md
 logs/
 refdocs/**/*.pdf
+.mcp.json

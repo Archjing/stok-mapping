@@ -55,6 +55,7 @@ phase0:
     calendar_table: "trading_calendar"
     use_for_daily_fallback: true
     use_for_universe_fallback: true
+    prefer_daily_for_backtest: true
     min_history_days: 200
     max_snapshot_staleness_days: 1
     min_snapshot_coverage: 0.80
@@ -67,7 +68,8 @@ phase0:
     min_latest_coverage: 0.80
     refresh_metadata: true
     min_metadata_coverage: 0.80
-    min_run_time: "16:00"
+    min_run_time: "16:30"
+    source_audit_table: "market_data_source_runs"
     rebuild_universe_after: true
     max_symbols: 0
   financial_factors:
@@ -105,6 +107,14 @@ phase0:
         - "KWEB"
       cnh_proxy:
         - "CNY=X"
+    tushare:
+      enabled: true
+      token_env: "TUSHARE_TOKEN"
+      api_url: "http://api.tushare.pro"
+      request_delay: 0.25
+      max_retries: 3
+      retry_backoff: 2
+      min_coverage: 0.80
     akshare:
       anti_crawler:
         enabled: true
@@ -172,6 +182,10 @@ phase0:
           SH.600276: healthcare
           SH.600900: defensive
           SH.600030: financial
+      price_volume_features:
+        amount_ma_window: 20
+        breakout_window: 20
+        shadow_clip: 5.0
       local_factor:
         enabled: true
         residual_momentum_windows: [10, 20]
@@ -179,3 +193,20 @@ phase0:
         reversal_window: 3
         reversal_quantiles: [0.7]
         use_xmarket_overlay: true
+        quality_growth:
+          enabled: true
+          financial_table: "market_financial_factors"
+          financial_lag_days: 1
+          min_available_fields: 4
+          quality_quantiles: [0.7]
+          top_n_values: [5, 10]
+          cash_flow_quality_clip: [-5, 5]
+          growth_clip: [-100, 300]
+          debt_to_asset_clip: [0, 100]
+          use_xmarket_overlay: true
+          weights:
+            roe: 0.30
+            cash_flow_quality: 0.20
+            profit_growth: 0.20
+            revenue_growth: 0.15
+            low_debt: 0.15

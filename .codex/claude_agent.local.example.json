@@ -1,0 +1,8 @@
+{
+  "env": {
+    "ANTHROPIC_API_KEY": "sk-ant-..."
+  },
+  "overrides": {
+    "model": "claude-sonnet-4-5-20250929"
+  }
+}

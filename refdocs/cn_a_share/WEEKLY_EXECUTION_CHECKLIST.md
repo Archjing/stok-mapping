@@ -1,0 +1,289 @@
+# 周执行计划总清单（开发计划书附件）
+
+> 本文件是 `DEVELOPMENT_PLAN.md` 的统一周执行附件。  
+> 后续每一周的任务清单都追加在同一个文件中，避免多个附件分散。  
+> 主计划中的长期路线、阶段划分和项目定位以 `DEVELOPMENT_PLAN.md` 为准；本文件只管理**当前周目标、执行节奏、检查点与归档要求**。
+
+---
+
+# Week 1｜本土主策略候选验证
+
+## 1. 本周目标
+
+> 在现有 compare / report / gate 链路下，验证 3 个 A 股本土候选策略，尝试找到一个可以替代 `legacy_momentum` 的新优胜候选，并推动主策略通过当前 Effectiveness Gate。
+
+## 2. 当前基线与门槛缺口
+
+### 当前基线
+- 当前 selected candidate：`legacy_momentum`
+- 当前 gate：`FAIL`
+
+### 当前缺口
+- `sharpe_mean = 0.3358`，未过 `> 0.5`
+- `max_drawdown_mean = -0.3074`，未过 `> -0.25`
+
+### 当前判断
+- 收益不是主要问题
+- 当前主要问题是：**风险调整收益不足、回撤偏大**
+
+## 3. 本周候选范围
+
+### 候选 1：MA/K 线低复杂度 baseline
+- [ ] 建立低复杂度、可解释、可复现的技术基线
+- [ ] 作为本周的诊断地板
+
+### 候选 2：短周期残差动量 + 反转增强 v2
+- [ ] 在已有 `residual_momentum_reversal_v1` 基础上最小增强
+- [ ] 优先尝试改善 Sharpe 和追高回撤
+
+### 候选 3：多因子 + 量价二次筛选 v1
+- [ ] 作为本周最重要的冲门槛候选
+- [ ] 用更完整的本土特征组合争取超过 `legacy_momentum`
+
+## 3.5 数据源升级准备项（仅准备，不实施）
+
+> 目的：为 Week 2 的 FRED / Tiingo 数据源升级做口径确认，不改变当前 Week 1 以策略验证为主的顺序。
+
+- [ ] 确认 `FRED` 首批序列清单：`GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS`
+- [ ] 确认 `Tiingo` 首批标的清单：`NVDA`、`AAPL`、`TSLA`、`KWEB`
+- [ ] 确认 `yfinance` 在过渡期继续保留为 fallback
+- [ ] 确认 Week 1 不改当前 `phase0` 正式回测链路
+- [ ] 把上述结论写入变更日志或主计划书，避免 Week 2 再重复讨论边界
+
+## 4. 推荐执行顺序
+
+### 研究优先级
+1. 短周期残差动量 + 反转增强
+2. 多因子 + 量价二次筛选
+3. 规则型均线 / K 线 baseline
+
+### 实现顺序
+1. **MA/K 线 baseline**
+2. **residual momentum + reversal v2**
+3. **multifactor + volume/price filter v1**
+
+### 原因
+- [ ] baseline 最快落地，先给出低复杂度对照组
+- [ ] residual v2 可复用现有实现，是最快增强路径
+- [ ] multifactor v1 最可能冲 gate，但依赖更清晰的共享特征和报告口径
+
+## 5. Day 1 - Day 7 节奏
+
+### Day 1：统一共享特征与候选比较口径
+- [ ] 让 3 个候选在同一条 compare / report / gate 链路里比较
+- [ ] 共享价格 / 量能特征可复用
+- [ ] 候选比较报告更清晰
+
+### Day 2：完成 MA/K 线 baseline
+- [ ] 形成第一个低复杂度 compare-only 候选
+- [ ] `ma_kline_baseline_v1` 进入 compare 结果
+- [ ] 至少能作为回撤与解释性的对照基线
+
+### Day 3-4：完成 residual momentum + reversal v2
+- [ ] 复用现有残差动量候选，做最小增强
+- [ ] `residual_momentum_reversal_v2` 进入 compare
+- [ ] 必须优于当前 `residual_momentum_reversal_v1`，否则不继续保留
+
+### Day 5-6：完成 multifactor + volume/price filter v1
+- [ ] 作为本周最强候选，尝试直接改善主 gate
+- [ ] `multifactor_volume_price_filter_v1` 进入 compare
+- [ ] 如果不能全过 gate，也必须同时优于当前 `legacy_momentum` 的 Sharpe 与回撤
+
+### Day 7：统一 compare、决策、归档
+- [ ] 更新 compare 结果
+- [ ] 更新 effectiveness report
+- [ ] 更新 change log
+- [ ] 明确每个候选是保留、淘汰还是晋级
+
+## 6. 本周比较与归档要求
+
+- [ ] 记录候选名称
+- [ ] 记录变更原因
+- [ ] 记录参数或规则摘要
+- [ ] 记录最新回测结果摘要
+- [ ] 记录是否保留
+- [ ] 记录是否晋级
+- [ ] 记录下一步建议
+
+归档位置：
+- [ ] `reports/phase0_walk_forward_report.md`
+- [ ] `reports/phase0_effectiveness_report.md`
+- [ ] `reports/phase0_walk_forward_candidates.csv`
+- [ ] `reports/phase0_strategy_change_log.md`
+
+## 7. 本周成功标准
+
+### 硬门槛
+- [ ] compare mode 中出现一个不是 `legacy_momentum` 的新优胜候选
+- [ ] `annualized_return_mean > 0`
+- [ ] `sharpe_mean > 0.5`
+- [ ] `max_drawdown_mean > -0.25`
+- [ ] `win_rate_mean > 0.45`
+- [ ] `oos_return_decay_ratio < 0.30`
+
+### 软判断
+- [ ] 新候选显著改善当前两个失败项（Sharpe / Drawdown）
+- [ ] 结果不是由少数 fold 偶然支撑
+- [ ] 候选逻辑可解释、可延续、可复盘
+
+## 8. 本周不做事项
+
+- [ ] 不重开跨市场主 ranker 路线
+- [ ] 不把跨市场映射重新作为主选股核心
+- [ ] 不推进 Web / PWA / App / Dashboard
+- [ ] 不推进自动交易与下单执行
+- [ ] 不让 LLM 直接生成交易信号
+- [ ] 不大规模重构基础设施
+- [ ] 不修改 universe 主评分逻辑，除非本周结果明确要求下一轮再做
+
+## 9. 本周结束后的决策规则
+
+### 如果有候选通过 gate
+- [ ] 提升为新的主候选
+- [ ] 在变更日志中记录晋级原因
+- [ ] 进入下一轮更细的参数与稳定性验证
+
+### 如果没有候选通过 gate
+- [ ] 保留 `ma_kline_baseline_v1` 作为诊断地板
+- [ ] 在 `residual_momentum_reversal_v2` 与 `multifactor_volume_price_filter_v1` 中只保留更优者继续 compare
+- [ ] 下一轮重点转向：**特征质量与筛选逻辑**，而不是继续加大工程复杂度
+
+---
+
+# Week 2｜数据源升级（FRED / Tiingo 分层替换）
+
+## 1. 本周目标
+
+- [ ] 明确形成项目级结论：**FRED 先、Tiingo 后、yfinance 保留 fallback**
+- [ ] 完成第二周文档、边界和接入设计准备
+- [ ] 为下一周正式编码实施做好输入条件
+
+## 2. 当前基线确认
+
+- [ ] A 股盘后主源仍是 `Tushare Pro`
+- [ ] A 股 fallback 仍是本地 SQLite / AkShare / 新浪原始快照
+- [ ] 美股 / ETF / VIX / CNH 当前仍主要依赖 `yfinance`
+- [ ] 宏观 / 利率当前尚未拆独立主源
+- [ ] 当前第二周工作**不修改** `phase0` 主回测逻辑
+
+## 3. 数据源分层结论
+
+### 3.1 FRED 接管范围
+- [ ] GDP → `GDP`
+- [ ] CPI → `CPIAUCSL`
+- [ ] 联邦基金利率（月）→ `FEDFUNDS`
+- [ ] 联邦基金利率（日）→ `DFF`
+- [ ] VIX → `VIXCLS`
+
+### 3.2 Tiingo 接管范围
+- [ ] `NVDA`
+- [ ] `AAPL`
+- [ ] `TSLA`
+- [ ] `KWEB`
+
+### 3.3 暂不处理范围
+- [ ] CNH / FX 主源替换
+- [ ] 所有美股指数一次性替换
+- [ ] 当前 A 股正式主链路改造
+- [ ] 直接移除 `yfinance`
+
+## 4. FRED 接入任务
+
+### 4.1 文档与映射
+- [ ] 形成 FRED 序列映射表
+- [ ] 每个序列都能映射到项目中的明确用途：
+  - [ ] 风险解释层
+  - [ ] 宏观 overlay
+  - [ ] 日报结构化摘要输入
+
+### 4.2 代码设计准备
+- [ ] 明确 FRED adapter 入口
+- [ ] 明确 FRED 数据缓存策略
+- [ ] 明确 FRED 对 `config.yaml` 的新增配置项
+- [ ] 明确 FRED 与现有 `yfinance` 的职责边界
+
+### 4.3 验收
+- [ ] FRED 引入不会破坏当前 `phase0.cli` 正式链路
+- [ ] FRED 仅承接宏观 / 利率 / VIX，不与美股个股职责混淆
+
+## 5. Tiingo 接入任务
+
+### 5.1 覆盖范围确认
+- [ ] 明确首批接入标的：`NVDA` / `AAPL` / `TSLA` / `KWEB`
+- [ ] 明确这些标的在项目中的用途：
+  - [ ] 美股日线
+  - [ ] 产业映射核心触发标的
+  - [ ] 隔夜解释层输入
+
+### 5.2 代码设计准备
+- [ ] 明确 Tiingo adapter 入口
+- [ ] 明确 Tiingo 与 `yfinance` fallback 关系
+- [ ] 明确 Tiingo 对 `config.yaml` 的新增配置项
+- [ ] 明确 Tiingo 不处理宏观序列
+
+### 5.3 验收
+- [ ] Tiingo 只替换最关键的美股个股 / ETF，不扩大范围
+- [ ] `yfinance` 仍保留为 fallback
+
+## 6. 配置层重构草案
+
+- [ ] 宏观、利率、VIX、个股、ETF、FX 的配置职责清晰拆分
+- [ ] `tushare`：A 股盘后主源
+- [ ] `fred`：宏观 / 利率 / VIX
+- [ ] `tiingo`：美股个股 / ETF / EOD
+- [ ] `yfinance`：fallback / FX 代理 / 临时研究源
+
+## 7. 本周归档要求
+
+- [ ] `yfinance` 当前保留职责
+- [ ] `FRED` 建议接管的宏观 / 利率序列
+- [ ] `Tiingo` 建议接管的美股标的范围
+- [ ] 暂不替换的数据范围
+- [ ] `config.yaml` 的目标重构方向
+- [ ] 下一步实际编码顺序
+
+归档位置：
+- [ ] `DEVELOPMENT_PLAN.md`
+- [ ] `reports/phase0_strategy_change_log.md`
+- [ ] 本附件
+
+## 8. 本周成功标准
+
+### 硬门槛
+- [ ] 明确形成“FRED 先、Tiingo 后、yfinance 保留 fallback”的项目级结论
+- [ ] 明确 FRED 的首批序列清单
+- [ ] 明确 Tiingo 的首批标的清单
+- [ ] 明确哪些数据源不在本周替换范围内
+- [ ] 明确下一步实施顺序：**先实现 FRED，再实现 Tiingo**
+
+### 软判断
+- [ ] 数据源职责边界清楚
+- [ ] 不与当前正式链路冲突
+- [ ] 不引入一次性大替换风险
+- [ ] 文档口径统一
+
+## 9. 本周不做事项
+
+- [ ] 不重写 `phase0` 回测逻辑
+- [ ] 不改当前 A 股 Tushare 主链路
+- [ ] 不直接移除 `yfinance`
+- [ ] 不把 FRED / Tiingo 一起一次性硬切进生产链路
+- [ ] 不处理 CNH / FX 主源替换
+- [ ] 不推进前端 / PWA / agent 自动化扩展
+
+## 10. 本周结束后的分流
+
+### 如果本周方案成熟
+- [ ] 下一周进入 **FRED 实现周**
+- [ ] FRED 稳定后再进入 **Tiingo 接入周**
+
+### 如果本周方案不充分
+- [ ] 继续保持 `yfinance` 不动
+- [ ] 先补完 FRED 序列定义和用途口径
+- [ ] 推迟 Tiingo 实现
+
+---
+
+## 结尾提醒
+
+> 统一附件的目的不是增加文档数量，而是把“当前周”和“后续周”都放进同一个执行清单里，保持项目附件简洁、高效、连续可维护。

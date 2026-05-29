@@ -14,6 +14,7 @@ import requests
 from phase0.env import prepare_imports
 from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.tushare_source import fetch_tushare_trade_date, tushare_available, tushare_config
 
 prepare_imports()
 
@@ -35,10 +36,20 @@ class ManualHistoryUpdateResult:
     metadata_updated_rows: int = 0
     metadata_coverage: dict[str, float] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    primary_source: str = ""
 
     @property
     def ok(self) -> bool:
         return self.status in {"up_to_date", "updated", "check_ok", "metadata_updated"}
+
+
+@dataclass
+class SourceAttempt:
+    source: str
+    fetched_rows: int
+    coverage: float
+    status: str
+    message: str = ""
 
 
 def _safe_identifier(value: str) -> str:
@@ -158,6 +169,59 @@ def _metadata_coverage(conn: sqlite3.Connection, *, meta_table: str, market: str
         out[field_name] = float(int(row.get(field_name) or 0) / total) if total else 0.0
     out["min_field"] = min(out[field_name] for field_name in fields) if total else 0.0
     return out
+
+
+def _ensure_source_audit_table(conn: sqlite3.Connection, *, table_name: str) -> None:
+    table = _safe_identifier(table_name)
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source TEXT NOT NULL,
+            fetched_at TEXT NOT NULL,
+            latest_trade_date TEXT,
+            coverage REAL,
+            fetched_rows INTEGER,
+            inserted_rows INTEGER,
+            status TEXT,
+            message TEXT
+        )
+        """
+    )
+
+
+def _record_source_audit(
+    conn: sqlite3.Connection,
+    *,
+    table_name: str,
+    source: str,
+    latest_trade_date: date,
+    coverage: float,
+    fetched_rows: int,
+    inserted_rows: int,
+    status: str,
+    message: str = "",
+) -> None:
+    table = _safe_identifier(table_name)
+    _ensure_source_audit_table(conn, table_name=table)
+    conn.execute(
+        f"""
+        INSERT INTO {table} (
+            source, fetched_at, latest_trade_date, coverage, fetched_rows, inserted_rows, status, message
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            source,
+            datetime.now().isoformat(timespec="seconds"),
+            latest_trade_date.isoformat(),
+            float(coverage),
+            int(fetched_rows),
+            int(inserted_rows),
+            status,
+            message,
+        ),
+    )
 
 
 def _trade_day_lag(
@@ -404,6 +468,73 @@ def _normalize_spot_metadata(raw: pd.DataFrame, *, markets: set[str], max_symbol
     return meta
 
 
+def _fetch_incremental_rows(
+    *,
+    trade_date: date,
+    adjust_types: list[str],
+    markets: set[str],
+    max_symbols: int,
+    total_symbols: int,
+    min_coverage: float,
+    data_cfg: dict[str, Any],
+    warnings: list[str],
+) -> tuple[pd.DataFrame, pd.DataFrame, int, str, list[SourceAttempt]]:
+    attempts: list[SourceAttempt] = []
+    tcfg = tushare_config(data_cfg.get("tushare", {}))
+    if tushare_available(tcfg):
+        try:
+            rows, meta = fetch_tushare_trade_date(trade_date, adjust_types=adjust_types, cfg=tcfg)
+            if markets and not rows.empty:
+                rows = rows[rows["symbol"].astype(str).str.split(".").str[0].isin(markets)].copy()
+            if markets and not meta.empty:
+                meta = meta[meta["symbol"].astype(str).str.split(".").str[0].isin(markets)].copy()
+            if max_symbols > 0:
+                keep_symbols = sorted(rows["symbol"].dropna().astype(str).unique())[:max_symbols]
+                rows = rows[rows["symbol"].isin(keep_symbols)].copy()
+                meta = meta[meta["symbol"].isin(keep_symbols)].copy()
+            fetched_rows = int(len(rows[rows["adjust_type"] == adjust_types[0]])) if adjust_types else int(len(rows))
+            if not rows.empty:
+                source = str(rows.attrs.get("source", "tushare.daily+daily_basic+adj_factor"))
+                primary_adjust = adjust_types[0] if adjust_types else ""
+                primary_rows = rows[rows["adjust_type"] == primary_adjust] if primary_adjust else rows
+                coverage = primary_rows["symbol"].nunique() / total_symbols if total_symbols else 0.0
+                if coverage >= min_coverage:
+                    return rows, meta, fetched_rows, source, attempts
+                message = f"coverage={coverage:.4f}, threshold={min_coverage:.4f}"
+                warnings.append(f"tushare returned undercovered rows: {message}")
+                attempts.append(SourceAttempt(source=source, fetched_rows=fetched_rows, coverage=coverage, status="undercovered", message=message))
+            else:
+                warnings.append("tushare daily returned no usable rows.")
+                attempts.append(SourceAttempt(source="tushare.daily+daily_basic+adj_factor", fetched_rows=0, coverage=0.0, status="empty"))
+        except Exception as exc:
+            warnings.append(f"tushare daily/daily_basic failed: {exc}")
+            attempts.append(
+                SourceAttempt(
+                    source="tushare.daily+daily_basic+adj_factor",
+                    fetched_rows=0,
+                    coverage=0.0,
+                    status="failed",
+                    message=str(exc),
+                )
+            )
+    elif tcfg.enabled:
+        warnings.append(f"tushare enabled but token env {tcfg.token_env} is not set.")
+        attempts.append(SourceAttempt(source="tushare.daily+daily_basic+adj_factor", fetched_rows=0, coverage=0.0, status="missing_token"))
+
+    raw = _fetch_spot_snapshot(warnings)
+    fetched_rows = len(raw) if raw is not None else 0
+    rows = _normalize_spot_snapshot(
+        raw,
+        trade_date=trade_date,
+        adjust_types=adjust_types,
+        markets=markets,
+        max_symbols=max_symbols,
+    )
+    meta = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols) if raw is not None and not raw.empty else pd.DataFrame()
+    source = str(raw.attrs.get("source", "akshare_or_sina_snapshot")) if raw is not None else "akshare_or_sina_snapshot"
+    return rows, meta, fetched_rows, source, attempts
+
+
 def _to_sql_value(value: Any) -> Any:
     if pd.isna(value):
         return None
@@ -549,6 +680,7 @@ def _empty_result(
     metadata_updated_rows: int = 0,
     status: str,
     warnings: list[str],
+    primary_source: str = "",
 ) -> ManualHistoryUpdateResult:
     return ManualHistoryUpdateResult(
         db_path=db_path,
@@ -564,6 +696,7 @@ def _empty_result(
         metadata_coverage=metadata_coverage or {},
         status=status,
         warnings=warnings,
+        primary_source=primary_source,
     )
 
 
@@ -593,6 +726,7 @@ def update_manual_history_from_config(
     min_run_time = _parse_run_time(update_cfg.get("min_run_time", "16:00"))
     refresh_metadata = bool(update_cfg.get("refresh_metadata", True))
     min_metadata_coverage = float(update_cfg.get("min_metadata_coverage", 0.80))
+    source_audit_table = str(update_cfg.get("source_audit_table", "market_data_source_runs"))
 
     if not db_path.exists():
         today = date.today()
@@ -703,11 +837,38 @@ def update_manual_history_from_config(
             except sqlite3.Error as exc:
                 warnings.append(f"Local daily turnover backfill failed: {exc}")
 
-        raw = _fetch_spot_snapshot(warnings)
-        fetched_rows = len(raw) if raw is not None else 0
+        _, _, _, total_symbols = _latest_stats(
+            conn,
+            daily_table=daily_table,
+            market=market,
+            adjust_type=primary_adjust,
+        )
+        rows, meta_rows, fetched_rows, primary_source, source_attempts = _fetch_incremental_rows(
+            trade_date=target_trade_date,
+            adjust_types=adjust_types,
+            markets=markets,
+            max_symbols=max_symbols,
+            total_symbols=total_symbols,
+            min_coverage=min_latest_coverage,
+            data_cfg=data_cfg,
+            warnings=warnings,
+        )
+        for attempt in source_attempts:
+            _record_source_audit(
+                conn,
+                table_name=source_audit_table,
+                source=attempt.source,
+                latest_trade_date=target_trade_date,
+                coverage=attempt.coverage,
+                fetched_rows=attempt.fetched_rows,
+                inserted_rows=0,
+                status=attempt.status,
+                message=attempt.message,
+            )
+        if source_attempts:
+            conn.commit()
         metadata_updated_rows = 0
-        if refresh_metadata and raw is not None and not raw.empty:
-            meta_rows = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols)
+        if refresh_metadata and not meta_rows.empty:
             try:
                 metadata_updated_rows = _upsert_stock_metadata(conn, meta_table=meta_table, rows=meta_rows)
                 conn.commit()
@@ -740,6 +901,7 @@ def update_manual_history_from_config(
                 metadata_coverage=metadata_after,
                 status=status,
                 warnings=warnings,
+                primary_source=primary_source,
             )
 
         if before_min_run_time:
@@ -768,23 +930,29 @@ def update_manual_history_from_config(
                 metadata_coverage=metadata_after,
                 status=status,
                 warnings=warnings,
+                primary_source=primary_source,
             )
 
-        rows = _normalize_spot_snapshot(
-            raw,
-            trade_date=target_trade_date,
-            adjust_types=adjust_types,
-            markets=markets,
-            max_symbols=max_symbols,
-        )
         if rows.empty:
-            warnings.append("AkShare spot snapshot returned no usable rows.")
+            warnings.append("No online source returned usable rows.")
             after_latest, after_coverage, _, _ = _latest_stats(
                 conn,
                 daily_table=daily_table,
                 market=market,
                 adjust_type=primary_adjust,
             )
+            _record_source_audit(
+                conn,
+                table_name=source_audit_table,
+                source=primary_source,
+                latest_trade_date=target_trade_date,
+                coverage=0.0,
+                fetched_rows=fetched_rows,
+                inserted_rows=0,
+                status="empty",
+                message="; ".join(warnings[-3:]),
+            )
+            conn.commit()
             return ManualHistoryUpdateResult(
                 db_path=db_path,
                 calendar_trade_date=calendar_trade_date.isoformat(),
@@ -799,21 +967,28 @@ def update_manual_history_from_config(
                 metadata_coverage=metadata_after,
                 status="metadata_undercovered" if metadata_updated_rows > 0 else "failed",
                 warnings=warnings,
+                primary_source=primary_source,
             )
 
         primary_rows = rows[rows["adjust_type"] == primary_adjust]
-        _, _, _, total_symbols = _latest_stats(
-            conn,
-            daily_table=daily_table,
-            market=market,
-            adjust_type=primary_adjust,
-        )
         candidate_coverage = primary_rows["symbol"].nunique() / total_symbols if total_symbols else 0.0
         if candidate_coverage < min_latest_coverage:
             warnings.append(
                 f"Refused to write undercovered snapshot: coverage={candidate_coverage:.4f}, "
                 f"threshold={min_latest_coverage:.4f}."
             )
+            _record_source_audit(
+                conn,
+                table_name=source_audit_table,
+                source=primary_source,
+                latest_trade_date=target_trade_date,
+                coverage=candidate_coverage,
+                fetched_rows=fetched_rows,
+                inserted_rows=0,
+                status="undercovered",
+                message="; ".join(warnings[-3:]),
+            )
+            conn.commit()
             return ManualHistoryUpdateResult(
                 db_path=db_path,
                 calendar_trade_date=calendar_trade_date.isoformat(),
@@ -828,6 +1003,7 @@ def update_manual_history_from_config(
                 metadata_coverage=metadata_after,
                 status="undercovered",
                 warnings=warnings,
+                primary_source=primary_source,
             )
 
         table = _safe_identifier(daily_table)
@@ -837,6 +1013,16 @@ def update_manual_history_from_config(
                 (market, target_trade_date.isoformat(), adjust_type),
             )
         rows.to_sql(daily_table, conn, if_exists="append", index=False)
+        _record_source_audit(
+            conn,
+            table_name=source_audit_table,
+            source=primary_source,
+            latest_trade_date=target_trade_date,
+            coverage=candidate_coverage,
+            fetched_rows=fetched_rows,
+            inserted_rows=len(rows),
+            status="written",
+        )
         conn.commit()
 
         after_latest, after_coverage, _, _ = _latest_stats(
@@ -871,4 +1057,5 @@ def update_manual_history_from_config(
             metadata_coverage=_metadata_coverage(conn, meta_table=meta_table, market=market),
             status=status,
             warnings=warnings,
+            primary_source=primary_source,
         )

@@ -4,16 +4,12 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
+import akshare as ak
 import pandas as pd
 import yfinance as yf
 
-from phase0.env import prepare_imports
+from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
-
-prepare_imports()
-
-from backend.markets.cn import CNMarketSource  # noqa: E402
-from backend.markets.hk import HKMarketSource  # noqa: E402
 
 
 @dataclass
@@ -69,6 +65,107 @@ def fetch_yf_daily(symbol: str, years: int) -> pd.DataFrame:
     return df[[c for c in keep if c in df.columns]].copy()
 
 
+def fetch_cn_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame:
+    end = date.today()
+    start = end - timedelta(days=365 * years + 20)
+    normalized = normalize_cn_symbol(symbol)
+    code = normalized.split(".", 1)[1] if "." in normalized else str(symbol)
+    df = fetch_with_akshare_retries(
+        lambda: ak.stock_zh_a_hist(
+            symbol=code,
+            period="daily",
+            start_date=start.strftime("%Y%m%d"),
+            end_date=end.strftime("%Y%m%d"),
+            adjust=adjust,
+        )
+    )
+    if df is None or df.empty:
+        return pd.DataFrame()
+    out = df.rename(
+        columns={
+            "日期": "date",
+            "开盘": "open",
+            "收盘": "close",
+            "最高": "high",
+            "最低": "low",
+            "成交量": "volume",
+            "成交额": "amount",
+            "涨跌幅": "change_pct",
+            "涨跌额": "change_amount",
+            "换手率": "turnover_rate",
+        }
+    ).copy()
+    out["date"] = pd.to_datetime(out["date"])
+    out["symbol"] = normalized
+    if "adjusted_close" not in out.columns:
+        out["adjusted_close"] = out.get("close")
+    keep = [
+        "date",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "adjusted_close",
+        "volume",
+        "amount",
+        "change_pct",
+        "change_amount",
+        "turnover_rate",
+    ]
+    return out[[c for c in keep if c in out.columns]].copy()
+
+
+def fetch_hk_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame:
+    end = date.today()
+    start = end - timedelta(days=365 * years + 20)
+    raw = str(symbol).strip().upper()
+    code = raw.split(".", 1)[1] if "." in raw else raw
+    code = code.zfill(5)
+    df = fetch_with_akshare_retries(
+        lambda: ak.stock_hk_hist(
+            symbol=code,
+            period="daily",
+            start_date=start.strftime("%Y%m%d"),
+            end_date=end.strftime("%Y%m%d"),
+            adjust=adjust,
+        )
+    )
+    if df is None or df.empty:
+        return pd.DataFrame()
+    out = df.rename(
+        columns={
+            "日期": "date",
+            "开盘": "open",
+            "收盘": "close",
+            "最高": "high",
+            "最低": "low",
+            "成交量": "volume",
+            "成交额": "amount",
+            "涨跌幅": "change_pct",
+            "涨跌额": "change_amount",
+        }
+    ).copy()
+    out["date"] = pd.to_datetime(out["date"])
+    out["symbol"] = f"HK.{code}"
+    if "adjusted_close" not in out.columns:
+        out["adjusted_close"] = out.get("close")
+    keep = [
+        "date",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "adjusted_close",
+        "volume",
+        "amount",
+        "change_pct",
+        "change_amount",
+    ]
+    return out[[c for c in keep if c in out.columns]].copy()
+
+
 def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResult]:
     results: list[ConnectivityResult] = []
     configure_akshare_throttle(cfg.get("akshare", {}))
@@ -107,14 +204,9 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
                 )
             )
 
-    cns = CNMarketSource()
     for sym in cfg.get("akshare", {}).get("cn_symbols", []):
         try:
-            end = date.today()
-            start = end - timedelta(days=365 * years + 20)
-            df = fetch_with_akshare_retries(
-                lambda: cns.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
-            )
+            df = fetch_cn_daily(sym, years=years, adjust="qfq")
             results.append(
                 ConnectivityResult(
                     source="akshare-cn",
@@ -136,14 +228,9 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
                 )
             )
 
-    hks = HKMarketSource()
     for sym in cfg.get("akshare", {}).get("hk_symbols", []):
         try:
-            end = date.today()
-            start = end - timedelta(days=365 * years + 20)
-            df = fetch_with_akshare_retries(
-                lambda: hks.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
-            )
+            df = fetch_hk_daily(sym, years=years, adjust="qfq")
             results.append(
                 ConnectivityResult(
                     source="akshare-hk",

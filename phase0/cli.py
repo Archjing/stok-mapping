@@ -9,12 +9,14 @@ from phase0.config import load_config
 from phase0.data_sources import check_connectivity, fetch_yf_daily
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
+from phase0.local_history import configure_local_history
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
     write_data_source_report,
     write_effectiveness_gate_report,
     write_walk_forward_report,
 )
+from phase0.throttle import configure_akshare_throttle
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import run_walk_forward, save_walk_forward_csv
@@ -24,6 +26,8 @@ def run_phase0(config_path: Path) -> int:
     console = Console()
     root = config_path.parent
     cfg = load_config(config_path)
+    configure_local_history(cfg.get("local_history", {}), root)
+    configure_akshare_throttle(cfg.get("data_sources", {}).get("akshare", {}))
 
     console.print("[bold]Phase 0 started[/bold]")
     years = int(cfg["years"])
@@ -163,6 +167,7 @@ def main() -> int:
         console.print(f"Fetched rows: {result.fetched_rows}")
         console.print(f"Inserted rows: {result.inserted_rows}")
         console.print(f"Metadata updated rows: {result.metadata_updated_rows}")
+        console.print(f"Primary source: {result.primary_source or 'N/A'}")
         if result.metadata_coverage:
             console.print(
                 "Metadata coverage: "

@@ -1,0 +1,21 @@
+{
+  "provider": "anthropic",
+  "api_url": "https://api.anthropic.com/v1/messages",
+  "anthropic_version": "2023-06-01",
+  "api_key_env": "ANTHROPIC_API_KEY",
+  "model": "claude-sonnet-4-5-20250929",
+  "max_tokens": 1600,
+  "temperature": 0.2,
+  "timeout_seconds": 60,
+  "output_path": "reports/claude_agent_latest.md",
+  "max_input_chars_per_file": 12000,
+  "max_total_input_chars": 36000,
+  "include_files": [
+    "reports/phase0_effectiveness_report.md",
+    "reports/phase0_walk_forward_report.md",
+    "reports/phase0_data_source_report.md",
+    "data/universe/local_factor_universe_report.md",
+    "config.yaml"
+  ],
+  "system_prompt": "你是 stok-mapping 的量化研究助理。你只能基于已落库数据、报告和配置做研究摘要、风险提示、验证建议和待办整理。禁止直接生成交易指令，禁止擅自修改策略参数，禁止跳过 effectiveness gate。若信息不足，明确说明缺口。"
+}

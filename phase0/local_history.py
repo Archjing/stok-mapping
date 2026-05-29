@@ -50,6 +50,7 @@ class LocalHistorySettings:
     calendar_table: str = "trading_calendar"
     use_for_daily_fallback: bool = True
     use_for_universe_fallback: bool = True
+    prefer_daily_for_backtest: bool = False
     min_history_days: int = 200
     max_snapshot_staleness_days: int = 1
     min_snapshot_coverage: float = 0.80
@@ -78,6 +79,7 @@ def configure_local_history(cfg: dict[str, Any] | None, root: Path | None = None
         calendar_table=str(raw.get("calendar_table", "trading_calendar")),
         use_for_daily_fallback=bool(raw.get("use_for_daily_fallback", True)),
         use_for_universe_fallback=bool(raw.get("use_for_universe_fallback", True)),
+        prefer_daily_for_backtest=bool(raw.get("prefer_daily_for_backtest", False)),
         min_history_days=int(raw.get("min_history_days", 200)),
         max_snapshot_staleness_days=int(raw.get("max_snapshot_staleness_days", 1)),
         min_snapshot_coverage=float(raw.get("min_snapshot_coverage", 0.80)),
@@ -91,6 +93,10 @@ def local_history_path() -> Path:
 
 def local_history_available() -> bool:
     return bool(_settings.enabled and _settings.path.exists())
+
+
+def local_history_prefer_daily_for_backtest() -> bool:
+    return bool(_settings.enabled and _settings.prefer_daily_for_backtest and _settings.path.exists())
 
 
 def load_daily_from_local_history(symbol: str, start: date, end: date) -> pd.DataFrame:

@@ -44,48 +44,56 @@ data/manual_history/README.md
 
 ## 常用命令
 
-本项目复用 `stok-quant` 的 Python 虚拟环境，避免重复安装依赖。
+本项目必须能够独立运行。可以复用或迁移其他项目中的可用代码与依赖选型，但运行时不应依赖 `stok-quant` 仓库、其源码路径或其虚拟环境。
+
+建议先在本项目目录下安装独立环境与依赖：
+
+```bash
+uv sync
+```
+
+之后使用本项目自己的虚拟环境执行命令：
 
 运行 Phase 0：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli run --config config.yaml
+./.venv/bin/python -m phase0.cli run --config config.yaml
 ```
 
 完整重建离线历史库：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli import-history --config config.yaml
+./.venv/bin/python -m phase0.cli import-history --config config.yaml
 ```
 
 只重建指数元数据和指数日线表：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli import-index-history --config config.yaml
+./.venv/bin/python -m phase0.cli import-index-history --config config.yaml
 ```
 
 构建本地因子股票池：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli build-universe --config config.yaml
+./.venv/bin/python -m phase0.cli build-universe --config config.yaml
 ```
 
 增量更新本地历史库：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-history --config config.yaml
+./.venv/bin/python -m phase0.cli update-history --config config.yaml
 ```
 
 更新季度财务因子：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-financials --config config.yaml
+./.venv/bin/python -m phase0.cli update-financials --config config.yaml
 ```
 
 只检查本地历史库新鲜度：
 
 ```bash
-/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-history --config config.yaml --check-only
+./.venv/bin/python -m phase0.cli update-history --config config.yaml --check-only
 ```
 
 开发期每日定时更新任务：
@@ -109,6 +117,36 @@ bash scripts/install_dev_cron.sh
 
 财务因子定时任务放在每周一 `03:30`，理由是财报数据低频、周末公告可被覆盖，同时避开 `16:30` 日线增量、`06:00` 美股收盘采集和 `07:30` 盘前研报生成。脚本使用 `nice`/`ionice` 降低资源优先级，用锁文件避免重复运行，并设置 `120m` 超时保护，避免异常卡住影响后续盘前任务。
 
+## Agent 协同
+
+Codex 侧 Claude provider 配置放在 `.codex/`，不写入 `.claude/`，避免影响其他以 Claude 为主控模型的 agent 工具。
+
+只生成 prompt 预览：
+
+```bash
+bash .codex/run_claude_agent.sh --dry-run
+```
+
+调用 Claude API 生成研究摘要：
+
+```bash
+bash .codex/run_claude_agent.sh
+```
+
+配置说明见：
+
+```text
+.codex/CLAUDE_AGENT_WORKFLOW.md
+```
+
+## 计划文档
+
+- 主计划：`DEVELOPMENT_PLAN.md`
+- 当前统一周执行附件：`refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md`
+- 策略候选整理：`refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES.md`
+- FRED 接入任务单：`refdocs/cn_a_share/FRED_IMPLEMENTATION_TASKS.md`
+- Tiingo 接入任务单：`refdocs/cn_a_share/TIINGO_IMPLEMENTATION_TASKS.md`
+
 ## 输出文件
 
 - `reports/phase0_data_source_report.md`
@@ -125,3 +163,4 @@ bash scripts/install_dev_cron.sh
 - 所有策略参数变更必须记录理由、参考信息和验证结果。
 - 本地 fallback 不会静默使用过期快照：若本地最新交易日超过配置允许滞后，当前股票池 fallback 返回空并告警。
 - `yfinance` 和 `akshare` 定位为开发/研究数据源，后续生产化需保留 Tushare Pro / Wind / 聚宽 / Polygon 等适配层。
+- Claude agent 仅做报告阅读、研究摘要和风险提示；不得直接生成交易指令、擅自修改策略参数或跳过 effectiveness gate。

@@ -72,3 +72,76 @@ Latest result:
 - `residual_momentum_reversal_v1`: annualized return mean `-0.0539`, Sharpe mean `-0.3902`, max drawdown mean `-0.1477`.
 - It improves drawdown versus `legacy_momentum` but loses money and has negative Sharpe in the current Phase 0 setup.
 - Conclusion: do not promote this candidate to the main strategy. Next useful step is to add industry, market-cap, liquidity, and fundamental data before retesting local factor candidates.
+
+## 2026-05-29: project progress checkpoint
+
+Status summary:
+- Phase 0 infrastructure is largely in place: local A-share history database, index history, trading calendar, delisted stock list, walk-forward framework, universe builder, and candidate comparison outputs are all available.
+- Quarterly financial factors are now integrated into the local database and documented in `README.md`, including `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, and `debt_to_asset`.
+- Research-document support is now substantially improved: English/open-access reference papers, Chinese A-share papers, strategy summaries, development checklists, candidate strategy notes, local LLM recommendations, and local LLM implementation plans have all been archived under `refdocs/`.
+
+Current strategy state:
+- Current selected candidate remains `legacy_momentum`.
+- The latest effectiveness gate still fails overall.
+- Snapshot from `reports/phase0_effectiveness_report.md`:
+  - `annualized_return_mean`: `0.33599064897406206` (pass)
+  - `sharpe_mean`: `0.3357946743577156` (fail vs `> 0.5`)
+  - `max_drawdown_mean`: `-0.30737744830217145` (fail vs `> -0.25`)
+  - `win_rate_mean`: `0.46218977423976626` (pass)
+  - `oos_return_decay_ratio`: `-1.8724556472813825` (pass)
+- Interpretation: return level is acceptable for Phase 0, but the risk-adjusted profile and drawdown are not yet good enough to pass the gate.
+
+What is effectively done:
+- Data foundation: usable.
+- Walk-forward framework: usable.
+- Candidate comparison framework: usable.
+- Financial factor ingestion: available but not yet fully promoted into the main ranking logic.
+- Documentation and literature review layer: strong enough to guide the next strategy iteration.
+- Local LLM selection and implementation planning: documented, but not the main bottleneck.
+
+Main blocker:
+- The project is no longer blocked by data plumbing or documentation. The main blocker is still alpha quality: the main strategy has not yet passed the effectiveness gate.
+
+Recommended next focus:
+- Prioritize strategy iteration over agent automation.
+- The next practical candidates to test remain:
+  1. short-horizon residual momentum + reversal enhancement,
+  2. multi-factor + volume/price second-stage filtering,
+  3. simple MA/K-line baseline.
+- Primary objective for the next cycle is not higher raw return first, but improving `sharpe_mean` above `0.5` and reducing `max_drawdown_mean` to better than `-0.25`.
+
+## 2026-05-29: Tiingo / FRED data-source feasibility review
+
+Change:
+- Evaluated whether the current US-market research source setup should move away from `yfinance`.
+- Reviewed a layered replacement path instead of a one-shot replacement.
+- Defined a recommended role split among Tiingo, FRED, yfinance, and the existing A-share stack.
+
+Findings:
+- Replacing all current US-side `yfinance` usage with Tiingo in one step is technically possible, but not the best immediate move.
+- Tiingo is a better fit than `yfinance` for **formal US equities / ETF end-of-day ingestion**, especially for symbols such as `NVDA`, `AAPL`, `TSLA`, and `KWEB`.
+- FRED is a better fit than both Tiingo and `yfinance` for **macro series and rates**, including GDP, CPI, federal funds, and a daily VIX proxy series.
+- `yfinance` should not remain the long-term primary US data source, but it still has value as a low-friction development / research fallback.
+- CNH / FX proxy data should not be rushed into the same replacement wave; it can remain on `yfinance` temporarily until there is a clearer production-grade FX plan.
+
+Recommended layered target state:
+- A-share daily / cross-sectional core: `Tushare Pro` primary, local SQLite fallback, AkShare/Sina as secondary fallback.
+- US equities / thematic ETFs EOD: `Tiingo` primary, `yfinance` fallback.
+- Macro / rates / VIX family: `FRED` primary.
+- FX proxy (`CNY=X`-style overlay input): keep temporary `yfinance` fallback until separately upgraded.
+
+Reason and reference:
+- The project now distinguishes between **formal batch data sources** and **research fallback sources**.
+- Current project architecture benefits more from source specialization than from forcing one vendor to cover all US-side use cases.
+- Tiingo provides a cleaner path for EOD US equity / ETF ingestion and future intraday expansion.
+- FRED is structurally more appropriate for low-frequency macro and policy-sensitive overlay inputs than `yfinance`.
+
+Adjustment suggestion:
+1. Introduce `fred` first because it is low-risk and cleanly separates macro data from market data.
+2. Introduce `tiingo` next for US equities / ETF end-of-day data.
+3. Keep `yfinance` as fallback during the transition instead of deleting it.
+4. Defer CNH / FX replacement to a later dedicated review.
+
+Conclusion:
+- Do **not** do a one-step full replacement of `yfinance`.
+- Adopt a **layered source migration**: `FRED` for macro first, `Tiingo` for US EOD second, `yfinance` retained as fallback during transition.

@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@oh-my-pi/pi-ai": "^15.5.11"
+  }
+}

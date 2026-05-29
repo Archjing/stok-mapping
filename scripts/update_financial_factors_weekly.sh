@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_ROOT="/home/zj/workspace/stok-mapping"
-PYTHON_BIN="/home/zj/workspace/stok-quant/.venv/bin/python"
+PYTHON_BIN="${PROJECT_ROOT}/.venv/bin/python"
 LOCK_FILE="${PROJECT_ROOT}/logs/financial_factors_weekly.lock"
 UPDATE_CMD=("${PYTHON_BIN}" -m phase0.cli update-financials --config config.yaml)
 

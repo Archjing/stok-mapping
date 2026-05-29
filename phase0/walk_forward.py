@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import sqlite3
 from dataclasses import dataclass
 from datetime import date, timedelta
 from functools import lru_cache
@@ -9,19 +11,25 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.data_sources import fetch_yf_daily
-from phase0.env import prepare_imports
-from phase0.local_history import configure_local_history, load_daily_from_local_history
-from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.data_sources import fetch_cn_daily, fetch_hk_daily, fetch_yf_daily
+from phase0.local_history import (
+    configure_local_history,
+    load_daily_from_local_history,
+    local_history_path,
+    local_history_prefer_daily_for_backtest,
+)
+from phase0.throttle import configure_akshare_throttle
 from phase0.universe import load_universe_symbols
-
-prepare_imports()
-
-from backend.markets.cn import CNMarketSource  # noqa: E402
-from backend.markets.hk import HKMarketSource  # noqa: E402
 
 
 MARKET_TICKERS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
+FINANCIAL_FACTOR_COLUMNS = [
+    "roe",
+    "revenue_growth",
+    "profit_growth",
+    "cash_flow_quality",
+    "debt_to_asset",
+]
 
 
 def _xmarket_enabled(strategy_cfg: dict[str, Any]) -> bool:
@@ -90,29 +98,28 @@ def _calc_metrics(returns: pd.Series, signals: pd.Series) -> dict[str, float]:
 
 
 def _load_cn_daily(symbol: str, years: int) -> pd.DataFrame:
-    src = CNMarketSource()
     end = date.today()
     start = end - timedelta(days=365 * years + 30)
-    df = fetch_with_akshare_retries(
-        lambda: src.get_daily_data(symbol, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
-    )
+    if local_history_prefer_daily_for_backtest():
+        local_df = load_daily_from_local_history(symbol, start, end)
+        if not local_df.empty:
+            return local_df
+    df = fetch_cn_daily(symbol, years=years, adjust="qfq")
     if not df.empty:
         return df
     return load_daily_from_local_history(symbol, start, end)
 
 
 def _load_hk_daily(symbol: str, years: int) -> pd.DataFrame:
-    src = HKMarketSource()
-    end = date.today()
-    start = end - timedelta(days=365 * years + 30)
-    df = fetch_with_akshare_retries(
-        lambda: src.get_daily_data(symbol, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
-    )
-    return df
+    return fetch_hk_daily(symbol, years=years, adjust="qfq")
 
 
 def _load_symbol(symbol: str, years: int) -> pd.DataFrame:
     return _load_symbol_cached(symbol, years).copy()
+
+
+def _shadow_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
+    return (numerator / denominator.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
 @lru_cache(maxsize=256)
@@ -123,14 +130,33 @@ def _load_symbol_cached(symbol: str, years: int) -> pd.DataFrame:
         df = _load_cn_daily(symbol, years)
     if df.empty:
         return df
-    out = df[["date", "open", "close"]].copy()
-    out["date"] = pd.to_datetime(out["date"])
+
+    out = pd.DataFrame()
+    out["date"] = pd.to_datetime(df["date"])
+    for col in ["open", "high", "low", "close", "volume", "amount"]:
+        if col in df.columns:
+            out[col] = pd.to_numeric(df[col], errors="coerce")
+        else:
+            out[col] = np.nan
+
     out["ret"] = out["close"].pct_change().fillna(0.0)
     out["oc_ret"] = (out["close"] / out["open"].replace(0, np.nan) - 1.0).fillna(0.0)
+    out["gap_ret"] = (out["open"] / out["close"].shift(1).replace(0, np.nan) - 1.0).fillna(0.0)
+    out["range_pct"] = _shadow_ratio(out["high"] - out["low"], out["open"])
+    out["body_pct"] = _shadow_ratio((out["close"] - out["open"]).abs(), out["open"])
+    real_body = (out["close"] - out["open"]).abs()
+    out["upper_shadow_pct"] = _shadow_ratio(out["high"] - out[["open", "close"]].max(axis=1), real_body)
+    out["lower_shadow_pct"] = _shadow_ratio(out[["open", "close"]].min(axis=1) - out["low"], real_body)
+
     for window in [3, 5, 10, 20, 60]:
         out[f"mom{window}"] = out["close"].pct_change(window)
         out[f"ma{window}"] = out["close"].rolling(window).mean()
     out["vol20"] = out["ret"].rolling(20).std() * np.sqrt(252)
+    out["amount_ma20"] = out["amount"].rolling(20).mean()
+    out["amount_ratio20"] = _shadow_ratio(out["amount"], out["amount_ma20"])
+    out["close_vs_ma20"] = _shadow_ratio(out["close"] - out["ma20"], out["ma20"])
+    rolling_high20 = out["high"].rolling(20).max().shift(1)
+    out["breakout20"] = (out["close"] > rolling_high20).astype(float)
     out = out.dropna().reset_index(drop=True)
     return out
 
@@ -825,6 +851,162 @@ def _add_local_factor_features(panel: pd.DataFrame) -> pd.DataFrame:
     return d
 
 
+def _safe_identifier(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
+        raise ValueError(f"Unsafe SQL identifier: {value}")
+    return value
+
+
+def _load_financial_factor_frame(symbols: list[str], strategy_cfg: dict[str, Any]) -> pd.DataFrame:
+    lcfg = strategy_cfg.get("local_factor", {})
+    qcfg = lcfg.get("quality_growth", {})
+    table = _safe_identifier(str(qcfg.get("financial_table", "market_financial_factors")))
+    db_path = local_history_path()
+    if not db_path.exists() or not symbols:
+        return pd.DataFrame()
+
+    placeholders = ",".join("?" for _ in symbols)
+    query = f"""
+        SELECT
+            symbol,
+            report_date,
+            announce_date,
+            roe,
+            revenue_growth,
+            profit_growth,
+            operating_cash_flow_to_net_profit AS cash_flow_quality,
+            debt_to_asset
+        FROM {table}
+        WHERE market = ?
+          AND symbol IN ({placeholders})
+          AND announce_date IS NOT NULL
+        ORDER BY symbol, announce_date, report_date
+    """
+    try:
+        with sqlite3.connect(db_path) as conn:
+            df = pd.read_sql_query(query, conn, params=["CN", *symbols])
+    except (sqlite3.Error, ValueError):
+        return pd.DataFrame()
+    if df.empty:
+        return df
+
+    df["symbol"] = df["symbol"].astype(str)
+    df["report_date"] = pd.to_datetime(df["report_date"], errors="coerce")
+    df["announce_date"] = pd.to_datetime(df["announce_date"], errors="coerce")
+    for col in FINANCIAL_FACTOR_COLUMNS:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df.dropna(subset=["symbol", "announce_date"]).sort_values(["symbol", "announce_date", "report_date"])
+
+
+def _add_point_in_time_financial_factors(panel: pd.DataFrame, strategy_cfg: dict[str, Any]) -> pd.DataFrame:
+    if panel.empty:
+        return panel
+    lcfg = strategy_cfg.get("local_factor", {})
+    qcfg = lcfg.get("quality_growth", {})
+    if not qcfg.get("enabled", False):
+        return panel
+
+    symbols = sorted(panel["symbol"].astype(str).dropna().unique().tolist())
+    factors = _load_financial_factor_frame(symbols, strategy_cfg)
+    if factors.empty:
+        return panel
+
+    financial_lag_days = int(qcfg.get("financial_lag_days", 1))
+    factors = factors.copy()
+    factors["available_date"] = (
+        factors["announce_date"] + pd.to_timedelta(financial_lag_days, unit="D")
+    ).dt.normalize().astype("datetime64[ns]")
+    factors = factors.dropna(subset=["available_date"]).sort_values(["symbol", "available_date", "report_date"])
+
+    frames: list[pd.DataFrame] = []
+    d = panel.copy()
+    d["date"] = pd.to_datetime(d["date"]).dt.normalize()
+    for symbol, one_symbol in d.sort_values(["symbol", "date"]).groupby("symbol", sort=False):
+        one_factors = factors[factors["symbol"] == symbol]
+        if one_factors.empty:
+            frames.append(one_symbol)
+            continue
+        merged = pd.merge_asof(
+            one_symbol.sort_values("date"),
+            one_factors.drop(columns=["symbol"]).sort_values("available_date"),
+            left_on="date",
+            right_on="available_date",
+            direction="backward",
+        )
+        frames.append(merged)
+    if not frames:
+        return d
+    return pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def _rank_pct_by_date(d: pd.DataFrame, column: str, *, ascending: bool = True) -> pd.Series:
+    if column not in d.columns:
+        return pd.Series(np.nan, index=d.index)
+    return d.groupby("date")[column].rank(method="average", pct=True, ascending=ascending)
+
+
+def _clip_numeric(series: pd.Series, bounds: list[Any] | tuple[Any, Any] | None) -> pd.Series:
+    out = pd.to_numeric(series, errors="coerce")
+    if not bounds or len(bounds) != 2:
+        return out
+    return out.clip(lower=float(bounds[0]), upper=float(bounds[1]))
+
+
+def _add_quality_growth_features(panel: pd.DataFrame, strategy_cfg: dict[str, Any]) -> pd.DataFrame:
+    if panel.empty:
+        return panel
+    lcfg = strategy_cfg.get("local_factor", {})
+    qcfg = lcfg.get("quality_growth", {})
+    if not qcfg.get("enabled", False):
+        return panel
+
+    d = _add_point_in_time_financial_factors(panel, strategy_cfg)
+    if d.empty:
+        return d
+    for col in FINANCIAL_FACTOR_COLUMNS:
+        if col not in d.columns:
+            d[col] = np.nan
+
+    d["_roe_score"] = _rank_pct_by_date(d, "roe")
+    d["_cash_flow_quality_clipped"] = _clip_numeric(
+        d["cash_flow_quality"],
+        qcfg.get("cash_flow_quality_clip", [-5, 5]),
+    )
+    d["_profit_growth_clipped"] = _clip_numeric(d["profit_growth"], qcfg.get("growth_clip", [-100, 300]))
+    d["_revenue_growth_clipped"] = _clip_numeric(d["revenue_growth"], qcfg.get("growth_clip", [-100, 300]))
+    d["_debt_to_asset_clipped"] = _clip_numeric(d["debt_to_asset"], qcfg.get("debt_to_asset_clip", [0, 100]))
+    d["_cash_flow_score"] = _rank_pct_by_date(d, "_cash_flow_quality_clipped")
+    d["_profit_growth_score"] = _rank_pct_by_date(d, "_profit_growth_clipped")
+    d["_revenue_growth_score"] = _rank_pct_by_date(d, "_revenue_growth_clipped")
+    d["_low_debt_score"] = _rank_pct_by_date(d, "_debt_to_asset_clipped", ascending=False)
+
+    weights = qcfg.get("weights", {})
+    roe_weight = float(weights.get("roe", 0.30))
+    cash_flow_weight = float(weights.get("cash_flow_quality", 0.20))
+    profit_growth_weight = float(weights.get("profit_growth", 0.20))
+    revenue_growth_weight = float(weights.get("revenue_growth", 0.15))
+    low_debt_weight = float(weights.get("low_debt", 0.15))
+    d["financial_available_fields"] = d[FINANCIAL_FACTOR_COLUMNS].notna().sum(axis=1)
+    score_weights = {
+        "_roe_score": roe_weight,
+        "_cash_flow_score": cash_flow_weight,
+        "_profit_growth_score": profit_growth_weight,
+        "_revenue_growth_score": revenue_growth_weight,
+        "_low_debt_score": low_debt_weight,
+    }
+    weighted_sum = pd.Series(0.0, index=d.index)
+    available_weight = pd.Series(0.0, index=d.index)
+    for col, weight in score_weights.items():
+        values = d[col]
+        present = values.notna()
+        weighted_sum = weighted_sum.add(values.fillna(0.0) * weight, fill_value=0.0)
+        available_weight = available_weight.add(present.astype(float) * weight, fill_value=0.0)
+    d["quality_growth_score"] = weighted_sum / available_weight.replace(0, np.nan)
+    min_available_fields = int(qcfg.get("min_available_fields", 4))
+    d.loc[d["financial_available_fields"] < min_available_fields, "quality_growth_score"] = np.nan
+    return d
+
+
 def _apply_residual_momentum_reversal_portfolio_strategy(
     panel: pd.DataFrame,
     *,
@@ -974,6 +1156,158 @@ def _format_residual_momentum_reversal_params(params: dict[str, Any]) -> str:
     return (
         f"resid_mom{params['residual_window']}@q{params['residual_quantile']},"
         f"reversal_mom{params['reversal_window']}<=q{params['reversal_quantile']},"
+        f"ma{params['trend_window']},"
+        f"vol@q{params['vol_quantile']},"
+        f"target_vol={params['target_vol']},"
+        f"top_n={params.get('top_n', '')},"
+        f"xmarket_overlay={params.get('use_xmarket_overlay', True)}"
+    )
+
+
+def _apply_quality_growth_price_portfolio_strategy(
+    panel: pd.DataFrame,
+    *,
+    quality_threshold: float,
+    trend_window: int,
+    vol_threshold: float,
+    target_vol: float,
+    top_n: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    use_xmarket_overlay: bool = True,
+) -> tuple[pd.Series, pd.Series]:
+    if panel.empty:
+        return pd.Series(dtype=float), pd.Series(dtype=float)
+
+    d = panel.copy()
+    trend_col = f"ma{trend_window}"
+    if "quality_growth_score" not in d.columns or trend_col not in d.columns:
+        dates = pd.Index(sorted(d["date"].dropna().unique()))
+        return pd.Series(0.0, index=dates), pd.Series(0.0, index=dates)
+
+    eligible = (
+        (d["quality_growth_score"] >= quality_threshold)
+        & (d["close"] > d[trend_col])
+        & (d["vol20"] <= vol_threshold)
+    )
+    d["rank_score"] = d["quality_growth_score"].where(eligible, np.nan)
+    d["rank"] = d.groupby("date")["rank_score"].rank(method="first", ascending=False)
+    d["selected"] = ((d["rank"] <= top_n) & d["rank_score"].notna()).astype(float)
+    daily_count = d.groupby("date")["selected"].transform("sum").replace(0, np.nan)
+    d["raw_weight"] = (d["selected"] / daily_count).fillna(0.0)
+    vol_scale = np.minimum(1.0, target_vol / d["vol20"].replace(0, np.nan)).fillna(0.0)
+    risk_scale = d.get("risk_scale", pd.Series(1.0, index=d.index)).clip(0.0, 1.0) if use_xmarket_overlay else 1.0
+    d["weight"] = d["raw_weight"] * vol_scale * risk_scale
+    d["weight"] = d.groupby("symbol")["weight"].shift(1).fillna(0.0)
+    d["position_ret"] = d["weight"] * d["ret"]
+
+    weights = d.pivot(index="date", columns="symbol", values="weight").fillna(0.0)
+    turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
+    sells = weights.diff().clip(upper=0).abs().sum(axis=1).fillna(0.0)
+    gross = d.groupby("date")["position_ret"].sum()
+    costs = turnover * (slippage + commission) + sells * stamp_duty_sell
+    returns = gross.sub(costs, fill_value=0.0)
+    exposure = weights.sum(axis=1)
+    return returns, exposure
+
+
+def _select_quality_growth_price_params(
+    train: pd.DataFrame,
+    strategy_cfg: dict[str, Any],
+    *,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+) -> dict[str, Any]:
+    best: dict[str, Any] | None = None
+    min_trades = int(strategy_cfg.get("train_min_trades", 5))
+    target_vol = float(strategy_cfg.get("target_vol", 0.18))
+    lcfg = strategy_cfg.get("local_factor", {})
+    qcfg = lcfg.get("quality_growth", {})
+    top_n_values = qcfg.get("top_n_values", [strategy_cfg.get("top_n", 3)])
+    use_xmarket_overlay = bool(qcfg.get("use_xmarket_overlay", True))
+    scores = train.get("quality_growth_score", pd.Series(dtype=float)).dropna()
+
+    if scores.empty:
+        return {
+            "eligible": False,
+            "quality_quantile": 1.0,
+            "quality_threshold": 1.1,
+            "trend_window": 20,
+            "vol_quantile": 0.75,
+            "vol_threshold": float(train["vol20"].quantile(0.75)),
+            "target_vol": target_vol,
+            "top_n": int(top_n_values[0]) if top_n_values else int(strategy_cfg.get("top_n", 3)),
+            "use_xmarket_overlay": use_xmarket_overlay,
+            "train_score": 0.0,
+            "train_sharpe": 0.0,
+            "train_trades": 0,
+        }
+
+    for quality_q in qcfg.get("quality_quantiles", [0.7]):
+        quality_threshold = float(scores.quantile(float(quality_q)))
+        for trend_window in strategy_cfg.get("trend_windows", [20]):
+            trend_col = f"ma{trend_window}"
+            if trend_col not in train.columns:
+                continue
+            for vol_q in strategy_cfg.get("vol_quantiles", [0.75]):
+                vol_threshold = float(train["vol20"].quantile(float(vol_q)))
+                for top_n in top_n_values:
+                    returns, exposure = _apply_quality_growth_price_portfolio_strategy(
+                        train,
+                        quality_threshold=quality_threshold,
+                        trend_window=int(trend_window),
+                        vol_threshold=vol_threshold,
+                        target_vol=target_vol,
+                        top_n=int(top_n),
+                        slippage=slippage,
+                        commission=commission,
+                        stamp_duty_sell=stamp_duty_sell,
+                        use_xmarket_overlay=use_xmarket_overlay,
+                    )
+                    metric = _calc_metrics(returns, exposure)
+                    if metric["trades"] < min_trades:
+                        continue
+                    score = metric["sharpe"] + max(metric["max_drawdown"], -1.0) * 0.5
+                    candidate = {
+                        "eligible": True,
+                        "quality_quantile": float(quality_q),
+                        "quality_threshold": quality_threshold,
+                        "trend_window": int(trend_window),
+                        "vol_quantile": float(vol_q),
+                        "vol_threshold": vol_threshold,
+                        "target_vol": target_vol,
+                        "top_n": int(top_n),
+                        "use_xmarket_overlay": use_xmarket_overlay,
+                        "train_score": float(score),
+                        "train_sharpe": float(metric["sharpe"]),
+                        "train_trades": int(metric["trades"]),
+                    }
+                    if best is None or candidate["train_score"] > best["train_score"]:
+                        best = candidate
+
+    if best is None:
+        best = {
+            "eligible": False,
+            "quality_quantile": 0.7,
+            "quality_threshold": float(scores.quantile(0.7)),
+            "trend_window": 20,
+            "vol_quantile": 0.75,
+            "vol_threshold": float(train["vol20"].quantile(0.75)),
+            "target_vol": target_vol,
+            "top_n": int(top_n_values[0]) if top_n_values else int(strategy_cfg.get("top_n", 3)),
+            "use_xmarket_overlay": use_xmarket_overlay,
+            "train_score": 0.0,
+            "train_sharpe": 0.0,
+            "train_trades": 0,
+        }
+    return best
+
+
+def _format_quality_growth_price_params(params: dict[str, Any]) -> str:
+    return (
+        f"quality_growth@q{params['quality_quantile']},"
         f"ma{params['trend_window']},"
         f"vol@q{params['vol_quantile']},"
         f"target_vol={params['target_vol']},"
@@ -1366,6 +1700,89 @@ def _run_residual_momentum_reversal_portfolio(
     return rows
 
 
+def _run_quality_growth_price_portfolio(
+    symbols: list[str],
+    years: int,
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+    xfeatures: pd.DataFrame | None = None,
+) -> list[dict[str, Any]]:
+    panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
+    if panel.empty:
+        return []
+    panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
+    panel = _add_quality_growth_features(panel, strategy_cfg)
+
+    dates = sorted(panel["date"].dropna().unique())
+    fold_days_train = train_years * 252
+    fold_days_valid = validate_years * 252
+    rows: list[dict[str, Any]] = []
+    start = 0
+    fold_idx = 0
+    while True:
+        train_end = start + fold_days_train
+        valid_end = train_end + fold_days_valid
+        if valid_end > len(dates):
+            break
+        train_dates = set(dates[start:train_end])
+        valid_dates = set(dates[train_end:valid_end])
+        train = panel[panel["date"].isin(train_dates)].copy()
+        valid = panel[panel["date"].isin(valid_dates)].copy()
+        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
+            break
+
+        params = _select_quality_growth_price_params(
+            train,
+            strategy_cfg,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        if not params.get("eligible", False):
+            start += fold_days_valid
+            continue
+        returns, exposure = _apply_quality_growth_price_portfolio_strategy(
+            valid,
+            quality_threshold=float(params["quality_threshold"]),
+            trend_window=int(params["trend_window"]),
+            vol_threshold=float(params["vol_threshold"]),
+            target_vol=float(params["target_vol"]),
+            top_n=int(params.get("top_n", strategy_cfg.get("top_n", 3))),
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+            use_xmarket_overlay=bool(params.get("use_xmarket_overlay", True)),
+        )
+        metric = _calc_metrics(returns, exposure)
+        fold_idx += 1
+        rows.append(
+            {
+                "symbol": "PORTFOLIO_QUALITY_GROWTH_PRICE",
+                "fold": fold_idx,
+                "train_start": str(pd.Timestamp(min(train_dates)).date()),
+                "train_end": str(pd.Timestamp(max(train_dates)).date()),
+                "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
+                "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
+                "annualized_return": metric["annualized_return"],
+                "sharpe": metric["sharpe"],
+                "max_drawdown": metric["max_drawdown"],
+                "win_rate": metric["win_rate"],
+                "turnover_annual": metric["turnover_annual"],
+                "trades": metric["trades"],
+                "passed_min_samples": True,
+                "selected_params": _format_quality_growth_price_params(params),
+                "candidate": "quality_growth_price_v1",
+            }
+        )
+        start += fold_days_valid
+    return rows
+
+
 def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
     df = pd.DataFrame(rows)
     if df.empty:
@@ -1388,6 +1805,25 @@ def _candidate_score(summary: dict[str, float]) -> float:
         + float(summary.get("annualized_return_mean", 0.0)) * 0.5
         + max(float(summary.get("max_drawdown_mean", 0.0)), -1.0) * 0.5
     )
+
+
+
+def _candidate_summary_rows(summaries: dict[str, dict[str, float]]) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for name, summary in summaries.items():
+        rows.append(
+            {
+                "candidate": name,
+                "score": _candidate_score(summary),
+                "fold_count": int(summary.get("fold_count", 0)),
+                "annualized_return_mean": float(summary.get("annualized_return_mean", 0.0)),
+                "sharpe_mean": float(summary.get("sharpe_mean", 0.0)),
+                "max_drawdown_mean": float(summary.get("max_drawdown_mean", 0.0)),
+                "win_rate_mean": float(summary.get("win_rate_mean", 0.0)),
+                "turnover_annual_mean": float(summary.get("turnover_annual_mean", 0.0)),
+            }
+        )
+    return sorted(rows, key=lambda row: row["score"], reverse=True)
 
 
 def _run_compare(
@@ -1503,6 +1939,19 @@ def _run_compare(
             strategy_cfg={**strategy_cfg, "mode": "portfolio"},
             xfeatures=xfeatures,
         )
+        if strategy_cfg.get("local_factor", {}).get("quality_growth", {}).get("enabled", False):
+            candidates["quality_growth_price_v1"] = _run_quality_growth_price_portfolio(
+                symbols=symbols,
+                years=years,
+                train_years=train_years,
+                validate_years=validate_years,
+                min_samples=min_samples,
+                slippage=slippage,
+                commission=commission,
+                stamp_duty_sell=stamp_duty_sell,
+                strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                xfeatures=xfeatures,
+            )
 
     summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
     best_name = max(candidates, key=lambda name: _candidate_score(summaries[name]))
@@ -1515,9 +1964,11 @@ def _run_compare(
         )
         for name, summary in summaries.items()
     )
+    candidate_summary_rows = _candidate_summary_rows(summaries)
     selected = candidates[best_name]
     for row in selected:
         row["candidate_summary"] = comparison
+        row["selected_candidate"] = best_name
     all_candidate_rows: list[dict[str, Any]] = []
     for name, rows in candidates.items():
         for row in rows:
@@ -1526,7 +1977,7 @@ def _run_compare(
             enriched["selected_candidate"] = best_name
             enriched["is_selected_candidate"] = name == best_name
             all_candidate_rows.append(enriched)
-    return selected, all_candidate_rows
+    return selected, all_candidate_rows, candidate_summary_rows
 
 
 def _run_single_symbol(
@@ -1620,8 +2071,9 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     _load_symbol_cached.cache_clear()
 
     candidate_rows: list[dict[str, Any]] = []
+    candidate_summary_rows: list[dict[str, Any]] = []
     if strategy_cfg.get("mode") == "compare":
-        all_rows, candidate_rows = _run_compare(
+        all_rows, candidate_rows, candidate_summary_rows = _run_compare(
             symbols=symbols,
             years=years,
             train_years=int(wcfg["train_years"]),
@@ -1704,6 +2156,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         summary["selected_candidate"] = str(folds_df["candidate"].iloc[0])
     if "candidate_summary" in folds_df.columns:
         summary["candidate_comparison"] = str(folds_df["candidate_summary"].iloc[0])
+    if candidate_summary_rows:
+        summary["candidate_summary_rows"] = candidate_summary_rows
 
     # Out-of-sample proxy: last 20% folds as recent hold-out segment
     cutoff = max(1, int(len(folds_df) * 0.2))
