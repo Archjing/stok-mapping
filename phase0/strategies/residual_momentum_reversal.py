@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.strategies.base import BaseStrategy
+from phase0.strategies.base import BaseStrategy, StrategyOutput
 from phase0.strategies.registry import register
 
 
@@ -13,6 +13,8 @@ from phase0.strategies.registry import register
 class ResidualMomentumReversalStrategy(BaseStrategy):
     name = "residual_momentum_reversal_v1"
     candidate_name = "residual_momentum_reversal_v1"
+    display_name = "Residual Momentum Reversal V1"
+    category = "factor"
 
     def is_enabled(self, strategy_cfg: dict[str, Any]) -> bool:
         return bool(strategy_cfg.get("local_factor", {}).get("enabled", False))
@@ -56,7 +58,7 @@ class ResidualMomentumReversalStrategy(BaseStrategy):
                             continue
                         for vol_q in strategy_cfg.get("vol_quantiles", [0.75]):
                             vol_threshold = float(train["vol20"].quantile(float(vol_q)))
-                            returns, exposure = self.apply(
+                            output = self.apply(
                                 train,
                                 {
                                     "residual_window": int(residual_window),
@@ -78,7 +80,7 @@ class ResidualMomentumReversalStrategy(BaseStrategy):
                             )
                             from phase0.walk_forward import _calc_metrics
 
-                            metric = _calc_metrics(returns, exposure)
+                            metric = _calc_metrics(output.returns, output.exposure)
                             if metric["trades"] < min_trades:
                                 continue
                             score = metric["sharpe"] + max(metric["max_drawdown"], -1.0) * 0.5
@@ -130,7 +132,7 @@ class ResidualMomentumReversalStrategy(BaseStrategy):
         slippage: float,
         commission: float,
         stamp_duty_sell: float,
-    ) -> tuple[pd.Series, pd.Series]:
+    ) -> StrategyOutput:
         resid_col = f"resid_mom{int(params['residual_window'])}"
         reversal_col = f"mom{int(params['reversal_window'])}"
         trend_col = f"ma{int(params['trend_window'])}"
@@ -160,7 +162,13 @@ class ResidualMomentumReversalStrategy(BaseStrategy):
         costs = turnover * (slippage + commission) + sells * stamp_duty_sell
         returns = gross.sub(costs, fill_value=0.0)
         exposure = weights.sum(axis=1)
-        return returns, exposure
+        signal_frame = d[[c for c in ["date", "symbol", "rank_score", "selected", "raw_weight", "weight", "ret", "position_ret"] if c in d.columns]].copy().rename(columns={"rank_score": "score"})
+        return StrategyOutput(
+            returns=returns,
+            exposure=exposure,
+            signal_frame=signal_frame,
+            metadata=self.build_metadata(params),
+        )
 
     def format_params(self, params: dict[str, Any]) -> str:
         return (

@@ -140,7 +140,7 @@ phase0:
     slippage: 0.001
     strategy_v2:
       mode: "compare"
-      compare_strategies: ["legacy_momentum", "residual_momentum_reversal_v1"]
+      compare_strategies: ["legacy_momentum", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
       top_n: 3
       mom_windows: [3, 5, 10, 20]
       mom_quantiles: [0.5, 0.6]
@@ -187,6 +187,12 @@ phase0:
         amount_ma_window: 20
         breakout_window: 20
         shadow_clip: 5.0
+      baseline_ma_kline:
+        enabled: true
+        top_n_values: [3, 5]
+        trend_window_pairs: [[20, 60]]
+        amount_ratio_mins: [1.0, 1.2]
+        upper_shadow_max_values: [1.0, 1.5]
       local_factor:
         enabled: true
         residual_momentum_windows: [10, 20]
@@ -194,6 +200,30 @@ phase0:
         reversal_window: 3
         reversal_quantiles: [0.7]
         use_xmarket_overlay: true
+        residual_reversal_v2:
+          enabled: true
+          residual_windows: [5, 10, 20]
+          residual_quantiles: [0.6]
+          reversal_windows: [1, 3]
+          reversal_quantiles: [0.7]
+          amount_ratio_mins: [1.0, 1.2]
+          upper_shadow_max_values: [1.0, 1.5]
+          gap_ret_max_values: [0.03, 0.05]
+          use_xmarket_overlay: false
+        multifactor_filter:
+          enabled: true
+          quality_quantiles: [0.7]
+          residual_windows: [10, 20]
+          residual_quantiles: [0.6]
+          top_n_values: [5, 10]
+          amount_ratio_mins: [1.0, 1.2]
+          upper_shadow_max_values: [1.0, 1.5]
+          breakout_required_values: [false, true]
+          use_xmarket_overlay: false
+          factor_weights:
+            quality_growth: 0.45
+            residual_momentum: 0.35
+            low_volatility: 0.20
         quality_growth:
           enabled: true
           financial_table: "market_financial_factors"

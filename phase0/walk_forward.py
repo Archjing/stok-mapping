@@ -19,6 +19,7 @@ from phase0.local_history import (
     local_history_prefer_daily_for_backtest,
 )
 from phase0.strategies import available_strategies, get_strategy
+from phase0.strategies.base import StrategyOutput
 from phase0.throttle import configure_akshare_throttle
 from phase0.universe import load_universe_symbols
 
@@ -1008,376 +1009,6 @@ def _add_quality_growth_features(panel: pd.DataFrame, strategy_cfg: dict[str, An
     return d
 
 
-def _apply_residual_momentum_reversal_portfolio_strategy(
-    panel: pd.DataFrame,
-    *,
-    residual_window: int,
-    residual_threshold: float,
-    reversal_window: int,
-    reversal_threshold: float,
-    trend_window: int,
-    vol_threshold: float,
-    target_vol: float,
-    top_n: int,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-    use_xmarket_overlay: bool = True,
-) -> tuple[pd.Series, pd.Series]:
-    if panel.empty:
-        return pd.Series(dtype=float), pd.Series(dtype=float)
-
-    d = panel.copy()
-    resid_col = f"resid_mom{residual_window}"
-    reversal_col = f"mom{reversal_window}"
-    trend_col = f"ma{trend_window}"
-    eligible = (
-        (d[resid_col] > residual_threshold)
-        & (d[reversal_col] <= reversal_threshold)
-        & (d["close"] > d[trend_col])
-        & (d["vol20"] <= vol_threshold)
-    )
-    d["resid_rank_component"] = d.groupby("date")[resid_col].rank(method="first", pct=True)
-    d["reversal_rank_component"] = (1.0 - d.groupby("date")[reversal_col].rank(method="first", pct=True)).clip(0.0, 1.0)
-    d["rank_score"] = (d["resid_rank_component"] + 0.5 * d["reversal_rank_component"]).where(eligible, np.nan)
-    d["rank"] = d.groupby("date")["rank_score"].rank(method="first", ascending=False)
-    d["selected"] = ((d["rank"] <= top_n) & d["rank_score"].notna()).astype(float)
-    daily_count = d.groupby("date")["selected"].transform("sum").replace(0, np.nan)
-    d["raw_weight"] = (d["selected"] / daily_count).fillna(0.0)
-    vol_scale = np.minimum(1.0, target_vol / d["vol20"].replace(0, np.nan)).fillna(0.0)
-    risk_scale = d.get("risk_scale", pd.Series(1.0, index=d.index)).clip(0.0, 1.0) if use_xmarket_overlay else 1.0
-    d["weight"] = d["raw_weight"] * vol_scale * risk_scale
-    d["weight"] = d.groupby("symbol")["weight"].shift(1).fillna(0.0)
-    d["position_ret"] = d["weight"] * d["ret"]
-
-    weights = d.pivot(index="date", columns="symbol", values="weight").fillna(0.0)
-    turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
-    sells = weights.diff().clip(upper=0).abs().sum(axis=1).fillna(0.0)
-    gross = d.groupby("date")["position_ret"].sum()
-    costs = turnover * (slippage + commission) + sells * stamp_duty_sell
-    returns = gross.sub(costs, fill_value=0.0)
-    exposure = weights.sum(axis=1)
-    return returns, exposure
-
-
-def _select_residual_momentum_reversal_params(
-    train: pd.DataFrame,
-    strategy_cfg: dict[str, Any],
-    *,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-) -> dict[str, Any]:
-    best: dict[str, Any] | None = None
-    min_trades = int(strategy_cfg.get("train_min_trades", 5))
-    target_vol = float(strategy_cfg.get("target_vol", 0.18))
-    top_n = int(strategy_cfg.get("top_n", 2))
-    lcfg = strategy_cfg.get("local_factor", {})
-    reversal_window = int(lcfg.get("reversal_window", 3))
-    use_xmarket_overlay = bool(lcfg.get("use_xmarket_overlay", True))
-
-    for residual_window in lcfg.get("residual_momentum_windows", [10, 20]):
-        resid_col = f"resid_mom{int(residual_window)}"
-        if resid_col not in train.columns:
-            continue
-        for residual_q in lcfg.get("residual_momentum_quantiles", [0.6]):
-            residual_threshold = float(train[resid_col].quantile(float(residual_q)))
-            reversal_col = f"mom{reversal_window}"
-            if reversal_col not in train.columns:
-                continue
-            for reversal_q in lcfg.get("reversal_quantiles", [0.7]):
-                reversal_threshold = float(train[reversal_col].quantile(float(reversal_q)))
-                for trend_window in strategy_cfg.get("trend_windows", [20]):
-                    trend_col = f"ma{trend_window}"
-                    if trend_col not in train.columns:
-                        continue
-                    for vol_q in strategy_cfg.get("vol_quantiles", [0.75]):
-                        vol_threshold = float(train["vol20"].quantile(float(vol_q)))
-                        returns, exposure = _apply_residual_momentum_reversal_portfolio_strategy(
-                            train,
-                            residual_window=int(residual_window),
-                            residual_threshold=residual_threshold,
-                            reversal_window=reversal_window,
-                            reversal_threshold=reversal_threshold,
-                            trend_window=int(trend_window),
-                            vol_threshold=vol_threshold,
-                            target_vol=target_vol,
-                            top_n=top_n,
-                            slippage=slippage,
-                            commission=commission,
-                            stamp_duty_sell=stamp_duty_sell,
-                            use_xmarket_overlay=use_xmarket_overlay,
-                        )
-                        metric = _calc_metrics(returns, exposure)
-                        if metric["trades"] < min_trades:
-                            continue
-                        score = metric["sharpe"] + max(metric["max_drawdown"], -1.0) * 0.5
-                        candidate = {
-                            "residual_window": int(residual_window),
-                            "residual_quantile": float(residual_q),
-                            "residual_threshold": residual_threshold,
-                            "reversal_window": reversal_window,
-                            "reversal_quantile": float(reversal_q),
-                            "reversal_threshold": reversal_threshold,
-                            "trend_window": int(trend_window),
-                            "vol_quantile": float(vol_q),
-                            "vol_threshold": vol_threshold,
-                            "target_vol": target_vol,
-                            "top_n": top_n,
-                            "use_xmarket_overlay": use_xmarket_overlay,
-                            "train_score": float(score),
-                            "train_sharpe": float(metric["sharpe"]),
-                            "train_trades": int(metric["trades"]),
-                        }
-                        if best is None or candidate["train_score"] > best["train_score"]:
-                            best = candidate
-
-    if best is None:
-        best = {
-            "residual_window": 20,
-            "residual_quantile": 0.6,
-            "residual_threshold": float(train.get("resid_mom20", pd.Series(0.0)).median()),
-            "reversal_window": reversal_window,
-            "reversal_quantile": 0.7,
-            "reversal_threshold": float(train.get(f"mom{reversal_window}", pd.Series(0.0)).quantile(0.7)),
-            "trend_window": 20,
-            "vol_quantile": 0.75,
-            "vol_threshold": float(train["vol20"].quantile(0.75)),
-            "target_vol": target_vol,
-            "top_n": top_n,
-            "use_xmarket_overlay": use_xmarket_overlay,
-            "train_score": 0.0,
-            "train_sharpe": 0.0,
-            "train_trades": 0,
-        }
-    return best
-
-
-def _format_residual_momentum_reversal_params(params: dict[str, Any]) -> str:
-    return (
-        f"resid_mom{params['residual_window']}@q{params['residual_quantile']},"
-        f"reversal_mom{params['reversal_window']}<=q{params['reversal_quantile']},"
-        f"ma{params['trend_window']},"
-        f"vol@q{params['vol_quantile']},"
-        f"target_vol={params['target_vol']},"
-        f"top_n={params.get('top_n', '')},"
-        f"xmarket_overlay={params.get('use_xmarket_overlay', True)}"
-    )
-
-
-def _apply_quality_growth_price_portfolio_strategy(
-    panel: pd.DataFrame,
-    *,
-    quality_threshold: float,
-    trend_window: int,
-    vol_threshold: float,
-    target_vol: float,
-    top_n: int,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-    use_xmarket_overlay: bool = True,
-) -> tuple[pd.Series, pd.Series]:
-    if panel.empty:
-        return pd.Series(dtype=float), pd.Series(dtype=float)
-
-    d = panel.copy()
-    trend_col = f"ma{trend_window}"
-    if "quality_growth_score" not in d.columns or trend_col not in d.columns:
-        dates = pd.Index(sorted(d["date"].dropna().unique()))
-        return pd.Series(0.0, index=dates), pd.Series(0.0, index=dates)
-
-    eligible = (
-        (d["quality_growth_score"] >= quality_threshold)
-        & (d["close"] > d[trend_col])
-        & (d["vol20"] <= vol_threshold)
-    )
-    d["rank_score"] = d["quality_growth_score"].where(eligible, np.nan)
-    d["rank"] = d.groupby("date")["rank_score"].rank(method="first", ascending=False)
-    d["selected"] = ((d["rank"] <= top_n) & d["rank_score"].notna()).astype(float)
-    daily_count = d.groupby("date")["selected"].transform("sum").replace(0, np.nan)
-    d["raw_weight"] = (d["selected"] / daily_count).fillna(0.0)
-    vol_scale = np.minimum(1.0, target_vol / d["vol20"].replace(0, np.nan)).fillna(0.0)
-    risk_scale = d.get("risk_scale", pd.Series(1.0, index=d.index)).clip(0.0, 1.0) if use_xmarket_overlay else 1.0
-    d["weight"] = d["raw_weight"] * vol_scale * risk_scale
-    d["weight"] = d.groupby("symbol")["weight"].shift(1).fillna(0.0)
-    d["position_ret"] = d["weight"] * d["ret"]
-
-    weights = d.pivot(index="date", columns="symbol", values="weight").fillna(0.0)
-    turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
-    sells = weights.diff().clip(upper=0).abs().sum(axis=1).fillna(0.0)
-    gross = d.groupby("date")["position_ret"].sum()
-    costs = turnover * (slippage + commission) + sells * stamp_duty_sell
-    returns = gross.sub(costs, fill_value=0.0)
-    exposure = weights.sum(axis=1)
-    return returns, exposure
-
-
-def _select_quality_growth_price_params(
-    train: pd.DataFrame,
-    strategy_cfg: dict[str, Any],
-    *,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-) -> dict[str, Any]:
-    best: dict[str, Any] | None = None
-    min_trades = int(strategy_cfg.get("train_min_trades", 5))
-    target_vol = float(strategy_cfg.get("target_vol", 0.18))
-    lcfg = strategy_cfg.get("local_factor", {})
-    qcfg = lcfg.get("quality_growth", {})
-    top_n_values = qcfg.get("top_n_values", [strategy_cfg.get("top_n", 3)])
-    use_xmarket_overlay = bool(qcfg.get("use_xmarket_overlay", True))
-    scores = train.get("quality_growth_score", pd.Series(dtype=float)).dropna()
-
-    if scores.empty:
-        return {
-            "eligible": False,
-            "quality_quantile": 1.0,
-            "quality_threshold": 1.1,
-            "trend_window": 20,
-            "vol_quantile": 0.75,
-            "vol_threshold": float(train["vol20"].quantile(0.75)),
-            "target_vol": target_vol,
-            "top_n": int(top_n_values[0]) if top_n_values else int(strategy_cfg.get("top_n", 3)),
-            "use_xmarket_overlay": use_xmarket_overlay,
-            "train_score": 0.0,
-            "train_sharpe": 0.0,
-            "train_trades": 0,
-        }
-
-    for quality_q in qcfg.get("quality_quantiles", [0.7]):
-        quality_threshold = float(scores.quantile(float(quality_q)))
-        for trend_window in strategy_cfg.get("trend_windows", [20]):
-            trend_col = f"ma{trend_window}"
-            if trend_col not in train.columns:
-                continue
-            for vol_q in strategy_cfg.get("vol_quantiles", [0.75]):
-                vol_threshold = float(train["vol20"].quantile(float(vol_q)))
-                for top_n in top_n_values:
-                    returns, exposure = _apply_quality_growth_price_portfolio_strategy(
-                        train,
-                        quality_threshold=quality_threshold,
-                        trend_window=int(trend_window),
-                        vol_threshold=vol_threshold,
-                        target_vol=target_vol,
-                        top_n=int(top_n),
-                        slippage=slippage,
-                        commission=commission,
-                        stamp_duty_sell=stamp_duty_sell,
-                        use_xmarket_overlay=use_xmarket_overlay,
-                    )
-                    metric = _calc_metrics(returns, exposure)
-                    if metric["trades"] < min_trades:
-                        continue
-                    score = metric["sharpe"] + max(metric["max_drawdown"], -1.0) * 0.5
-                    candidate = {
-                        "eligible": True,
-                        "quality_quantile": float(quality_q),
-                        "quality_threshold": quality_threshold,
-                        "trend_window": int(trend_window),
-                        "vol_quantile": float(vol_q),
-                        "vol_threshold": vol_threshold,
-                        "target_vol": target_vol,
-                        "top_n": int(top_n),
-                        "use_xmarket_overlay": use_xmarket_overlay,
-                        "train_score": float(score),
-                        "train_sharpe": float(metric["sharpe"]),
-                        "train_trades": int(metric["trades"]),
-                    }
-                    if best is None or candidate["train_score"] > best["train_score"]:
-                        best = candidate
-
-    if best is None:
-        best = {
-            "eligible": False,
-            "quality_quantile": 0.7,
-            "quality_threshold": float(scores.quantile(0.7)),
-            "trend_window": 20,
-            "vol_quantile": 0.75,
-            "vol_threshold": float(train["vol20"].quantile(0.75)),
-            "target_vol": target_vol,
-            "top_n": int(top_n_values[0]) if top_n_values else int(strategy_cfg.get("top_n", 3)),
-            "use_xmarket_overlay": use_xmarket_overlay,
-            "train_score": 0.0,
-            "train_sharpe": 0.0,
-            "train_trades": 0,
-        }
-    return best
-
-
-def _format_quality_growth_price_params(params: dict[str, Any]) -> str:
-    return (
-        f"quality_growth@q{params['quality_quantile']},"
-        f"ma{params['trend_window']},"
-        f"vol@q{params['vol_quantile']},"
-        f"target_vol={params['target_vol']},"
-        f"top_n={params.get('top_n', '')},"
-        f"xmarket_overlay={params.get('use_xmarket_overlay', True)}"
-    )
-
-
-def _run_legacy_momentum(
-    symbol: str,
-    years: int,
-    train_years: int,
-    validate_years: int,
-    min_samples: int,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-) -> list[dict[str, Any]]:
-    df = _load_symbol(symbol, years=years)
-    if df.empty or len(df) < min_samples:
-        return []
-
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
-    rows: list[dict[str, Any]] = []
-    fold_idx = 0
-    start = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(df):
-            break
-        train = df.iloc[start:train_end].copy()
-        valid = df.iloc[train_end:valid_end].copy()
-        if len(train) < min_samples or len(valid) < min_samples // 2:
-            break
-
-        threshold = float(train["mom5"].median())
-        valid["signal"] = (valid["mom5"] > threshold).astype(float).shift(1).fillna(0.0)
-        trade_size = valid["signal"].diff().abs().fillna(valid["signal"].abs())
-        costs = trade_size * (slippage + commission)
-        sell_size = (valid["signal"].shift(1).fillna(0.0) - valid["signal"]).clip(lower=0)
-        costs += sell_size * stamp_duty_sell
-        returns = valid["signal"] * valid["ret"] - costs
-        metric = _calc_metrics(returns, valid["signal"])
-        fold_idx += 1
-        rows.append(
-            {
-                "symbol": symbol,
-                "fold": fold_idx,
-                "train_start": str(train["date"].iloc[0].date()),
-                "train_end": str(train["date"].iloc[-1].date()),
-                "valid_start": str(valid["date"].iloc[0].date()),
-                "valid_end": str(valid["date"].iloc[-1].date()),
-                "annualized_return": metric["annualized_return"],
-                "sharpe": metric["sharpe"],
-                "max_drawdown": metric["max_drawdown"],
-                "win_rate": metric["win_rate"],
-                "turnover_annual": metric["turnover_annual"],
-                "trades": metric["trades"],
-                "passed_min_samples": True,
-                "selected_params": "legacy_mom5_median",
-                "candidate": "legacy_momentum",
-            }
-        )
-        start += fold_days_valid
-    return rows
-
-
 def _run_portfolio(
     symbols: list[str],
     years: int,
@@ -1618,172 +1249,6 @@ def _run_magnitude_soft_risk_portfolio(
     return rows
 
 
-def _run_residual_momentum_reversal_portfolio(
-    symbols: list[str],
-    years: int,
-    train_years: int,
-    validate_years: int,
-    min_samples: int,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-    strategy_cfg: dict[str, Any],
-    xfeatures: pd.DataFrame | None = None,
-) -> list[dict[str, Any]]:
-    panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
-    if panel.empty:
-        return []
-    panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
-    panel = _add_local_factor_features(panel)
-
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
-    rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
-        train = panel[panel["date"].isin(train_dates)].copy()
-        valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
-
-        params = _select_residual_momentum_reversal_params(
-            train,
-            strategy_cfg,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-        )
-        returns, exposure = _apply_residual_momentum_reversal_portfolio_strategy(
-            valid,
-            residual_window=int(params["residual_window"]),
-            residual_threshold=float(params["residual_threshold"]),
-            reversal_window=int(params["reversal_window"]),
-            reversal_threshold=float(params["reversal_threshold"]),
-            trend_window=int(params["trend_window"]),
-            vol_threshold=float(params["vol_threshold"]),
-            target_vol=float(params["target_vol"]),
-            top_n=int(params.get("top_n", strategy_cfg.get("top_n", 2))),
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            use_xmarket_overlay=bool(params.get("use_xmarket_overlay", True)),
-        )
-        metric = _calc_metrics(returns, exposure)
-        fold_idx += 1
-        rows.append(
-            {
-                "symbol": "PORTFOLIO_RESID_MOM_REVERSAL",
-                "fold": fold_idx,
-                "train_start": str(pd.Timestamp(min(train_dates)).date()),
-                "train_end": str(pd.Timestamp(max(train_dates)).date()),
-                "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
-                "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
-                "annualized_return": metric["annualized_return"],
-                "sharpe": metric["sharpe"],
-                "max_drawdown": metric["max_drawdown"],
-                "win_rate": metric["win_rate"],
-                "turnover_annual": metric["turnover_annual"],
-                "trades": metric["trades"],
-                "passed_min_samples": True,
-                "selected_params": _format_residual_momentum_reversal_params(params),
-                "candidate": "residual_momentum_reversal_v1",
-            }
-        )
-        start += fold_days_valid
-    return rows
-
-
-def _run_quality_growth_price_portfolio(
-    symbols: list[str],
-    years: int,
-    train_years: int,
-    validate_years: int,
-    min_samples: int,
-    slippage: float,
-    commission: float,
-    stamp_duty_sell: float,
-    strategy_cfg: dict[str, Any],
-    xfeatures: pd.DataFrame | None = None,
-) -> list[dict[str, Any]]:
-    panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
-    if panel.empty:
-        return []
-    panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
-    panel = _add_quality_growth_features(panel, strategy_cfg)
-
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
-    rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
-        train = panel[panel["date"].isin(train_dates)].copy()
-        valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
-
-        params = _select_quality_growth_price_params(
-            train,
-            strategy_cfg,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-        )
-        if not params.get("eligible", False):
-            start += fold_days_valid
-            continue
-        returns, exposure = _apply_quality_growth_price_portfolio_strategy(
-            valid,
-            quality_threshold=float(params["quality_threshold"]),
-            trend_window=int(params["trend_window"]),
-            vol_threshold=float(params["vol_threshold"]),
-            target_vol=float(params["target_vol"]),
-            top_n=int(params.get("top_n", strategy_cfg.get("top_n", 3))),
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            use_xmarket_overlay=bool(params.get("use_xmarket_overlay", True)),
-        )
-        metric = _calc_metrics(returns, exposure)
-        fold_idx += 1
-        rows.append(
-            {
-                "symbol": "PORTFOLIO_QUALITY_GROWTH_PRICE",
-                "fold": fold_idx,
-                "train_start": str(pd.Timestamp(min(train_dates)).date()),
-                "train_end": str(pd.Timestamp(max(train_dates)).date()),
-                "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
-                "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
-                "annualized_return": metric["annualized_return"],
-                "sharpe": metric["sharpe"],
-                "max_drawdown": metric["max_drawdown"],
-                "win_rate": metric["win_rate"],
-                "turnover_annual": metric["turnover_annual"],
-                "trades": metric["trades"],
-                "passed_min_samples": True,
-                "selected_params": _format_quality_growth_price_params(params),
-                "candidate": "quality_growth_price_v1",
-            }
-        )
-        start += fold_days_valid
-    return rows
-
-
 def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
     df = pd.DataFrame(rows)
     if df.empty:
@@ -1840,6 +1305,36 @@ def _resolve_compare_strategies(strategy_cfg: dict[str, Any]) -> list[str]:
     return names
 
 
+def _normalize_strategy_output(
+    result: StrategyOutput | tuple[pd.Series, pd.Series],
+    panel: pd.DataFrame,
+    strategy_name: str,
+    params: dict[str, Any],
+) -> StrategyOutput:
+    strategy = get_strategy(strategy_name)
+    if isinstance(result, StrategyOutput):
+        return result
+
+    returns, exposure = result
+    d = panel.copy()
+    if strategy.panel_scope == "symbol":
+        d["score"] = d.get("mom5", pd.Series(np.nan, index=d.index))
+    else:
+        d["score"] = d.get("rank_score", pd.Series(np.nan, index=d.index))
+    d["selected"] = exposure.shift(-1).fillna(0.0).gt(0).astype(float)
+    d["raw_weight"] = d["selected"]
+    d["weight"] = exposure
+    d["position_ret"] = returns
+    signal_frame = d[[c for c in ["date", "symbol", "score", "selected", "raw_weight", "weight", "ret", "position_ret"] if c in d.columns]].copy()
+    return StrategyOutput(
+        returns=returns,
+        exposure=exposure,
+        signal_frame=signal_frame,
+        metadata=strategy.build_metadata(params),
+    )
+
+
+
 def _run_strategy_on_symbol_panel(
     strategy_name: str,
     panel: pd.DataFrame,
@@ -1885,18 +1380,20 @@ def _run_strategy_on_symbol_panel(
             commission=commission,
             stamp_duty_sell=stamp_duty_sell,
         )
-        returns, exposure = strategy.apply(
+        result = strategy.apply(
             valid,
             params,
             slippage=slippage,
             commission=commission,
             stamp_duty_sell=stamp_duty_sell,
         )
-        metric = _calc_metrics(returns, exposure)
+        output = _normalize_strategy_output(result, valid, strategy_name, params)
+        metric = _calc_metrics(output.returns, output.exposure)
+        meta = output.metadata or strategy.build_metadata(params)
         fold_idx += 1
         rows.append(
             {
-                "symbol": "PORTFOLIO" if strategy_name != "legacy_momentum" else str(valid["symbol"].iloc[0]),
+                "symbol": str(valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
                 "fold": fold_idx,
                 "train_start": str(pd.Timestamp(min(train_dates)).date()),
                 "train_end": str(pd.Timestamp(max(train_dates)).date()),
@@ -1909,8 +1406,14 @@ def _run_strategy_on_symbol_panel(
                 "turnover_annual": metric["turnover_annual"],
                 "trades": metric["trades"],
                 "passed_min_samples": True,
-                "selected_params": strategy.format_params(params),
+                "selected_params": meta.get("formatted_params", strategy.format_params(params)),
                 "candidate": strategy.candidate_name,
+                "strategy_id": meta.get("strategy_id", strategy.name),
+                "strategy_display_name": meta.get("display_name", strategy.name),
+                "strategy_category": meta.get("category", "generic"),
+                "panel_scope": meta.get("panel_scope", strategy.panel_scope),
+                "supports_brief": meta.get("supports_brief", True),
+                "supports_paper_trade": meta.get("supports_paper_trade", True),
             }
         )
         start += fold_days_valid
@@ -1932,12 +1435,13 @@ def _run_compare(
     xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
     compare_strategies = _resolve_compare_strategies(strategy_cfg)
 
+    combined_panel: pd.DataFrame | None = None
     for strategy_name in compare_strategies:
         if strategy_name not in available_strategies():
             continue
         strategy_rows: list[dict[str, Any]] = []
         strategy = get_strategy(strategy_name)
-        if strategy_name == "legacy_momentum":
+        if strategy.panel_scope == "symbol":
             for sym in symbols:
                 panel = _load_symbol(sym, years=years)
                 if panel.empty:
@@ -1958,15 +1462,17 @@ def _run_compare(
                     )
                 )
         else:
-            panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
-            if panel.empty:
+            if combined_panel is None:
+                combined_panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
+                if not combined_panel.empty:
+                    combined_panel = _add_cross_market_to_panel(combined_panel, years, strategy_cfg, xfeatures)
+            if combined_panel is None or combined_panel.empty:
                 candidates[strategy.candidate_name] = []
                 continue
-            panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
             strategy_rows.extend(
                 _run_strategy_on_symbol_panel(
                     strategy_name,
-                    panel,
+                    combined_panel,
                     years=years,
                     train_years=train_years,
                     validate_years=validate_years,

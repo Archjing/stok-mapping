@@ -109,6 +109,7 @@ Recommended next focus:
   2. multi-factor + volume/price second-stage filtering,
   3. simple MA/K-line baseline.
 - Primary objective for the next cycle is not higher raw return first, but improving `sharpe_mean` above `0.5` and reducing `max_drawdown_mean` to better than `-0.25`.
+- The current effectiveness gate should be interpreted as a three-layer filter rather than a pure return maximization rule: (1) first require positive annualized return, (2) then require acceptable stability and risk (`sharpe`, `drawdown`, `win_rate`), and (3) finally require acceptable out-of-sample decay. This means the project is looking for strategies that not only make money, but can also be held through volatility and still survive on new data.
 
 ## 2026-05-29: Tiingo / FRED data-source feasibility review
 
@@ -145,3 +146,153 @@ Adjustment suggestion:
 Conclusion:
 - Do **not** do a one-step full replacement of `yfinance`.
 - Adopt a **layered source migration**: `FRED` for macro first, `Tiingo` for US EOD second, `yfinance` retained as fallback during transition.
+
+## 2026-05-30: multifactor_volume_price_filter_v1
+
+Change:
+- Added a compare-only candidate named `multifactor_volume_price_filter_v1`.
+- Registered it under `phase0/strategies/` and enabled it through `walk_forward.strategy_v2.compare_strategies`.
+- Reused the existing local-factor building blocks: `quality_growth_score`, residual momentum features, price-volume filters, and the portfolio compare runner.
+
+Strategy logic:
+- Stage 1 ranking blends `quality_growth_score`, residual momentum percentile, and low-volatility percentile.
+- Stage 2 filtering requires `close > ma20 > ma60`, minimum `amount_ratio20`, capped `upper_shadow_pct`, and optional `breakout20 > 0`.
+- Cross-market overlay defaults to `false` for the first validation round.
+
+Parameters:
+- `quality_quantiles: [0.7]`
+- `residual_windows: [10, 20]`
+- `residual_quantiles: [0.6]`
+- `top_n_values: [5, 10]`
+- `amount_ratio_mins: [1.0, 1.2]`
+- `upper_shadow_max_values: [1.0, 1.5]`
+- `breakout_required_values: [false, true]`
+- Weights: `quality_growth=0.45`, `residual_momentum=0.35`, `low_volatility=0.20`
+
+Reason and reference:
+- This is the highest-upside Week 1 candidate and is intended to test whether a modestly richer local-factor composite can improve Sharpe and drawdown without changing the universe score or formal data pipeline.
+
+Latest result:
+- Selected candidate remains `legacy_momentum`.
+- `multifactor_volume_price_filter_v1`: annualized return mean `-0.0521`, Sharpe mean `-0.4047`, max drawdown mean `-0.0921`, win rate mean `0.2273`.
+- Compared with both `residual_momentum_reversal_v1` and `residual_momentum_reversal_v2`, drawdown is materially better, but returns remain negative and the win rate deteriorates sharply.
+- Candidate Summary shows only `2` folds, so the result is still weak in sample support.
+- Conclusion: do not promote this candidate. It is the least-bad of the new Week 1 compare-only candidates on drawdown, but it still fails as a replacement for `legacy_momentum`.
+
+## 2026-05-30: residual_momentum_reversal_v2
+
+Change:
+- Added a compare-only candidate named `residual_momentum_reversal_v2`.
+- Registered it under `phase0/strategies/` and enabled it through `walk_forward.strategy_v2.compare_strategies`.
+- Kept the existing `residual_momentum_reversal_v1` unchanged as the baseline local-factor comparison candidate.
+
+Strategy logic:
+- Retains pool-relative residual momentum and short-horizon reversal as the core ranking logic.
+- Adds three anti-overheat filters: minimum `amount_ratio20`, capped `upper_shadow_pct`, and capped `gap_ret`.
+- Keeps trend confirmation and volatility filtering.
+- Defaults cross-market overlay to `false` for the first validation round.
+
+Parameters:
+- `residual_windows: [5, 10, 20]`
+- `residual_quantiles: [0.6]`
+- `reversal_windows: [1, 3]`
+- `reversal_quantiles: [0.7]`
+- `amount_ratio_mins: [1.0, 1.2]`
+- `upper_shadow_max_values: [1.0, 1.5]`
+- `gap_ret_max_values: [0.03, 0.05]`
+- `use_xmarket_overlay: false`
+
+Reason and reference:
+- This is the next Week 1 candidate after the MA/K baseline.
+- It aims to improve the poor risk-adjusted profile of the original residual strategy by filtering short-term overheated names more aggressively without rewriting the entire ranking logic.
+
+Latest result:
+- Selected candidate remains `legacy_momentum`.
+- `residual_momentum_reversal_v2`: annualized return mean `-0.1167`, Sharpe mean `-0.8768`, max drawdown mean `-0.1740`, win rate mean `0.4126`.
+- Compared with `residual_momentum_reversal_v1`, drawdown is slightly better, but annualized return, Sharpe, and win rate all deteriorate, while turnover rises materially.
+- Candidate Summary shows only `2` folds, so the result is weak in both quality and sample support.
+- Conclusion: do not promote this candidate. Keep it only as a failed refinement of the residual local-factor path.
+
+## 2026-05-30: strategy output standardization
+
+Change:
+- Introduced a unified `StrategyOutput` dataclass in `phase0/strategies/base.py`.
+- Updated the runner in `phase0/walk_forward.py` to normalize both legacy tuple outputs and structured `StrategyOutput` results.
+- Migrated `legacy_momentum`, `ma_kline_baseline_v1`, `quality_growth_price_v1`, and `residual_momentum_reversal_v2` to start emitting standardized strategy outputs with signal frames and metadata.
+
+Reason and reference:
+- This is the next natural step after modular strategy extraction. The project now needs a stable downstream interface for future briefs, watchlists, and paper-trade integration, rather than only fold-level metrics.
+- Standardized outputs reduce the gap between “strategy used in compare” and “strategy selected for explanation / application layer.”
+
+Latest result:
+- Verification run pending.
+
+## 2026-05-30: strategy modularization phase 2 cleanup
+
+Change:
+- Removed the old inline implementations in `phase0/walk_forward.py` for:
+  - `legacy_momentum`
+  - `residual_momentum_reversal_v1`
+  - `quality_growth_price_v1`
+- Updated compare execution so it now distinguishes single-symbol vs portfolio strategies through `strategy.panel_scope` instead of hardcoding specific strategy names.
+- Kept compare/report/effectiveness outputs compatible while further shrinking `walk_forward.py`.
+
+Reason and reference:
+- This is the practical second phase of the strategy-building-block refactor.
+- The project had already proven that modular strategies could run through compare; the next necessary step was to remove the duplicated inline implementations so `walk_forward.py` stops being both runner and strategy library.
+
+Latest result:
+- Verification run completed successfully after cleanup.
+- Compare still runs, reports still generate, and the current selected candidate remains `quality_growth_price_v1`.
+- The cleanup reduced `phase0/walk_forward.py` significantly while preserving output compatibility.
+- Conclusion: the second-stage cleanup is successful. The compare path now depends materially more on the strategy registry and less on inline legacy logic.
+
+## 2026-05-30: quality_growth_price_v1 module extraction
+
+Change:
+- Extracted `quality_growth_price_v1` into a dedicated strategy module under `phase0/strategies/quality_growth_price.py`.
+- Registered it in `phase0/strategies/__init__.py` and added it to the compare strategy list in `config.yaml`.
+- Kept its current strategy logic, parameter search, and report-facing output format compatible with the existing compare/report chain.
+
+Strategy logic:
+- Uses `quality_growth_score` as the primary rank score.
+- Applies trend confirmation and volatility filtering.
+- Keeps target-volatility scaling and optional cross-market overlay support.
+
+Reason and reference:
+- This continues the strategy-modularization path so that more candidates can be added without expanding `walk_forward.py` indefinitely.
+- `quality_growth_price_v1` was the last major local-factor candidate still implemented inline in `walk_forward.py`.
+
+Latest result:
+- Verification run completed successfully after module extraction.
+- Current compare reports still generate, and `quality_growth_price_v1` appears in the strategy set without breaking report compatibility.
+- The old inline implementation in `walk_forward.py` remains removable in a follow-up cleanup step.
+
+## 2026-05-30: ma_kline_baseline_v1
+
+Change:
+- Added a compare-only candidate named `ma_kline_baseline_v1`.
+- Registered it under `phase0/strategies/` and enabled it through `walk_forward.strategy_v2.compare_strategies`.
+- Reused the shared price/volume feature layer already present in the symbol panel.
+
+Strategy logic:
+- Long-only portfolio baseline.
+- Entry requires `close > ma20`, `ma20 > ma60`, positive candle body, capped upper shadow, and minimum `amount_ratio20`.
+- Eligible names are ranked with a simple blend of `mom20` and `breakout20`.
+- Position sizing still follows the existing target-volatility scaling and portfolio cost model.
+
+Parameters:
+- `top_n_values: [3, 5]`
+- `trend_window_pairs: [[20, 60]]`
+- `amount_ratio_mins: [1.0, 1.2]`
+- `upper_shadow_max_values: [1.0, 1.5]`
+
+Reason and reference:
+- This was the lowest-complexity Week 1 candidate and was intended to provide a diagnostic floor before more complex local-factor candidates are promoted.
+- It was chosen first because it could fully reuse the newly added shared price/volume features with minimal additional engineering churn.
+
+Latest result:
+- Selected candidate remains `legacy_momentum`.
+- `ma_kline_baseline_v1`: annualized return mean `-0.3641`, Sharpe mean `-3.0551`, max drawdown mean `-0.4123`, win rate mean `0.3698`.
+- Candidate Summary shows only `2` folds, so the result is weak even before considering the poor performance.
+- Conclusion: do not promote this candidate. Keep it only as a failed low-complexity comparison baseline.
