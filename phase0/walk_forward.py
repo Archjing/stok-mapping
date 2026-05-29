@@ -18,6 +18,7 @@ from phase0.local_history import (
     local_history_path,
     local_history_prefer_daily_for_backtest,
 )
+from phase0.strategies import available_strategies, get_strategy
 from phase0.throttle import configure_akshare_throttle
 from phase0.universe import load_universe_symbols
 
@@ -1826,6 +1827,96 @@ def _candidate_summary_rows(summaries: dict[str, dict[str, float]]) -> list[dict
     return sorted(rows, key=lambda row: row["score"], reverse=True)
 
 
+def _resolve_compare_strategies(strategy_cfg: dict[str, Any]) -> list[str]:
+    configured = strategy_cfg.get("compare_strategies")
+    if configured:
+        return [str(name) for name in configured]
+
+    names = ["legacy_momentum"]
+    if strategy_cfg.get("mode") != "compare":
+        return names
+    if strategy_cfg.get("local_factor", {}).get("enabled", False):
+        names.append("residual_momentum_reversal_v1")
+    return names
+
+
+def _run_strategy_on_symbol_panel(
+    strategy_name: str,
+    panel: pd.DataFrame,
+    *,
+    years: int,
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+) -> list[dict[str, Any]]:
+    strategy = get_strategy(strategy_name)
+    if not strategy.is_enabled(strategy_cfg):
+        return []
+    panel = strategy.prepare_panel(panel, strategy_cfg)
+    if panel.empty:
+        return []
+
+    dates = sorted(panel["date"].dropna().unique())
+    fold_days_train = train_years * 252
+    fold_days_valid = validate_years * 252
+    rows: list[dict[str, Any]] = []
+    start = 0
+    fold_idx = 0
+    while True:
+        train_end = start + fold_days_train
+        valid_end = train_end + fold_days_valid
+        if valid_end > len(dates):
+            break
+        train_dates = set(dates[start:train_end])
+        valid_dates = set(dates[train_end:valid_end])
+        train = panel[panel["date"].isin(train_dates)].copy()
+        valid = panel[panel["date"].isin(valid_dates)].copy()
+        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
+            break
+
+        params = strategy.select_params(
+            train,
+            strategy_cfg,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        returns, exposure = strategy.apply(
+            valid,
+            params,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        metric = _calc_metrics(returns, exposure)
+        fold_idx += 1
+        rows.append(
+            {
+                "symbol": "PORTFOLIO" if strategy_name != "legacy_momentum" else str(valid["symbol"].iloc[0]),
+                "fold": fold_idx,
+                "train_start": str(pd.Timestamp(min(train_dates)).date()),
+                "train_end": str(pd.Timestamp(max(train_dates)).date()),
+                "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
+                "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
+                "annualized_return": metric["annualized_return"],
+                "sharpe": metric["sharpe"],
+                "max_drawdown": metric["max_drawdown"],
+                "win_rate": metric["win_rate"],
+                "turnover_annual": metric["turnover_annual"],
+                "trades": metric["trades"],
+                "passed_min_samples": True,
+                "selected_params": strategy.format_params(params),
+                "candidate": strategy.candidate_name,
+            }
+        )
+        start += fold_days_valid
+    return rows
+
+
 def _run_compare(
     symbols: list[str],
     years: int,
@@ -1836,122 +1927,61 @@ def _run_compare(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     candidates: dict[str, list[dict[str, Any]]] = {}
     xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
+    compare_strategies = _resolve_compare_strategies(strategy_cfg)
 
-    legacy_rows: list[dict[str, Any]] = []
-    filtered_rows: list[dict[str, Any]] = []
-    for sym in symbols:
-        legacy_rows.extend(
-            _run_legacy_momentum(
-                symbol=sym,
-                years=years,
-                train_years=train_years,
-                validate_years=validate_years,
-                min_samples=min_samples,
-                slippage=slippage,
-                commission=commission,
-                stamp_duty_sell=stamp_duty_sell,
+    for strategy_name in compare_strategies:
+        if strategy_name not in available_strategies():
+            continue
+        strategy_rows: list[dict[str, Any]] = []
+        strategy = get_strategy(strategy_name)
+        if strategy_name == "legacy_momentum":
+            for sym in symbols:
+                panel = _load_symbol(sym, years=years)
+                if panel.empty:
+                    continue
+                panel = panel.assign(symbol=sym)
+                strategy_rows.extend(
+                    _run_strategy_on_symbol_panel(
+                        strategy_name,
+                        panel,
+                        years=years,
+                        train_years=train_years,
+                        validate_years=validate_years,
+                        min_samples=min_samples,
+                        slippage=slippage,
+                        commission=commission,
+                        stamp_duty_sell=stamp_duty_sell,
+                        strategy_cfg=strategy_cfg,
+                    )
+                )
+        else:
+            panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
+            if panel.empty:
+                candidates[strategy.candidate_name] = []
+                continue
+            panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
+            strategy_rows.extend(
+                _run_strategy_on_symbol_panel(
+                    strategy_name,
+                    panel,
+                    years=years,
+                    train_years=train_years,
+                    validate_years=validate_years,
+                    min_samples=min_samples,
+                    slippage=slippage,
+                    commission=commission,
+                    stamp_duty_sell=stamp_duty_sell,
+                    strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                )
             )
-        )
-        for f in _run_single_symbol(
-            symbol=sym,
-            years=years,
-            train_years=train_years,
-            validate_years=validate_years,
-            min_samples=min_samples,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            strategy_cfg=strategy_cfg,
-            xfeatures=xfeatures,
-        ):
-            filtered_rows.append(
-                {
-                    "symbol": sym,
-                    "fold": f.fold,
-                    "train_start": f.train_start,
-                    "train_end": f.train_end,
-                    "valid_start": f.valid_start,
-                    "valid_end": f.valid_end,
-                    "annualized_return": f.annualized_return,
-                    "sharpe": f.sharpe,
-                    "max_drawdown": f.max_drawdown,
-                    "win_rate": f.win_rate,
-                    "turnover_annual": f.turnover_annual,
-                    "trades": f.trades,
-                    "passed_min_samples": f.passed_min_samples,
-                    "selected_params": f.selected_params,
-                    "candidate": "xmarket_single_v2" if _xmarket_enabled(strategy_cfg) else "filtered_single_v2",
-                }
-            )
+        candidates[strategy.candidate_name] = strategy_rows
 
-    candidates["legacy_momentum"] = legacy_rows
-    candidates["xmarket_single_v2" if _xmarket_enabled(strategy_cfg) else "filtered_single_v2"] = filtered_rows
-    candidates["xmarket_portfolio_v2" if _xmarket_enabled(strategy_cfg) else "portfolio_v2"] = _run_portfolio(
-        symbols=symbols,
-        years=years,
-        train_years=train_years,
-        validate_years=validate_years,
-        min_samples=min_samples,
-        slippage=slippage,
-        commission=commission,
-        stamp_duty_sell=stamp_duty_sell,
-        strategy_cfg={**strategy_cfg, "mode": "portfolio"},
-        xfeatures=xfeatures,
-    )
-    if _xmarket_enabled(strategy_cfg):
-        candidates["xmarket_next_open_v1"] = _run_next_open_portfolio(
-            symbols=symbols,
-            years=years,
-            train_years=train_years,
-            validate_years=validate_years,
-            min_samples=min_samples,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            strategy_cfg={**strategy_cfg, "mode": "portfolio"},
-            xfeatures=xfeatures,
-        )
-        candidates["xmarket_magnitude_soft_risk_v1"] = _run_magnitude_soft_risk_portfolio(
-            symbols=symbols,
-            years=years,
-            train_years=train_years,
-            validate_years=validate_years,
-            min_samples=min_samples,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            strategy_cfg={**strategy_cfg, "mode": "portfolio"},
-            xfeatures=xfeatures,
-        )
-    if strategy_cfg.get("local_factor", {}).get("enabled", False):
-        candidates["residual_momentum_reversal_v1"] = _run_residual_momentum_reversal_portfolio(
-            symbols=symbols,
-            years=years,
-            train_years=train_years,
-            validate_years=validate_years,
-            min_samples=min_samples,
-            slippage=slippage,
-            commission=commission,
-            stamp_duty_sell=stamp_duty_sell,
-            strategy_cfg={**strategy_cfg, "mode": "portfolio"},
-            xfeatures=xfeatures,
-        )
-        if strategy_cfg.get("local_factor", {}).get("quality_growth", {}).get("enabled", False):
-            candidates["quality_growth_price_v1"] = _run_quality_growth_price_portfolio(
-                symbols=symbols,
-                years=years,
-                train_years=train_years,
-                validate_years=validate_years,
-                min_samples=min_samples,
-                slippage=slippage,
-                commission=commission,
-                stamp_duty_sell=stamp_duty_sell,
-                strategy_cfg={**strategy_cfg, "mode": "portfolio"},
-                xfeatures=xfeatures,
-            )
+    candidates = {name: rows for name, rows in candidates.items() if rows}
+    if not candidates:
+        return [], [], []
 
     summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
     best_name = max(candidates, key=lambda name: _candidate_score(summaries[name]))

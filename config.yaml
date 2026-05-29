@@ -140,6 +140,7 @@ phase0:
     slippage: 0.001
     strategy_v2:
       mode: "compare"
+      compare_strategies: ["legacy_momentum", "residual_momentum_reversal_v1"]
       top_n: 3
       mom_windows: [3, 5, 10, 20]
       mom_quantiles: [0.5, 0.6]

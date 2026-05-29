@@ -1,6 +1,6 @@
 # Phase 0 Strategy Effectiveness Gate
 
-Generated at: 2026-05-29T07:07:15
+Generated at: 2026-05-30T01:04:47
 
 Overall verdict: FAIL
 
@@ -17,16 +17,17 @@ Overall verdict: FAIL
 | metric | value |
 | --- | --- |
 | status | ok |
-| fold_count | 230 |
-| symbol_count | 119 |
-| annualized_return_mean | 0.33599064897406206 |
-| sharpe_mean | 0.3357946743577156 |
-| max_drawdown_mean | -0.30737744830217145 |
-| win_rate_mean | 0.46218977423976626 |
-| turnover_annual_mean | 51.64782608695652 |
+| fold_count | 228 |
+| symbol_count | 118 |
+| annualized_return_mean | 0.3286934644837701 |
+| sharpe_mean | 0.3399689819348769 |
+| max_drawdown_mean | -0.2994954485586279 |
+| win_rate_mean | 0.46205891053967063 |
+| turnover_annual_mean | 52.34649122807018 |
 | selected_candidate | legacy_momentum |
-| candidate_comparison | legacy_momentum: score=0.3501, ann=0.3360, sharpe=0.3358, mdd=-0.3074; xmarket_single_v2: score=-0.0063, ann=0.0204, sharpe=0.0083, mdd=-0.0497; xmarket_portfolio_v2: score=-0.8181, ann=-0.0636, sharpe=-0.7310, mdd=-0.1106; xmarket_next_open_v1: score=-1.9034, ann=-0.1517, sharpe=-1.7316, mdd=-0.1918; xmarket_magnitude_soft_risk_v1: score=-0.4044, ann=-0.0037, sharpe=-0.3430, mdd=-0.1190; residual_momentum_reversal_v1: score=-0.6410, ann=-0.0670, sharpe=-0.5249, mdd=-0.1652 |
-| oos_fold_count | 46 |
-| oos_annualized_return_mean | 0.7021640346715546 |
-| oos_sharpe_mean | 1.0942470414044476 |
-| oos_return_decay_ratio | -1.8724556472813825 |
+| candidate_comparison | legacy_momentum: score=0.3546, ann=0.3287, sharpe=0.3400, mdd=-0.2995; residual_momentum_reversal_v1: score=-0.8733, ann=-0.0789, sharpe=-0.7372, mdd=-0.1931 |
+| candidate_summary_rows | [{'candidate': 'legacy_momentum', 'score': 0.3545679898974481, 'fold_count': 228, 'annualized_return_mean': 0.3286934644837701, 'sharpe_mean': 0.3399689819348769, 'max_drawdown_mean': -0.2994954485586279, 'win_rate_mean': 0.46205891053967063, 'turnover_annual_mean': 52.34649122807018}, {'candidate': 'residual_momentum_reversal_v1', 'score': -0.8732561790048554, 'fold_count': 2, 'annualized_return_mean': -0.07892305761559193, 'sharpe_mean': -0.7372491101833379, 'max_drawdown_mean': -0.19309108002744307, 'win_rate_mean': 0.46319444444444446, 'turnover_annual_mean': 33.20910399141714}] |
+| oos_fold_count | 45 |
+| oos_annualized_return_mean | 0.6377716184227763 |
+| oos_sharpe_mean | 0.8544386681095053 |
+| oos_return_decay_ratio | -1.5239226077673829 |
