@@ -2,14 +2,24 @@
 
 ## 结论
 
-如果只选一个本地可部署、最适合当前 `stok-mapping` 项目场景的开源/开放权重模型，**首选是 Qwen3**。
+如果只选一个本地可部署、最适合当前 `stok-mapping` 项目场景的开源/开放权重模型，**首选仍然是 Qwen3**。
 
-更具体的推荐顺序：
+在补充检索 **Hugging Face 模型卡** 之后，结论进一步细化为：
 
-1. **主模型首选：Qwen3 32B**
+1. **主模型首选：Qwen/Qwen3-32B**
 2. **显存不足时：Qwen3 14B / 8B**
-3. **作为第二意见/审查器：DeepSeek-R1-0528**
-4. **不建议作为第一选择：Llama 4**
+3. **工程/代码代理优先补位：Qwen/Qwen3-Coder-30B-A3B-Instruct**
+4. **作为第二意见/审查器：deepseek-ai/DeepSeek-R1-0528**
+5. **国际多语言备选：mistralai/Magistral-Small-2506**
+6. **可分析但不适合做主 Agent：google/gemma-3-27b-it**
+7. **不建议作为第一选择：Llama 4**
+
+简化判断：
+
+- **主研判代理：Qwen3-32B**
+- **本地工程副驾驶：Qwen3-Coder-30B-A3B-Instruct**
+- **推理审查器：DeepSeek-R1-0528**
+- **国际备选：Magistral-Small-2506**
 
 ---
 
@@ -35,16 +45,26 @@ Qwen3 在中文理解、中文写作、中英混合任务上更适合这个场�
 Qwen 官方对 **function calling / tool use / Qwen-Agent** 的支持更完整，更适合做“本地研究代理”。
 
 ### 3. 本地部署路径成熟
-Qwen3 官方可配合：
+Qwen3 官方与 Hugging Face 模型卡共同显示，可配合：
 - `vLLM`
 - `SGLang`
 - `Ollama`
 - `llama.cpp`
 - `LM Studio`
+- `Transformers`
 
 可以先快速验证，再升级为 OpenAI-compatible 的本地服务。
 
-### 4. 金融分析 + 代码辅助更平衡
+### 4. 工具调用与 Agent 证据最明确
+补充查看 Hugging Face 模型卡后，Qwen3-32B 明确强调：
+- **agent capabilities**
+- **tool use / external tools**
+- 推荐搭配 **Qwen-Agent**
+- 支持 thinking / non-thinking 两种工作模式
+
+对于你这种“本地工具链 + 日报生成 + 研判代理”的任务，这类信号比一般 benchmark 更关键。
+
+### 5. 金融分析 + 代码辅助更平衡
 你的项目既要做：
 - 中文金融分析
 - A 股盘前研判
@@ -91,6 +111,7 @@ Qwen3 在“中文分析 + 工具调用 + 编码辅助”这三方面的综合�
 如果资源允许，推荐：
 
 - **主代理：Qwen3 32B**
+- **工程代理：Qwen3-Coder-30B-A3B-Instruct**
 - **审查器：DeepSeek-R1-0528**
 
 分工：
@@ -100,6 +121,12 @@ Qwen3 在“中文分析 + 工具调用 + 编码辅助”这三方面的综合�
 - 读报告
 - 生成盘前研判
 - 产出结构化结论
+
+#### Qwen3-Coder 负责
+- 读 repo
+- 改 `phase0` 工具链
+- 写 glue code / agent integration
+- 帮你接本地 CLI、报告解析和自动化流程
 
 #### DeepSeek-R1-0528 负责
 - 复核主代理输出
@@ -123,6 +150,7 @@ Qwen3 在“中文分析 + 工具调用 + 编码辅助”这三方面的综合�
 ### 如果你只有 24GB 左右显存
 推荐：
 - **Qwen3 14B**
+- 或者把 **Qwen3-Coder-30B-A3B-Instruct** 作为工程助手、主分析仍由更小 Qwen 承担
 
 适合作为：
 - 盘前摘要
@@ -133,7 +161,14 @@ Qwen3 在“中文分析 + 工具调用 + 编码辅助”这三方面的综合�
 ### 如果你想做“双模型审查”
 推荐：
 - 主：**Qwen3 32B**
+- 工程：**Qwen3-Coder-30B-A3B-Instruct**
 - 审：**DeepSeek-R1-0528** 或其轻量蒸馏版
+
+### 如果你想考虑非中文系国际备选
+推荐优先级：
+- **Magistral-Small-2506**：多语言且模型卡明确包含中文，适合作为国际备选
+- **Gemma-3-27b-it**：多语言强，但模型卡未明确原生工具调用能力
+- **Llama 4**：官方支持语言不含中文，不适合作为你的第一选择
 
 ---
 
