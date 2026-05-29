@@ -64,6 +64,8 @@ phase0:
     markets: ["SH", "SZ"]
     max_staleness_days: 1
     min_latest_coverage: 0.80
+    refresh_metadata: true
+    min_metadata_coverage: 0.80
     min_run_time: "16:00"
     rebuild_universe_after: true
     max_symbols: 0

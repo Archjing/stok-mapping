@@ -88,6 +88,8 @@ bash scripts/install_dev_cron.sh
 
 该 cron 任务默认在交易日 `16:30` 运行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。更新命令会先检查库中最新交易日、覆盖率和交易日历；若已满足 `max_staleness_days=1` 与 `min_latest_coverage=0.80`，不会重复抓取。若在配置的 `min_run_time=16:00` 之前运行，不会把盘中实时快照写成日线收盘数据。
 
+`update-history` 还会刷新 `market_stocks` 中的横截面字段：`market_cap`, `pe_ratio`, `pb_ratio`, `turnover_rate`。该元数据刷新与日线写入分离：即使早于 `16:00`，也允许用全市场快照回填横截面字段；只有日线收盘写入受 `min_run_time` 保护。当前主源为 AkShare 东方财富快照，断连时会尝试新浪原始快照备用源。
+
 ## 输出文件
 
 - `reports/phase0_data_source_report.md`

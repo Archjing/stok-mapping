@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from dataclasses import dataclass
+import time as time_module
+from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import requests
 
 from phase0.env import prepare_imports
 from phase0.local_history import normalize_cn_symbol
@@ -30,11 +32,13 @@ class ManualHistoryUpdateResult:
     fetched_rows: int
     inserted_rows: int
     status: str
-    warnings: list[str]
+    metadata_updated_rows: int = 0
+    metadata_coverage: dict[str, float] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
-        return self.status in {"up_to_date", "updated", "check_ok"}
+        return self.status in {"up_to_date", "updated", "check_ok", "metadata_updated"}
 
 
 def _safe_identifier(value: str) -> str:
@@ -131,6 +135,31 @@ def _latest_stats(
     return latest_date, float(coverage), latest_symbols, total_symbols
 
 
+def _metadata_coverage(conn: sqlite3.Connection, *, meta_table: str, market: str) -> dict[str, float]:
+    table = _safe_identifier(meta_table)
+    row = pd.read_sql_query(
+        f"""
+        SELECT
+            COUNT(*) AS total,
+            SUM(CASE WHEN market_cap IS NOT NULL THEN 1 ELSE 0 END) AS market_cap,
+            SUM(CASE WHEN pe_ratio IS NOT NULL THEN 1 ELSE 0 END) AS pe_ratio,
+            SUM(CASE WHEN pb_ratio IS NOT NULL THEN 1 ELSE 0 END) AS pb_ratio,
+            SUM(CASE WHEN turnover_rate IS NOT NULL THEN 1 ELSE 0 END) AS turnover_rate
+        FROM {table}
+        WHERE market = ?
+        """,
+        conn,
+        params=(market,),
+    ).iloc[0]
+    total = int(row.get("total") or 0)
+    fields = ["market_cap", "pe_ratio", "pb_ratio", "turnover_rate"]
+    out = {"total": float(total)}
+    for field_name in fields:
+        out[field_name] = float(int(row.get(field_name) or 0) / total) if total else 0.0
+    out["min_field"] = min(out[field_name] for field_name in fields) if total else 0.0
+    return out
+
+
 def _trade_day_lag(
     conn: sqlite3.Connection,
     *,
@@ -175,6 +204,17 @@ def _clean_numeric(series: pd.Series) -> pd.Series:
         .replace({"": pd.NA, "nan": pd.NA, "None": pd.NA})
     )
     return pd.to_numeric(cleaned, errors="coerce")
+
+
+def _clean_market_value(series: pd.Series) -> pd.Series:
+    values = _clean_numeric(series)
+    positive = values[values > 0]
+    if positive.empty:
+        return values
+    # Sina mktcap/nmc are usually in 10k CNY, while Eastmoney fields are CNY.
+    if positive.median() < 100_000_000:
+        return values * 10_000
+    return values
 
 
 def _normalize_spot_symbol(value: Any) -> str:
@@ -251,6 +291,94 @@ def _normalize_spot_snapshot(
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=keep)
 
 
+def _fetch_sina_spot_preserve_valuation(page_delay: float = 0.5) -> pd.DataFrame:
+    from akshare.stock.cons import zh_sina_a_stock_count_url, zh_sina_a_stock_payload, zh_sina_a_stock_url
+    from akshare.utils import demjson
+
+    count_response = requests.get(zh_sina_a_stock_count_url, timeout=15)
+    if count_response.status_code != 200:
+        raise RuntimeError(f"sina count request failed: status={count_response.status_code}")
+    match = re.search(r"\d+", count_response.text)
+    if not match:
+        raise RuntimeError("sina count response has no page count")
+    page_count = int(int(match.group(0)) / 80) + 1
+
+    frames: list[pd.DataFrame] = []
+    params = zh_sina_a_stock_payload.copy()
+    for page in range(1, page_count + 1):
+        params.update({"page": page})
+        response = requests.get(zh_sina_a_stock_url, params=params, timeout=15)
+        if response.status_code != 200:
+            raise RuntimeError(f"sina page request failed: page={page}, status={response.status_code}")
+        rows = demjson.decode(response.text)
+        if rows:
+            frames.append(pd.DataFrame(rows))
+        if page < page_count:
+            time_module.sleep(page_delay)
+    if not frames:
+        return pd.DataFrame()
+    raw = pd.concat(frames, ignore_index=True)
+    rename = {
+        "symbol": "代码",
+        "name": "名称",
+        "trade": "最新价",
+        "pricechange": "涨跌额",
+        "changepercent": "涨跌幅",
+        "settlement": "昨收",
+        "open": "今开",
+        "high": "最高",
+        "low": "最低",
+        "volume": "成交量",
+        "amount": "成交额",
+        "per": "市盈率-动态",
+        "pb": "市净率",
+        "mktcap": "总市值",
+        "nmc": "流通市值",
+        "turnoverratio": "换手率",
+    }
+    out = raw.rename(columns=rename)
+    keep = [
+        "代码",
+        "名称",
+        "最新价",
+        "涨跌额",
+        "涨跌幅",
+        "昨收",
+        "今开",
+        "最高",
+        "最低",
+        "成交量",
+        "成交额",
+        "市盈率-动态",
+        "市净率",
+        "总市值",
+        "流通市值",
+        "换手率",
+    ]
+    for col in keep:
+        if col not in out.columns:
+            out[col] = pd.NA
+    return out[keep]
+
+
+def _fetch_spot_snapshot(warnings: list[str]) -> pd.DataFrame:
+    sources = [
+        ("akshare.stock_zh_a_spot_em", lambda: fetch_with_akshare_retries(lambda: ak.stock_zh_a_spot_em())),
+        ("sina.raw_spot", lambda: fetch_with_akshare_retries(lambda: _fetch_sina_spot_preserve_valuation())),
+    ]
+    for source_name, fetcher in sources:
+        try:
+            df = fetcher()
+        except Exception as exc:
+            warnings.append(f"{source_name} snapshot failed: {exc}")
+            continue
+        if df is not None and not df.empty:
+            df.attrs["source"] = source_name
+            return df
+        warnings.append(f"{source_name} snapshot returned empty data.")
+    return pd.DataFrame()
+
+
 def _normalize_spot_metadata(raw: pd.DataFrame, *, markets: set[str], max_symbols: int) -> pd.DataFrame:
     if raw is None or raw.empty:
         return pd.DataFrame()
@@ -259,8 +387,9 @@ def _normalize_spot_metadata(raw: pd.DataFrame, *, markets: set[str], max_symbol
         {
             "market": "CN",
             "symbol": code.map(_normalize_spot_symbol),
+            "raw_symbol": code.astype(str),
             "name": _series_or_empty(raw, ["名称", "name"]),
-            "market_cap": _clean_numeric(_series_or_empty(raw, ["总市值", "market_cap"])),
+            "market_cap": _clean_market_value(_series_or_empty(raw, ["总市值", "market_cap"])),
             "pe_ratio": _clean_numeric(_series_or_empty(raw, ["市盈率-动态", "市盈率", "pe", "pe_ratio"])),
             "pb_ratio": _clean_numeric(_series_or_empty(raw, ["市净率", "pb", "pb_ratio"])),
             "turnover_rate": _clean_numeric(_series_or_empty(raw, ["换手率", "turnover_rate"])),
@@ -281,7 +410,7 @@ def _to_sql_value(value: Any) -> Any:
     return value
 
 
-def _update_stock_metadata(conn: sqlite3.Connection, *, meta_table: str, rows: pd.DataFrame) -> int:
+def _upsert_stock_metadata(conn: sqlite3.Connection, *, meta_table: str, rows: pd.DataFrame) -> int:
     if rows.empty:
         return 0
     table = _safe_identifier(meta_table)
@@ -311,6 +440,101 @@ def _update_stock_metadata(conn: sqlite3.Connection, *, meta_table: str, rows: p
         """,
         params,
     )
+    updated = int(cursor.rowcount or 0)
+
+    existing = set(
+        pd.read_sql_query(
+            f"SELECT symbol FROM {table} WHERE market = ?",
+            conn,
+            params=(str(rows["market"].iloc[0]) if "market" in rows.columns and not rows.empty else "CN",),
+        )["symbol"].astype(str)
+    )
+    missing = rows[~rows["symbol"].astype(str).isin(existing)].copy()
+    if missing.empty:
+        return updated
+    insert_params = [
+        (
+            str(row.get("market") or "CN"),
+            str(row.get("symbol") or ""),
+            str(row.get("raw_symbol") or row.get("symbol") or ""),
+            str(row.get("name") or ""),
+            "",
+            "",
+            "",
+            "",
+            "",
+            "CN",
+            "CNY",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            _to_sql_value(row.get("market_cap")),
+            _to_sql_value(row.get("pe_ratio")),
+            _to_sql_value(row.get("pb_ratio")),
+            _to_sql_value(row.get("turnover_rate")),
+        )
+        for _, row in missing.iterrows()
+    ]
+    insert_cursor = conn.executemany(
+        f"""
+        INSERT INTO {table} (
+            market, symbol, raw_symbol, name, exchange, board, sector, industry, area, country,
+            currency, list_status, list_date, delist_date, is_hs_connect, controller,
+            controller_type, market_cap, pe_ratio, pb_ratio, turnover_rate
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        insert_params,
+    )
+    return updated + int(insert_cursor.rowcount or 0)
+
+
+def _backfill_turnover_from_latest_daily(
+    conn: sqlite3.Connection,
+    *,
+    daily_table: str,
+    meta_table: str,
+    market: str,
+    adjust_type: str,
+) -> int:
+    daily = _safe_identifier(daily_table)
+    meta = _safe_identifier(meta_table)
+    latest = pd.read_sql_query(
+        f"SELECT MAX(date) AS latest_date FROM {daily} WHERE market = ? AND adjust_type = ?",
+        conn,
+        params=(market, adjust_type),
+    )["latest_date"].iloc[0]
+    if latest is None or pd.isna(latest):
+        return 0
+    cursor = conn.execute(
+        f"""
+        UPDATE {meta}
+        SET turnover_rate = (
+            SELECT d.turnover_rate
+            FROM {daily} d
+            WHERE d.market = {meta}.market
+              AND d.symbol = {meta}.symbol
+              AND d.adjust_type = ?
+              AND d.date = ?
+              AND d.turnover_rate IS NOT NULL
+            LIMIT 1
+        )
+        WHERE market = ?
+          AND EXISTS (
+              SELECT 1
+              FROM {daily} d
+              WHERE d.market = {meta}.market
+                AND d.symbol = {meta}.symbol
+                AND d.adjust_type = ?
+                AND d.date = ?
+                AND d.turnover_rate IS NOT NULL
+          )
+        """,
+        (adjust_type, str(latest), market, adjust_type, str(latest)),
+    )
     return int(cursor.rowcount or 0)
 
 
@@ -321,6 +545,8 @@ def _empty_result(
     target_trade_date: date,
     before_latest: date | None,
     before_coverage: float,
+    metadata_coverage: dict[str, float] | None = None,
+    metadata_updated_rows: int = 0,
     status: str,
     warnings: list[str],
 ) -> ManualHistoryUpdateResult:
@@ -334,6 +560,8 @@ def _empty_result(
         after_coverage=before_coverage,
         fetched_rows=0,
         inserted_rows=0,
+        metadata_updated_rows=metadata_updated_rows,
+        metadata_coverage=metadata_coverage or {},
         status=status,
         warnings=warnings,
     )
@@ -363,6 +591,8 @@ def update_manual_history_from_config(
     max_staleness_days = int(update_cfg.get("max_staleness_days", local_cfg.get("max_snapshot_staleness_days", 1)))
     min_latest_coverage = float(update_cfg.get("min_latest_coverage", local_cfg.get("min_snapshot_coverage", 0.80)))
     min_run_time = _parse_run_time(update_cfg.get("min_run_time", "16:00"))
+    refresh_metadata = bool(update_cfg.get("refresh_metadata", True))
+    min_metadata_coverage = float(update_cfg.get("min_metadata_coverage", 0.80))
 
     if not db_path.exists():
         today = date.today()
@@ -406,34 +636,44 @@ def update_manual_history_from_config(
         )
         target_is_covered = before_latest is not None and before_latest >= target_trade_date and before_target_coverage >= min_latest_coverage
         freshness_ok = before_staleness <= max_staleness_days and before_coverage >= min_latest_coverage
+        metadata_before = _metadata_coverage(conn, meta_table=meta_table, market=market)
+        metadata_needs_refresh = refresh_metadata and metadata_before.get("min_field", 0.0) < min_metadata_coverage
 
         if check_only:
             status = "check_ok" if freshness_ok else "stale"
             check_warnings: list[str] = []
             if status != "check_ok":
                 check_warnings.append("local history is stale or undercovered")
+            if refresh_metadata and metadata_needs_refresh:
+                check_warnings.append(
+                    "stock metadata is undercovered: "
+                    f"min_field_coverage={metadata_before.get('min_field', 0.0):.4f}, "
+                    f"threshold={min_metadata_coverage:.4f}"
+                )
             return _empty_result(
                 db_path=db_path,
                 calendar_trade_date=calendar_trade_date,
                 target_trade_date=target_trade_date,
                 before_latest=before_latest,
                 before_coverage=before_coverage,
+                metadata_coverage=metadata_before,
                 status=status,
                 warnings=check_warnings,
             )
 
-        if target_is_covered and freshness_ok:
+        if target_is_covered and freshness_ok and not metadata_needs_refresh:
             return _empty_result(
                 db_path=db_path,
                 calendar_trade_date=calendar_trade_date,
                 target_trade_date=target_trade_date,
                 before_latest=before_latest,
                 before_coverage=before_coverage,
+                metadata_coverage=metadata_before,
                 status="up_to_date",
                 warnings=[],
             )
 
-        if before_min_run_time:
+        if before_min_run_time and not metadata_needs_refresh:
             warnings.append(
                 f"Skipped live spot write before configured min_run_time={min_run_time.strftime('%H:%M')}; "
                 "writing now could label intraday quotes as daily close."
@@ -444,12 +684,92 @@ def update_manual_history_from_config(
                 target_trade_date=target_trade_date,
                 before_latest=before_latest,
                 before_coverage=before_coverage,
+                metadata_coverage=metadata_before,
                 status="too_early",
                 warnings=warnings,
             )
 
-        raw = fetch_with_akshare_retries(lambda: ak.stock_zh_a_spot_em())
+        local_turnover_updated_rows = 0
+        if refresh_metadata and metadata_before.get("turnover_rate", 0.0) < min_metadata_coverage:
+            try:
+                local_turnover_updated_rows = _backfill_turnover_from_latest_daily(
+                    conn,
+                    daily_table=daily_table,
+                    meta_table=meta_table,
+                    market=market,
+                    adjust_type=primary_adjust,
+                )
+                conn.commit()
+            except sqlite3.Error as exc:
+                warnings.append(f"Local daily turnover backfill failed: {exc}")
+
+        raw = _fetch_spot_snapshot(warnings)
         fetched_rows = len(raw) if raw is not None else 0
+        metadata_updated_rows = 0
+        if refresh_metadata and raw is not None and not raw.empty:
+            meta_rows = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols)
+            try:
+                metadata_updated_rows = _upsert_stock_metadata(conn, meta_table=meta_table, rows=meta_rows)
+                conn.commit()
+            except sqlite3.Error as exc:
+                warnings.append(f"Stock metadata update failed: {exc}")
+        metadata_updated_rows += local_turnover_updated_rows
+        metadata_after = _metadata_coverage(conn, meta_table=meta_table, market=market)
+
+        if before_min_run_time and target_is_covered and freshness_ok:
+            status = "metadata_updated" if metadata_updated_rows > 0 else "up_to_date"
+            if metadata_after.get("min_field", 0.0) < min_metadata_coverage:
+                warnings.append(
+                    "Stock metadata refresh did not reach configured coverage: "
+                    f"min_field_coverage={metadata_after.get('min_field', 0.0):.4f}, "
+                    f"threshold={min_metadata_coverage:.4f}."
+                )
+                if metadata_after.get("market_cap", 0.0) < min_metadata_coverage:
+                    status = "metadata_undercovered"
+            return ManualHistoryUpdateResult(
+                db_path=db_path,
+                calendar_trade_date=calendar_trade_date.isoformat(),
+                target_trade_date=target_trade_date.isoformat(),
+                before_latest_date=before_latest.isoformat() if before_latest else "",
+                after_latest_date=before_latest.isoformat() if before_latest else "",
+                before_coverage=before_coverage,
+                after_coverage=before_coverage,
+                fetched_rows=fetched_rows,
+                inserted_rows=0,
+                metadata_updated_rows=metadata_updated_rows,
+                metadata_coverage=metadata_after,
+                status=status,
+                warnings=warnings,
+            )
+
+        if before_min_run_time:
+            warnings.append(
+                f"Skipped live spot write before configured min_run_time={min_run_time.strftime('%H:%M')}; "
+                "writing now could label intraday quotes as daily close."
+            )
+            status = "too_early"
+            if metadata_needs_refresh and metadata_after.get("min_field", 0.0) < min_metadata_coverage:
+                warnings.append(
+                    "Stock metadata refresh did not reach configured coverage: "
+                    f"min_field_coverage={metadata_after.get('min_field', 0.0):.4f}, "
+                    f"threshold={min_metadata_coverage:.4f}."
+                )
+            return ManualHistoryUpdateResult(
+                db_path=db_path,
+                calendar_trade_date=calendar_trade_date.isoformat(),
+                target_trade_date=target_trade_date.isoformat(),
+                before_latest_date=before_latest.isoformat() if before_latest else "",
+                after_latest_date=before_latest.isoformat() if before_latest else "",
+                before_coverage=before_coverage,
+                after_coverage=before_coverage,
+                fetched_rows=fetched_rows,
+                inserted_rows=0,
+                metadata_updated_rows=metadata_updated_rows,
+                metadata_coverage=metadata_after,
+                status=status,
+                warnings=warnings,
+            )
+
         rows = _normalize_spot_snapshot(
             raw,
             trade_date=target_trade_date,
@@ -475,7 +795,9 @@ def update_manual_history_from_config(
                 after_coverage=after_coverage,
                 fetched_rows=fetched_rows,
                 inserted_rows=0,
-                status="failed",
+                metadata_updated_rows=metadata_updated_rows,
+                metadata_coverage=metadata_after,
+                status="metadata_undercovered" if metadata_updated_rows > 0 else "failed",
                 warnings=warnings,
             )
 
@@ -502,6 +824,8 @@ def update_manual_history_from_config(
                 after_coverage=before_coverage,
                 fetched_rows=fetched_rows,
                 inserted_rows=0,
+                metadata_updated_rows=metadata_updated_rows,
+                metadata_coverage=metadata_after,
                 status="undercovered",
                 warnings=warnings,
             )
@@ -513,11 +837,6 @@ def update_manual_history_from_config(
                 (market, target_trade_date.isoformat(), adjust_type),
             )
         rows.to_sql(daily_table, conn, if_exists="append", index=False)
-        meta_rows = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols)
-        try:
-            _update_stock_metadata(conn, meta_table=meta_table, rows=meta_rows)
-        except sqlite3.Error as exc:
-            warnings.append(f"Daily bars updated, but stock metadata update failed: {exc}")
         conn.commit()
 
         after_latest, after_coverage, _, _ = _latest_stats(
@@ -548,6 +867,8 @@ def update_manual_history_from_config(
             after_coverage=after_coverage,
             fetched_rows=fetched_rows,
             inserted_rows=len(rows),
+            metadata_updated_rows=metadata_updated_rows,
+            metadata_coverage=_metadata_coverage(conn, meta_table=meta_table, market=market),
             status=status,
             warnings=warnings,
         )

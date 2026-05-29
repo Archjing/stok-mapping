@@ -104,6 +104,8 @@ CSI.000300
 
 - `manual_history_update.max_staleness_days=1`：当前研判允许最多滞后 1 天。
 - `manual_history_update.min_latest_coverage=0.80`：最新交易日覆盖率低于 80% 时拒绝写入，避免半截快照污染库。
+- `manual_history_update.refresh_metadata=true`：刷新 `market_stocks` 的 `market_cap`, `pe_ratio`, `pb_ratio`, `turnover_rate`。
+- `manual_history_update.min_metadata_coverage=0.80`：横截面字段最低覆盖率低于 80% 时继续提示元数据覆盖不足。
 - `manual_history_update.min_run_time=16:00`：交易日 16:00 前不把 AkShare 实时快照写成日线收盘数据。
 
 每日开发期 cron 可通过以下脚本安装：
@@ -113,3 +115,5 @@ bash scripts/install_dev_cron.sh
 ```
 
 默认任务为交易日 `16:30` 执行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。当前增量源使用 AkShare 全市场实时快照补当日 qfq 日线；前复权历史在除权除息后可能整体回调，因此后续仍应周期性用预下载历史包或更稳定的数据源做完整重建校准。
+
+横截面元数据刷新与日线写入分离：`16:00` 前仍禁止写入当日日线收盘，但允许刷新 `market_stocks` 的市值、估值和换手率字段。这样不会污染日线时间线，同时能让股票池筛选与报告尽早获得 `market_cap / pe / pb / turnover` 字段。当前优先使用 AkShare 东方财富全市场快照；若东方财富远端断开连接，则尝试新浪原始快照备用源，并保留其 `mktcap/per/pb/turnoverratio` 字段用于回填。

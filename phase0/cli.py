@@ -113,6 +113,15 @@ def main() -> int:
         console.print(f"After latest: {result.after_latest_date or 'N/A'} coverage={result.after_coverage:.4f}")
         console.print(f"Fetched rows: {result.fetched_rows}")
         console.print(f"Inserted rows: {result.inserted_rows}")
+        console.print(f"Metadata updated rows: {result.metadata_updated_rows}")
+        if result.metadata_coverage:
+            console.print(
+                "Metadata coverage: "
+                f"market_cap={result.metadata_coverage.get('market_cap', 0.0):.4f}, "
+                f"pe={result.metadata_coverage.get('pe_ratio', 0.0):.4f}, "
+                f"pb={result.metadata_coverage.get('pb_ratio', 0.0):.4f}, "
+                f"turnover={result.metadata_coverage.get('turnover_rate', 0.0):.4f}"
+            )
         if result.warnings:
             for warning in result.warnings:
                 console.print(f"[yellow]Warning:[/yellow] {warning}")
@@ -121,7 +130,7 @@ def main() -> int:
         if (
             not args.check_only
             and not args.no_build_universe
-            and result.status == "updated"
+            and result.status in {"updated", "metadata_updated"}
             and bool(cfg.get("manual_history_update", {}).get("rebuild_universe_after", False))
         ):
             universe_result = build_local_factor_universe(cfg, config_path.parent)
