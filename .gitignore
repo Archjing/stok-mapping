@@ -10,6 +10,7 @@ data/manual_history.lnk
 data/manual_history/*
 !data/manual_history/.gitkeep
 !data/manual_history/README.md
+node_modules/*
 node_modules/
 logs/
 refdocs/**/*.pdf
