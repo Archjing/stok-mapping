@@ -304,6 +304,7 @@ def _write_universe_report(
         f"| has_industry | {bool('industry' in universe.columns and universe['industry'].replace('', np.nan).notna().any())} |",
         f"| has_market_cap | {bool('total_mv' in universe.columns and universe['total_mv'].notna().any())} |",
         f"| has_valuation | {bool('pe_ttm' in universe.columns and universe['pe_ttm'].notna().any())} |",
+        f"| has_financial_factors | {bool('roe' in universe.columns and universe['roe'].notna().any())} |",
         "",
         "## Warnings",
         "",
@@ -312,7 +313,15 @@ def _write_universe_report(
     lines.extend(["", "## Top Industries", "", "| industry | count |", "| --- | --- |"])
     for industry, count in industry_counts.items():
         lines.append(f"| {industry} | {int(count)} |")
-    lines.extend(["", "## Top 20 Symbols", "", "| rank | symbol | name | industry | amount | total_mv | pe_ttm | pb |", "| --- | --- | --- | --- | --- | --- | --- | --- |"])
+    lines.extend(
+        [
+            "",
+            "## Top 20 Symbols",
+            "",
+            "| rank | symbol | name | industry | amount | total_mv | pe_ttm | pb | roe | debt_to_asset |",
+            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        ]
+    )
     for _, row in universe.head(20).iterrows():
         lines.append(
             "| "
@@ -326,6 +335,8 @@ def _write_universe_report(
                     f"{float(row.get('total_mv', np.nan)):.2f}" if pd.notna(row.get("total_mv", np.nan)) else "",
                     f"{float(row.get('pe_ttm', np.nan)):.2f}" if pd.notna(row.get("pe_ttm", np.nan)) else "",
                     f"{float(row.get('pb', np.nan)):.2f}" if pd.notna(row.get("pb", np.nan)) else "",
+                    f"{float(row.get('roe', np.nan)):.2f}" if pd.notna(row.get("roe", np.nan)) else "",
+                    f"{float(row.get('debt_to_asset', np.nan)):.2f}" if pd.notna(row.get("debt_to_asset", np.nan)) else "",
                 ]
             )
             + " |"

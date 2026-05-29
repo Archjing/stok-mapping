@@ -44,6 +44,7 @@ class LocalHistorySettings:
     adjust_type: str = "qfq"
     daily_table: str = "market_daily_bars"
     meta_table: str = "market_stocks"
+    financial_table: str = "market_financial_factors"
     index_table: str = "market_index_bars"
     index_meta_table: str = "market_indices"
     calendar_table: str = "trading_calendar"
@@ -71,6 +72,7 @@ def configure_local_history(cfg: dict[str, Any] | None, root: Path | None = None
         adjust_type=str(raw.get("adjust_type", "qfq")),
         daily_table=str(raw.get("daily_table", "market_daily_bars")),
         meta_table=str(raw.get("meta_table", "market_stocks")),
+        financial_table=str(raw.get("financial_table", "market_financial_factors")),
         index_table=str(raw.get("index_table", "market_index_bars")),
         index_meta_table=str(raw.get("index_meta_table", "market_indices")),
         calendar_table=str(raw.get("calendar_table", "trading_calendar")),
@@ -134,7 +136,9 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
         return pd.DataFrame()
     daily_table = _safe_identifier(_settings.daily_table)
     meta_table = _safe_identifier(_settings.meta_table)
+    financial_table = _safe_identifier(_settings.financial_table)
     has_adjust = _table_has_column(_settings.path, daily_table, "adjust_type")
+    has_financial = _table_exists(_settings.path, financial_table)
     adjust_filter = "AND adjust_type = ?" if has_adjust else ""
     latest_trade_date = _latest_daily_date(daily_table, has_adjust)
     if latest_trade_date is None:
@@ -187,6 +191,27 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
         FROM {meta_table}
         WHERE market = ?
     """
+    financial_query = f"""
+        SELECT
+            f.symbol,
+            f.report_date AS financial_report_date,
+            f.announce_date AS financial_announce_date,
+            f.roe,
+            f.revenue_growth,
+            f.profit_growth,
+            f.operating_cash_flow_to_net_profit AS cash_flow_quality,
+            f.debt_to_asset
+        FROM {financial_table} f
+        JOIN (
+            SELECT market, symbol, MAX(report_date) AS report_date
+            FROM {financial_table}
+            WHERE market = ?
+            GROUP BY market, symbol
+        ) latest
+          ON f.market = latest.market
+         AND f.symbol = latest.symbol
+         AND f.report_date = latest.report_date
+    """
     try:
         with sqlite3.connect(_settings.path) as conn:
             params: tuple[Any, ...] = (_settings.market,)
@@ -195,6 +220,7 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
             params = (*params, start_date, latest_trade_date.isoformat(), max(20, days // 3))
             df = pd.read_sql_query(bars_query, conn, params=params)
             meta = pd.read_sql_query(meta_query, conn, params=(_settings.market,))
+            financial = pd.read_sql_query(financial_query, conn, params=(_settings.market,)) if has_financial else pd.DataFrame()
     except (sqlite3.Error, ValueError):
         return pd.DataFrame()
     if df.empty:
@@ -203,6 +229,9 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
     if not meta.empty:
         meta["symbol"] = meta["symbol"].map(normalize_cn_symbol)
         df = df.merge(meta, on="symbol", how="left")
+    if not financial.empty:
+        financial["symbol"] = financial["symbol"].map(normalize_cn_symbol)
+        df = df.merge(financial, on="symbol", how="left")
     out = pd.DataFrame(
         {
             "symbol": df["symbol"],
@@ -217,6 +246,13 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
             "circ_mv": np.nan,
             "pe_ttm": pd.to_numeric(df.get("pe_ratio", np.nan), errors="coerce"),
             "pb": pd.to_numeric(df.get("pb_ratio", np.nan), errors="coerce"),
+            "roe": pd.to_numeric(df.get("roe", np.nan), errors="coerce"),
+            "revenue_growth": pd.to_numeric(df.get("revenue_growth", np.nan), errors="coerce"),
+            "profit_growth": pd.to_numeric(df.get("profit_growth", np.nan), errors="coerce"),
+            "cash_flow_quality": pd.to_numeric(df.get("cash_flow_quality", np.nan), errors="coerce"),
+            "debt_to_asset": pd.to_numeric(df.get("debt_to_asset", np.nan), errors="coerce"),
+            "financial_report_date": df.get("financial_report_date", ""),
+            "financial_announce_date": df.get("financial_announce_date", ""),
             "source": "local_history_sqlite",
             "as_of_date": latest_trade_date.isoformat(),
             "expected_trade_date": expected_trade_date.isoformat(),

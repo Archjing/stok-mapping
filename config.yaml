@@ -49,6 +49,7 @@ phase0:
     adjust_type: "qfq"
     daily_table: "market_daily_bars"
     meta_table: "market_stocks"
+    financial_table: "market_financial_factors"
     index_table: "market_index_bars"
     index_meta_table: "market_indices"
     calendar_table: "trading_calendar"
@@ -69,6 +70,13 @@ phase0:
     min_run_time: "16:00"
     rebuild_universe_after: true
     max_symbols: 0
+  financial_factors:
+    enabled: true
+    table: "market_financial_factors"
+    periods: 8
+    markets: ["SH", "SZ"]
+    min_factor_coverage: 0.60
+    rebuild_universe_after: true
   manual_history_import:
     qfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily_qfq.zip"
     bfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily.zip"

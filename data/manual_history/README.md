@@ -13,6 +13,7 @@ data/manual_history/a_share_history.sqlite
 - 文件大小约 `3.8G`。
 - 股票日线：qfq `10,462,485` 行 / `5,760` 只，bfq `10,462,385` 行 / `5,748` 只。
 - 股票元数据：`5,524` 行。
+- 季度财务因子：通过 `update-financials` 写入 `market_financial_factors`。
 - 交易日历：`13,162` 行。
 - 退市股票：`324` 行。
 - 指数元数据：`997` 行。
@@ -39,6 +40,7 @@ data/manual_history/a_share_history.sqlite
 
 - `market_daily_bars`：股票日线行情。字段包括 `market`, `symbol`, `date`, `adjust_type`, `open`, `high`, `low`, `close`, `volume`, `amount`, `adjusted_close`, `turnover_rate` 等。`adjust_type=qfq` 是主回测数据，`adjust_type=bfq` 用于辅助校验。
 - `market_stocks`：股票元数据。字段包括 `symbol`, `name`, `exchange`, `board`, `industry`, `area`, `list_status`, `list_date`, `delist_date` 等。当前股票列表不含实时市值/估值，`market_cap`, `pe_ratio`, `pb_ratio` 可后续补充。
+- `market_financial_factors`：季度财务因子。字段包括 `report_date`, `announce_date`, `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`, `total_assets`, `total_liabilities`, `total_equity`。数据源为东方财富数据中心季度财报接口。当前作为最新横截面基本面字段使用；进入历史回测前必须校验公告日，防止把更正后的财报数据提前用于过去日期。
 - `trading_calendar`：交易日历。字段包括 `exchange`, `date`, `is_open`, `previous_trade_date`。本地 fallback 会用它判断“期望最近交易日”。
 - `delisted_stocks`：退市股票清单。用于审查样本是否有幸存者偏差，并防止退市标的进入当前选股池。
 - `market_indices`：指数元数据。字段包括 `symbol`, `name`, `exchange`, `publisher`, `category`, `base_date`, `base_point`, `list_date`。
@@ -56,6 +58,12 @@ data/manual_history/a_share_history.sqlite
 
 ```bash
 /home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli import-index-history --config config.yaml
+```
+
+更新季度财务因子：
+
+```bash
+/home/zj/workspace/stok-quant/.venv/bin/python -m phase0.cli update-financials --config config.yaml
 ```
 
 `import-index-history` 用于修复或刷新 `market_indices` / `market_index_bars`，不会改动股票日线、股票列表、交易日历和退市表。
@@ -114,6 +122,15 @@ CSI.000300
 bash scripts/install_dev_cron.sh
 ```
 
-默认任务为交易日 `16:30` 执行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。当前增量源使用 AkShare 全市场实时快照补当日 qfq 日线；前复权历史在除权除息后可能整体回调，因此后续仍应周期性用预下载历史包或更稳定的数据源做完整重建校准。
+默认任务包括：
+
+- 交易日 `16:30` 执行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。
+- 每周一 `03:30` 执行 `scripts/update_financial_factors_weekly.sh`，日志写入 `logs/financial_factors_update.log`。
+
+当前增量源使用 AkShare 全市场实时快照补当日 qfq 日线；前复权历史在除权除息后可能整体回调，因此后续仍应周期性用预下载历史包或更稳定的数据源做完整重建校准。
 
 横截面元数据刷新与日线写入分离：`16:00` 前仍禁止写入当日日线收盘，但允许刷新 `market_stocks` 的市值、估值和换手率字段。这样不会污染日线时间线，同时能让股票池筛选与报告尽早获得 `market_cap / pe / pb / turnover` 字段。当前优先使用 AkShare 东方财富全市场快照；若东方财富远端断开连接，则尝试新浪原始快照备用源，并保留其 `mktcap/per/pb/turnoverratio` 字段用于回填。
+
+季度财务因子与日线增量更新分离。`update-financials` 默认抓最近 8 个季度，使用东方财富全市场季度接口，不做逐股票三表高频抓取。该设计的依据是财报因子更新频率低，批量按报告期更新更能降低请求次数和反爬风险。
+
+每周财务任务安排在周一 `03:30`，原因是它能覆盖上周及周末公告，又避开 `06:00` 美股采集、`07:30` 研报生成和 `16:30` A股日线增量。脚本使用锁文件避免并发运行，通过 `nice`/`ionice` 降低资源优先级，并设置 `120m` 超时保护。

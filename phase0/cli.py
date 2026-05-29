@@ -7,6 +7,7 @@ from rich.console import Console
 
 from phase0.config import load_config
 from phase0.data_sources import check_connectivity, fetch_yf_daily
+from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
@@ -97,8 +98,56 @@ def main() -> int:
         action="store_true",
         help="Do not rebuild local factor universe after a successful update",
     )
+    financial_parser = sub.add_parser("update-financials", help="Update A-share quarterly financial factors")
+    financial_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    financial_parser.add_argument("--periods", type=int, default=None, help="Override number of recent quarters to fetch")
+    financial_parser.add_argument(
+        "--no-build-universe",
+        action="store_true",
+        help="Do not rebuild local factor universe after a successful update",
+    )
 
     args = parser.parse_args()
+    if args.cmd == "update-financials":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_financial_factors_from_config(cfg, config_path.parent, periods=args.periods)
+        console = Console()
+        color = "green" if result.ok else "red"
+        console.print(f"[{color}]Financial factor update status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Periods requested: {', '.join(result.periods_requested) or 'N/A'}")
+        console.print(f"Periods updated: {', '.join(result.periods_updated) or 'N/A'}")
+        console.print(f"Fetched rows: {result.fetched_rows}")
+        console.print(f"Inserted rows: {result.inserted_rows}")
+        if result.factor_coverage:
+            console.print(
+                "Financial factor coverage: "
+                f"latest={result.factor_coverage.get('latest_factor', 0.0):.4f}, "
+                f"roe={result.factor_coverage.get('roe', 0.0):.4f}, "
+                f"revenue_growth={result.factor_coverage.get('revenue_growth', 0.0):.4f}, "
+                f"profit_growth={result.factor_coverage.get('profit_growth', 0.0):.4f}, "
+                f"cash_flow_quality={result.factor_coverage.get('cash_flow_quality', 0.0):.4f}, "
+                f"debt_to_asset={result.factor_coverage.get('debt_to_asset', 0.0):.4f}"
+            )
+        if result.warnings:
+            for warning in result.warnings:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+        if not result.ok:
+            return 2
+        if (
+            not args.no_build_universe
+            and result.inserted_rows > 0
+            and bool(cfg.get("financial_factors", {}).get("rebuild_universe_after", True))
+        ):
+            universe_result = build_local_factor_universe(cfg, config_path.parent)
+            console.print("[green]Universe rebuild complete[/green]")
+            console.print(f"Source: {universe_result.source}")
+            console.print(f"Selected: {universe_result.selected_count}/{universe_result.target_size}")
+            if universe_result.warnings:
+                for warning in universe_result.warnings:
+                    console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0
     if args.cmd == "update-history":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
