@@ -29,16 +29,16 @@
 ## 3. 本周候选范围
 
 ### 候选 1：MA/K 线低复杂度 baseline
-- [ ] 建立低复杂度、可解释、可复现的技术基线
-- [ ] 作为本周的诊断地板
+- [x] 建立低复杂度、可解释、可复现的技术基线
+- [x] 作为本周的诊断地板
 
 ### 候选 2：短周期残差动量 + 反转增强 v2
-- [ ] 在已有 `residual_momentum_reversal_v1` 基础上最小增强
+- [x] 在已有 `residual_momentum_reversal_v1` 基础上最小增强
 - [ ] 优先尝试改善 Sharpe 和追高回撤
 
 ### 候选 3：多因子 + 量价二次筛选 v1
-- [ ] 作为本周最重要的冲门槛候选
-- [ ] 用更完整的本土特征组合争取超过 `legacy_momentum`
+- [x] 作为本周最重要的冲门槛候选
+- [x] 用更完整的本土特征组合争取超过 `legacy_momentum`
 
 ## 3.5 数据源升级准备项（仅准备，不实施）
 
@@ -56,13 +56,13 @@
 
 参考文档：`refdocs/todo/策略积木.md`
 
-- [ ] 设计最小策略契约：策略元信息、输入声明、参数选择/拟合、信号/排序输出、说明文本
-- [ ] 建立 `phase0/strategies/` 目录与 `base.py` / `registry.py` 雏形
-- [ ] 先迁移 `legacy_momentum` 到策略模块
-- [ ] 再迁移 `residual_momentum_reversal_v1` 到策略模块
-- [ ] 让 compare 候选从 registry + config 生成，而不是只在 `_run_compare` 里手工拼装
-- [ ] 统一策略摘要输出格式，确保继续兼容现有 report/csv 体系
-- [ ] 预留“选定策略 → 研判简报 / 模拟交易”所需的标准化 signal/weight 输出接口
+- [x] 设计最小策略契约：策略元信息、输入声明、参数选择/拟合、信号/排序输出、说明文本
+- [x] 建立 `phase0/strategies/` 目录与 `base.py` / `registry.py` 雏形
+- [x] 先迁移 `legacy_momentum` 到策略模块
+- [x] 再迁移 `residual_momentum_reversal_v1` 到策略模块
+- [x] 让 compare 候选从 registry + config 生成，而不是只在 `_run_compare` 里手工拼装
+- [x] 统一策略摘要输出格式，确保继续兼容现有 report/csv 体系
+- [x] 预留“选定策略 → 研判简报 / 模拟交易”所需的标准化 signal/weight 输出接口
 
 ## 4. 推荐执行顺序
 

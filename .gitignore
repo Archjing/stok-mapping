@@ -13,3 +13,4 @@ data/manual_history/*
 logs/
 refdocs/**/*.pdf
 .mcp.json
+node_modules/
