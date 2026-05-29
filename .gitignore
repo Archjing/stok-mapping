@@ -4,4 +4,9 @@ __pycache__/
 .env
 data/raw_data/
 data/features/
+data/manual_history.lnk
+data/manual_history/*
+!data/manual_history/.gitkeep
+!data/manual_history/README.md
 logs/
+refdocs/**/*.pdf

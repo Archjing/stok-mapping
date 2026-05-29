@@ -8,6 +8,7 @@ import pandas as pd
 import yfinance as yf
 
 from phase0.env import prepare_imports
+from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 
 prepare_imports()
 
@@ -70,8 +71,15 @@ def fetch_yf_daily(symbol: str, years: int) -> pd.DataFrame:
 
 def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResult]:
     results: list[ConnectivityResult] = []
+    configure_akshare_throttle(cfg.get("akshare", {}))
     ycfg = cfg.get("yfinance", {})
-    for sym in ycfg.get("us_indices", []) + ycfg.get("us_equities", []) + ycfg.get("cnh_proxy", []):
+    yf_targets = (
+        ycfg.get("us_indices", [])
+        + ycfg.get("us_equities", [])
+        + ycfg.get("thematic_etfs", [])
+        + ycfg.get("cnh_proxy", [])
+    )
+    for sym in yf_targets:
         try:
             df = fetch_yf_daily(sym, years=years)
             err = ""
@@ -104,7 +112,9 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
         try:
             end = date.today()
             start = end - timedelta(days=365 * years + 20)
-            df = cns.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
+            df = fetch_with_akshare_retries(
+                lambda: cns.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
+            )
             results.append(
                 ConnectivityResult(
                     source="akshare-cn",
@@ -131,7 +141,9 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
         try:
             end = date.today()
             start = end - timedelta(days=365 * years + 20)
-            df = hks.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
+            df = fetch_with_akshare_retries(
+                lambda: hks.get_daily_data(sym, start.strftime("%Y%m%d"), end.strftime("%Y%m%d"), adjust="qfq")
+            )
             results.append(
                 ConnectivityResult(
                     source="akshare-hk",
