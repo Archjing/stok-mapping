@@ -94,7 +94,7 @@
 │ 本地 SQLite 历史库 / 增量更新 / 数据质量 / 新鲜度保护        │
 ├─────────────────────────────────────────────────────────────┤
 │ 1. 数据源接入层                                             │
-│ Tushare / 本地库 / AkShare-Sina fallback / Tiingo-FRED 规划  │
+│ Tushare / AkShare / yfinance / 本地预下载包 / 后续 FRED等    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -200,12 +200,11 @@
 
 ### 当前角色
 
-- **Tushare**：A 股盘后主源方向，已用于日线、日度指标、复权因子等核心链路。
-- **本地 SQLite 历史库**：A 股回测、股票池 fallback 和数据新鲜度保护的正式底座。
-- **AkShare / 新浪快照**：国内股票开发/研究辅助源与 fallback，不能作为唯一在线源。
-- **yfinance**：保留为美股、ETF、VIX、CNH 等跨市场数据的 fallback，不再作为长期正式主源。
-- **本地预下载包**：用于构建 A 股离线历史数据库。
-- **东方财富季度接口**：用于财务因子更新。
+- **Tushare**：A 股盘后主源方向，已用于日线、日度指标、复权因子等核心链路
+- **AkShare**：开发/研究辅助源，同时承担快照更新、股票池构建的重要角色
+- **yfinance**：当前仍用于美股、ETF、VIX、CNH 等跨市场研究数据
+- **本地预下载包**：用于构建 A 股离线历史数据库
+- **东方财富季度接口**：用于财务因子更新
 
 ### 后续角色演进
 
@@ -214,7 +213,7 @@
 - A 股主链路：`Tushare Pro`
 - 美股个股/ETF：后续逐步迁移至 `Tiingo`
 - 宏观/利率/VIX：后续逐步迁移至 `FRED`
-- `yfinance`：仅保留为 fallback 或临时研究源
+- `yfinance`：保留为 fallback 或临时研究源
 
 ### 这一层在最终产品中的意义
 
@@ -404,28 +403,17 @@ data/universe/local_factor_universe_report.md
 - 生成观察池说明
 - 形成盘前日报内容
 
-LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第二意见和策略审查，而不是主信号层。
-
-当前接入：
-
-- `.codex/` 下 Claude provider 脚本，用于读取报告并生成研究摘要。
-- `scripts/deepseek_agent_mcp.py` 提供 DeepSeek MCP 工具，用于第二意见、报告总结和策略审查。
-
-边界：
-
-- 不直接生成交易指令。
-- 不修改策略参数。
-- 不跳过 effectiveness gate。
+未来 LLM 如果参与，也应该主要在这一层，而不是主信号层。
 
 ### 当前候选策略方向
 
-当前项目已经将候选策略拆分到 `phase0/strategies/` 注册表结构，候选方向收敛到以下几类：
+当前项目已经将候选方向收敛到以下几类：
 
-- `legacy_momentum`：当前 baseline，样本覆盖更充分，但 Sharpe 与回撤仍弱。
-- `quality_growth_price_v1`：当前评分暂时领先，但只有少量 fold / 组合对象，不能直接晋级。
-- `residual_momentum_reversal_v1` / `residual_momentum_reversal_v2`：残差动量 + 反转增强候选。
-- `multifactor_volume_price_filter_v1`：多因子 + 量价二次筛选候选。
-- `ma_kline_baseline_v1`：MA / K 线低复杂度基线。
+- `legacy_momentum`：当前 baseline / 已选中但未过 gate
+- 残差动量 + 反转增强
+- 多因子 + 量价二次筛选
+- MA / K 线低复杂度基线
+- 质量/成长/价格复合候选
 
 因此从产品架构看，策略层不是“单模型”，而是一个 **候选工厂**：
 
@@ -453,7 +441,6 @@ LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第�
 - candidates CSV 输出
 - change log 记录
 - report 汇总
-- 样本覆盖审查（下一步需要固化为正式 gate）
 
 ### 当前核心评估指标
 
@@ -463,9 +450,6 @@ LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第�
 - 胜率
 - 年化换手
 - OOS 收益衰减比
-- fold 数
-- symbol 覆盖
-- 组合对象覆盖
 
 ### 当前 gate 标准
 
@@ -476,12 +460,6 @@ LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第�
 - `max_drawdown_mean > -0.25`
 - `win_rate_mean > 0.45`
 - `oos_return_decay_ratio < 0.30`
-
-当前还需要补充治理约束：
-
-- 候选必须满足最低 fold 数。
-- 候选必须满足最低 symbol 或组合对象覆盖。
-- 少量 fold 高分候选不得直接晋级，需要样本支持惩罚或降级。
 
 ### 这一层的产品意义
 
@@ -667,7 +645,7 @@ LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第�
 - 附加跨市场特征
 - 附加本土技术因子
 - 附加财务因子
-- 调用 `phase0/strategies/` 中注册的多候选策略
+- 运行多候选策略
 - 进行 walk-forward 验证
 - 比较候选优劣
 - 输出所选 candidate 摘要
@@ -675,34 +653,16 @@ LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第�
 从架构角度看，这个文件当前承担了：
 
 - 特征层
+- 候选层
 - 组合层
 - 回测层
 - 评估层
 
-策略候选的具体逻辑已经开始从 `walk_forward.py` 拆出到 `phase0/strategies/`。未来如果产品继续演化，仍可进一步拆分成更清晰的 `factors/`、`portfolio/`、`evaluation/` 子模块。
+未来如果产品继续演化，这部分很可能会进一步拆分成更清晰的 `factors/`、`strategies/`、`portfolio/`、`evaluation/` 子模块。
 
 ---
 
-## 7.8 策略注册表
-
-### `phase0/strategies/`
-
-当前策略层已经从单文件硬编码演进为注册表结构：
-
-- `base.py`：定义 `BaseStrategy` 与 `StrategyOutput`
-- `registry.py`：管理策略注册与获取
-- `legacy_momentum.py`
-- `ma_kline_baseline.py`
-- `residual_momentum_reversal.py`
-- `residual_momentum_reversal_v2.py`
-- `quality_growth_price.py`
-- `multifactor_volume_price_filter.py`
-
-这意味着策略层已经具备“候选工厂”的基本形态。后续新增候选应优先放入该目录，并通过 `config.yaml` 的 `walk_forward.strategy_v2.compare_strategies` 控制是否参与比较。
-
----
-
-## 7.9 报告生成
+## 7.8 报告生成
 
 ### `phase0/reporting.py`
 
@@ -847,16 +807,13 @@ bash scripts/install_dev_cron.sh
 - 股票池
 - 增量更新
 - 财务因子接入
-- 策略注册表
 - walk-forward 回测
 - effectiveness gate
 - 报告输出
-- Claude / DeepSeek 研究辅助入口
 
 ### 当前尚未完成的是
 
 - 稳定通过 gate 的主策略
-- 候选比较中的样本覆盖 gate
 - 正式盘前日报产品化
 - 前端可视化界面
 - 更成熟的数据源分层替换
@@ -877,7 +834,7 @@ bash scripts/install_dev_cron.sh
 其架构核心可以概括为：
 
 1. **以本地 SQLite 历史库为研究底座**；
-2. **以 Tushare + 本地 SQLite 为 A 股主底座，AkShare/Sina 为 fallback，并以 Tiingo/FRED 作为下一阶段正式外部源**；
+2. **以 Tushare/AkShare/yfinance 等多源接入形成主源 + fallback 体系**；
 3. **以股票池、技术因子和财务因子构成 A 股本土主信号层**；
 4. **以跨市场映射做风险/情绪 overlay，而非主排序器**；
 5. **以 walk-forward + effectiveness gate 作为策略准入机制**；
@@ -885,7 +842,7 @@ bash scripts/install_dev_cron.sh
 
 如果后续需要继续把项目产品化，最合理的方向不是推倒重来，而是沿着现有分层继续演进：
 
-- 先修复候选比较的样本覆盖治理，再把主策略做过门槛；
+- 先把主策略做过门槛；
 - 再把盘前日报稳定化；
 - 再把交互层包装成更易用的 App 形态。
 
