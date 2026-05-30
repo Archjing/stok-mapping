@@ -139,6 +139,7 @@ def _load_symbol_cached(symbol: str, years: int) -> pd.DataFrame:
     if df.empty:
         return df
 
+    # 将原始日 K 整理成回测统一字段，并生成看盘会用到的收益、影线、动量、均线、波动和成交额特征。
     out = pd.DataFrame()
     out["date"] = pd.to_datetime(df["date"])
     for col in ["open", "high", "low", "close", "volume", "amount"]:
@@ -432,6 +433,7 @@ def _format_params(params: dict[str, Any]) -> str:
 
 def _load_symbol_map(symbols: list[str], years: int) -> dict[str, pd.DataFrame]:
     data: dict[str, pd.DataFrame] = {}
+    # 回测前逐只加载股票历史行情，模拟实盘研究阶段先准备可观察股票池的数据。
     for sym in symbols:
         df = _load_symbol(sym, years=years)
         if not df.empty:
@@ -441,6 +443,7 @@ def _load_symbol_map(symbols: list[str], years: int) -> dict[str, pd.DataFrame]:
 
 def _align_symbol_map(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     frames = []
+    # 多只股票合成长表，后续才能在同一交易日做横截面排名和组合调仓。
     for sym, df in data.items():
         d = df.copy()
         d["symbol"] = sym
@@ -470,6 +473,7 @@ def _apply_portfolio_strategy(
     d = panel.copy()
     mom_col = f"mom{mom_window}"
     trend_col = f"ma{trend_window}"
+    # 每天收盘后做一次看盘筛选：动量、趋势、波动、外盘映射和风险关闭信号同时达标才进入候选。
     eligible = (
         (d[mom_col] > mom_threshold)
         & (d["close"] > d[trend_col])
@@ -477,13 +481,16 @@ def _apply_portfolio_strategy(
         & (d.get("mapped_xmarket_score", pd.Series(0.0, index=d.index)) >= xmarket_threshold)
         & (d.get("risk_off", pd.Series(0.0, index=d.index)) < 1.0)
     )
+    # 同一天的候选股按动量强弱排名，取前 top_n，模拟盘后生成买入清单。
     d["rank_score"] = d[mom_col].where(eligible, np.nan)
     d["rank"] = d.groupby("date")["rank_score"].rank(method="first", ascending=False)
     d["selected"] = ((d["rank"] <= top_n) & d["rank_score"].notna()).astype(float)
     daily_count = d.groupby("date")["selected"].transform("sum").replace(0, np.nan)
     d["raw_weight"] = (d["selected"] / daily_count).fillna(0.0)
+    # 入选股票先等权，再按近期波动缩放仓位，模拟实盘中对高波动标的少配一点。
     vol_scale = np.minimum(1.0, target_vol / d["vol20"].replace(0, np.nan)).fillna(0.0)
     d["weight"] = d["raw_weight"] * vol_scale
+    # 收盘后得到的目标仓位从下一交易日开始生效，避免把当天信号当成当天已成交。
     d["weight"] = d.groupby("symbol")["weight"].shift(1).fillna(0.0)
     d["position_ret"] = d["weight"] * d["ret"]
 
@@ -491,6 +498,7 @@ def _apply_portfolio_strategy(
     turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
     sells = weights.diff().clip(upper=0).abs().sum(axis=1).fillna(0.0)
     gross = d.groupby("date")["position_ret"].sum()
+    # 组合毛收益扣掉调仓产生的滑点、佣金和卖出印花税，近似真实账户成交后的收益。
     costs = turnover * (slippage + commission) + sells * stamp_duty_sell
     returns = gross.sub(costs, fill_value=0.0)
     exposure = weights.sum(axis=1)
@@ -1419,6 +1427,7 @@ def _run_strategy_on_symbol_panel(
     if panel.empty:
         return []
 
+    # walk-forward 模拟滚动实盘：每一折只用历史训练窗选参数，再把规则前推到紧随其后的验证窗。
     dates = sorted(panel["date"].dropna().unique())
     fold_days_train = train_years * 252
     fold_days_valid = validate_years * 252
@@ -1437,6 +1446,7 @@ def _run_strategy_on_symbol_panel(
         if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
             break
 
+        # 选参阶段只能“看见”训练窗，验证窗用固定参数执行，避免事后挑最优。
         params = strategy.select_params(
             train,
             strategy_cfg,
@@ -1452,6 +1462,7 @@ def _run_strategy_on_symbol_panel(
             stamp_duty_sell=stamp_duty_sell,
         )
         output = _normalize_strategy_output(result, valid, strategy_name, params)
+        # 验证窗输出每日收益和持仓暴露，再汇总为年化收益、Sharpe、回撤、胜率和换手等指标。
         metric = _calc_metrics(output.returns, output.exposure)
         meta = output.metadata or strategy.build_metadata(params)
         fold_idx += 1
@@ -1496,10 +1507,12 @@ def _run_compare(
     strategy_cfg: dict[str, Any],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     candidates: dict[str, list[dict[str, Any]]] = {}
+    # compare 模式先准备可复用的外盘特征，保证多个候选策略面对同一份外部市场信息。
     xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
     compare_strategies = _resolve_compare_strategies(strategy_cfg)
 
     combined_panel: pd.DataFrame | None = None
+    # 逐个候选策略跑同一套滚动回测；单票策略逐只测，组合策略用同一横截面股票池测。
     for strategy_name in compare_strategies:
         if strategy_name not in available_strategies():
             continue
@@ -1527,6 +1540,7 @@ def _run_compare(
                 )
         else:
             if combined_panel is None:
+                # 组合策略需要同日横截面排名，因此先把所有股票行情合并成一个 panel。
                 combined_panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
                 if not combined_panel.empty:
                     combined_panel = _add_cross_market_to_panel(combined_panel, years, strategy_cfg, xfeatures)
@@ -1553,6 +1567,7 @@ def _run_compare(
     if not candidates:
         return [], [], []
 
+    # 所有候选跑完后，先比较折均值，再按治理规则挑出 Phase 0 允许采用的主候选。
     summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
     governance_cfg = strategy_cfg.get("candidate_governance", {})
     eligible_names = [name for name, summary in summaries.items() if _candidate_governance(summary, governance_cfg)[0]]
@@ -1677,6 +1692,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     configure_local_history(config.get("local_history", {}), Path.cwd())
     configure_us_market_history(config.get("us_market_history", {}), Path.cwd())
     symbols = config["symbols"]
+    # 若启用 universe，就用股票池构建结果替换手工 symbols，模拟先筛可交易市场再跑策略。
     universe_symbols = load_universe_symbols(config, Path.cwd()) if config.get("universe", {}).get("enabled", False) else []
     if universe_symbols:
         symbols = universe_symbols
@@ -1686,6 +1702,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
 
     candidate_rows: list[dict[str, Any]] = []
     candidate_summary_rows: list[dict[str, Any]] = []
+    # compare 用于 Phase 0 候选策略选拔；portfolio 和单票分支保留给独立组合/单标的回测。
     if strategy_cfg.get("mode") == "compare":
         all_rows, candidate_rows, candidate_summary_rows = _run_compare(
             symbols=symbols,
@@ -1777,7 +1794,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     if candidate_summary_rows:
         summary["candidate_summary_rows"] = candidate_summary_rows
 
-    # Out-of-sample proxy: last 20% folds as recent hold-out segment
+    # 用最后 20% 折作为最近样本的近似留出段，检查策略在较新行情里的衰减。
     cutoff = max(1, int(len(folds_df) * 0.2))
     oos = folds_df.sort_values(["valid_end"]).tail(cutoff)
     train_like = folds_df.sort_values(["valid_end"]).head(len(folds_df) - cutoff)

@@ -6,7 +6,7 @@
 
 ---
 
-# Week 1｜本土主策略候选验证（已完成复盘）
+# Week 1｜本土主策略候选验证（已完成并归档）
 
 ## 1. 本周目标
 
@@ -15,21 +15,22 @@
 ## 2. 当前基线与门槛缺口
 
 ### 当前基线
-- 当前 selected candidate：`legacy_momentum`
-- 当前 gate：`FAIL`
+- 当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- 当前 gate：`PASS`
 - 当前口径：portfolio-scope
 - 当前样本：7 年窗口，4 个 portfolio fold
 
 ### 当前缺口
-- `sharpe_mean = 0.2952`，未过 `> 0.5`
-- `max_drawdown_mean = -0.1800`，已过 `> -0.25`
-- `win_rate_mean = 0.4765`，已过 `> 0.45`
+- 当前 gate 已无硬性缺口
+- `annualized_return_mean = 0.1440`
+- `sharpe_mean = 1.0886`
+- `max_drawdown_mean = -0.1012`
+- `win_rate_mean = 0.5129`
 
 ### 当前判断
-- 收益不是主要问题。
-- 回撤和胜率当前已过线。
-- 当前主要问题是：**Sharpe 不足且对滑点/交易成本敏感**。
-- 成本敏感性显示 `legacy_momentum` 在 `low_slippage` 下 Sharpe 可达 `0.6816`，在 `zero_cost` 下 Sharpe 可达 `1.1229`，说明下一轮要优先控制换手和滑点暴露。
+- 低换手改造已经替代旧 `legacy_momentum` 成为当前主候选。
+- 当前主要工作从“修复 Sharpe”切换为“收口解释链路、补齐账户仿真约束、接入日常输出”。
+- 成本敏感性显示新候选在 `current_cost` 下已可通过 gate，后续不需要再靠零成本结论证明有效。
 
 ## 3. 本周候选范围
 
@@ -41,13 +42,13 @@
 ### 候选 2：短周期残差动量 + 反转增强 v2
 - [x] 在已有 `residual_momentum_reversal_v1` 基础上最小增强
 - [x] 完成 portfolio compare
-- [ ] 下一轮只保留低换手 / 延长持有版本继续研究
+- [x] 已降级为备选，只在主线收口后再考虑低换手版本
 
 ### 候选 3：多因子 + 量价二次筛选 v1
 - [x] 作为本周最重要的冲门槛候选
 - [x] 用更完整的本土特征组合争取超过 `legacy_momentum`
 - [x] 已完成 32 季度财务因子覆盖后的 portfolio compare
-- [ ] 下一轮需要做 slippage-aware 改造，否则 current-cost 下仍不胜出
+- [x] 已确认 current-cost 下不胜出，暂不继续占用主线
 
 ### 本周新增治理/框架修复
 - [x] 将 `legacy_momentum` 从 symbol-scope 改为 portfolio-scope baseline
@@ -85,19 +86,19 @@
 
 ### 研究优先级
 1. 低换手 legacy momentum 改造
-2. 短周期残差动量 + 反转增强的低换手版本
-3. 多因子 + 量价二次筛选的 slippage-aware 版本
+2. 账单 / 资产轨迹 / 买卖原因导出
+3. 账户级仿真与实盘约束补齐
 
 ### 实现顺序
 1. **低换手 / 延长持有 baseline**
-2. **residual momentum + reversal 低换手版本**
-3. **multifactor + volume/price filter slippage-aware 版本**
+2. **账单 / HTML 预览 / 日资产导出**
+3. **账户级仿真与解释链路收口**
 
 ### 原因
 - [x] 原 baseline 已落地并证明 MA/K 线 current-cost 表现弱
 - [x] residual v2 可复用现有实现，但成本敏感性偏高
 - [x] multifactor v1 已进入 compare，但 current-cost 下仍不胜出
-- [ ] 下一轮不再优先加因子复杂度，先控制换手和滑点
+- [x] 当前不再优先加因子复杂度，先完成低换手策略收口与执行约束
 
 ## 5. Day 1 - Day 7 节奏
 
@@ -151,15 +152,15 @@
 ## 7. 本周成功标准
 
 ### 硬门槛
-- [ ] compare mode 中出现一个不是 `legacy_momentum` 的新优胜候选
+- [x] compare mode 中出现一个不是 `legacy_momentum` 的新优胜候选
 - [x] `annualized_return_mean > 0`
-- [ ] `sharpe_mean > 0.5`
+- [x] `sharpe_mean > 0.5`
 - [x] `max_drawdown_mean > -0.25`
 - [x] `win_rate_mean > 0.45`
 - [x] `oos_return_decay_ratio < 0.30`
 
 ### 软判断
-- [ ] 新候选显著改善当前失败项（Sharpe）
+- [x] 新候选显著改善当前失败项（Sharpe）
 - [x] 结果不是由少数 fold 偶然支撑
 - [x] 候选逻辑可解释、可延续、可复盘
 - [x] 成本敏感性已可解释
@@ -177,9 +178,9 @@
 ## 9. 本周结束后的决策规则
 
 ### 如果有候选通过 gate
-- [ ] 提升为新的主候选
-- [ ] 在变更日志中记录晋级原因
-- [ ] 进入下一轮更细的参数与稳定性验证
+- [x] 提升为新的主候选
+- [x] 在变更日志中记录晋级原因
+- [x] 进入下一轮更细的参数与稳定性验证
 
 ### 如果没有候选通过 gate
 - [ ] 保留 `ma_kline_baseline_v1` 作为诊断地板
@@ -193,47 +194,77 @@
 
 ## 1. 本周目标
 
-- [ ] 在 current-cost 假设下将 selected candidate 的 `sharpe_mean` 提升到 `> 0.5`
-- [ ] 保持 `max_drawdown_mean > -0.25`
-- [ ] 保持 `win_rate_mean > 0.45`
-- [ ] 降低 current-cost 与 low-slippage 场景之间的表现差距
+- [x] 在 current-cost 假设下将 selected candidate 的 `sharpe_mean` 提升到 `> 0.5`
+- [x] 保持 `max_drawdown_mean > -0.25`
+- [x] 保持 `win_rate_mean > 0.45`
+- [x] 降低 current-cost 与 low-slippage 场景之间的表现差距
 
 ## 2. 当前基线
 
-- selected candidate：`legacy_momentum`
-- annualized_return_mean：`0.0724`
-- sharpe_mean：`0.2952`
-- max_drawdown_mean：`-0.1800`
-- win_rate_mean：`0.4765`
-- turnover_annual_mean：`13.48`
-- low_slippage Sharpe：`0.6816`
-- zero_cost Sharpe：`1.1229`
+- selected candidate：`legacy_momentum_low_turnover_v1`
+- annualized_return_mean：`0.1440`
+- sharpe_mean：`1.0886`
+- max_drawdown_mean：`-0.1012`
+- win_rate_mean：`0.5129`
+- turnover_annual_mean：`1.50`
+- low_slippage Sharpe：`1.0094`
+- zero_cost Sharpe：`0.8371`
 
 ## 3. 优先实验方向
 
 ### 3.1 低换手 legacy momentum
-- [ ] 增加最小持有期约束
-- [ ] 增加换手惩罚或 trade cooldown
-- [ ] 测试 top_n 从 `3` 扩展到更宽组合，降低单票波动
-- [ ] 在参数选择阶段加入 cost-aware score
+- [x] 增加最小持有期约束
+- [x] 增加换手惩罚或 trade cooldown
+- [x] 测试更宽组合与更慢调仓，降低单票波动
+- [x] 在参数选择阶段加入 cost-aware score
 
 ### 3.2 residual momentum 低换手版本
 - [ ] 降低交易频率
 - [ ] 避免短周期反转信号导致频繁换仓
-- [ ] 仅保留 zero/low-slippage 下有显著优势的组合
+- [x] 已确认不进入当前主线，只保留为后续备选
 
 ### 3.3 multifactor slippage-aware 版本
 - [ ] 对 `amount_ratio20`、波动率、上影线等交易质量过滤重新设定
 - [ ] 增加持有期或调仓频率限制
-- [ ] 先要求 current-cost 下不输 `legacy_momentum`
+- [x] 已确认 current-cost 下未胜出，暂不继续占用当前主线
 
 ## 4. 验收要求
 
-- [ ] 每次策略逻辑或参数修改都写明理由和参考依据
-- [ ] 每轮都输出 current / low_slippage / zero_cost 三档成本敏感性
-- [ ] 不用零成本结果替代 current-cost gate
-- [ ] 不因单个 fold 表现好直接晋级
-- [ ] 变更写入 `reports/phase0_strategy_change_log.md`
+- [x] 每次策略逻辑或参数修改都写明理由和参考依据
+- [x] 每轮都输出 current / low_slippage / zero_cost 三档成本敏感性
+- [x] 不用零成本结果替代 current-cost gate
+- [x] 不因单个 fold 表现好直接晋级
+- [x] 变更写入 `reports/phase0_strategy_change_log.md`
+
+---
+
+# Week 1.6｜通过后收口与下一步开发
+
+## 1. 本周目标
+
+- [x] 跑完整 Phase 0，正式确认 `legacy_momentum_low_turnover_v1` 替代旧 `legacy_momentum`
+- [x] 生成低换手策略账单 CSV、资产日表与 HTML 预览
+- [x] 在账单中补充卖出原因、买入驱动力和中间年份折叠预览
+- [x] 在通过策略与回测代码补充中文注释，解释模拟了什么看盘、研判和交易行为
+- [ ] 将账单导出纳入标准 CLI / report 链路
+- [ ] 在账户仿真中补齐 A 股整手成交、现金约束和撮合细节
+- [ ] 完成财务因子公告日 point-in-time 校验方案
+- [ ] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
+
+## 2. 当前状态
+
+- [x] 当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- [x] current-cost gate：PASS
+- [x] 账单导出脚本：`scripts/export_low_turnover_bill.py`
+- [x] 预览产物：`reports/phase0_low_turnover_bill_preview.html`
+- [x] 日资产产物：`reports/phase0_low_turnover_daily_assets.csv`
+
+## 3. 下一步实际编码顺序
+
+- [ ] 先把账单导出接入正式命令入口，避免每次靠单独脚本调用
+- [ ] 再补账户级交易约束，优先 A 股 `100` 股 / `1` 手整手买入与现金检查
+- [ ] 然后做公告日 PTI 校验，给质量成长类候选扫清后续回测前提
+- [ ] 最后把 selected strategy 输出接入日报 / 观察池
 
 ---
 

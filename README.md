@@ -12,7 +12,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 ## 当前状态
 
-- Phase 0 基础设施验证已完成，当前结论为 **FAIL / no-go**，不能进入主策略定稿或实盘化。
+- Phase 0 基础设施验证已完成，当前结论为 **PASS**，已确认可进入策略收口与 Phase 1 准备。
 - 已创建本地离线历史库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池 fallback 和数据新鲜度保护。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
 - 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`，当前本地库覆盖 2018-06-30 至 2026-03-31 共 32 个季度。
@@ -20,9 +20,10 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
 - 已增加开发期定时任务：交易日 `16:30` 日线增量更新，每周一 `03:30` 财务因子更新。
-- 当前主阻塞点不是数据管线，而是主策略仍未通过 effectiveness gate 的 Sharpe 与回撤门槛。
+- 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，账单导出和策略解释性输出已补齐基础版本。
+- 当前主阻塞点不是数据管线或 Sharpe 门槛，而是账户级仿真约束、公告日 PTI 校验和日报接入。
 
-最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum`，总体 verdict 仍为 `FAIL`：`sharpe_mean = 0.2952` 未超过 `0.5`。最大回撤、胜率和样本治理已通过，下一步重点是提高风险调整收益。
+最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum_low_turnover_v1`，总体 verdict 为 `PASS`：`annualized_return_mean = 0.1440`，`sharpe_mean = 1.0886`，`max_drawdown_mean = -0.1012`，`win_rate_mean = 0.5129`，`turnover_annual_mean = 1.50`。
 
 ## 架构层次
 

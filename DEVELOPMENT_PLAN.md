@@ -2,8 +2,8 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-05-30（Phase 0.1 同口径回测与成本敏感性同步）
-> 状态：**Phase 0 已完成基础验证，当前结论 FAIL / no-go；进入 Phase 0.1 策略改进**
+> 最后修订：2026-05-31（Phase 0 正式通过，账单导出与策略注释同步）
+> 状态：**Phase 0 已通过；当前进入策略收口与 Phase 1 准备**
 > 法律声明：本工具定位为**量化研究与风险提示工具**，所有输出属于观察池、信号等级、风险暴露、情景推演和策略验证结果，不构成任何形式的投资建议、荐股或交易指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
 
@@ -13,13 +13,14 @@
 
 ### 当前阶段
 
-项目已完成一轮 **Phase 0 基础验证**，当前进入 **Phase 0.1 策略改进**：
+项目已完成一轮 **Phase 0 正式验证**，当前进入 **通过后的收口阶段**：
 
 - Phase 0 基础设施已验证可用
 - 本地历史库、股票池、walk-forward、候选比较链路已落地
 - 策略层已拆为 `phase0/strategies/` 注册表结构
 - 候选样本治理已固化，当前 compare 已统一为 portfolio 口径
-- 当前主阻塞点不再是数据管线，而是**主策略仍未通过 effectiveness gate 的 Sharpe 门槛**
+- 当前 selected candidate 已切换为 `legacy_momentum_low_turnover_v1`
+- 当前主阻塞点不再是 Sharpe 门槛，而是**把通过结果沉淀为更完整的可解释输出、账户仿真约束和日常研判链路**
 
 ### 当前主线
 
@@ -34,46 +35,47 @@
 
 ### 当前选中候选与门槛状态
 
-根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-30 22:05:00）：
+根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-31 04:11:56）：
 
-- 当前 selected candidate：`legacy_momentum`
-- 当前总 verdict：`FAIL`
+- 当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- 当前总 verdict：`PASS`
 - 样本治理状态：`selected_candidate_eligible = True`
 - 样本覆盖：`4` 个 portfolio fold
-- 关键风险：该候选最大回撤和胜率已过线，但 Sharpe 仍不达标
+- 关键变化：低换手改造后，Sharpe、回撤、胜率和样本外衰减全部过线
 
 当前 gate 结果：
 
 | 指标 | 当前值 | 门槛 | 状态 |
 |------|--------|------|------|
 | `selected_candidate_eligible` | `True` | `True` | PASS |
-| `annualized_return_mean` | `0.0724` | `> 0` | PASS |
-| `sharpe_mean` | `0.2952` | `> 0.5` | FAIL |
-| `max_drawdown_mean` | `-0.1800` | `> -0.25` | PASS |
-| `win_rate_mean` | `0.4765` | `> 0.45` | PASS |
-| `oos_return_decay_ratio` | `-11.6964` | `< 0.30` | PASS |
+| `annualized_return_mean` | `0.1440` | `> 0` | PASS |
+| `sharpe_mean` | `1.0886` | `> 0.5` | PASS |
+| `max_drawdown_mean` | `-0.1012` | `> -0.25` | PASS |
+| `win_rate_mean` | `0.5129` | `> 0.45` | PASS |
+| `oos_return_decay_ratio` | `-2.1206` | `< 0.30` | PASS |
 
 解释：
 
 - 所有候选已统一为 `portfolio` 口径，避免 symbol-scope 与 portfolio-scope 混排。
 - 回测窗口已扩大到 7 年，使 portfolio 候选均达到 `4` 个 fold 的最低治理门槛。
-- `legacy_momentum` 当前仍是 selected candidate，但 Sharpe 未过 `0.5`，不能进入主策略定稿。
+- `legacy_momentum_low_turnover_v1` 已替代旧 `legacy_momentum` 成为当前主候选。
+- 低换手、宽持有区间、较慢调仓与换手惩罚显著降低了年化换手：`13.48 -> 1.50`。
 
 ### 当前工作重心
 
 当前阶段最优先的是：
 
-1. 继续验证 A 股本土主策略候选，重点改善 Sharpe。
-2. 结合成本敏感性结果，优先降低高换手策略的交易成本暴露。
-3. 保持 compare / report / gate / change log 同口径输出。
-4. 在财务因子进入正式历史回测前完成公告日 point-in-time 校验。
+1. 固化 `legacy_momentum_low_turnover_v1` 的解释链路，保持 report / gate / bill / 变更日志口径一致。
+2. 把账单、资产轨迹、买卖原因和策略参数整理为标准化导出产物。
+3. 在账户仿真里补齐 A 股整手成交、现金约束和调仓执行细节。
+4. 在财务因子进入更深历史回测前完成公告日 point-in-time 校验。
 
 当前**不是**优先做的事：
 
+- 再盲目堆叠新的主候选策略
 - 扩展跨市场主 ranker
-- 推进前端 / PWA / App
 - 让 LLM 直接参与交易决策
-- 在 gate 未稳定通过前进入实盘化
+- 在账户级仿真约束未补齐前进入实盘化
 
 ---
 
@@ -540,37 +542,37 @@ Phase 0 已完成基础闭环验证：
 
 - 数据链路、股票池、策略注册表、compare、walk-forward、effectiveness gate 和报告输出均可运行。
 - 候选样本治理已固化：低样本组合候选不会再因 raw score 高而直接晋级。
-- 当前 selected candidate 为 `legacy_momentum`，样本治理通过。
-- 当前总 verdict 为 `FAIL`，因此 Phase 0 结论是 **基础设施完成、主策略 no-go**。
+- 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，样本治理通过。
+- 当前总 verdict 为 `PASS`，因此 Phase 0 结论是 **基础设施完成、主策略通过、可进入下一阶段收口**。
 
-#### 当前 gate 缺口
+#### 当前通过结果
 
 最新 gate 中：
 
-- `legacy_momentum`：`sharpe_mean = 0.2952`，未过 `0.5`
-- `legacy_momentum`：`max_drawdown_mean = -0.1800`，已优于 `-0.25`
-- `legacy_momentum`：`win_rate_mean = 0.4765`，已过 `0.45`
-- 成本敏感性显示，`legacy_momentum` 在低滑点场景 Sharpe 可达 `0.6816`，零成本场景 Sharpe 可达 `1.1229`，说明交易成本假设对当前结论有显著影响。
+- `legacy_momentum_low_turnover_v1`：`annualized_return_mean = 0.1440`
+- `legacy_momentum_low_turnover_v1`：`sharpe_mean = 1.0886`
+- `legacy_momentum_low_turnover_v1`：`max_drawdown_mean = -0.1012`
+- `legacy_momentum_low_turnover_v1`：`win_rate_mean = 0.5129`
+- `legacy_momentum_low_turnover_v1`：`turnover_annual_mean = 1.50`
 
-因此 Phase 0.1 的真实缺口变为：
+因此当前真实缺口变为：
 
-1. 主策略需要提高 Sharpe，重点控制换手和滑点敏感性。
-2. 残差/多因子候选需要重新设计入场和持有规则，避免信号被成本吞噬。
-3. 质量成长类候选已有更长财务因子覆盖，但当前 portfolio 结果仍未胜出。
+1. 把通过结论沉淀成标准化账单、资产轨迹和买卖原因导出。
+2. 在账户仿真层补齐 A 股整手成交、现金约束和更贴近实盘的执行假设。
+3. 完成财务因子公告日 point-in-time 校验，避免后续扩展时引入未来函数争议。
 
 #### 当前核心任务
 
-1. 优先修复 Sharpe 缺口，先从降低换手和更现实的滑点分层开始。
-2. 保留 `legacy_momentum` 作为 portfolio baseline，不再使用 symbol-scope 平均结果参与主比较。
-3. 继续验证 residual / MA-K / multifactor-volume-price 候选。
-4. 在变更日志中沉淀每轮实验结论。
+1. 保留 `legacy_momentum_low_turnover_v1` 作为当前正式 portfolio baseline。
+2. 将账单导出、资产日表、HTML 预览和买卖原因说明纳入标准研究产物。
+3. 为 Phase 1 的盘前研判和模拟交易补齐账户级执行约束。
+4. 在变更日志和主计划中沉淀本轮晋级结论。
 
 #### 当前候选方向
 
-- 短周期残差动量 + 反转增强
-- 多因子 + 量价二次筛选
-- 简单 MA / K 线 baseline
-- 质量 / 成长 / 价值增强（需继续时间线约束）
+- `legacy_momentum_low_turnover_v1`：当前主候选与正式 baseline
+- `legacy_momentum`：保留为旧 baseline，用于衡量低换手改造收益
+- residual / multifactor / quality-growth：保留为后续备选，不再占据当前主线
 
 #### 当前验收口径
 
@@ -585,9 +587,9 @@ Phase 0 已完成基础闭环验证：
 
 > **有正收益、风险可控、表现较稳、样本外还能成立，并且不是由少量样本偶然支撑的策略。**
 
-### Phase 1：形成可用的盘前研判产品
+### Phase 1：形成可用的盘前研判产品（已具备进入条件）
 
-只有当 Phase 0 稳定通过 gate 后，才进入：
+当前可以开始进入：
 
 - 稳定观察池输出
 - `07:30` 日报流水线强化
@@ -746,8 +748,8 @@ stok-mapping/
 |--------|---------|------|
 | 产品定位 | 量化研究与风险提示工具 | 避免误导为自动交易系统 |
 | 当前主线 | 本土因子主导，跨市场 overlay | 回测与文献共同支持 |
-| 当前领先候选 | `legacy_momentum` | portfolio 口径下仍为当前 selected candidate |
-| 当前 baseline | `legacy_momentum` | 已改为 portfolio baseline |
+| 当前领先候选 | `legacy_momentum_low_turnover_v1` | 当前 Phase 0 selected candidate，effectiveness gate 已通过 |
+| 当前 baseline | `legacy_momentum_low_turnover_v1` | 低换手 portfolio baseline，便于后续模拟账单和账户仿真 |
 | 跨市场映射 | 仅做 overlay | 直接做 ranker 效果弱 |
 | 国内股票主源 | Tushare | 已正式采纳 |
 | 国内 fallback 基座 | 本地 SQLite / AkShare / 新浪 | 最稳、可控、可补位 |
@@ -758,7 +760,7 @@ stok-mapping/
 | yfinance | 仅 fallback | 保留低摩擦备用价值 |
 | 财务因子 | 已接入，但历史回测前需 PTI 校验 | 防未来函数 |
 | LLM | 仅研究辅助，不直接产出交易信号 | 保持可解释和可控 |
-| 当前优先事项 | 修复 Sharpe 与成本敏感性缺口 | 当前 gate 仅 Sharpe 未过线 |
+| 当前优先事项 | 完成策略收口、账户仿真约束与 PTI 校验 | 当前 gate 已通过，下一步是把策略变成稳定的研究与模拟产物 |
 
 ---
 
@@ -768,7 +770,7 @@ stok-mapping/
 
 ### 本周目标
 
-围绕 A 股本土主因子完成一轮新的候选策略验证，并修正候选比较口径，使主策略评估建立在同口径、足够样本、可解释成本假设之上。
+围绕 A 股本土主因子完成一轮低换手改造验证，正式确认新候选替代旧 baseline，并补齐账单导出与解释性产物。
 
 ### 本周已完成
 
@@ -777,21 +779,24 @@ stok-mapping/
 - 财务因子历史已扩展到 `32` 个季度，覆盖 `2018-06-30` 至 `2026-03-31`。
 - 已新增成本敏感性报告，输出 current / low-slippage / zero-cost 三档。
 - 已修复财务因子 point-in-time merge 的 datetime dtype 边界问题。
+- 已新增 `legacy_momentum_low_turnover_v1`，并通过完整 Phase 0 gate。
+- 已生成低换手策略账单 CSV、资产日表和 HTML 预览。
+- 已在通过策略和回测关键代码块补充中文注释。
 
 ### 本周候选方向
 
-1. **低换手 legacy momentum 改造**
-2. **短周期残差动量 + 反转增强的持有期/成本约束版本**
-3. **多因子 + 量价二次筛选的低频版本**
-4. **质量/成长/价格复合候选的 slippage-aware 版本**
+1. **低换手 legacy momentum 改造并正式替代旧 baseline**
+2. **账单 / 资产轨迹 / 买卖原因导出标准化**
+3. **账户级仿真与实盘约束补齐**
+4. **公告日 point-in-time 校验与日报接入**
 
 ### 推荐实施顺序
 
 从治理风险看：
 
 1. 样本覆盖门槛与 portfolio 口径已完成，继续保持为强制治理。
-2. 先围绕 `legacy_momentum` 做低换手改造，因为它当前是唯一正收益 selected candidate。
-3. 再继续 residual / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 和成本敏感性。
+2. 当前先围绕 `legacy_momentum_low_turnover_v1` 做解释链路和账户仿真收口。
+3. residual / multifactor-volume-price 暂时降为备选，等主线收口后再继续精修。
 
 ### 本周成功标准
 
@@ -816,9 +821,15 @@ stok-mapping/
 - [x] 加入成本敏感性报告，区分信号无效和成本吞噬
 - [x] 将财务因子历史扩展到 32 个季度
 - [x] 修复财务因子 point-in-time merge 的 datetime dtype 边界问题
-- [ ] 优先修复 Sharpe 缺口
-- [ ] 设计低换手 / 延长持有 / slippage-aware 参数选择方案
+- [x] 优先修复 Sharpe 缺口
+- [x] 设计低换手 / 延长持有 / slippage-aware 参数选择方案
+- [x] 跑完整 Phase 0，正式确认 `legacy_momentum_low_turnover_v1` 替代 `legacy_momentum`
+- [x] 生成低换手策略账单 CSV、资产日表与 HTML 预览
+- [x] 在通过策略和回测代码补充中文注释
 - [ ] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
+- [ ] 将账单导出纳入标准 CLI / report 链路
+- [ ] 增加 A 股整手成交、现金约束和账户级撮合细节
+- [ ] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
 
 ### 条件满足后再推进
 
