@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -931,16 +932,23 @@ def _add_point_in_time_financial_factors(panel: pd.DataFrame, strategy_cfg: dict
     factors["available_date"] = (
         factors["announce_date"] + pd.to_timedelta(financial_lag_days, unit="D")
     ).dt.normalize().astype("datetime64[ns]")
+    factors["report_date"] = pd.to_datetime(factors["report_date"], errors="coerce").dt.normalize().astype("datetime64[ns]")
     factors = factors.dropna(subset=["available_date"]).sort_values(["symbol", "available_date", "report_date"])
 
     frames: list[pd.DataFrame] = []
     d = panel.copy()
-    d["date"] = pd.to_datetime(d["date"]).dt.normalize()
+    d["date"] = pd.to_datetime(d["date"]).dt.normalize().astype("datetime64[ns]")
     for symbol, one_symbol in d.sort_values(["symbol", "date"]).groupby("symbol", sort=False):
         one_factors = factors[factors["symbol"] == symbol]
         if one_factors.empty:
             frames.append(one_symbol)
             continue
+        one_symbol = one_symbol.copy()
+        one_symbol["date"] = pd.to_datetime(one_symbol["date"]).dt.normalize().astype("datetime64[ns]")
+        one_factors = one_factors.copy()
+        one_factors["available_date"] = (
+            pd.to_datetime(one_factors["available_date"], errors="coerce").dt.normalize().astype("datetime64[ns]")
+        )
         merged = pd.merge_asof(
             one_symbol.sort_values("date"),
             one_factors.drop(columns=["symbol"]).sort_values("available_date"),
@@ -1296,6 +1304,9 @@ def _candidate_governance(summary: dict[str, Any], governance_cfg: dict[str, Any
     fold_count = int(summary.get("fold_count", 0))
     symbol_count = int(summary.get("symbol_count", 0))
     panel_scope = str(summary.get("panel_scope", ""))
+    selection_panel_scope = str(governance_cfg.get("selection_panel_scope", "") or "")
+    if selection_panel_scope and panel_scope != selection_panel_scope:
+        return False, f"panel_scope!={selection_panel_scope}"
     if panel_scope == "portfolio":
         min_portfolio_fold_count = int(governance_cfg.get("min_portfolio_fold_count", 4))
         if fold_count < min_portfolio_fold_count:
@@ -1784,6 +1795,79 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         summary["oos_return_decay_ratio"] = 0.0
 
     return {"folds": folds_df, "candidate_folds": candidate_folds_df, "summary": summary}
+
+
+def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:
+    sensitivity_cfg = config.get("cost_sensitivity", {})
+    if not bool(sensitivity_cfg.get("enabled", False)):
+        return pd.DataFrame()
+
+    base_wcfg = config.get("walk_forward", {})
+    scenarios = sensitivity_cfg.get("scenarios", [])
+    if not scenarios:
+        scenarios = [
+            {
+                "name": "current_cost",
+                "slippage": base_wcfg.get("slippage", 0.0),
+                "commission": base_wcfg.get("commission", 0.0),
+                "stamp_duty_sell": base_wcfg.get("stamp_duty_sell", 0.0),
+            },
+            {"name": "zero_cost", "slippage": 0.0, "commission": 0.0, "stamp_duty_sell": 0.0},
+        ]
+
+    rows: list[dict[str, Any]] = []
+    for scenario in scenarios:
+        scenario_cfg = copy.deepcopy(config)
+        scenario_wcfg = scenario_cfg.setdefault("walk_forward", {})
+        scenario_wcfg["slippage"] = float(scenario.get("slippage", scenario_wcfg.get("slippage", 0.0)))
+        scenario_wcfg["commission"] = float(scenario.get("commission", scenario_wcfg.get("commission", 0.0)))
+        scenario_wcfg["stamp_duty_sell"] = float(scenario.get("stamp_duty_sell", scenario_wcfg.get("stamp_duty_sell", 0.0)))
+        result = run_walk_forward(scenario_cfg)
+        summary = result.get("summary", {})
+        scenario_name = str(scenario.get("name", "scenario"))
+        candidate_rows = summary.get("candidate_summary_rows", []) or []
+        if candidate_rows:
+            for row in candidate_rows:
+                rows.append(
+                    {
+                        "scenario": scenario_name,
+                        "slippage": scenario_wcfg["slippage"],
+                        "commission": scenario_wcfg["commission"],
+                        "stamp_duty_sell": scenario_wcfg["stamp_duty_sell"],
+                        "candidate": row.get("candidate", ""),
+                        "selected_candidate": summary.get("selected_candidate", ""),
+                        "eligible_for_selection": bool(row.get("eligible_for_selection", False)),
+                        "governance_reason": row.get("governance_reason", ""),
+                        "fold_count": int(row.get("fold_count", 0)),
+                        "panel_scope": row.get("panel_scope", ""),
+                        "annualized_return_mean": float(row.get("annualized_return_mean", 0.0)),
+                        "sharpe_mean": float(row.get("sharpe_mean", 0.0)),
+                        "max_drawdown_mean": float(row.get("max_drawdown_mean", 0.0)),
+                        "win_rate_mean": float(row.get("win_rate_mean", 0.0)),
+                        "turnover_annual_mean": float(row.get("turnover_annual_mean", 0.0)),
+                    }
+                )
+        else:
+            rows.append(
+                {
+                    "scenario": scenario_name,
+                    "slippage": scenario_wcfg["slippage"],
+                    "commission": scenario_wcfg["commission"],
+                    "stamp_duty_sell": scenario_wcfg["stamp_duty_sell"],
+                    "candidate": summary.get("selected_candidate", ""),
+                    "selected_candidate": summary.get("selected_candidate", ""),
+                    "eligible_for_selection": bool(summary.get("selected_candidate_eligible", False)),
+                    "governance_reason": summary.get("selected_candidate_governance_reason", ""),
+                    "fold_count": int(summary.get("fold_count", 0)),
+                    "panel_scope": "",
+                    "annualized_return_mean": float(summary.get("annualized_return_mean", 0.0)),
+                    "sharpe_mean": float(summary.get("sharpe_mean", 0.0)),
+                    "max_drawdown_mean": float(summary.get("max_drawdown_mean", 0.0)),
+                    "win_rate_mean": float(summary.get("win_rate_mean", 0.0)),
+                    "turnover_annual_mean": float(summary.get("turnover_annual_mean", 0.0)),
+                }
+            )
+    return pd.DataFrame(rows)
 
 
 def save_walk_forward_csv(df: pd.DataFrame, output_path: Path) -> None:

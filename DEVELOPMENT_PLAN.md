@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-05-30（Phase 0 收口结论同步）
+> 最后修订：2026-05-30（Phase 0.1 同口径回测与成本敏感性同步）
 > 状态：**Phase 0 已完成基础验证，当前结论 FAIL / no-go；进入 Phase 0.1 策略改进**
 > 法律声明：本工具定位为**量化研究与风险提示工具**，所有输出属于观察池、信号等级、风险暴露、情景推演和策略验证结果，不构成任何形式的投资建议、荐股或交易指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -18,8 +18,8 @@
 - Phase 0 基础设施已验证可用
 - 本地历史库、股票池、walk-forward、候选比较链路已落地
 - 策略层已拆为 `phase0/strategies/` 注册表结构
-- 候选样本治理已固化，低样本候选不能再直接晋级
-- 当前主阻塞点不再是数据管线，而是**主策略仍未通过 effectiveness gate 的 Sharpe 与回撤门槛**
+- 候选样本治理已固化，当前 compare 已统一为 portfolio 口径
+- 当前主阻塞点不再是数据管线，而是**主策略仍未通过 effectiveness gate 的 Sharpe 门槛**
 
 ### 当前主线
 
@@ -34,37 +34,37 @@
 
 ### 当前选中候选与门槛状态
 
-根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-30 17:31:46）：
+根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-30 22:05:00）：
 
 - 当前 selected candidate：`legacy_momentum`
 - 当前总 verdict：`FAIL`
 - 样本治理状态：`selected_candidate_eligible = True`
-- 样本覆盖：`228` 个 fold，`118` 个 symbol
-- 关键风险：该候选样本覆盖足够，但 Sharpe 与最大回撤仍不达标
+- 样本覆盖：`4` 个 portfolio fold
+- 关键风险：该候选最大回撤和胜率已过线，但 Sharpe 仍不达标
 
 当前 gate 结果：
 
 | 指标 | 当前值 | 门槛 | 状态 |
 |------|--------|------|------|
 | `selected_candidate_eligible` | `True` | `True` | PASS |
-| `annualized_return_mean` | `0.3287` | `> 0` | PASS |
-| `sharpe_mean` | `0.3400` | `> 0.5` | FAIL |
-| `max_drawdown_mean` | `-0.2995` | `> -0.25` | FAIL |
-| `win_rate_mean` | `0.4621` | `> 0.45` | PASS |
-| `oos_return_decay_ratio` | `-1.5239` | `< 0.30` | PASS |
+| `annualized_return_mean` | `0.0724` | `> 0` | PASS |
+| `sharpe_mean` | `0.2952` | `> 0.5` | FAIL |
+| `max_drawdown_mean` | `-0.1800` | `> -0.25` | PASS |
+| `win_rate_mean` | `0.4765` | `> 0.45` | PASS |
+| `oos_return_decay_ratio` | `-11.6964` | `< 0.30` | PASS |
 
 解释：
 
-- `quality_growth_price_v1` 的 raw score 仍高，但只有 `2` 个 portfolio fold，已被 `portfolio_fold_count<4` 治理规则阻止晋级。
-- `legacy_momentum` 是当前唯一满足样本治理的 selected candidate，但 Sharpe 与回撤仍不理想。
-- Phase 0 可收口为：基础设施和治理链路通过验证，主策略 effectiveness gate 未通过，不能进入主策略定稿。
+- 所有候选已统一为 `portfolio` 口径，避免 symbol-scope 与 portfolio-scope 混排。
+- 回测窗口已扩大到 7 年，使 portfolio 候选均达到 `4` 个 fold 的最低治理门槛。
+- `legacy_momentum` 当前仍是 selected candidate，但 Sharpe 未过 `0.5`，不能进入主策略定稿。
 
 ### 当前工作重心
 
 当前阶段最优先的是：
 
-1. 继续验证 A 股本土主策略候选，重点改善 Sharpe 和回撤。
-2. 扩展组合候选的回测窗口或重构 portfolio fold 输出，使其满足样本治理。
+1. 继续验证 A 股本土主策略候选，重点改善 Sharpe。
+2. 结合成本敏感性结果，优先降低高换手策略的交易成本暴露。
 3. 保持 compare / report / gate / change log 同口径输出。
 4. 在财务因子进入正式历史回测前完成公告日 point-in-time 校验。
 
@@ -547,24 +547,23 @@ Phase 0 已完成基础闭环验证：
 
 最新 gate 中：
 
-- `legacy_momentum`：`sharpe_mean = 0.3400`，未过 `0.5`
-- `legacy_momentum`：`max_drawdown_mean = -0.2995`，未优于 `-0.25`
-- `legacy_momentum`：`win_rate_mean = 0.4621`，已过 `0.45`
-- `quality_growth_price_v1`：raw score 暂高，但只有 `2` 个 portfolio fold，被 `portfolio_fold_count<4` 阻止晋级
+- `legacy_momentum`：`sharpe_mean = 0.2952`，未过 `0.5`
+- `legacy_momentum`：`max_drawdown_mean = -0.1800`，已优于 `-0.25`
+- `legacy_momentum`：`win_rate_mean = 0.4765`，已过 `0.45`
+- 成本敏感性显示，`legacy_momentum` 在低滑点场景 Sharpe 可达 `0.6816`，零成本场景 Sharpe 可达 `1.1229`，说明交易成本假设对当前结论有显著影响。
 
 因此 Phase 0.1 的真实缺口变为：
 
-1. 主策略需要提高 Sharpe，并降低最大回撤。
-2. 组合候选需要扩大有效验证 fold，避免只用两个年度窗口解释结果。
-3. 质量成长类候选需要扩大验证范围并做 point-in-time 审查。
+1. 主策略需要提高 Sharpe，重点控制换手和滑点敏感性。
+2. 残差/多因子候选需要重新设计入场和持有规则，避免信号被成本吞噬。
+3. 质量成长类候选已有更长财务因子覆盖，但当前 portfolio 结果仍未胜出。
 
 #### 当前核心任务
 
-1. 优先修复 Sharpe 与最大回撤缺口。
-2. 重跑 `quality_growth_price_v1`，确认是否能扩大 portfolio fold 覆盖。
-3. 保留 `legacy_momentum` 作为 baseline，不因少量 fold 高分而淘汰。
-4. 继续验证 residual / MA-K / multifactor-volume-price 候选。
-5. 在变更日志中沉淀每轮实验结论。
+1. 优先修复 Sharpe 缺口，先从降低换手和更现实的滑点分层开始。
+2. 保留 `legacy_momentum` 作为 portfolio baseline，不再使用 symbol-scope 平均结果参与主比较。
+3. 继续验证 residual / MA-K / multifactor-volume-price 候选。
+4. 在变更日志中沉淀每轮实验结论。
 
 #### 当前候选方向
 
@@ -747,8 +746,8 @@ stok-mapping/
 |--------|---------|------|
 | 产品定位 | 量化研究与风险提示工具 | 避免误导为自动交易系统 |
 | 当前主线 | 本土因子主导，跨市场 overlay | 回测与文献共同支持 |
-| 当前领先候选 | `quality_growth_price_v1`（暂不晋级） | 指标暂好但 fold/symbol 覆盖不足 |
-| 当前 baseline | `legacy_momentum` | 样本覆盖更充分，仍需保留 |
+| 当前领先候选 | `legacy_momentum` | portfolio 口径下仍为当前 selected candidate |
+| 当前 baseline | `legacy_momentum` | 已改为 portfolio baseline |
 | 跨市场映射 | 仅做 overlay | 直接做 ranker 效果弱 |
 | 国内股票主源 | Tushare | 已正式采纳 |
 | 国内 fallback 基座 | 本地 SQLite / AkShare / 新浪 | 最稳、可控、可补位 |
@@ -783,8 +782,8 @@ stok-mapping/
 从治理风险看：
 
 1. 样本覆盖门槛已完成，继续保持为强制治理。
-2. 先扩展 `quality_growth_price_v1` 等 portfolio 候选的有效 fold 覆盖。
-3. 再继续 residual / MA-K / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 与回撤。
+2. portfolio 候选有效 fold 覆盖已扩展到 4 个 fold。
+3. 再继续 residual / MA-K / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 和换手控制。
 
 ### 本周成功标准
 
@@ -803,9 +802,10 @@ stok-mapping/
 
 - [x] 为候选选择加入最低 fold 数 / symbol 覆盖 / 样本支持约束
 - [x] 重跑 Phase 0，确认低样本 `quality_growth_price_v1` 不再直接晋级
-- [ ] 优先修复 Sharpe 与最大回撤缺口
-- [ ] 扩展 portfolio 候选的有效 fold 覆盖
-- [ ] 保持 compare / report / gate / change log 同口径输出
+- [x] 扩展 portfolio 候选的有效 fold 覆盖
+- [x] 保持 compare / report / gate / change log 同口径输出
+- [x] 加入成本敏感性报告，区分信号无效和成本吞噬
+- [ ] 优先修复 Sharpe 缺口
 - [ ] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
 
 ### 条件满足后再推进

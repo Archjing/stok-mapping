@@ -225,3 +225,58 @@ def write_effectiveness_gate_report(path: Path, wf_summary: dict[str, Any]) -> N
         "",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def write_cost_sensitivity_report(path: Path, sensitivity_df: pd.DataFrame) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows: list[list[str]] = []
+    if not sensitivity_df.empty:
+        for _, row in sensitivity_df.iterrows():
+            rows.append(
+                [
+                    str(row.get("scenario", "")),
+                    str(row.get("candidate", "")),
+                    str(row.get("selected_candidate", "")),
+                    str(bool(row.get("eligible_for_selection", False))),
+                    str(row.get("governance_reason", "")),
+                    str(int(row.get("fold_count", 0))),
+                    str(row.get("panel_scope", "")),
+                    f"{float(row.get('slippage', 0.0)):.5f}",
+                    f"{float(row.get('commission', 0.0)):.5f}",
+                    f"{float(row.get('stamp_duty_sell', 0.0)):.5f}",
+                    f"{float(row.get('annualized_return_mean', 0.0)):.4f}",
+                    f"{float(row.get('sharpe_mean', 0.0)):.4f}",
+                    f"{float(row.get('max_drawdown_mean', 0.0)):.4f}",
+                    f"{float(row.get('win_rate_mean', 0.0)):.4f}",
+                    f"{float(row.get('turnover_annual_mean', 0.0)):.2f}",
+                ]
+            )
+
+    lines = [
+        "# Phase 0 Cost Sensitivity Report",
+        "",
+        f"Generated at: {datetime.now().isoformat(timespec='seconds')}",
+        "",
+        _md_table(
+            [
+                "scenario",
+                "candidate",
+                "selected_candidate",
+                "eligible",
+                "governance_reason",
+                "fold_count",
+                "panel_scope",
+                "slippage",
+                "commission",
+                "stamp_duty_sell",
+                "annualized_return_mean",
+                "sharpe_mean",
+                "max_drawdown_mean",
+                "win_rate_mean",
+                "turnover_annual_mean",
+            ],
+            rows,
+        ),
+        "",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")

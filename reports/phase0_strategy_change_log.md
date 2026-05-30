@@ -367,3 +367,33 @@ Current status:
 - US market provider remains `yfinance` as a transitional source.
 - Future upgrade path remains `Tiingo` for US equities/ETF and `FRED` for macro/rate/VIX where applicable.
 - HK market will be attached only after source coverage, freshness, adjustment convention, and calendar handling are validated.
+
+## 2026-05-30: portfolio-scope comparison and cost sensitivity
+
+Change:
+- Converted `legacy_momentum` from symbol-scope evaluation to portfolio-scope evaluation.
+- Expanded Phase 0 history window from `5` years to `7` years.
+- Increased financial factor maintenance from `8` quarters to `32` quarters.
+- Added cost sensitivity scenarios: `current_cost`, `low_slippage`, and `zero_cost`.
+- Fixed point-in-time financial factor merge dtype handling by normalizing both quote dates and factor available dates to `datetime64[ns]`.
+
+Reason and reference:
+- Previous diagnostics showed `legacy_momentum` had `228` symbol-level folds while portfolio candidates had only `2` portfolio folds. This made candidate comparison structurally inconsistent.
+- With `years=5`, the aligned portfolio panel had `1168` trading days, which can only produce `2` rolling windows under `2y train + 1y validation`. `years=7` produced `4` portfolio folds, matching the configured `min_portfolio_fold_count=4`.
+- The previous financial factor table only covered `2024-06-30` onward, causing early quality/multifactor folds to have zero or near-zero factor coverage. Updating to `32` quarters aligns factor history with the 7-year backtest window.
+- Zero-cost diagnostics showed residual and multifactor candidates improved materially when costs were removed, so cost sensitivity is now a formal report rather than an ad-hoc test.
+- The datetime normalization fix was required because diagnostic paths could produce `datetime64[us]` versus `datetime64[ns]` merge keys in `merge_asof`.
+
+Latest result:
+- Full Phase 0 rerun completed with network access.
+- Financial factor table now covers `2018-06-30` through `2026-03-31`, with `32` distinct report periods and `167340` rows.
+- All compare candidates are now portfolio-scope and meet the `4` fold governance floor.
+- Selected candidate remains `legacy_momentum`.
+- Current-cost result: annualized return mean `0.0724`, Sharpe mean `0.2952`, max drawdown mean `-0.1800`, win rate mean `0.4765`.
+- Overall effectiveness gate remains `FAIL` because `sharpe_mean = 0.2952` is below the `0.5` threshold.
+- Cost sensitivity result for `legacy_momentum`: Sharpe improves to `0.6816` under `low_slippage` and `1.1229` under `zero_cost`, confirming that transaction-cost sensitivity is now a primary research target.
+
+Conclusion:
+- The previous "all candidates cannot pass" diagnosis was partly an evaluation-design problem, not only a strategy problem.
+- After correcting comparison scope and sample length, the current strategy still cannot pass the gate under current-cost assumptions.
+- Next strategy work should prioritize lower-turnover entries, longer holding rules, and slippage-aware parameter selection before adding more factor complexity.

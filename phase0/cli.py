@@ -17,6 +17,7 @@ from phase0.import_history import import_from_config, import_index_history_from_
 from phase0.local_history import configure_local_history
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
+    write_cost_sensitivity_report,
     write_data_source_report,
     write_effectiveness_gate_report,
     write_walk_forward_report,
@@ -24,7 +25,7 @@ from phase0.reporting import (
 from phase0.throttle import configure_akshare_throttle
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
-from phase0.walk_forward import run_walk_forward, save_walk_forward_csv
+from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
 
 
 def run_phase0(config_path: Path) -> int:
@@ -147,6 +148,13 @@ def run_phase0(config_path: Path) -> int:
         save_walk_forward_csv(candidate_folds_df, report_dir / "phase0_walk_forward_candidates.csv")
     write_walk_forward_report(report_dir / "phase0_walk_forward_report.md", summary=summary, folds_df=folds_df)
     write_effectiveness_gate_report(report_dir / "phase0_effectiveness_report.md", wf_summary=summary)
+
+    if bool(cfg.get("cost_sensitivity", {}).get("enabled", False)):
+        console.print("4) Running cost sensitivity scenarios...")
+        sensitivity_df = run_cost_sensitivity(cfg)
+        if not sensitivity_df.empty:
+            save_walk_forward_csv(sensitivity_df, report_dir / "phase0_cost_sensitivity.csv")
+        write_cost_sensitivity_report(report_dir / "phase0_cost_sensitivity_report.md", sensitivity_df)
 
     console.print("[green]Phase 0 complete[/green]")
     console.print(f"Reports: {report_dir}")

@@ -1,6 +1,6 @@
 phase0:
   benchmark_symbol: "SH.000300"
-  years: 5
+  years: 7
   symbols:
     - "SZ.300750"
     - "SZ.002594"
@@ -99,10 +99,25 @@ phase0:
   financial_factors:
     enabled: true
     table: "market_financial_factors"
-    periods: 8
+    periods: 32
     markets: ["SH", "SZ"]
     min_factor_coverage: 0.60
     rebuild_universe_after: true
+  cost_sensitivity:
+    enabled: true
+    scenarios:
+      - name: "current_cost"
+        slippage: 0.001
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "low_slippage"
+        slippage: 0.0003
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "zero_cost"
+        slippage: 0.0
+        commission: 0.0
+        stamp_duty_sell: 0.0
   manual_history_import:
     qfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily_qfq.zip"
     bfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily.zip"
@@ -167,6 +182,7 @@ phase0:
       compare_strategies: ["legacy_momentum", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
       candidate_governance:
         enabled: true
+        selection_panel_scope: "portfolio"
         min_fold_count: 20
         min_symbol_count: 20
         min_portfolio_fold_count: 4

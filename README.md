@@ -15,14 +15,14 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - Phase 0 基础设施验证已完成，当前结论为 **FAIL / no-go**，不能进入主策略定稿或实盘化。
 - 已创建本地离线历史库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池 fallback 和数据新鲜度保护。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
-- 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`。
+- 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`，当前本地库覆盖 2018-06-30 至 2026-03-31 共 32 个季度。
 - 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
 - 已增加开发期定时任务：交易日 `16:30` 日线增量更新，每周一 `03:30` 财务因子更新。
 - 当前主阻塞点不是数据管线，而是主策略仍未通过 effectiveness gate 的 Sharpe 与回撤门槛。
 
-最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果显示 selected candidate 已回到样本覆盖更充分的 `legacy_momentum`，总体 verdict 仍为 `FAIL`：`sharpe_mean = 0.3400` 未超过 `0.5`，`max_drawdown_mean = -0.2995` 未优于 `-0.25`。`quality_growth_price_v1` 等组合候选保留为研究对象，但因只有 `2` 个 portfolio fold，已被候选样本治理规则阻止晋级。
+最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum`，总体 verdict 仍为 `FAIL`：`sharpe_mean = 0.2952` 未超过 `0.5`。最大回撤、胜率和样本治理已通过，下一步重点是提高风险调整收益。
 
 ## 架构层次
 
@@ -96,7 +96,7 @@ data/manual_history/README.md
 
 - `market_daily_bars`: A 股日线，含前复权/不复权数据。
 - `market_stocks`: 股票元数据与横截面字段。
-- `market_financial_factors`: 季度财务因子表。
+- `market_financial_factors`: 季度财务因子表，当前配置默认维护最近 32 个季度。
 - `trading_calendar`: 交易日历。
 - `delisted_stocks`: 退市股票列表。
 - `market_indices`: 指数元数据。
@@ -268,6 +268,8 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - `reports/phase0_walk_forward_report.md`
 - `reports/phase0_walk_forward_folds.csv`
 - `reports/phase0_walk_forward_candidates.csv`
+- `reports/phase0_cost_sensitivity_report.md`
+- `reports/phase0_cost_sensitivity.csv`
 - `reports/phase0_effectiveness_report.md`
 - `reports/phase0_strategy_change_log.md`
 - `data/universe/local_factor_universe.csv`

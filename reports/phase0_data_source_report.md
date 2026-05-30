@@ -1,25 +1,25 @@
 # Phase 0 Data Source & Quality Report
 
-Generated at: 2026-05-30T19:23:07
+Generated at: 2026-05-30T22:03:15
 
 ## Connectivity
 
 | source | target | status | rows | latest_date | error |
 | --- | --- | --- | --- | --- | --- |
 | tushare | trade_cal | OK | 11 | 2026-05-30 |  |
-| yfinance | ^NDX | OK | 1269 | 2026-05-29 |  |
-| yfinance | ^SOX | OK | 1269 | 2026-05-29 |  |
-| yfinance | ^GSPC | OK | 1269 | 2026-05-29 |  |
-| yfinance | ^VIX | OK | 1270 | 2026-05-29 |  |
-| yfinance | NVDA | OK | 1269 | 2026-05-29 |  |
-| yfinance | AAPL | OK | 1269 | 2026-05-29 |  |
-| yfinance | TSLA | OK | 1269 | 2026-05-29 |  |
-| yfinance | KWEB | OK | 1269 | 2026-05-29 |  |
-| yfinance | CNY=X | OK | 1314 | 2026-05-29 |  |
-| akshare-cn | SZ.300750 | OK | 1225 | 2026-05-29 |  |
-| akshare-cn | SH.600519 | OK | 1225 | 2026-05-29 |  |
-| akshare-hk | HK.00700 | OK | 1240 | 2026-05-29 |  |
-| akshare-hk | HK.09988 | OK | 1240 | 2026-05-29 |  |
+| yfinance | ^NDX | OK | 1772 | 2026-05-29 |  |
+| yfinance | ^SOX | OK | 1772 | 2026-05-29 |  |
+| yfinance | ^GSPC | OK | 1772 | 2026-05-29 |  |
+| yfinance | ^VIX | OK | 1773 | 2026-05-29 |  |
+| yfinance | NVDA | OK | 1772 | 2026-05-29 |  |
+| yfinance | AAPL | OK | 1772 | 2026-05-29 |  |
+| yfinance | TSLA | OK | 1772 | 2026-05-29 |  |
+| yfinance | KWEB | OK | 1772 | 2026-05-29 |  |
+| yfinance | CNY=X | OK | 1833 | 2026-05-29 |  |
+| akshare-cn | SZ.300750 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
+| akshare-cn | SH.600519 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
+| akshare-hk | HK.00700 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
+| akshare-hk | HK.09988 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
 | manual-history | pre_run_update | OK | 0 | 2026-05-29 | up_to_date |
 | us-market-history | pre_run_update | OK | 7660 | 2026-05-29 | updated |
 
