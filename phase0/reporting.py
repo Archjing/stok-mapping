@@ -112,7 +112,12 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
         [
             str(row.get("candidate", "")),
             f"{float(row.get('score', 0.0)):.4f}",
+            f"{float(row.get('selection_score', row.get('score', 0.0))):.4f}",
+            str(bool(row.get("eligible_for_selection", False))),
+            str(row.get("governance_reason", "")),
             str(int(row.get("fold_count", 0))),
+            str(int(row.get("symbol_count", 0))),
+            str(row.get("panel_scope", "")),
             f"{float(row.get('annualized_return_mean', 0.0)):.4f}",
             f"{float(row.get('sharpe_mean', 0.0)):.4f}",
             f"{float(row.get('max_drawdown_mean', 0.0)):.4f}",
@@ -141,7 +146,12 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
                     [
                         "candidate",
                         "score",
+                        "selection_score",
+                        "eligible",
+                        "governance_reason",
                         "fold_count",
+                        "symbol_count",
+                        "panel_scope",
                         "annualized_return_mean",
                         "sharpe_mean",
                         "max_drawdown_mean",
@@ -188,8 +198,10 @@ def write_effectiveness_gate_report(path: Path, wf_summary: dict[str, Any]) -> N
     win = float(wf_summary.get("win_rate_mean", 0.0))
     decay = float(wf_summary.get("oos_return_decay_ratio", 0.0))
     ann = float(wf_summary.get("annualized_return_mean", 0.0))
+    governance_ok = bool(wf_summary.get("selected_candidate_eligible", True))
 
     gates = [
+        ("selected_candidate_eligible == True", governance_ok),
         ("annualized_return_mean > 0", ann > 0),
         ("sharpe_mean > 0.5", sharpe > 0.5),
         ("max_drawdown_mean > -0.25", mdd > -0.25),

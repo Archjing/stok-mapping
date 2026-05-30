@@ -6,7 +6,12 @@ from pathlib import Path
 from rich.console import Console
 
 from phase0.config import load_config
-from phase0.data_sources import check_connectivity, fetch_yf_daily
+from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
+from phase0.external_market_history import (
+    load_us_daily_from_history,
+    update_hk_market_history_from_config,
+    update_us_market_history_from_config,
+)
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.local_history import configure_local_history
@@ -32,15 +37,80 @@ def run_phase0(config_path: Path) -> int:
     console.print("[bold]Phase 0 started[/bold]")
     years = int(cfg["years"])
 
+    history_result = None
+    update_cfg = cfg.get("manual_history_update", {})
+    if bool(update_cfg.get("enabled", False)) and bool(update_cfg.get("run_before_phase0", True)):
+        console.print("0) Checking/updating local A-share history through configured primary source...")
+        history_result = update_manual_history_from_config(cfg, root, check_only=False)
+        color = "green" if history_result.ok else "red"
+        console.print(
+            f"[{color}]Manual history status: {history_result.status}[/{color}] "
+            f"latest={history_result.after_latest_date or history_result.before_latest_date or 'N/A'} "
+            f"coverage={history_result.after_coverage:.4f} "
+            f"source={history_result.primary_source or 'N/A'}"
+        )
+
+    us_result = None
+    us_cfg = cfg.get("us_market_history", {})
+    if bool(us_cfg.get("enabled", False)) and bool(us_cfg.get("run_before_phase0", True)):
+        console.print("0b) Checking/updating US market history...")
+        us_result = update_us_market_history_from_config(cfg, root, check_only=False)
+        color = "green" if us_result.ok else "red"
+        console.print(
+            f"[{color}]US market history status: {us_result.status}[/{color}] "
+            f"latest={us_result.latest_date or 'N/A'} "
+            f"coverage={us_result.coverage:.4f} "
+            f"source={us_result.source or 'N/A'}"
+        )
+
     console.print("1) Checking data-source connectivity...")
     connectivity = check_connectivity(cfg["data_sources"], years=years)
+    if history_result is not None:
+        latest = history_result.after_latest_date or history_result.before_latest_date
+        message = "; ".join(history_result.warnings[-3:])
+        if history_result.primary_source:
+            message = f"primary_source={history_result.primary_source}" + (f"; {message}" if message else "")
+        connectivity.append(
+            ConnectivityResult(
+                source="manual-history",
+                target="pre_run_update",
+                ok=history_result.ok,
+                rows=history_result.fetched_rows,
+                latest_date=latest,
+                error=history_result.status if not message else f"{history_result.status}; {message}",
+            )
+        )
+    if us_result is not None:
+        message = "; ".join(us_result.warnings[-3:])
+        connectivity.append(
+            ConnectivityResult(
+                source="us-market-history",
+                target="pre_run_update",
+                ok=us_result.ok,
+                rows=us_result.fetched_rows,
+                latest_date=us_result.latest_date,
+                error=us_result.status if not message else f"{us_result.status}; {message}",
+            )
+        )
 
-    console.print("2) Running quality audit on yfinance connectivity targets...")
+    console.print("2) Running quality audit on US market history targets...")
     quality_results = []
-    for r in connectivity:
-        if r.source == "yfinance" and r.ok:
-            df = fetch_yf_daily(r.target, years=years)
-            quality_results.append(audit_quality(r.target, df))
+    us_symbols = [str(item) for item in cfg.get("us_market_history", {}).get("symbols", [])]
+    if us_symbols:
+        from datetime import date, timedelta
+
+        end = date.today()
+        start = end - timedelta(days=365 * years + 20)
+        us_bars = load_us_daily_from_history(us_symbols, start, end)
+        for sym in us_symbols:
+            df = us_bars[us_bars["symbol"] == sym].copy() if not us_bars.empty else us_bars
+            if not df.empty:
+                quality_results.append(audit_quality(sym, df))
+    if not quality_results:
+        for r in connectivity:
+            if r.source == "yfinance" and r.ok:
+                df = fetch_yf_daily(r.target, years=years)
+                quality_results.append(audit_quality(r.target, df))
     quality_summary = aggregate_quality(quality_results)
 
     # Fallback: if yfinance is unavailable/rate-limited, run quality audit on
@@ -102,6 +172,12 @@ def main() -> int:
         action="store_true",
         help="Do not rebuild local factor universe after a successful update",
     )
+    us_history_parser = sub.add_parser("update-us-market-history", help="Incrementally update US market history database")
+    us_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    us_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    hk_history_parser = sub.add_parser("update-hk-market-history", help="Incrementally update HK market history database")
+    hk_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    hk_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
     financial_parser = sub.add_parser("update-financials", help="Update A-share quarterly financial factors")
     financial_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     financial_parser.add_argument("--periods", type=int, default=None, help="Override number of recent quarters to fetch")
@@ -195,6 +271,42 @@ def main() -> int:
                 for warning in universe_result.warnings:
                     console.print(f"[yellow]Warning:[/yellow] {warning}")
         return 0
+    if args.cmd == "update-us-market-history":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_us_market_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+        console = Console()
+        color = "green" if result.ok else "red"
+        console.print(f"[{color}]US market history update status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Latest date: {result.latest_date or 'N/A'}")
+        console.print(f"Coverage: {result.coverage:.4f} ({result.covered_symbols}/{result.symbol_count})")
+        console.print(f"Fetched rows: {result.fetched_rows}")
+        console.print(f"Inserted rows: {result.inserted_rows}")
+        console.print(f"Updated rows: {result.updated_rows}")
+        console.print(f"Source: {result.source or 'N/A'}")
+        if result.warnings:
+            for warning in result.warnings:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-hk-market-history":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_hk_market_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+        console = Console()
+        color = "green" if result.ok else "red"
+        console.print(f"[{color}]HK market history update status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Latest date: {result.latest_date or 'N/A'}")
+        console.print(f"Coverage: {result.coverage:.4f} ({result.covered_symbols}/{result.symbol_count})")
+        console.print(f"Fetched rows: {result.fetched_rows}")
+        console.print(f"Inserted rows: {result.inserted_rows}")
+        console.print(f"Updated rows: {result.updated_rows}")
+        console.print(f"Source: {result.source or 'N/A'}")
+        if result.warnings:
+            for warning in result.warnings:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
     if args.cmd == "import-history":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

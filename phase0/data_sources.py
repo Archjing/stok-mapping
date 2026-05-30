@@ -10,6 +10,7 @@ import yfinance as yf
 
 from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.tushare_source import fetch_tushare_smoke, token_env_is_set, tushare_config
 
 
 @dataclass
@@ -169,6 +170,47 @@ def fetch_hk_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame
 def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResult]:
     results: list[ConnectivityResult] = []
     configure_akshare_throttle(cfg.get("akshare", {}))
+    tcfg = tushare_config(cfg.get("tushare", {}))
+    if tcfg.enabled:
+        if not token_env_is_set(tcfg):
+            results.append(
+                ConnectivityResult(
+                    source="tushare",
+                    target="trade_cal",
+                    ok=False,
+                    rows=0,
+                    latest_date="",
+                    error=f"missing_token_env:{tcfg.token_env}",
+                )
+            )
+        else:
+            try:
+                df = fetch_tushare_smoke(tcfg)
+                latest = ""
+                if not df.empty and "cal_date" in df.columns:
+                    latest = str(pd.to_datetime(df["cal_date"], format="%Y%m%d", errors="coerce").max().date())
+                results.append(
+                    ConnectivityResult(
+                        source="tushare",
+                        target="trade_cal",
+                        ok=not df.empty,
+                        rows=len(df),
+                        latest_date=latest,
+                        error="" if not df.empty else "empty",
+                    )
+                )
+            except Exception as exc:
+                results.append(
+                    ConnectivityResult(
+                        source="tushare",
+                        target="trade_cal",
+                        ok=False,
+                        rows=0,
+                        latest_date="",
+                        error=str(exc),
+                    )
+                )
+
     ycfg = cfg.get("yfinance", {})
     yf_targets = (
         ycfg.get("us_indices", [])

@@ -296,3 +296,74 @@ Latest result:
 - `ma_kline_baseline_v1`: annualized return mean `-0.3641`, Sharpe mean `-3.0551`, max drawdown mean `-0.4123`, win rate mean `0.3698`.
 - Candidate Summary shows only `2` folds, so the result is weak even before considering the poor performance.
 - Conclusion: do not promote this candidate. Keep it only as a failed low-complexity comparison baseline.
+
+## 2026-05-30: candidate sample governance gate
+
+Change:
+- Added a candidate-level governance gate to compare mode.
+- Candidate `score` remains the raw performance score, while `selection_score` is used for promotion.
+- Candidates that do not meet minimum sample support remain visible in reports but receive a promotion-blocking `selection_score`.
+- Reports now show `eligible_for_selection`, `governance_reason`, `fold_count`, `symbol_count`, and `panel_scope`.
+
+Governance parameters:
+- Symbol-scope candidates require at least `20` fold rows and `20` distinct symbols.
+- Portfolio-scope candidates require at least `4` portfolio validation folds.
+
+Reason and reference:
+- The latest Phase 0 report selected `quality_growth_price_v1` on raw score with only `2` folds and one `PORTFOLIO` object, while `legacy_momentum` had `228` folds across broad symbol coverage.
+- This made the previous ranking structurally biased toward low-sample portfolio candidates.
+- The `20` fold / `20` symbol rule is a minimal sanity floor relative to the current `walk_forward_limit: 120` and observed `legacy_momentum` support, not an optimized performance parameter.
+- The `4` portfolio-fold rule requires more than two annual validation windows before a portfolio strategy can be promoted, reducing the chance that one favorable market segment drives selection.
+
+Expected result:
+- Low-sample candidates can still be researched and shown in reports.
+- They cannot become the selected candidate until they meet sample support requirements.
+
+Latest result:
+- Full Phase 0 rerun completed after the governance change.
+- Selected candidate reverted to `legacy_momentum`, because it is the only current candidate with enough sample support: `228` folds and `118` symbols.
+- `quality_growth_price_v1` keeps the highest raw score (`0.8071`) but is blocked from promotion by `portfolio_fold_count<4`.
+- Overall effectiveness gate remains `FAIL`: `sharpe_mean = 0.3400` fails `> 0.5`, and `max_drawdown_mean = -0.2995` fails `> -0.25`.
+- Conclusion: Phase 0 infrastructure and governance are complete, but the main strategy is no-go and must move into Phase 0.1 improvement.
+
+Implementation note:
+- Fixed `multifactor_volume_price_filter_v1` so `apply()` returns `StrategyOutput`, matching the registry runner contract used by the other portfolio strategies.
+- This was a compatibility bug fix only; it did not change the strategy's factor logic, entry rules, or parameter grid.
+
+## 2026-05-30: Tushare primary source wiring
+
+Change:
+- `phase0.config.load_config()` now loads project `.env` before reading runtime config, so `TUSHARE_TOKEN` stored in ignored local config is available to CLI commands.
+- `phase0.data_sources.check_connectivity()` now includes a Tushare `trade_cal` smoke test.
+- `phase0 run` now performs a `manual_history_update` pre-run check/update before data-source reporting and walk-forward.
+- `config.yaml` enables this through `manual_history_update.run_before_phase0: true`.
+
+Data-source model:
+- A-share online primary remains Tushare.
+- Backtests and stock-pool construction read from `a_share_history.sqlite` for reproducibility.
+- The intended flow is `Tushare -> local SQLite -> walk-forward/report`, not direct per-symbol online fetching during backtest.
+
+Latest result:
+- Full Phase 0 rerun with network access completed.
+- Tushare smoke test passed: `trade_cal` returned `11` rows, latest date `2026-05-30`.
+- yfinance connectivity also passed for configured cross-market targets.
+- AkShare connectivity still failed with remote disconnection, confirming it should remain fallback only.
+- Manual history pre-run status was `up_to_date`, latest local date `2026-05-29`, so no incremental Tushare write was needed in this run.
+
+## 2026-05-30: US/HK market history split
+
+Change:
+- Split the previous generic external-market persistence plan into `us_market_history` and `hk_market_history`.
+- Added the US market local SQLite path `data/us_market_history.sqlite` with table `us_daily_bars`.
+- Added the HK market local SQLite path `data/hk_market_history.sqlite` with table `hk_daily_bars`, but kept it disabled.
+- Walk-forward cross-market overlay now reads US market bars from local SQLite first and does not silently fall back to runtime yfinance unless `runtime_yfinance_fallback` is explicitly enabled.
+
+Reason:
+- Current cross-market factors in the strategy are US/ETF/VIX/CNH symbols, so they should be governed as a US market data store instead of a mixed `external_market` bucket.
+- HK data is useful for the future product architecture, but it is not yet production-ready in this project. Keeping `hk_market_history.enabled: false` avoids accidentally mounting unvalidated HK data into strategy or report outputs.
+- Persisting US bars before walk-forward improves reproducibility because strategy evaluation reads the same local snapshot instead of making ad-hoc online requests during feature construction.
+
+Current status:
+- US market provider remains `yfinance` as a transitional source.
+- Future upgrade path remains `Tiingo` for US equities/ETF and `FRED` for macro/rate/VIX where applicable.
+- HK market will be attached only after source coverage, freshness, adjustment convention, and calendar handling are validated.

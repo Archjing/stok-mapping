@@ -10,6 +10,12 @@ data/manual_history.lnk
 data/manual_history/*
 !data/manual_history/.gitkeep
 !data/manual_history/README.md
+data/external_market_history.sqlite
+data/external_market_history.sqlite-*
+data/us_market_history.sqlite
+data/us_market_history.sqlite-*
+data/hk_market_history.sqlite
+data/hk_market_history.sqlite-*
 node_modules/*
 node_modules/
 logs/

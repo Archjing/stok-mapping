@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import time
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 import pandas as pd
@@ -45,6 +45,10 @@ def _token(cfg: TushareConfig) -> str:
 
 def tushare_available(cfg: TushareConfig) -> bool:
     return bool(cfg.enabled and _token(cfg))
+
+
+def token_env_is_set(cfg: TushareConfig) -> bool:
+    return bool(_token(cfg))
 
 
 def _call(api_name: str, *, params: dict[str, Any], fields: list[str], cfg: TushareConfig) -> pd.DataFrame:
@@ -209,3 +213,17 @@ def fetch_tushare_trade_date(
     meta.attrs["source"] = "tushare.daily_basic"
     return rows, meta
 
+
+def fetch_tushare_smoke(cfg: TushareConfig, *, days: int = 10) -> pd.DataFrame:
+    today = date.today()
+    start = today - timedelta(days=max(1, int(days)))
+    return _call(
+        "trade_cal",
+        params={
+            "exchange": "SSE",
+            "start_date": start.strftime("%Y%m%d"),
+            "end_date": today.strftime("%Y%m%d"),
+        },
+        fields=["exchange", "cal_date", "is_open", "pretrade_date"],
+        cfg=cfg,
+    )

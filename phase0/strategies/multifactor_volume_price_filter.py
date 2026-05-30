@@ -5,7 +5,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.strategies.base import BaseStrategy
+from phase0.strategies.base import BaseStrategy, StrategyOutput
 from phase0.strategies.registry import register
 
 
@@ -179,14 +179,15 @@ class MultifactorVolumePriceFilterStrategy(BaseStrategy):
         slippage: float,
         commission: float,
         stamp_duty_sell: float,
-    ) -> tuple[pd.Series, pd.Series]:
+    ) -> StrategyOutput:
         d = panel.copy()
         trend_col = f"ma{int(params['trend_window'])}"
         confirm_col = f"ma{int(params['confirm_window'])}"
         resid_col = f"resid_mom{int(params['residual_window'])}"
         if "quality_growth_score" not in d.columns or resid_col not in d.columns:
             dates = pd.Index(sorted(d["date"].dropna().unique()))
-            return pd.Series(0.0, index=dates), pd.Series(0.0, index=dates)
+            empty = pd.Series(0.0, index=dates)
+            return StrategyOutput(empty, empty, pd.DataFrame(), self.build_metadata(params))
 
         eligible = (
             (d["quality_growth_score"] >= float(params["quality_threshold"]))
@@ -224,7 +225,13 @@ class MultifactorVolumePriceFilterStrategy(BaseStrategy):
         costs = turnover * (slippage + commission) + sells * stamp_duty_sell
         returns = gross.sub(costs, fill_value=0.0)
         exposure = weights.sum(axis=1)
-        return returns, exposure
+        signal_frame = d[[c for c in ["date", "symbol", "rank_score", "selected", "raw_weight", "weight", "ret", "position_ret"] if c in d.columns]].copy().rename(columns={"rank_score": "score"})
+        return StrategyOutput(
+            returns=returns,
+            exposure=exposure,
+            signal_frame=signal_frame,
+            metadata=self.build_metadata(params),
+        )
 
     def format_params(self, params: dict[str, Any]) -> str:
         return (

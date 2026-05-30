@@ -71,7 +71,31 @@ phase0:
     min_run_time: "16:30"
     source_audit_table: "market_data_source_runs"
     rebuild_universe_after: true
+    run_before_phase0: true
     max_symbols: 0
+  us_market_history:
+    enabled: true
+    path: "data/us_market_history.sqlite"
+    daily_table: "us_daily_bars"
+    source_audit_table: "us_data_source_runs"
+    provider: "yfinance"
+    years: 5
+    max_staleness_days: 3
+    min_symbol_coverage: 1.0
+    run_before_phase0: true
+    runtime_yfinance_fallback: false
+    symbols: ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
+  hk_market_history:
+    enabled: false
+    path: "data/hk_market_history.sqlite"
+    daily_table: "hk_daily_bars"
+    source_audit_table: "hk_data_source_runs"
+    provider: "akshare_hk"
+    years: 5
+    max_staleness_days: 3
+    min_symbol_coverage: 1.0
+    run_before_phase0: false
+    symbols: ["HK.00700", "HK.09988"]
   financial_factors:
     enabled: true
     table: "market_financial_factors"
@@ -141,6 +165,11 @@ phase0:
     strategy_v2:
       mode: "compare"
       compare_strategies: ["legacy_momentum", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
+      candidate_governance:
+        enabled: true
+        min_fold_count: 20
+        min_symbol_count: 20
+        min_portfolio_fold_count: 4
       top_n: 3
       mom_windows: [3, 5, 10, 20]
       mom_quantiles: [0.5, 0.6]

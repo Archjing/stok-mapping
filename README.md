@@ -12,23 +12,24 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 ## 当前状态
 
-- Phase 0 / Phase 0.1 基础设施已基本可用。
+- Phase 0 基础设施验证已完成，当前结论为 **FAIL / no-go**，不能进入主策略定稿或实盘化。
 - 已创建本地离线历史库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池 fallback 和数据新鲜度保护。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
 - 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`。
+- 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
 - 已增加开发期定时任务：交易日 `16:30` 日线增量更新，每周一 `03:30` 财务因子更新。
-- 当前主阻塞点不是数据管线，而是主策略仍未稳定通过 effectiveness gate。
+- 当前主阻塞点不是数据管线，而是主策略仍未通过 effectiveness gate 的 Sharpe 与回撤门槛。
 
-最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果显示 selected candidate 为 `quality_growth_price_v1`，但总体 verdict 仍为 `FAIL`，主要失败点是 `win_rate_mean` 未达标。该候选当前样本支持较弱，不能直接视为主策略已晋级。
+最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果显示 selected candidate 已回到样本覆盖更充分的 `legacy_momentum`，总体 verdict 仍为 `FAIL`：`sharpe_mean = 0.3400` 未超过 `0.5`，`max_drawdown_mean = -0.2995` 未优于 `-0.25`。`quality_growth_price_v1` 等组合候选保留为研究对象，但因只有 `2` 个 portfolio fold，已被候选样本治理规则阻止晋级。
 
 ## 架构层次
 
 当前系统可以理解为 6 层：
 
 - 数据源接入层：`Tushare`, `AkShare`, `yfinance`，后续计划接入 `FRED` 和 `Tiingo`。
-- 数据管理层：本地 SQLite 历史库、增量更新、覆盖率检查、新鲜度保护。
+- 数据管理层：A 股 / US market 本地 SQLite 历史库、增量更新、覆盖率检查、新鲜度保护。
 - 股票池与特征层：A 股股票池、流动性/市值/行业约束、技术特征、财务因子。
 - 策略与信号层：本土主因子策略、跨市场 overlay、解释层。
 - 策略评估与治理层：walk-forward、compare mode、effectiveness gate、strategy change log。
@@ -46,9 +47,26 @@ refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md
 
 - 国内股票主源：`Tushare`
 - 国内 fallback：`AkShare` / 新浪快照 / 本地 SQLite 历史库
-- 美股个股与 ETF 计划主源：`Tiingo`
+- 美股/ETF/VIX/CNH 当前库：`data/us_market_history.sqlite`，现阶段 provider 为 `yfinance`，后续美股个股与 ETF 计划主源升级为 `Tiingo`
+- 港股库：`data/hk_market_history.sqlite` 为预留结构，当前 `enabled: false`，等港股数据源进入可生产状态后再挂到应用链路
 - 宏观 / 利率 / VIX 计划主源：`FRED`
 - `yfinance`：保留为 fallback，不再作为长期正式主源
+
+当前 A 股主链路是：
+
+```text
+Tushare daily/daily_basic/adj_factor -> a_share_history.sqlite -> 股票池 / 回测 / 报告
+```
+
+`phase0 run` 启动时会先执行 `manual_history_update` 预检查：本地库已新鲜则直接复用 SQLite；本地库落后时优先用 Tushare 增量补齐，低覆盖或失败时才进入 fallback。这样做是为了让回测可复现，避免每次 walk-forward 逐只股票在线抓取导致结果漂移。
+
+跨市场 overlay 当前链路是：
+
+```text
+yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/report
+```
+
+`phase0 run` 会在策略评估前按 `us_market_history.run_before_phase0` 更新 US market 本地库。策略读取的是落库后的 `us_daily_bars`，不是运行时临时 yfinance 请求；若本地库覆盖率不足且 `runtime_yfinance_fallback: false`，跨市场特征会退化为空并记录告警，避免在线源静默改变回测结果。
 
 当前 `Tiingo` 和 `FRED` 仍是任务单阶段，尚未正式接入 `phase0/data_sources.py`：
 
@@ -63,6 +81,7 @@ refdocs/todo/FRED_IMPLEMENTATION_TASKS.md
 
 ```text
 data/manual_history/a_share_history.sqlite
+data/us_market_history.sqlite
 ```
 
 数据库不进入 Git。目录说明见：
@@ -84,6 +103,13 @@ data/manual_history/README.md
 - `market_index_bars`: 指数日线。
 - `market_data_source_runs`: 数据源增量更新审计记录。
 
+`us_market_history.sqlite` 当前用于跨市场 overlay，主要表包括：
+
+- `us_daily_bars`: `^NDX`, `^SOX`, `NVDA`, `KWEB`, `^VIX`, `CNY=X` 的日线数据。
+- `us_data_source_runs`: US market 数据源更新审计记录，记录 `source`, `fetched_at`, `latest_trade_date`, `coverage` 和写入行数。
+
+`hk_market_history.sqlite` 目前只是预留库名和 CLI 结构，不挂到策略或报告链路。等港股数据源接入、覆盖率与新鲜度验证稳定后，再启用 `hk_market_history.enabled` 并接入应用。
+
 ## 常用命令
 
 本项目应独立运行。可以复用或迁移其他项目中的经验，但运行时不应依赖兄弟仓库源码路径或外部项目专属虚拟环境。
@@ -99,6 +125,8 @@ uv sync
 ```bash
 ./.venv/bin/python -m phase0.cli run --config config.yaml
 ```
+
+该命令会自动加载项目根目录 `.env`，因此 `TUSHARE_TOKEN` 放在 `.env` 后不需要手工 `export`。数据源连通性结果写入 `reports/phase0_data_source_report.md`。
 
 完整重建离线历史库：
 
@@ -134,6 +162,24 @@ uv sync
 
 ```bash
 ./.venv/bin/python -m phase0.cli update-financials --config config.yaml
+```
+
+更新 US market 跨市场历史库：
+
+```bash
+./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml
+```
+
+只检查 US market 跨市场历史库覆盖率：
+
+```bash
+./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml --check-only
+```
+
+港股历史库当前默认不启用。命令已预留，但在 `hk_market_history.enabled: false` 时只返回 `disabled`：
+
+```bash
+./.venv/bin/python -m phase0.cli update-hk-market-history --config config.yaml --check-only
 ```
 
 安装开发期定时任务：

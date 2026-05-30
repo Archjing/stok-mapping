@@ -12,6 +12,11 @@ import numpy as np
 import pandas as pd
 
 from phase0.data_sources import fetch_cn_daily, fetch_hk_daily, fetch_yf_daily
+from phase0.external_market_history import (
+    configure_us_market_history,
+    load_us_daily_from_history,
+    us_market_history_runtime_fallback_enabled,
+)
 from phase0.local_history import (
     configure_local_history,
     load_daily_from_local_history,
@@ -165,8 +170,16 @@ def _load_symbol_cached(symbol: str, years: int) -> pd.DataFrame:
 
 def _load_cross_market_features(years: int, cfg: dict[str, Any]) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
+    end = date.today()
+    start = end - timedelta(days=365 * years + 20)
+    history = load_us_daily_from_history(MARKET_TICKERS, start, end)
     for ticker in MARKET_TICKERS:
-        df = fetch_yf_daily(ticker, years=years)
+        if not history.empty:
+            df = history[history["symbol"] == ticker].copy()
+        else:
+            df = pd.DataFrame()
+        if df.empty and us_market_history_runtime_fallback_enabled():
+            df = fetch_yf_daily(ticker, years=years)
         if df.empty:
             continue
         d = df[["date", "close"]].copy()
@@ -1249,12 +1262,15 @@ def _run_magnitude_soft_risk_portfolio(
     return rows
 
 
-def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
+def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     df = pd.DataFrame(rows)
     if df.empty:
-        return {"fold_count": 0, "annualized_return_mean": 0.0, "sharpe_mean": 0.0, "max_drawdown_mean": 0.0}
+        return {"fold_count": 0, "symbol_count": 0, "panel_scope": "", "annualized_return_mean": 0.0, "sharpe_mean": 0.0, "max_drawdown_mean": 0.0}
+    panel_scope = str(df["panel_scope"].dropna().iloc[0]) if "panel_scope" in df.columns and df["panel_scope"].notna().any() else ""
     return {
         "fold_count": int(len(df)),
+        "symbol_count": int(df["symbol"].nunique()) if "symbol" in df.columns else 0,
+        "panel_scope": panel_scope,
         "annualized_return_mean": float(df["annualized_return"].mean()),
         "sharpe_mean": float(df["sharpe"].mean()),
         "max_drawdown_mean": float(df["max_drawdown"].mean()),
@@ -1263,7 +1279,7 @@ def _summarize_rows(rows: list[dict[str, Any]]) -> dict[str, float]:
     }
 
 
-def _candidate_score(summary: dict[str, float]) -> float:
+def _candidate_raw_score(summary: dict[str, Any]) -> float:
     if int(summary.get("fold_count", 0)) == 0:
         return -1_000_000.0
     return (
@@ -1273,15 +1289,52 @@ def _candidate_score(summary: dict[str, float]) -> float:
     )
 
 
+def _candidate_governance(summary: dict[str, Any], governance_cfg: dict[str, Any]) -> tuple[bool, str]:
+    if not bool(governance_cfg.get("enabled", True)):
+        return True, "governance_disabled"
 
-def _candidate_summary_rows(summaries: dict[str, dict[str, float]]) -> list[dict[str, Any]]:
+    fold_count = int(summary.get("fold_count", 0))
+    symbol_count = int(summary.get("symbol_count", 0))
+    panel_scope = str(summary.get("panel_scope", ""))
+    if panel_scope == "portfolio":
+        min_portfolio_fold_count = int(governance_cfg.get("min_portfolio_fold_count", 4))
+        if fold_count < min_portfolio_fold_count:
+            return False, f"portfolio_fold_count<{min_portfolio_fold_count}"
+        return True, "eligible"
+
+    min_fold_count = int(governance_cfg.get("min_fold_count", 20))
+    min_symbol_count = int(governance_cfg.get("min_symbol_count", 20))
+    failed = []
+    if fold_count < min_fold_count:
+        failed.append(f"fold_count<{min_fold_count}")
+    if symbol_count < min_symbol_count:
+        failed.append(f"symbol_count<{min_symbol_count}")
+    if failed:
+        return False, ",".join(failed)
+    return True, "eligible"
+
+
+def _candidate_selection_score(summary: dict[str, Any], governance_cfg: dict[str, Any]) -> float:
+    eligible, _ = _candidate_governance(summary, governance_cfg)
+    if not eligible:
+        return -1_000_000.0
+    return _candidate_raw_score(summary)
+
+
+def _candidate_summary_rows(summaries: dict[str, dict[str, Any]], governance_cfg: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for name, summary in summaries.items():
+        eligible, reason = _candidate_governance(summary, governance_cfg)
         rows.append(
             {
                 "candidate": name,
-                "score": _candidate_score(summary),
+                "score": _candidate_raw_score(summary),
+                "selection_score": _candidate_selection_score(summary, governance_cfg),
+                "eligible_for_selection": eligible,
+                "governance_reason": reason,
                 "fold_count": int(summary.get("fold_count", 0)),
+                "symbol_count": int(summary.get("symbol_count", 0)),
+                "panel_scope": str(summary.get("panel_scope", "")),
                 "annualized_return_mean": float(summary.get("annualized_return_mean", 0.0)),
                 "sharpe_mean": float(summary.get("sharpe_mean", 0.0)),
                 "max_drawdown_mean": float(summary.get("max_drawdown_mean", 0.0)),
@@ -1289,7 +1342,7 @@ def _candidate_summary_rows(summaries: dict[str, dict[str, float]]) -> list[dict
                 "turnover_annual_mean": float(summary.get("turnover_annual_mean", 0.0)),
             }
         )
-    return sorted(rows, key=lambda row: row["score"], reverse=True)
+    return sorted(rows, key=lambda row: row["selection_score"], reverse=True)
 
 
 def _resolve_compare_strategies(strategy_cfg: dict[str, Any]) -> list[str]:
@@ -1490,28 +1543,41 @@ def _run_compare(
         return [], [], []
 
     summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
-    best_name = max(candidates, key=lambda name: _candidate_score(summaries[name]))
+    governance_cfg = strategy_cfg.get("candidate_governance", {})
+    eligible_names = [name for name, summary in summaries.items() if _candidate_governance(summary, governance_cfg)[0]]
+    if eligible_names:
+        best_name = max(eligible_names, key=lambda name: _candidate_selection_score(summaries[name], governance_cfg))
+    else:
+        best_name = max(candidates, key=lambda name: _candidate_raw_score(summaries[name]))
     comparison = "; ".join(
         (
-            f"{name}: score={_candidate_score(summary):.4f}, "
+            f"{name}: score={_candidate_raw_score(summary):.4f}, "
+            f"selection_score={_candidate_selection_score(summary, governance_cfg):.4f}, "
+            f"eligible={_candidate_governance(summary, governance_cfg)[0]}, "
             f"ann={summary.get('annualized_return_mean', 0.0):.4f}, "
             f"sharpe={summary.get('sharpe_mean', 0.0):.4f}, "
             f"mdd={summary.get('max_drawdown_mean', 0.0):.4f}"
         )
         for name, summary in summaries.items()
     )
-    candidate_summary_rows = _candidate_summary_rows(summaries)
+    candidate_summary_rows = _candidate_summary_rows(summaries, governance_cfg)
     selected = candidates[best_name]
+    selected_eligible, selected_reason = _candidate_governance(summaries[best_name], governance_cfg)
     for row in selected:
         row["candidate_summary"] = comparison
         row["selected_candidate"] = best_name
+        row["selected_candidate_eligible"] = selected_eligible
+        row["selected_candidate_governance_reason"] = selected_reason
     all_candidate_rows: list[dict[str, Any]] = []
     for name, rows in candidates.items():
+        candidate_eligible, candidate_reason = _candidate_governance(summaries[name], governance_cfg)
         for row in rows:
             enriched = dict(row)
             enriched["candidate_summary"] = comparison
             enriched["selected_candidate"] = best_name
             enriched["is_selected_candidate"] = name == best_name
+            enriched["candidate_eligible_for_selection"] = candidate_eligible
+            enriched["candidate_governance_reason"] = candidate_reason
             all_candidate_rows.append(enriched)
     return selected, all_candidate_rows, candidate_summary_rows
 
@@ -1598,6 +1664,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     years = int(config["years"])
     wcfg = config["walk_forward"]
     configure_local_history(config.get("local_history", {}), Path.cwd())
+    configure_us_market_history(config.get("us_market_history", {}), Path.cwd())
     symbols = config["symbols"]
     universe_symbols = load_universe_symbols(config, Path.cwd()) if config.get("universe", {}).get("enabled", False) else []
     if universe_symbols:
@@ -1690,6 +1757,10 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     }
     if "candidate" in folds_df.columns:
         summary["selected_candidate"] = str(folds_df["candidate"].iloc[0])
+    if "selected_candidate_eligible" in folds_df.columns:
+        summary["selected_candidate_eligible"] = bool(folds_df["selected_candidate_eligible"].iloc[0])
+    if "selected_candidate_governance_reason" in folds_df.columns:
+        summary["selected_candidate_governance_reason"] = str(folds_df["selected_candidate_governance_reason"].iloc[0])
     if "candidate_summary" in folds_df.columns:
         summary["candidate_comparison"] = str(folds_df["candidate_summary"].iloc[0])
     if candidate_summary_rows:

@@ -2,8 +2,8 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-05-30（恢复原开发计划书格式，并按当前项目状态更新）  
-> 状态：**进行中（Phase 0 / Phase 0.1）**  
+> 最后修订：2026-05-30（Phase 0 收口结论同步）
+> 状态：**Phase 0 已完成基础验证，当前结论 FAIL / no-go；进入 Phase 0.1 策略改进**
 > 法律声明：本工具定位为**量化研究与风险提示工具**，所有输出属于观察池、信号等级、风险暴露、情景推演和策略验证结果，不构成任何形式的投资建议、荐股或交易指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
 
@@ -13,12 +13,13 @@
 
 ### 当前阶段
 
-项目已从“前期规划”进入 **Phase 0 / Phase 0.1**：
+项目已完成一轮 **Phase 0 基础验证**，当前进入 **Phase 0.1 策略改进**：
 
-- Phase 0 基础设施已基本可用
+- Phase 0 基础设施已验证可用
 - 本地历史库、股票池、walk-forward、候选比较链路已落地
 - 策略层已拆为 `phase0/strategies/` 注册表结构
-- 当前主阻塞点不再是数据管线，而是**主策略仍未稳定通过 effectiveness gate**
+- 候选样本治理已固化，低样本候选不能再直接晋级
+- 当前主阻塞点不再是数据管线，而是**主策略仍未通过 effectiveness gate 的 Sharpe 与回撤门槛**
 
 ### 当前主线
 
@@ -33,34 +34,37 @@
 
 ### 当前选中候选与门槛状态
 
-根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-30 04:15:28）：
+根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-30 17:31:46）：
 
-- 当前 selected candidate：`quality_growth_price_v1`
+- 当前 selected candidate：`legacy_momentum`
 - 当前总 verdict：`FAIL`
-- 关键风险：该候选只有 `2` 个 fold、`1` 个组合对象，样本支持明显弱于 `legacy_momentum` 的 `228` 个 fold
+- 样本治理状态：`selected_candidate_eligible = True`
+- 样本覆盖：`228` 个 fold，`118` 个 symbol
+- 关键风险：该候选样本覆盖足够，但 Sharpe 与最大回撤仍不达标
 
 当前 gate 结果：
 
 | 指标 | 当前值 | 门槛 | 状态 |
 |------|--------|------|------|
-| `annualized_return_mean` | `0.1121` | `> 0` | PASS |
-| `sharpe_mean` | `0.7833` | `> 0.5` | PASS |
-| `max_drawdown_mean` | `-0.0644` | `> -0.25` | PASS |
-| `win_rate_mean` | `0.2582` | `> 0.45` | FAIL |
-| `oos_return_decay_ratio` | `0.0` | `< 0.30` | PASS |
+| `selected_candidate_eligible` | `True` | `True` | PASS |
+| `annualized_return_mean` | `0.3287` | `> 0` | PASS |
+| `sharpe_mean` | `0.3400` | `> 0.5` | FAIL |
+| `max_drawdown_mean` | `-0.2995` | `> -0.25` | FAIL |
+| `win_rate_mean` | `0.4621` | `> 0.45` | PASS |
+| `oos_return_decay_ratio` | `-1.5239` | `< 0.30` | PASS |
 
 解释：
 
-- `quality_growth_price_v1` 在当前评分上暂时领先，但不能直接晋级为主策略。
-- `legacy_momentum` 仍是更有样本覆盖的 baseline，但 Sharpe 与回撤仍不理想。
-- 当前最重要的策略治理问题，是候选比较需要纳入最小 fold 数、symbol 覆盖和样本支持惩罚。
+- `quality_growth_price_v1` 的 raw score 仍高，但只有 `2` 个 portfolio fold，已被 `portfolio_fold_count<4` 治理规则阻止晋级。
+- `legacy_momentum` 是当前唯一满足样本治理的 selected candidate，但 Sharpe 与回撤仍不理想。
+- Phase 0 可收口为：基础设施和治理链路通过验证，主策略 effectiveness gate 未通过，不能进入主策略定稿。
 
 ### 当前工作重心
 
 当前阶段最优先的是：
 
-1. 修复候选比较机制，避免少量 fold 的候选因偶然高分被选中。
-2. 继续验证 A 股本土主策略候选，重点改善 win rate、Sharpe 和回撤。
+1. 继续验证 A 股本土主策略候选，重点改善 Sharpe 和回撤。
+2. 扩展组合候选的回测窗口或重构 portfolio fold 输出，使其满足样本治理。
 3. 保持 compare / report / gate / change log 同口径输出。
 4. 在财务因子进入正式历史回测前完成公告日 point-in-time 校验。
 
@@ -199,8 +203,9 @@ A股日线/财务  → 本土主因子引擎           ├→ 候选策略 / 组
 
 当前状态：
 
-- 仍主要依赖 `yfinance`，但 `yfinance` 已降级为 fallback 定位。
-- 后续美股个股/ETF 计划接入 `Tiingo`，宏观/利率/VIX 计划接入 `FRED`。
+- 当前跨市场 overlay 已先落库到 `data/us_market_history.sqlite`，策略运行读取本地 `us_daily_bars`，不再运行时临时抓取 yfinance。
+- US market 当前 provider 仍为 `yfinance`，但定位是过渡数据源；后续美股个股/ETF 计划接入 `Tiingo`，宏观/利率/VIX 计划接入 `FRED`。
+- 港股库 `data/hk_market_history.sqlite` 仅保留结构和 CLI，当前 `enabled: false`，等港股数据源接入并通过覆盖率/新鲜度验证后再挂到应用。
 
 ### 引擎 #2：本土主因子选股
 
@@ -397,21 +402,35 @@ LLM 不直接生成评分与交易信号。
 
 当前状态：
 
-- Tushare 已作为 A 股主源方向接入。
-- 本地库已承担回测和股票池 fallback。
+- Tushare 已作为 A 股主源接入增量更新链路。
+- `phase0 run` 已在启动时执行 `manual_history_update` 预检查：本地库新鲜则直接复用 SQLite，本地库落后时优先 Tushare 补齐。
+- 本地库承担回测和股票池底座，避免 walk-forward 逐只在线抓取导致结果不可复现。
+- `reports/phase0_data_source_report.md` 已纳入 Tushare smoke test 和 manual-history pre-run update 状态。
 - AkShare 当前易受远端断连影响，但仍保留为开发/研究辅助源。
 
 ### 5.2 美股个股与 ETF
 
 - **计划主源**：Tiingo
 - **fallback**：yfinance
+- **当前过渡库**：`data/us_market_history.sqlite`
 
 当前状态：
 
 - Tiingo 尚未接入代码。
+- 当前跨市场标的已先由 `yfinance` 增量写入 US market 本地 SQLite，策略读取落库数据，避免每次评估时临时在线抓取。
 - 接入任务单见：`refdocs/todo/TIINGO_IMPLEMENTATION_TASKS.md`
 
-### 5.3 宏观 / 利率 / VIX
+### 5.3 港股
+
+- **当前状态**：预留 `data/hk_market_history.sqlite`、`hk_daily_bars`、`hk_data_source_runs` 和 CLI 命令
+- **应用挂载状态**：未挂载，`hk_market_history.enabled: false`
+
+当前说明：
+
+- 港股数据源进入可生产状态前，不参与策略、报告或质量审计。
+- 后续启用前必须先完成覆盖率、新鲜度、复权口径和交易日历校验。
+
+### 5.4 宏观 / 利率 / VIX
 
 - **计划主源**：FRED
 - **fallback**：yfinance
@@ -421,13 +440,15 @@ LLM 不直接生成评分与交易信号。
 - FRED 尚未接入代码。
 - 接入任务单见：`refdocs/todo/FRED_IMPLEMENTATION_TASKS.md`
 
-### 5.4 yfinance 的定位
+### 5.5 yfinance 的定位
 
 `yfinance` 继续保留，但口径已经明确：
 
 > **yfinance 仅作为 fallback，不再作为长期正式主源。**
 
-### 5.5 当前意义
+现阶段例外是 `us_market_history.sqlite` 的过渡期更新仍使用 `yfinance` provider；策略读取的是本地库，不直接依赖运行时在线请求。等 Tiingo/FRED 接入后，再把对应标的迁移到正式主源。
+
+### 5.6 当前意义
 
 这个策略保留了旧版计划中“数据源升级”的应用导向思路：
 
@@ -468,7 +489,9 @@ LLM 不直接生成评分与交易信号。
 | 包管理 | uv / pyproject.toml | 已用 |
 | A股主数据链路 | Tushare + 本地 SQLite fallback | 已采纳主方向 |
 | 开发/研究辅助源 | AkShare / yfinance | 已用，长期降级为 fallback |
-| 美股 / ETF 后续主源 | Tiingo | 计划接入 |
+| US market 跨市场库 | yfinance -> `us_market_history.sqlite` | 过渡期已接入 |
+| 美股 / ETF 后续主源 | Tiingo | 计划接入，未来替换过渡 provider |
+| 港股历史库 | `hk_market_history.sqlite` | 结构预留，暂不挂应用 |
 | 宏观 / 利率 / VIX 后续主源 | FRED | 计划接入 |
 | 数据存储 | SQLite | 已用 |
 | 回测框架 | pandas + walk-forward | 已用 |
@@ -507,28 +530,38 @@ LLM 不直接生成评分与交易信号。
 - Claude provider 与 DeepSeek MCP 研究辅助链路
 - Tiingo / FRED 接入任务单
 
-### Phase 0：当前剩余目标（当前主战场）
+### Phase 0：基础验证结论（已收口）
 
-**目标：找到一个能在足够样本覆盖下通过 effectiveness gate 的本土主策略候选。**
+**目标：验证数据、股票池、候选策略、walk-forward、compare、effectiveness gate 和报告链路能否闭环运行。**
+
+#### Phase 0 结论
+
+Phase 0 已完成基础闭环验证：
+
+- 数据链路、股票池、策略注册表、compare、walk-forward、effectiveness gate 和报告输出均可运行。
+- 候选样本治理已固化：低样本组合候选不会再因 raw score 高而直接晋级。
+- 当前 selected candidate 为 `legacy_momentum`，样本治理通过。
+- 当前总 verdict 为 `FAIL`，因此 Phase 0 结论是 **基础设施完成、主策略 no-go**。
 
 #### 当前 gate 缺口
 
 最新 gate 中：
 
-- `quality_growth_price_v1` 暂时领先，但 `win_rate_mean = 0.2582` 未过 `0.45`
-- 该候选只有 `2` 个 fold，样本覆盖不足
-- `legacy_momentum` 样本覆盖较好，但 Sharpe 与回撤仍弱
+- `legacy_momentum`：`sharpe_mean = 0.3400`，未过 `0.5`
+- `legacy_momentum`：`max_drawdown_mean = -0.2995`，未优于 `-0.25`
+- `legacy_momentum`：`win_rate_mean = 0.4621`，已过 `0.45`
+- `quality_growth_price_v1`：raw score 暂高，但只有 `2` 个 portfolio fold，被 `portfolio_fold_count<4` 阻止晋级
 
-因此当前 Phase 0 的真实缺口变为：
+因此 Phase 0.1 的真实缺口变为：
 
-1. 候选比较需要考虑最小 fold 数 / symbol 覆盖 / 样本支持。
-2. 质量成长类候选需要扩大验证范围并做 point-in-time 审查。
-3. 主策略仍需提高 win rate，并保持 Sharpe / drawdown 优势。
+1. 主策略需要提高 Sharpe，并降低最大回撤。
+2. 组合候选需要扩大有效验证 fold，避免只用两个年度窗口解释结果。
+3. 质量成长类候选需要扩大验证范围并做 point-in-time 审查。
 
 #### 当前核心任务
 
-1. 修复 compare 选择逻辑，加入样本覆盖门槛或惩罚。
-2. 重跑 `quality_growth_price_v1`，确认是否能扩大 fold/symbol 覆盖。
+1. 优先修复 Sharpe 与最大回撤缺口。
+2. 重跑 `quality_growth_price_v1`，确认是否能扩大 portfolio fold 覆盖。
 3. 保留 `legacy_momentum` 作为 baseline，不因少量 fold 高分而淘汰。
 4. 继续验证 residual / MA-K / multifactor-volume-price 候选。
 5. 在变更日志中沉淀每轮实验结论。
@@ -547,7 +580,7 @@ LLM 不直接生成评分与交易信号。
 - `max_drawdown_mean > -0.25`
 - `win_rate_mean > 0.45`
 - `oos_return_decay_ratio < 0.30`
-- 新增治理要求：候选必须满足最低 fold 数和 symbol 覆盖要求，具体阈值需在下一轮策略治理中固化
+- 样本治理要求：symbol-scope 候选至少 `20` 个 fold 与 `20` 个 symbol；portfolio-scope 候选至少 `4` 个 portfolio fold
 
 这套验收标准不是在找“历史上最赚钱的策略”，而是在找：
 
@@ -719,7 +752,9 @@ stok-mapping/
 | 跨市场映射 | 仅做 overlay | 直接做 ranker 效果弱 |
 | 国内股票主源 | Tushare | 已正式采纳 |
 | 国内 fallback 基座 | 本地 SQLite / AkShare / 新浪 | 最稳、可控、可补位 |
+| US market 过渡库 | `us_market_history.sqlite` | 当前已替代运行时 yfinance 临时抓取 |
 | 美股/ETF 主源方向 | Tiingo | 比 yfinance 更适合长期主链路 |
+| 港股库 | `hk_market_history.sqlite` | 当前预留，生产化后再挂应用 |
 | 宏观/利率/VIX 主源方向 | FRED | 更适合正式主链路 |
 | yfinance | 仅 fallback | 保留低摩擦备用价值 |
 | 财务因子 | 已接入，但历史回测前需 PTI 校验 | 防未来函数 |
@@ -747,17 +782,17 @@ stok-mapping/
 
 从治理风险看：
 
-1. 先修复 compare 的样本覆盖门槛。
-2. 再重跑 `quality_growth_price_v1`，确认是否仍然领先。
-3. 再继续 residual / MA-K / multifactor-volume-price 的参数精修。
+1. 样本覆盖门槛已完成，继续保持为强制治理。
+2. 先扩展 `quality_growth_price_v1` 等 portfolio 候选的有效 fold 覆盖。
+3. 再继续 residual / MA-K / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 与回撤。
 
 ### 本周成功标准
 
 - compare mode 不再被少量 fold 候选误导
 - 至少一个候选在足够 fold/symbol 覆盖下通过 gate
-- `win_rate_mean > 0.45`
 - `sharpe_mean > 0.5`
 - `max_drawdown_mean > -0.25`
+- `win_rate_mean > 0.45`
 - 变更日志有清晰晋级或失败原因
 
 ---
@@ -766,15 +801,18 @@ stok-mapping/
 
 ### 当前最高优先级
 
-- [ ] 为候选选择加入最低 fold 数 / symbol 覆盖 / 样本支持约束
-- [ ] 重跑 Phase 0，确认 `quality_growth_price_v1` 是否仍能稳定领先
-- [ ] 优先修复 `win_rate_mean` 缺口
-- [ ] 继续控制 Sharpe 与最大回撤
+- [x] 为候选选择加入最低 fold 数 / symbol 覆盖 / 样本支持约束
+- [x] 重跑 Phase 0，确认低样本 `quality_growth_price_v1` 不再直接晋级
+- [ ] 优先修复 Sharpe 与最大回撤缺口
+- [ ] 扩展 portfolio 候选的有效 fold 覆盖
 - [ ] 保持 compare / report / gate / change log 同口径输出
 - [ ] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
 
 ### 条件满足后再推进
 
+- [x] 将 Tushare 纳入 Phase 0 数据源 smoke test 与 pre-run update 链路
+- [x] 新增 `us_market_history.sqlite`，让当前跨市场 overlay 从落库数据读取
+- [x] 预留 `hk_market_history.sqlite`，但在港股数据源生产化前不挂应用
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 执行统一周执行附件中的数据源升级计划
 - [ ] 优先引入 FRED 作为宏观 / 利率 / VIX 主源
