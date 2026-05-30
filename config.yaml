@@ -179,7 +179,7 @@ phase0:
     slippage: 0.001
     strategy_v2:
       mode: "compare"
-      compare_strategies: ["legacy_momentum", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
+      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -194,6 +194,16 @@ phase0:
       vol_quantiles: [0.6, 0.75]
       target_vol: 0.18
       train_min_trades: 5
+      legacy_momentum_low_turnover:
+        enabled: true
+        mom_windows: [5, 20]
+        buy_quantiles: [0.6]
+        hold_quantiles: [0.4]
+        buy_top_n_values: [5, 10]
+        hold_rank_multipliers: [2.0]
+        rebalance_days_values: [5, 10, 20]
+        min_hold_days_values: [5, 10]
+        turnover_penalties: [0.01, 0.02]
       cross_market:
         enabled: true
         tech_score_thresholds: [0.0, 0.5]

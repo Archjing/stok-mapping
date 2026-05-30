@@ -758,7 +758,7 @@ stok-mapping/
 | yfinance | 仅 fallback | 保留低摩擦备用价值 |
 | 财务因子 | 已接入，但历史回测前需 PTI 校验 | 防未来函数 |
 | LLM | 仅研究辅助，不直接产出交易信号 | 保持可解释和可控 |
-| 当前优先事项 | 修复候选比较治理与 win rate 缺口 | 当前 gate 仍失败 |
+| 当前优先事项 | 修复 Sharpe 与成本敏感性缺口 | 当前 gate 仅 Sharpe 未过线 |
 
 ---
 
@@ -768,30 +768,39 @@ stok-mapping/
 
 ### 本周目标
 
-围绕 A 股本土主因子完成一轮新的候选策略验证，尝试产生一个能在足够样本覆盖下替代 `legacy_momentum` 的新优胜候选，并推动策略通过当前 effectiveness gate。
+围绕 A 股本土主因子完成一轮新的候选策略验证，并修正候选比较口径，使主策略评估建立在同口径、足够样本、可解释成本假设之上。
+
+### 本周已完成
+
+- `legacy_momentum` 已从 symbol-scope 改为 portfolio-scope baseline。
+- 回测窗口已从 `5` 年扩大到 `7` 年，portfolio 候选均达到 `4` 个 fold。
+- 财务因子历史已扩展到 `32` 个季度，覆盖 `2018-06-30` 至 `2026-03-31`。
+- 已新增成本敏感性报告，输出 current / low-slippage / zero-cost 三档。
+- 已修复财务因子 point-in-time merge 的 datetime dtype 边界问题。
 
 ### 本周候选方向
 
-1. **MA/K 线低复杂度 baseline**
-2. **短周期残差动量 + 反转增强 v2**
-3. **多因子 + 量价二次筛选 v1**
-4. **质量/成长/价格复合候选的覆盖扩展验证**
+1. **低换手 legacy momentum 改造**
+2. **短周期残差动量 + 反转增强的持有期/成本约束版本**
+3. **多因子 + 量价二次筛选的低频版本**
+4. **质量/成长/价格复合候选的 slippage-aware 版本**
 
 ### 推荐实施顺序
 
 从治理风险看：
 
-1. 样本覆盖门槛已完成，继续保持为强制治理。
-2. portfolio 候选有效 fold 覆盖已扩展到 4 个 fold。
-3. 再继续 residual / MA-K / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 和换手控制。
+1. 样本覆盖门槛与 portfolio 口径已完成，继续保持为强制治理。
+2. 先围绕 `legacy_momentum` 做低换手改造，因为它当前是唯一正收益 selected candidate。
+3. 再继续 residual / multifactor-volume-price 的参数精修，目标优先放在 Sharpe 和成本敏感性。
 
 ### 本周成功标准
 
-- compare mode 不再被少量 fold 候选误导
-- 至少一个候选在足够 fold/symbol 覆盖下通过 gate
+- compare mode 不再混用 symbol-scope 与 portfolio-scope 结果
+- 至少一个 portfolio 候选在足够 fold 覆盖下通过 gate
 - `sharpe_mean > 0.5`
 - `max_drawdown_mean > -0.25`
 - `win_rate_mean > 0.45`
+- current-cost 与 low-slippage 场景差距可解释，且不是完全依赖零成本才有效
 - 变更日志有清晰晋级或失败原因
 
 ---
@@ -805,7 +814,10 @@ stok-mapping/
 - [x] 扩展 portfolio 候选的有效 fold 覆盖
 - [x] 保持 compare / report / gate / change log 同口径输出
 - [x] 加入成本敏感性报告，区分信号无效和成本吞噬
+- [x] 将财务因子历史扩展到 32 个季度
+- [x] 修复财务因子 point-in-time merge 的 datetime dtype 边界问题
 - [ ] 优先修复 Sharpe 缺口
+- [ ] 设计低换手 / 延长持有 / slippage-aware 参数选择方案
 - [ ] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
 
 ### 条件满足后再推进

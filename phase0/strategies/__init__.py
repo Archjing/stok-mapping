@@ -1,4 +1,5 @@
 from phase0.strategies.legacy_momentum import LegacyMomentumStrategy
+from phase0.strategies.legacy_momentum_low_turnover import LegacyMomentumLowTurnoverStrategy
 from phase0.strategies.ma_kline_baseline import MaKlineBaselineStrategy
 from phase0.strategies.multifactor_volume_price_filter import MultifactorVolumePriceFilterStrategy
 from phase0.strategies.quality_growth_price import QualityGrowthPriceStrategy
@@ -8,6 +9,7 @@ from phase0.strategies.registry import available_strategies, get_strategy, regis
 
 __all__ = [
     "LegacyMomentumStrategy",
+    "LegacyMomentumLowTurnoverStrategy",
     "MaKlineBaselineStrategy",
     "MultifactorVolumePriceFilterStrategy",
     "QualityGrowthPriceStrategy",

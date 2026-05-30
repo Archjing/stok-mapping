@@ -397,3 +397,37 @@ Conclusion:
 - The previous "all candidates cannot pass" diagnosis was partly an evaluation-design problem, not only a strategy problem.
 - After correcting comparison scope and sample length, the current strategy still cannot pass the gate under current-cost assumptions.
 - Next strategy work should prioritize lower-turnover entries, longer holding rules, and slippage-aware parameter selection before adding more factor complexity.
+
+## 2026-05-31: legacy_momentum_low_turnover_v1
+
+Change:
+- Added a new compare candidate named `legacy_momentum_low_turnover_v1`.
+- The candidate keeps the simple legacy momentum idea but adds buy/hold spread, lower-frequency rebalancing, minimum holding days, wider top-N portfolios, and turnover-penalized parameter selection.
+- Registered the strategy in `phase0/strategies/` and enabled it in `walk_forward.strategy_v2.compare_strategies`.
+
+Strategy logic:
+- Rank the A-share portfolio by `mom5` or `mom20`.
+- Buy only names above the configured buy momentum quantile and within the buy top-N.
+- Hold existing positions against a lower hold quantile and a wider rank band; do not immediately sell unless both the hold condition fails and the minimum holding period is satisfied.
+- Rebalance only every configured number of trading days.
+- Select parameters using a cost-aware score: `sharpe + 0.5 * max_drawdown - turnover_penalty * turnover_annual`.
+
+Parameters:
+- `mom_windows: [5, 20]`
+- `buy_quantiles: [0.6]`
+- `hold_quantiles: [0.4]`
+- `buy_top_n_values: [5, 10]`
+- `hold_rank_multipliers: [2.0]`
+- `rebalance_days_values: [5, 10, 20]`
+- `min_hold_days_values: [5, 10]`
+- `turnover_penalties: [0.01, 0.02]`
+
+Reason and reference:
+- The previous Phase 0.1 result showed `legacy_momentum` failed only on Sharpe under current-cost assumptions, while low-slippage and zero-cost scenarios passed Sharpe comfortably.
+- This means the next experiment should target turnover and implementation cost before adding more factor complexity.
+- The design follows the literature-backed cost-control pattern discussed in the project notes: buy/hold spread, less frequent rebalancing, wider portfolios, and turnover-aware parameter selection.
+
+Expected result:
+- Turnover should fall versus the current portfolio `legacy_momentum` baseline.
+- Current-cost Sharpe should improve without relying solely on the zero-cost scenario.
+- If Sharpe does not improve, the result will indicate that the simple momentum edge is too weak after realistic implementation constraints, and the project should shift to alternative low-turnover factor designs.

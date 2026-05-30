@@ -6,39 +6,56 @@
 
 ---
 
-# Week 1｜本土主策略候选验证
+# Week 1｜本土主策略候选验证（已完成复盘）
 
 ## 1. 本周目标
 
-> 在现有 compare / report / gate 链路下，验证 3 个 A 股本土候选策略，尝试找到一个可以替代 `legacy_momentum` 的新优胜候选，并推动主策略通过当前 Effectiveness Gate。
+> 在现有 compare / report / gate 链路下，验证 A 股本土候选策略，修正候选比较口径，并判断当前失败到底来自策略逻辑、参数、样本治理还是交易成本。
 
 ## 2. 当前基线与门槛缺口
 
 ### 当前基线
 - 当前 selected candidate：`legacy_momentum`
 - 当前 gate：`FAIL`
+- 当前口径：portfolio-scope
+- 当前样本：7 年窗口，4 个 portfolio fold
 
 ### 当前缺口
-- `sharpe_mean = 0.3358`，未过 `> 0.5`
-- `max_drawdown_mean = -0.3074`，未过 `> -0.25`
+- `sharpe_mean = 0.2952`，未过 `> 0.5`
+- `max_drawdown_mean = -0.1800`，已过 `> -0.25`
+- `win_rate_mean = 0.4765`，已过 `> 0.45`
 
 ### 当前判断
-- 收益不是主要问题
-- 当前主要问题是：**风险调整收益不足、回撤偏大**
+- 收益不是主要问题。
+- 回撤和胜率当前已过线。
+- 当前主要问题是：**Sharpe 不足且对滑点/交易成本敏感**。
+- 成本敏感性显示 `legacy_momentum` 在 `low_slippage` 下 Sharpe 可达 `0.6816`，在 `zero_cost` 下 Sharpe 可达 `1.1229`，说明下一轮要优先控制换手和滑点暴露。
 
 ## 3. 本周候选范围
 
 ### 候选 1：MA/K 线低复杂度 baseline
 - [x] 建立低复杂度、可解释、可复现的技术基线
 - [x] 作为本周的诊断地板
+- [x] 结论：current-cost 下表现弱，不作为下一轮主攻方向
 
 ### 候选 2：短周期残差动量 + 反转增强 v2
 - [x] 在已有 `residual_momentum_reversal_v1` 基础上最小增强
-- [ ] 优先尝试改善 Sharpe 和追高回撤
+- [x] 完成 portfolio compare
+- [ ] 下一轮只保留低换手 / 延长持有版本继续研究
 
 ### 候选 3：多因子 + 量价二次筛选 v1
 - [x] 作为本周最重要的冲门槛候选
 - [x] 用更完整的本土特征组合争取超过 `legacy_momentum`
+- [x] 已完成 32 季度财务因子覆盖后的 portfolio compare
+- [ ] 下一轮需要做 slippage-aware 改造，否则 current-cost 下仍不胜出
+
+### 本周新增治理/框架修复
+- [x] 将 `legacy_momentum` 从 symbol-scope 改为 portfolio-scope baseline
+- [x] 将回测窗口从 `5` 年扩大到 `7` 年
+- [x] 将财务因子维护窗口从 `8` 季度扩大到 `32` 季度
+- [x] 新增成本敏感性报告：`current_cost` / `low_slippage` / `zero_cost`
+- [x] 修复 point-in-time 财务因子 merge 的 datetime dtype 边界
+- [x] 更新 `README.md`、`DEVELOPMENT_PLAN.md`、`reports/phase0_strategy_change_log.md`
 
 ## 3.5 数据源升级准备项（仅准备，不实施）
 
@@ -46,9 +63,9 @@
 
 - [ ] 确认 `FRED` 首批序列清单：`GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS`
 - [ ] 确认 `Tiingo` 首批标的清单：`NVDA`、`AAPL`、`TSLA`、`KWEB`
-- [ ] 确认 `yfinance` 在过渡期继续保留为 fallback
-- [ ] 确认 Week 1 不改当前 `phase0` 正式回测链路
-- [ ] 把上述结论写入变更日志或主计划书，避免 Week 2 再重复讨论边界
+- [x] 确认 `yfinance` 在过渡期继续保留为 fallback
+- [x] 确认 Week 1 已按治理需要修改 `phase0` 正式回测链路，并完成报告/变更日志同步
+- [x] 把 US/HK market history 和 yfinance fallback 结论写入变更日志和主计划书
 
 ## 3.6 策略积木迭代（主线工程增强）
 
@@ -67,78 +84,85 @@
 ## 4. 推荐执行顺序
 
 ### 研究优先级
-1. 短周期残差动量 + 反转增强
-2. 多因子 + 量价二次筛选
-3. 规则型均线 / K 线 baseline
+1. 低换手 legacy momentum 改造
+2. 短周期残差动量 + 反转增强的低换手版本
+3. 多因子 + 量价二次筛选的 slippage-aware 版本
 
 ### 实现顺序
-1. **MA/K 线 baseline**
-2. **residual momentum + reversal v2**
-3. **multifactor + volume/price filter v1**
+1. **低换手 / 延长持有 baseline**
+2. **residual momentum + reversal 低换手版本**
+3. **multifactor + volume/price filter slippage-aware 版本**
 
 ### 原因
-- [ ] baseline 最快落地，先给出低复杂度对照组
-- [ ] residual v2 可复用现有实现，是最快增强路径
-- [ ] multifactor v1 最可能冲 gate，但依赖更清晰的共享特征和报告口径
+- [x] 原 baseline 已落地并证明 MA/K 线 current-cost 表现弱
+- [x] residual v2 可复用现有实现，但成本敏感性偏高
+- [x] multifactor v1 已进入 compare，但 current-cost 下仍不胜出
+- [ ] 下一轮不再优先加因子复杂度，先控制换手和滑点
 
 ## 5. Day 1 - Day 7 节奏
 
 ### Day 1：统一共享特征与候选比较口径
-- [ ] 让 3 个候选在同一条 compare / report / gate 链路里比较
-- [ ] 共享价格 / 量能特征可复用
-- [ ] 候选比较报告更清晰
+- [x] 让候选在同一条 compare / report / gate 链路里比较
+- [x] 共享价格 / 量能特征可复用
+- [x] 候选比较报告更清晰
+- [x] 已统一为 portfolio-scope 比较
 
 ### Day 2：完成 MA/K 线 baseline
-- [ ] 形成第一个低复杂度 compare-only 候选
-- [ ] `ma_kline_baseline_v1` 进入 compare 结果
-- [ ] 至少能作为回撤与解释性的对照基线
+- [x] 形成第一个低复杂度 compare-only 候选
+- [x] `ma_kline_baseline_v1` 进入 compare 结果
+- [x] 作为诊断地板保留
+- [x] 结论：current-cost 下不适合作为主候选
 
 ### Day 3-4：完成 residual momentum + reversal v2
-- [ ] 复用现有残差动量候选，做最小增强
-- [ ] `residual_momentum_reversal_v2` 进入 compare
-- [ ] 必须优于当前 `residual_momentum_reversal_v1`，否则不继续保留
+- [x] 复用现有残差动量候选，做最小增强
+- [x] `residual_momentum_reversal_v2` 进入 compare
+- [x] 完成成本敏感性观察
+- [ ] 下一轮只研究低换手/持有期约束版本
 
 ### Day 5-6：完成 multifactor + volume/price filter v1
-- [ ] 作为本周最强候选，尝试直接改善主 gate
-- [ ] `multifactor_volume_price_filter_v1` 进入 compare
-- [ ] 如果不能全过 gate，也必须同时优于当前 `legacy_momentum` 的 Sharpe 与回撤
+- [x] 作为本周最强候选，尝试直接改善主 gate
+- [x] `multifactor_volume_price_filter_v1` 进入 compare
+- [x] 已在 32 季度财务因子下重跑
+- [ ] current-cost 下未优于 `legacy_momentum`，下一轮需要先做成本约束
 
 ### Day 7：统一 compare、决策、归档
-- [ ] 更新 compare 结果
-- [ ] 更新 effectiveness report
-- [ ] 更新 change log
-- [ ] 明确每个候选是保留、淘汰还是晋级
+- [x] 更新 compare 结果
+- [x] 更新 effectiveness report
+- [x] 更新 change log
+- [x] 明确每个候选是保留、淘汰还是晋级
 
 ## 6. 本周比较与归档要求
 
-- [ ] 记录候选名称
-- [ ] 记录变更原因
-- [ ] 记录参数或规则摘要
-- [ ] 记录最新回测结果摘要
-- [ ] 记录是否保留
-- [ ] 记录是否晋级
-- [ ] 记录下一步建议
+- [x] 记录候选名称
+- [x] 记录变更原因
+- [x] 记录参数或规则摘要
+- [x] 记录最新回测结果摘要
+- [x] 记录是否保留
+- [x] 记录是否晋级
+- [x] 记录下一步建议
 
 归档位置：
-- [ ] `reports/phase0_walk_forward_report.md`
-- [ ] `reports/phase0_effectiveness_report.md`
-- [ ] `reports/phase0_walk_forward_candidates.csv`
-- [ ] `reports/phase0_strategy_change_log.md`
+- [x] `reports/phase0_walk_forward_report.md`
+- [x] `reports/phase0_effectiveness_report.md`
+- [x] `reports/phase0_walk_forward_candidates.csv`
+- [x] `reports/phase0_strategy_change_log.md`
+- [x] `reports/phase0_cost_sensitivity_report.md`
 
 ## 7. 本周成功标准
 
 ### 硬门槛
 - [ ] compare mode 中出现一个不是 `legacy_momentum` 的新优胜候选
-- [ ] `annualized_return_mean > 0`
+- [x] `annualized_return_mean > 0`
 - [ ] `sharpe_mean > 0.5`
-- [ ] `max_drawdown_mean > -0.25`
-- [ ] `win_rate_mean > 0.45`
-- [ ] `oos_return_decay_ratio < 0.30`
+- [x] `max_drawdown_mean > -0.25`
+- [x] `win_rate_mean > 0.45`
+- [x] `oos_return_decay_ratio < 0.30`
 
 ### 软判断
-- [ ] 新候选显著改善当前两个失败项（Sharpe / Drawdown）
-- [ ] 结果不是由少数 fold 偶然支撑
-- [ ] 候选逻辑可解释、可延续、可复盘
+- [ ] 新候选显著改善当前失败项（Sharpe）
+- [x] 结果不是由少数 fold 偶然支撑
+- [x] 候选逻辑可解释、可延续、可复盘
+- [x] 成本敏感性已可解释
 
 ## 8. 本周不做事项
 
@@ -159,8 +183,57 @@
 
 ### 如果没有候选通过 gate
 - [ ] 保留 `ma_kline_baseline_v1` 作为诊断地板
-- [ ] 在 `residual_momentum_reversal_v2` 与 `multifactor_volume_price_filter_v1` 中只保留更优者继续 compare
-- [ ] 下一轮重点转向：**特征质量与筛选逻辑**，而不是继续加大工程复杂度
+- [ ] 保留 `legacy_momentum` 作为 portfolio baseline
+- [ ] 在 residual / multifactor 中只保留低换手改造版本继续 compare
+- [ ] 下一轮重点转向：**持有期、换手、滑点敏感性控制**，而不是继续加大因子复杂度
+
+---
+
+# Week 1.5｜Sharpe 修复与成本敏感性收敛
+
+## 1. 本周目标
+
+- [ ] 在 current-cost 假设下将 selected candidate 的 `sharpe_mean` 提升到 `> 0.5`
+- [ ] 保持 `max_drawdown_mean > -0.25`
+- [ ] 保持 `win_rate_mean > 0.45`
+- [ ] 降低 current-cost 与 low-slippage 场景之间的表现差距
+
+## 2. 当前基线
+
+- selected candidate：`legacy_momentum`
+- annualized_return_mean：`0.0724`
+- sharpe_mean：`0.2952`
+- max_drawdown_mean：`-0.1800`
+- win_rate_mean：`0.4765`
+- turnover_annual_mean：`13.48`
+- low_slippage Sharpe：`0.6816`
+- zero_cost Sharpe：`1.1229`
+
+## 3. 优先实验方向
+
+### 3.1 低换手 legacy momentum
+- [ ] 增加最小持有期约束
+- [ ] 增加换手惩罚或 trade cooldown
+- [ ] 测试 top_n 从 `3` 扩展到更宽组合，降低单票波动
+- [ ] 在参数选择阶段加入 cost-aware score
+
+### 3.2 residual momentum 低换手版本
+- [ ] 降低交易频率
+- [ ] 避免短周期反转信号导致频繁换仓
+- [ ] 仅保留 zero/low-slippage 下有显著优势的组合
+
+### 3.3 multifactor slippage-aware 版本
+- [ ] 对 `amount_ratio20`、波动率、上影线等交易质量过滤重新设定
+- [ ] 增加持有期或调仓频率限制
+- [ ] 先要求 current-cost 下不输 `legacy_momentum`
+
+## 4. 验收要求
+
+- [ ] 每次策略逻辑或参数修改都写明理由和参考依据
+- [ ] 每轮都输出 current / low_slippage / zero_cost 三档成本敏感性
+- [ ] 不用零成本结果替代 current-cost gate
+- [ ] 不因单个 fold 表现好直接晋级
+- [ ] 变更写入 `reports/phase0_strategy_change_log.md`
 
 ---
 
@@ -176,7 +249,7 @@
 
 - [ ] A 股盘后主源仍是 `Tushare Pro`
 - [ ] A 股 fallback 仍是本地 SQLite / AkShare / 新浪原始快照
-- [ ] 美股 / ETF / VIX / CNH 当前仍主要依赖 `yfinance`
+- [ ] 美股 / ETF / VIX / CNH 当前已落库到 `us_market_history.sqlite`，过渡 provider 仍为 `yfinance`
 - [ ] 宏观 / 利率当前尚未拆独立主源
 - [ ] 当前第二周工作**不修改** `phase0` 主回测逻辑
 
