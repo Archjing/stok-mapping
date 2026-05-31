@@ -242,6 +242,7 @@ A股日线/财务  → 本土主因子引擎           ├→ 候选策略 / 组
 - 当前跨市场 overlay 已先落库到 `data/us_market_history.sqlite`，策略运行读取本地 `us_daily_bars`，不再运行时临时抓取 yfinance。
 - US market 当前 provider 仍为 `yfinance`，但定位是过渡数据源；后续美股个股/ETF 计划接入 `Tiingo`，宏观/利率/VIX 计划接入 `FRED`。
 - 港股库 `data/hk_market_history.sqlite` 仅保留结构和 CLI，当前 `enabled: false`，等港股数据源接入并通过覆盖率/新鲜度验证后再挂到应用。
+- 港股映射 A 股候选策略已记录到 `refdocs/todo/HK_A_SHARE_MAPPING_STRATEGIES.md`，后续补全代码；当前先做数据层验证，不并入 Phase 0 主线。
 
 ### 引擎 #2：本土主因子选股
 
@@ -460,11 +461,13 @@ LLM 不直接生成评分与交易信号。
 
 - **当前状态**：预留 `data/hk_market_history.sqlite`、`hk_daily_bars`、`hk_data_source_runs` 和 CLI 命令
 - **应用挂载状态**：未挂载，`hk_market_history.enabled: false`
+- **候选策略记录**：`refdocs/todo/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 当前说明：
 
 - 港股数据源进入可生产状态前，不参与策略、报告或质量审计。
 - 后续启用前必须先完成覆盖率、新鲜度、复权口径和交易日历校验。
+- 港股映射 A 股策略后续按“先数据验证、再解释力测试、最后回测接入”的顺序推进。
 
 ### 5.4 宏观 / 利率 / VIX
 
@@ -699,6 +702,7 @@ LLM 允许：
 
 - Codex 侧 Claude provider 配置统一放在 `.codex/`
 - DeepSeek MCP 作为 Claude/外部 agent 的研究辅助工具
+- OpenClaw Gateway 可作为外部 agent / 调度入口，用于研究摘要、消息通道和跨工具编排；接入说明见 `refdocs/OPENCLAW_GATEWAY_AGENT.md`
 - 不把 LLM 放入主信号层
 
 LLM 禁止：
@@ -894,6 +898,7 @@ stok-mapping/
 - [ ] 保留 `yfinance` 作为 fallback，不做一次性全替换
 - [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档
 - [ ] 精修映射标的池与行业层分析
+- [ ] 补全港股映射 A 股候选策略代码，前置条件是港股历史数据源质量验证通过
 - [ ] 在不破坏当前应用导向的前提下，引入 sklearn 基线模型辅助策略研究
 
 ---

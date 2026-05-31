@@ -1,0 +1,10 @@
+name,source,ok,rows,error
+AH 行情,ak.stock_zh_ah_spot,True,200,
+北向资金资金历史,ak.stock_hsgt_hist_em(北向资金),True,2678,
+沪股通资金历史,ak.stock_hsgt_hist_em(沪股通),True,2678,
+深股通资金历史,ak.stock_hsgt_hist_em(深股通),True,2202,
+中国平安北向持股,ak.stock_hsgt_individual_em(601318),True,1698,
+招商银行北向持股,ak.stock_hsgt_individual_em(600036),True,1692,
+贵州茅台北向持股,ak.stock_hsgt_individual_em(600519),True,1683,
+五粮液北向持股,ak.stock_hsgt_individual_em(000858),True,1693,
+美的集团北向持股,ak.stock_hsgt_individual_em(000333),True,1649,

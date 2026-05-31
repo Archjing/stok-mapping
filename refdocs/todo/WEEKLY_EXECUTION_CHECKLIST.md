@@ -556,6 +556,8 @@
 ### 如果本周方案成熟
 - [x] 下一周进入 **FRED 实现周**
 - [x] FRED 稳定后再进入 **Tiingo 接入周**
+- [ ] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证
+- [ ] 港股映射策略记录见：`refdocs/todo/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 ### 如果本周方案不充分
 - [ ] 继续保持 `yfinance` 不动

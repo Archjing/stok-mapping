@@ -1,0 +1,897 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>港股映射 A 股因子验证报告</title>
+  <style>
+    body { margin: 24px; color: #1f2937; font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    h1 { margin: 0 0 4px; font-size: 24px; }
+    h2 { margin-top: 28px; font-size: 18px; }
+    .meta { color: #6b7280; margin-bottom: 20px; }
+    .table-wrap { max-width: 95vw; max-height: 70vh; overflow: auto; border: 1px solid #e5e7eb; }
+    .report-table { border-collapse: collapse; min-width: 1000px; width: max-content; }
+    .report-table th, .report-table td { border: 1px solid #e5e7eb; padding: 7px 10px; white-space: nowrap; text-align: right; }
+    .report-table th { background: #f3f4f6; color: #111827; position: sticky; top: 0; }
+    .report-table td:first-child, .report-table th:first-child { text-align: left; }
+    .empty { color: #9ca3af; }
+    code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>港股映射 A 股因子验证报告</h1>
+  <div class="meta">生成时间：2026-06-01 02:43</div>
+  <p>本报告只验证 AKShare 数据抓取和因子样表生成，不接入当前 Phase 0 主策略。</p>
+
+  <h2>接口状态</h2>
+  <div class="table-wrap">
+    <table class="report-table">
+      <thead><tr><th>数据</th><th>接口</th><th>状态</th><th>行数</th><th>错误</th></tr></thead>
+      <tbody><tr><td>AH 行情</td><td>ak.stock_zh_ah_spot</td><td>OK</td><td>200</td><td></td></tr><tr><td>北向资金资金历史</td><td>ak.stock_hsgt_hist_em(北向资金)</td><td>OK</td><td>2678</td><td></td></tr><tr><td>沪股通资金历史</td><td>ak.stock_hsgt_hist_em(沪股通)</td><td>OK</td><td>2678</td><td></td></tr><tr><td>深股通资金历史</td><td>ak.stock_hsgt_hist_em(深股通)</td><td>OK</td><td>2202</td><td></td></tr><tr><td>中国平安北向持股</td><td>ak.stock_hsgt_individual_em(601318)</td><td>OK</td><td>1698</td><td></td></tr><tr><td>招商银行北向持股</td><td>ak.stock_hsgt_individual_em(600036)</td><td>OK</td><td>1692</td><td></td></tr><tr><td>贵州茅台北向持股</td><td>ak.stock_hsgt_individual_em(600519)</td><td>OK</td><td>1683</td><td></td></tr><tr><td>五粮液北向持股</td><td>ak.stock_hsgt_individual_em(000858)</td><td>OK</td><td>1693</td><td></td></tr><tr><td>美的集团北向持股</td><td>ak.stock_hsgt_individual_em(000333)</td><td>OK</td><td>1649</td><td></td></tr></tbody>
+    </table>
+  </div>
+
+  <h2>AH 溢价/比价因子样表</h2>
+  <div class="table-wrap"><table border="1" class="dataframe report-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>snapshot_at</th>
+      <th>h_code</th>
+      <th>name</th>
+      <th>h_price</th>
+      <th>akshare_ah_premium_or_ratio</th>
+      <th>match_name</th>
+      <th>a_symbol</th>
+      <th>a_code</th>
+      <th>a_name</th>
+      <th>a_trade_date</th>
+      <th>a_close</th>
+      <th>a_h_price_ratio_without_fx</th>
+      <th>note</th>
+      <th>source_columns</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>NaN</td>
+      <td>01349</td>
+      <td>复旦张江</td>
+      <td>2.38</td>
+      <td>&lt;NA&gt;</td>
+      <td>复旦张江</td>
+      <td>SH.688505</td>
+      <td>688505.SH</td>
+      <td>复旦张江</td>
+      <td>2026-05-29</td>
+      <td>7.16</td>
+      <td>3.008403</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00525</td>
+      <td>广深铁路股份</td>
+      <td>2.30</td>
+      <td>&lt;NA&gt;</td>
+      <td>广深铁路</td>
+      <td>SH.601333</td>
+      <td>601333.SH</td>
+      <td>广深铁路</td>
+      <td>2026-05-29</td>
+      <td>3.09</td>
+      <td>1.343478</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>02068</td>
+      <td>中铝国际</td>
+      <td>2.28</td>
+      <td>&lt;NA&gt;</td>
+      <td>中铝国际</td>
+      <td>SH.601068</td>
+      <td>601068.SH</td>
+      <td>中铝国际</td>
+      <td>2026-05-29</td>
+      <td>5.53</td>
+      <td>2.425439</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>03369</td>
+      <td>秦港股份</td>
+      <td>2.23</td>
+      <td>&lt;NA&gt;</td>
+      <td>秦港</td>
+      <td>SH.601326</td>
+      <td>601326.SH</td>
+      <td>秦港股份</td>
+      <td>2026-05-29</td>
+      <td>3.32</td>
+      <td>1.488789</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00323</td>
+      <td>马鞍山钢铁股份</td>
+      <td>1.93</td>
+      <td>&lt;NA&gt;</td>
+      <td>马鞍山钢铁</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00895</td>
+      <td>东江环保</td>
+      <td>1.78</td>
+      <td>&lt;NA&gt;</td>
+      <td>东江环保</td>
+      <td>SZ.002672</td>
+      <td>002672.SZ</td>
+      <td>东江环保</td>
+      <td>2026-05-29</td>
+      <td>3.77</td>
+      <td>2.117978</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01375</td>
+      <td>中州证券</td>
+      <td>1.73</td>
+      <td>&lt;NA&gt;</td>
+      <td>中州证券</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01618</td>
+      <td>中国中冶</td>
+      <td>1.50</td>
+      <td>&lt;NA&gt;</td>
+      <td>中国中冶</td>
+      <td>SH.601618</td>
+      <td>601618.SH</td>
+      <td>中国中冶</td>
+      <td>2026-05-29</td>
+      <td>2.83</td>
+      <td>1.886667</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00347</td>
+      <td>鞍钢股份</td>
+      <td>1.26</td>
+      <td>&lt;NA&gt;</td>
+      <td>鞍钢</td>
+      <td>SZ.000898</td>
+      <td>000898.SZ</td>
+      <td>鞍钢股份</td>
+      <td>2026-05-29</td>
+      <td>2.04</td>
+      <td>1.619048</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>03996</td>
+      <td>中国能源建设</td>
+      <td>1.25</td>
+      <td>&lt;NA&gt;</td>
+      <td>中国能源建设</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01528</td>
+      <td>红星美凯龙</td>
+      <td>1.25</td>
+      <td>&lt;NA&gt;</td>
+      <td>红星美凯龙</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00338</td>
+      <td>上海石油化工股份</td>
+      <td>1.13</td>
+      <td>&lt;NA&gt;</td>
+      <td>上海石油化工</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>06196</td>
+      <td>郑州银行</td>
+      <td>0.98</td>
+      <td>&lt;NA&gt;</td>
+      <td>郑州银行</td>
+      <td>SZ.002936</td>
+      <td>002936.SZ</td>
+      <td>郑州银行</td>
+      <td>2026-05-29</td>
+      <td>1.77</td>
+      <td>1.806122</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>02866</td>
+      <td>中远海发</td>
+      <td>0.98</td>
+      <td>&lt;NA&gt;</td>
+      <td>中远海发</td>
+      <td>SH.601866</td>
+      <td>601866.SH</td>
+      <td>中远海发</td>
+      <td>2026-05-29</td>
+      <td>2.52</td>
+      <td>2.571429</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01053</td>
+      <td>重庆钢铁股份</td>
+      <td>0.97</td>
+      <td>&lt;NA&gt;</td>
+      <td>重庆钢铁</td>
+      <td>SH.601005</td>
+      <td>601005.SH</td>
+      <td>重庆钢铁</td>
+      <td>2026-05-29</td>
+      <td>1.30</td>
+      <td>1.340206</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>02880</td>
+      <td>辽港股份</td>
+      <td>0.83</td>
+      <td>&lt;NA&gt;</td>
+      <td>辽港</td>
+      <td>SH.601880</td>
+      <td>601880.SH</td>
+      <td>辽港股份</td>
+      <td>2026-05-29</td>
+      <td>1.61</td>
+      <td>1.939759</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>00588</td>
+      <td>北京北辰实业股份</td>
+      <td>0.81</td>
+      <td>&lt;NA&gt;</td>
+      <td>北京北辰实业</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01812</td>
+      <td>晨鸣纸业</td>
+      <td>0.80</td>
+      <td>&lt;NA&gt;</td>
+      <td>晨鸣纸业</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>02009</td>
+      <td>金隅集团</td>
+      <td>0.71</td>
+      <td>&lt;NA&gt;</td>
+      <td>金隅</td>
+      <td>SH.601992</td>
+      <td>601992.SH</td>
+      <td>金隅集团</td>
+      <td>2026-05-29</td>
+      <td>1.59</td>
+      <td>2.239437</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+    <tr>
+      <td>NaN</td>
+      <td>01033</td>
+      <td>中石化油服</td>
+      <td>0.70</td>
+      <td>&lt;NA&gt;</td>
+      <td>中石化油服</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>NaN</td>
+      <td>H股报价来自 AKShare 腾讯 AH 接口；A股价格来自本地库最新前复权收盘价；未换算 HKD/CNY 汇率</td>
+      <td>代码, 名称, 最新价, 涨跌幅, 涨跌额, 买入, 卖出, 成交量, 成交额, 今开, 昨收, 最高, 最低</td>
+    </tr>
+  </tbody>
+</table></div>
+
+  <h2>港股通资金因子样表</h2>
+  <div class="table-wrap"><table border="1" class="dataframe report-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>trade_date</th>
+      <th>channel</th>
+      <th>buy_amount</th>
+      <th>sell_amount</th>
+      <th>net_buy_amount</th>
+      <th>turnover</th>
+      <th>net_buy_ma5</th>
+      <th>net_buy_ma20</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2014-11-17</td>
+      <td>北向资金</td>
+      <td>120.8233</td>
+      <td>NaN</td>
+      <td>0.012082</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.012082</td>
+      <td>0.012082</td>
+    </tr>
+    <tr>
+      <td>2014-11-18</td>
+      <td>北向资金</td>
+      <td>49.4367</td>
+      <td>2.2400</td>
+      <td>0.016802</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.014442</td>
+      <td>0.014442</td>
+    </tr>
+    <tr>
+      <td>2014-11-19</td>
+      <td>北向资金</td>
+      <td>26.6951</td>
+      <td>1.7274</td>
+      <td>0.019299</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.016061</td>
+      <td>0.016061</td>
+    </tr>
+    <tr>
+      <td>2014-11-20</td>
+      <td>北向资金</td>
+      <td>23.0973</td>
+      <td>1.6779</td>
+      <td>0.021441</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.017406</td>
+      <td>0.017406</td>
+    </tr>
+    <tr>
+      <td>2014-11-21</td>
+      <td>北向资金</td>
+      <td>24.3055</td>
+      <td>2.3102</td>
+      <td>0.023640</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.018653</td>
+      <td>0.018653</td>
+    </tr>
+    <tr>
+      <td>2014-11-24</td>
+      <td>北向资金</td>
+      <td>61.3922</td>
+      <td>2.8275</td>
+      <td>0.029497</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.022136</td>
+      <td>0.020460</td>
+    </tr>
+    <tr>
+      <td>2014-11-25</td>
+      <td>北向资金</td>
+      <td>31.3221</td>
+      <td>3.8218</td>
+      <td>0.032247</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.025225</td>
+      <td>0.022144</td>
+    </tr>
+    <tr>
+      <td>2014-11-26</td>
+      <td>北向资金</td>
+      <td>35.1521</td>
+      <td>3.2260</td>
+      <td>0.035439</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.028453</td>
+      <td>0.023806</td>
+    </tr>
+    <tr>
+      <td>2014-11-27</td>
+      <td>北向资金</td>
+      <td>33.3504</td>
+      <td>4.6638</td>
+      <td>0.038308</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.031826</td>
+      <td>0.025417</td>
+    </tr>
+    <tr>
+      <td>2014-11-28</td>
+      <td>北向资金</td>
+      <td>30.1424</td>
+      <td>7.6802</td>
+      <td>0.040554</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.035209</td>
+      <td>0.026931</td>
+    </tr>
+    <tr>
+      <td>2014-12-01</td>
+      <td>北向资金</td>
+      <td>37.8762</td>
+      <td>24.6980</td>
+      <td>0.041872</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.037684</td>
+      <td>0.028289</td>
+    </tr>
+    <tr>
+      <td>2014-12-02</td>
+      <td>北向资金</td>
+      <td>42.1425</td>
+      <td>10.9892</td>
+      <td>0.044987</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.040232</td>
+      <td>0.029681</td>
+    </tr>
+    <tr>
+      <td>2014-12-03</td>
+      <td>北向资金</td>
+      <td>60.4958</td>
+      <td>23.6468</td>
+      <td>0.048672</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.042879</td>
+      <td>0.031142</td>
+    </tr>
+    <tr>
+      <td>2014-12-04</td>
+      <td>北向资金</td>
+      <td>46.2754</td>
+      <td>12.6856</td>
+      <td>0.052031</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.045623</td>
+      <td>0.032634</td>
+    </tr>
+    <tr>
+      <td>2014-12-05</td>
+      <td>北向资金</td>
+      <td>59.8429</td>
+      <td>35.3472</td>
+      <td>0.054481</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.048409</td>
+      <td>0.034090</td>
+    </tr>
+    <tr>
+      <td>2014-12-08</td>
+      <td>北向资金</td>
+      <td>48.1688</td>
+      <td>34.0089</td>
+      <td>0.055897</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.051214</td>
+      <td>0.035453</td>
+    </tr>
+    <tr>
+      <td>2014-12-09</td>
+      <td>北向资金</td>
+      <td>56.3163</td>
+      <td>46.0744</td>
+      <td>0.056921</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.053600</td>
+      <td>0.036716</td>
+    </tr>
+    <tr>
+      <td>2014-12-10</td>
+      <td>北向资金</td>
+      <td>43.8674</td>
+      <td>25.5031</td>
+      <td>0.058757</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.055617</td>
+      <td>0.037940</td>
+    </tr>
+    <tr>
+      <td>2014-12-11</td>
+      <td>北向资金</td>
+      <td>26.5117</td>
+      <td>17.3640</td>
+      <td>0.059672</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.057146</td>
+      <td>0.039084</td>
+    </tr>
+    <tr>
+      <td>2014-12-12</td>
+      <td>北向资金</td>
+      <td>33.9650</td>
+      <td>17.0405</td>
+      <td>0.061365</td>
+      <td>&lt;NA&gt;</td>
+      <td>0.058522</td>
+      <td>0.040198</td>
+    </tr>
+  </tbody>
+</table></div>
+
+  <h2>北向持股变化因子样表</h2>
+  <div class="table-wrap"><table border="1" class="dataframe report-table">
+  <thead>
+    <tr style="text-align: right;">
+      <th>trade_date</th>
+      <th>code</th>
+      <th>name</th>
+      <th>close</th>
+      <th>change_pct</th>
+      <th>hold_shares</th>
+      <th>hold_market_value</th>
+      <th>hold_float_ratio</th>
+      <th>hold_shares_change</th>
+      <th>hold_money_change</th>
+      <th>hold_ratio_change</th>
+      <th>note</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2024-07-22</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>43.00</td>
+      <td>-0.069719</td>
+      <td>584518504</td>
+      <td>2.513430e+10</td>
+      <td>5.43</td>
+      <td>3336985.0</td>
+      <td>1.431797e+08</td>
+      <td>0.04</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-23</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.79</td>
+      <td>-0.488372</td>
+      <td>584815497</td>
+      <td>2.502426e+10</td>
+      <td>5.43</td>
+      <td>296993.0</td>
+      <td>1.277943e+07</td>
+      <td>0.00</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-24</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.56</td>
+      <td>-0.537509</td>
+      <td>583531156</td>
+      <td>2.483509e+10</td>
+      <td>5.42</td>
+      <td>-1284341.0</td>
+      <td>-5.471845e+07</td>
+      <td>-0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-25</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.57</td>
+      <td>0.023496</td>
+      <td>576065291</td>
+      <td>2.452310e+10</td>
+      <td>5.35</td>
+      <td>-7465865.0</td>
+      <td>-3.177300e+08</td>
+      <td>-0.07</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-26</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.09</td>
+      <td>0.024343</td>
+      <td>571137929</td>
+      <td>2.346806e+10</td>
+      <td>5.30</td>
+      <td>-4927362.0</td>
+      <td>-2.026841e+08</td>
+      <td>-0.05</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-29</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.32</td>
+      <td>0.559747</td>
+      <td>573274098</td>
+      <td>2.368769e+10</td>
+      <td>5.32</td>
+      <td>2136169.0</td>
+      <td>8.834597e+07</td>
+      <td>0.02</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-30</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.33</td>
+      <td>0.024201</td>
+      <td>572055746</td>
+      <td>2.364306e+10</td>
+      <td>5.31</td>
+      <td>-1218352.0</td>
+      <td>-5.024252e+07</td>
+      <td>-0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-07-31</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.56</td>
+      <td>2.976046</td>
+      <td>579458664</td>
+      <td>2.466176e+10</td>
+      <td>5.38</td>
+      <td>7402918.0</td>
+      <td>3.123491e+08</td>
+      <td>0.07</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-01</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.51</td>
+      <td>-0.117481</td>
+      <td>579515203</td>
+      <td>2.463519e+10</td>
+      <td>5.38</td>
+      <td>56539.0</td>
+      <td>2.405717e+06</td>
+      <td>0.00</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-02</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.82</td>
+      <td>-1.623147</td>
+      <td>580986827</td>
+      <td>2.429687e+10</td>
+      <td>5.39</td>
+      <td>1471624.0</td>
+      <td>6.184235e+07</td>
+      <td>0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-05</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>42.00</td>
+      <td>0.430416</td>
+      <td>582111296</td>
+      <td>2.444867e+10</td>
+      <td>5.40</td>
+      <td>1124469.0</td>
+      <td>4.736308e+07</td>
+      <td>0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-06</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.90</td>
+      <td>-2.619048</td>
+      <td>578111368</td>
+      <td>2.364475e+10</td>
+      <td>5.37</td>
+      <td>-3999928.0</td>
+      <td>-1.648638e+08</td>
+      <td>-0.03</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-07</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.70</td>
+      <td>-0.488998</td>
+      <td>576113801</td>
+      <td>2.344783e+10</td>
+      <td>5.35</td>
+      <td>-1997567.0</td>
+      <td>-8.166194e+07</td>
+      <td>-0.02</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-08</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.82</td>
+      <td>0.294840</td>
+      <td>575908207</td>
+      <td>2.350857e+10</td>
+      <td>5.35</td>
+      <td>-205594.0</td>
+      <td>-8.388564e+06</td>
+      <td>0.00</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-09</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.61</td>
+      <td>-0.514454</td>
+      <td>575822991</td>
+      <td>2.338417e+10</td>
+      <td>5.35</td>
+      <td>-85216.0</td>
+      <td>-3.480247e+06</td>
+      <td>0.00</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-12</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.62</td>
+      <td>0.024624</td>
+      <td>574200824</td>
+      <td>2.332404e+10</td>
+      <td>5.33</td>
+      <td>-1622167.0</td>
+      <td>-6.579574e+07</td>
+      <td>-0.02</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-13</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.78</td>
+      <td>0.393895</td>
+      <td>573622784</td>
+      <td>2.339234e+10</td>
+      <td>5.32</td>
+      <td>-578040.0</td>
+      <td>-2.350276e+07</td>
+      <td>-0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-14</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>40.49</td>
+      <td>-0.711133</td>
+      <td>576727638</td>
+      <td>2.335170e+10</td>
+      <td>5.35</td>
+      <td>3104854.0</td>
+      <td>1.261366e+08</td>
+      <td>0.03</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-15</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.32</td>
+      <td>2.049889</td>
+      <td>588089936</td>
+      <td>2.429988e+10</td>
+      <td>5.46</td>
+      <td>11362298.0</td>
+      <td>4.685550e+08</td>
+      <td>0.11</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+    <tr>
+      <td>2024-08-16</td>
+      <td>601318</td>
+      <td>中国平安</td>
+      <td>41.61</td>
+      <td>0.701839</td>
+      <td>588734005</td>
+      <td>2.449722e+10</td>
+      <td>5.47</td>
+      <td>644069.0</td>
+      <td>2.674355e+07</td>
+      <td>0.01</td>
+      <td>请求区间 20250501-20250601 无持股数据，回退展示该股票最近 20 条历史记录</td>
+    </tr>
+  </tbody>
+</table></div>
+</body>
+</html>
