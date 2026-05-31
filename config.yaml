@@ -104,7 +104,7 @@ phase0:
     min_factor_coverage: 0.60
     rebuild_universe_after: true
   cost_sensitivity:
-    enabled: true
+    enabled: false
     scenarios:
       - name: "base_research_cost"
         slippage: 0.001

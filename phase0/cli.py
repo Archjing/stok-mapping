@@ -149,16 +149,67 @@ def run_phase0(config_path: Path) -> int:
     write_walk_forward_report(report_dir / "phase0_walk_forward_report.md", summary=summary, folds_df=folds_df)
     write_effectiveness_gate_report(report_dir / "phase0_effectiveness_report.md", wf_summary=summary)
 
-    if bool(cfg.get("cost_sensitivity", {}).get("enabled", False)):
-        console.print("4) Running cost sensitivity scenarios...")
-        sensitivity_df = run_cost_sensitivity(cfg)
-        if not sensitivity_df.empty:
-            save_walk_forward_csv(sensitivity_df, report_dir / "phase0_cost_sensitivity.csv")
-        write_cost_sensitivity_report(report_dir / "phase0_cost_sensitivity_report.md", sensitivity_df)
-
     console.print("[green]Phase 0 complete[/green]")
     console.print(f"Reports: {report_dir}")
     return 0
+
+
+def run_phase0_cost_sensitivity(config_path: Path, scenarios: list[dict[str, float | str]]) -> int:
+    console = Console()
+    root = config_path.parent
+    cfg = load_config(config_path)
+    configure_local_history(cfg.get("local_history", {}), root)
+    configure_akshare_throttle(cfg.get("data_sources", {}).get("akshare", {}))
+
+    cfg["cost_sensitivity"] = {
+        "enabled": True,
+        "scenarios": scenarios,
+    }
+    report_dir = root / "reports"
+    console.print("[bold]Phase 0 cost sensitivity started[/bold]")
+    console.print("Scenarios:")
+    for scenario in scenarios:
+        console.print(
+            f"- {scenario['name']}: "
+            f"slippage={float(scenario['slippage']):.5f}, "
+            f"commission={float(scenario['commission']):.5f}, "
+            f"stamp_duty_sell={float(scenario['stamp_duty_sell']):.5f}"
+        )
+
+    sensitivity_df = run_cost_sensitivity(cfg)
+    if not sensitivity_df.empty:
+        save_walk_forward_csv(sensitivity_df, report_dir / "phase0_cost_sensitivity.csv")
+    write_cost_sensitivity_report(report_dir / "phase0_cost_sensitivity_report.md", sensitivity_df)
+
+    console.print("[green]Phase 0 cost sensitivity complete[/green]")
+    console.print(f"Reports: {report_dir}")
+    return 0
+
+
+def _parse_cost_scenario(text: str, cfg: dict) -> dict[str, float | str]:
+    parts = [part.strip() for part in text.split(":")]
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValueError(f"invalid cost scenario '{text}', expected name:slippage")
+    wcfg = cfg.get("walk_forward", {})
+    return {
+        "name": parts[0],
+        "slippage": float(parts[1]),
+        "commission": float(wcfg.get("commission", 0.0)),
+        "stamp_duty_sell": float(wcfg.get("stamp_duty_sell", 0.0)),
+    }
+
+
+def _configured_cost_scenarios(cfg: dict) -> list[dict[str, float | str]]:
+    scenarios = cfg.get("cost_sensitivity", {}).get("scenarios", [])
+    return [
+        {
+            "name": str(item["name"]),
+            "slippage": float(item["slippage"]),
+            "commission": float(item.get("commission", cfg.get("walk_forward", {}).get("commission", 0.0))),
+            "stamp_duty_sell": float(item.get("stamp_duty_sell", cfg.get("walk_forward", {}).get("stamp_duty_sell", 0.0))),
+        }
+        for item in scenarios
+    ]
 
 
 def main() -> int:
@@ -166,6 +217,19 @@ def main() -> int:
     sub = parser.add_subparsers(dest="cmd")
     run_parser = sub.add_parser("run", help="Run phase0 pipeline")
     run_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    cost_parser = sub.add_parser("cost-sensitivity", help="Run explicit phase0 cost sensitivity scenarios")
+    cost_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    cost_parser.add_argument(
+        "--scenario",
+        action="append",
+        default=[],
+        help="Scenario in name:slippage format. Repeatable, e.g. --scenario base:0.001 --scenario stress:0.003",
+    )
+    cost_parser.add_argument(
+        "--use-config-scenarios",
+        action="store_true",
+        help="Use cost_sensitivity.scenarios from config.yaml. Required when --scenario is omitted.",
+    )
     universe_parser = sub.add_parser("build-universe", help="Build local-factor A-share universe")
     universe_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     history_parser = sub.add_parser("import-history", help="Import manual A-share history zip files")
@@ -236,6 +300,20 @@ def main() -> int:
                 for warning in universe_result.warnings:
                     console.print(f"[yellow]Warning:[/yellow] {warning}")
         return 0
+    if args.cmd == "cost-sensitivity":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        scenarios = [_parse_cost_scenario(text, cfg) for text in args.scenario]
+        if args.use_config_scenarios:
+            scenarios = _configured_cost_scenarios(cfg)
+        if not scenarios:
+            console = Console()
+            console.print(
+                "[red]No cost sensitivity scenarios specified.[/red] "
+                "Use --scenario name:slippage or --use-config-scenarios."
+            )
+            return 2
+        return run_phase0_cost_sensitivity(config_path, scenarios)
     if args.cmd == "update-history":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

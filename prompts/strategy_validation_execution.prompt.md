@@ -91,9 +91,9 @@
 1. walk-forward
 2. baseline 对比
 3. effectiveness gate
-4. cost sensitivity
-5. 连续 OOS
-6. 基准对比
+4. 连续 OOS
+5. 基准对比
+6. cost sensitivity 仅在本次明确指定成本场景时运行
 7. 如果已在范围内，再做行情分段验证
 
 ### Step 5：结果归类

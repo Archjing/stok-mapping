@@ -206,11 +206,19 @@ def _load_names(db_path: Path, symbols: list[str]) -> dict[str, str]:
     return {str(symbol): str(name or "") for symbol, name in rows}
 
 
+def _resolve_path(root: Path, value: Any) -> Path:
+    path = Path(str(value or ""))
+    return path if path.is_absolute() else root / path
+
+
+def _universe_output_path(config: dict[str, Any], root: Path) -> Path:
+    universe_cfg = config.get("universe", {})
+    return root / universe_cfg.get("output_dir", "data/universe") / universe_cfg.get("output_file", "local_factor_universe.csv")
+
+
 def _parse_symbol_list(config: dict[str, Any], root: Path) -> list[str]:
     if config.get("universe", {}).get("enabled", False):
-        path = root / config.get("universe", {}).get("output_dir", "data/universe") / config.get("universe", {}).get(
-            "output_file", "local_factor_universe.csv"
-        )
+        path = _universe_output_path(config, root)
         if path.exists():
             df = pd.read_csv(path)
             if "symbol" in df.columns:
@@ -218,6 +226,81 @@ def _parse_symbol_list(config: dict[str, Any], root: Path) -> list[str]:
                 limit = int(config.get("universe", {}).get("walk_forward_limit", 0) or 0)
                 return symbols[:limit] if limit > 0 else symbols
     return [str(item) for item in config.get("symbols", [])]
+
+
+def _path_mtime(path: Path) -> float:
+    try:
+        return path.stat().st_mtime
+    except FileNotFoundError:
+        return 0.0
+
+
+def _path_label(path: Path, root: Path) -> str:
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def _panel_cache_key(
+    *,
+    config_path: Path,
+    config: dict[str, Any],
+    root: Path,
+    symbols: list[str],
+    history_years: int,
+    strategy_cfg: dict[str, Any],
+) -> dict[str, Any]:
+    source_paths = [
+        config_path,
+        _resolve_path(root, config.get("local_history", {}).get("path", "")),
+    ]
+    if config.get("universe", {}).get("enabled", False):
+        source_paths.append(_universe_output_path(config, root))
+    if bool(strategy_cfg.get("cross_market", {}).get("enabled", False)):
+        source_paths.append(_resolve_path(root, config.get("us_market_history", {}).get("path", "")))
+
+    return {
+        "symbols": list(symbols),
+        "history_years": int(history_years),
+        "source_mtimes": {_path_label(path, root): _path_mtime(path) for path in source_paths},
+    }
+
+
+def _load_or_build_panel(
+    *,
+    cache_path: Path,
+    refresh_cache: bool,
+    no_panel_cache: bool,
+    cache_key: dict[str, Any],
+    symbols: list[str],
+    history_years: int,
+    strategy_cfg: dict[str, Any],
+) -> pd.DataFrame:
+    if not no_panel_cache and cache_path.exists() and not refresh_cache:
+        try:
+            payload = pd.read_pickle(cache_path)
+            if isinstance(payload, dict) and payload.get("cache_key") == cache_key and isinstance(payload.get("panel"), pd.DataFrame):
+                print(f"panel_cache=hit path={cache_path}")
+                return payload["panel"].copy()
+            print(f"panel_cache=stale path={cache_path}")
+        except Exception as exc:  # pragma: no cover - corrupted local cache should not block export.
+            print(f"panel_cache=invalid path={cache_path} error={exc}")
+
+    if no_panel_cache:
+        print("panel_cache=disabled")
+    elif refresh_cache:
+        print(f"panel_cache=refresh path={cache_path}")
+    else:
+        print(f"panel_cache=miss path={cache_path}")
+
+    panel = _align_symbol_map(_load_symbol_map(symbols, history_years))
+    panel = _add_cross_market_to_panel(panel, history_years, strategy_cfg, None)
+    if not no_panel_cache:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.to_pickle({"cache_key": cache_key, "panel": panel}, cache_path)
+        print(f"panel_cache=saved path={cache_path}")
+    return panel
 
 
 def _fold_windows(panel: pd.DataFrame, train_years: int, validate_years: int, min_samples: int) -> list[tuple[int, pd.DataFrame, pd.DataFrame]]:
@@ -427,10 +510,18 @@ def main() -> int:
     parser.add_argument("--valid-start", default=None, help="Optional inclusive validation date lower bound, e.g. 2018-08-01")
     parser.add_argument("--valid-end", default=None, help="Optional inclusive validation date upper bound, e.g. 2022-10-31")
     parser.add_argument("--years", type=int, default=None, help="Optional history lookback override for period validation")
+    parser.add_argument(
+        "--panel-cache",
+        default="reports/cache/low_turnover_panel.pkl",
+        help="Cached aligned market panel path; relative paths are resolved from project root",
+    )
+    parser.add_argument("--refresh-cache", action="store_true", help="Rebuild the cached market panel before exporting")
+    parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     args = parser.parse_args()
 
     root = Path.cwd()
-    config = load_config(root / args.config)
+    config_path = _resolve_path(root, args.config)
+    config = load_config(config_path)
     configure_local_history(config.get("local_history", {}), root)
     configure_us_market_history(config.get("us_market_history", {}), root)
     _load_symbol_cached.cache_clear()
@@ -440,9 +531,27 @@ def main() -> int:
     symbols = _parse_symbol_list(config, root)
     strategy = get_strategy("legacy_momentum_low_turnover_v1")
     history_years = int(args.years or config["years"])
-    panel = _align_symbol_map(_load_symbol_map(symbols, history_years))
-    panel = _add_cross_market_to_panel(panel, history_years, strategy_cfg, None)
-    names = _load_names(root / config.get("local_history", {}).get("path", ""), panel["symbol"].astype(str).unique().tolist())
+    cache_path = _resolve_path(root, args.panel_cache)
+    panel = _load_or_build_panel(
+        cache_path=cache_path,
+        refresh_cache=bool(args.refresh_cache),
+        no_panel_cache=bool(args.no_panel_cache),
+        cache_key=_panel_cache_key(
+            config_path=config_path,
+            config=config,
+            root=root,
+            symbols=symbols,
+            history_years=history_years,
+            strategy_cfg=strategy_cfg,
+        ),
+        symbols=symbols,
+        history_years=history_years,
+        strategy_cfg=strategy_cfg,
+    )
+    names = _load_names(
+        _resolve_path(root, config.get("local_history", {}).get("path", "")),
+        panel["symbol"].astype(str).unique().tolist(),
+    )
 
     all_bills = []
     all_daily = []

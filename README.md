@@ -135,7 +135,23 @@ uv sync
 ./.venv/bin/python -m phase0.cli run --config config.yaml
 ```
 
-该命令会自动加载项目根目录 `.env`，因此 `TUSHARE_TOKEN` 放在 `.env` 后不需要手工 `export`。数据源连通性结果写入 `reports/phase0_data_source_report.md`。
+该命令会自动加载项目根目录 `.env`，因此 `TUSHARE_TOKEN` 放在 `.env` 后不需要手工 `export`。数据源连通性结果写入 `reports/phase0_data_source_report.md`。主测试使用 `walk_forward.slippage: 0.00246`，不会自动运行成本敏感性测试。
+
+成本敏感性测试是单独路径，必须显式指定场景：
+
+```bash
+./.venv/bin/python -m phase0.cli cost-sensitivity --config config.yaml \
+  --scenario base_research_cost:0.001 \
+  --scenario main_personal_execution:0.00246 \
+  --scenario stress_slippage_0_003:0.003 \
+  --scenario stress_slippage_0_005:0.005
+```
+
+也可以显式使用 `config.yaml` 中的 `cost_sensitivity.scenarios`：
+
+```bash
+./.venv/bin/python -m phase0.cli cost-sensitivity --config config.yaml --use-config-scenarios
+```
 
 完整重建离线历史库：
 
