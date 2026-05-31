@@ -1,27 +1,27 @@
 # Phase 0 Data Source & Quality Report
 
-Generated at: 2026-05-31T04:09:17
+Generated at: 2026-05-31T18:53:58
 
 ## Connectivity
 
 | source | target | status | rows | latest_date | error |
 | --- | --- | --- | --- | --- | --- |
-| tushare | trade_cal | OK | 11 | 2026-05-31 |  |
-| yfinance | ^NDX | OK | 1772 | 2026-05-29 |  |
-| yfinance | ^SOX | OK | 1772 | 2026-05-29 |  |
-| yfinance | ^GSPC | OK | 1772 | 2026-05-29 |  |
-| yfinance | ^VIX | OK | 1773 | 2026-05-29 |  |
-| yfinance | NVDA | OK | 1772 | 2026-05-29 |  |
-| yfinance | AAPL | OK | 1772 | 2026-05-29 |  |
-| yfinance | TSLA | OK | 1772 | 2026-05-29 |  |
-| yfinance | KWEB | OK | 1772 | 2026-05-29 |  |
-| yfinance | CNY=X | OK | 1833 | 2026-05-29 |  |
-| akshare-cn | SZ.300750 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
-| akshare-cn | SH.600519 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
-| akshare-hk | HK.00700 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
-| akshare-hk | HK.09988 | FAIL | 0 |  | ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response')) |
+| tushare | trade_cal | FAIL | 0 |  | HTTPConnectionPool(host='api.tushare.pro', port=80): Max retries exceeded with url: / (Caused by NameResolutionError("HT |
+| yfinance | ^NDX | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | ^SOX | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | ^GSPC | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | ^VIX | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | NVDA | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | AAPL | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | TSLA | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | KWEB | FAIL | 0 |  | empty_or_rate_limited |
+| yfinance | CNY=X | FAIL | 0 |  | empty_or_rate_limited |
+| akshare-cn | SZ.300750 | FAIL | 0 |  | HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fie |
+| akshare-cn | SH.600519 | FAIL | 0 |  | HTTPSConnectionPool(host='push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get?fie |
+| akshare-hk | HK.00700 | FAIL | 0 |  | HTTPSConnectionPool(host='33.push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get? |
+| akshare-hk | HK.09988 | FAIL | 0 |  | HTTPSConnectionPool(host='33.push2his.eastmoney.com', port=443): Max retries exceeded with url: /api/qt/stock/kline/get? |
 | manual-history | pre_run_update | OK | 0 | 2026-05-29 | up_to_date |
-| us-market-history | pre_run_update | OK | 7654 | 2026-05-29 | updated |
+| us-market-history | pre_run_update | OK | 0 | 2026-05-29 | up_to_date; yfinance KWEB returned empty data.; yfinance ^VIX returned empty data.; yfinance CNY=X returned empty data. |
 
 ## Quality Audit
 

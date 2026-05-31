@@ -42,6 +42,14 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md
 ```
 
+项目级流程与标准：
+
+```text
+refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md
+refdocs/WEB_RESEARCH_REPORT_WORKFLOW.md
+refdocs/strategy_explanations/INDEX.md
+```
+
 ## 数据源策略
 
 当前确认的数据源层级：
@@ -256,8 +264,10 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 
 - 主计划：`DEVELOPMENT_PLAN.md`
 - 架构说明：`refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`
+- 策略开发标准：`refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
 - 当前统一周执行附件：`refdocs/todo/WEEKLY_EXECUTION_CHECKLIST.md`
 - 策略候选整理：`refdocs/todo/PHASE0_CANDIDATE_STRATEGIES.md`
+- 候选策略解释索引：`refdocs/strategy_explanations/INDEX.md`
 - 策略开发检查清单：`refdocs/todo/STRATEGY_DEV_CHECKLIST.md`
 - FRED 接入任务单：`refdocs/todo/FRED_IMPLEMENTATION_TASKS.md`
 - Tiingo 接入任务单：`refdocs/todo/TIINGO_IMPLEMENTATION_TASKS.md`

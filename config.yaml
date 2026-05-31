@@ -106,8 +106,20 @@ phase0:
   cost_sensitivity:
     enabled: true
     scenarios:
-      - name: "current_cost"
+      - name: "base_research_cost"
         slippage: 0.001
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "main_personal_execution"
+        slippage: 0.00246
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "stress_slippage_0_003"
+        slippage: 0.003
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "stress_slippage_0_005"
+        slippage: 0.005
         commission: 0.00025
         stamp_duty_sell: 0.0005
       - name: "low_slippage"
@@ -176,7 +188,7 @@ phase0:
     initial_cash: 1000000
     commission: 0.00025
     stamp_duty_sell: 0.0005
-    slippage: 0.001
+    slippage: 0.00246
     strategy_v2:
       mode: "compare"
       compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]

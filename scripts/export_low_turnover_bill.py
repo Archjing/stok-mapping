@@ -176,6 +176,26 @@ def _build_preview_slice(bill_df: pd.DataFrame) -> pd.DataFrame:
     return merged
 
 
+def _filter_date_window(
+    df: pd.DataFrame,
+    *,
+    date_col: str,
+    start: str | None,
+    end: str | None,
+) -> pd.DataFrame:
+    if df.empty or (not start and not end):
+        return df.copy()
+
+    out = df.copy()
+    dates = pd.to_datetime(out[date_col])
+    mask = pd.Series(True, index=out.index)
+    if start:
+        mask &= dates >= pd.Timestamp(start)
+    if end:
+        mask &= dates <= pd.Timestamp(end)
+    return out.loc[mask].copy()
+
+
 def _load_names(db_path: Path, symbols: list[str]) -> dict[str, str]:
     if not db_path.exists() or not symbols:
         return {}
@@ -266,11 +286,14 @@ def _ledger_for_fold(
             daily_pnl=("position_pnl", "sum"),
             buy_amount=("buy_value", "sum"),
             sell_amount=("sell_value", "sum"),
-            trade_cost=("buy_cost", "sum"),
+            buy_cost=("buy_cost", "sum"),
+            sell_cost=("sell_cost", "sum"),
         )
         .sort_values("date")
     )
-    daily["account_total_assets"] = initial_cash + daily["daily_pnl"].cumsum()
+    daily["trade_cost"] = daily["buy_cost"] + daily["sell_cost"]
+    daily["net_daily_pnl"] = daily["daily_pnl"] - daily["trade_cost"]
+    daily["account_total_assets"] = initial_cash + daily["net_daily_pnl"].cumsum()
     daily["stock_assets"] = daily["account_total_assets"] * daily["exposure"].clip(lower=0.0, upper=1.0)
     daily["cash_assets"] = daily["account_total_assets"] - daily["stock_assets"]
     daily["profit"] = daily["account_total_assets"] - initial_cash
@@ -401,6 +424,9 @@ def main() -> int:
     parser.add_argument("--output", default="reports/phase0_low_turnover_bill.csv")
     parser.add_argument("--daily-output", default="reports/phase0_low_turnover_daily_assets.csv")
     parser.add_argument("--preview-output", default="reports/phase0_low_turnover_bill_preview.html")
+    parser.add_argument("--valid-start", default=None, help="Optional inclusive validation date lower bound, e.g. 2018-08-01")
+    parser.add_argument("--valid-end", default=None, help="Optional inclusive validation date upper bound, e.g. 2022-10-31")
+    parser.add_argument("--years", type=int, default=None, help="Optional history lookback override for period validation")
     args = parser.parse_args()
 
     root = Path.cwd()
@@ -413,8 +439,9 @@ def main() -> int:
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
     symbols = _parse_symbol_list(config, root)
     strategy = get_strategy("legacy_momentum_low_turnover_v1")
-    panel = _align_symbol_map(_load_symbol_map(symbols, int(config["years"])))
-    panel = _add_cross_market_to_panel(panel, int(config["years"]), strategy_cfg, None)
+    history_years = int(args.years or config["years"])
+    panel = _align_symbol_map(_load_symbol_map(symbols, history_years))
+    panel = _add_cross_market_to_panel(panel, history_years, strategy_cfg, None)
     names = _load_names(root / config.get("local_history", {}).get("path", ""), panel["symbol"].astype(str).unique().tolist())
 
     all_bills = []
@@ -462,6 +489,8 @@ def main() -> int:
 
     bill_df = pd.concat(all_bills, ignore_index=True) if all_bills else pd.DataFrame()
     daily_df = pd.concat(all_daily, ignore_index=True) if all_daily else pd.DataFrame()
+    bill_df = _filter_date_window(bill_df, date_col="交易日期", start=args.valid_start, end=args.valid_end)
+    daily_df = _filter_date_window(daily_df, date_col="date", start=args.valid_start, end=args.valid_end)
     output_path = root / args.output
     daily_path = root / args.daily_output
     preview_path = root / args.preview_output

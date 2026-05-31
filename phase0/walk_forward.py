@@ -1824,8 +1824,26 @@ def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:
     if not scenarios:
         scenarios = [
             {
-                "name": "current_cost",
+                "name": "base_research_cost",
+                "slippage": 0.001,
+                "commission": base_wcfg.get("commission", 0.0),
+                "stamp_duty_sell": base_wcfg.get("stamp_duty_sell", 0.0),
+            },
+            {
+                "name": "main_personal_execution",
                 "slippage": base_wcfg.get("slippage", 0.0),
+                "commission": base_wcfg.get("commission", 0.0),
+                "stamp_duty_sell": base_wcfg.get("stamp_duty_sell", 0.0),
+            },
+            {
+                "name": "stress_slippage_0_003",
+                "slippage": 0.003,
+                "commission": base_wcfg.get("commission", 0.0),
+                "stamp_duty_sell": base_wcfg.get("stamp_duty_sell", 0.0),
+            },
+            {
+                "name": "stress_slippage_0_005",
+                "slippage": 0.005,
                 "commission": base_wcfg.get("commission", 0.0),
                 "stamp_duty_sell": base_wcfg.get("stamp_duty_sell", 0.0),
             },

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phase 0 Low Turnover Early-Period OOS Report</title>
+  
+<style>
+:root {
+  color-scheme: light;
+  --bg: #eff4fb;
+  --surface: #ffffff;
+  --surface-2: #f8fbff;
+  --border: #d2d9e3;
+  --text: #18212f;
+  --muted: #5f6b7a;
+  --accent: #0f62fe;
+  --accent-soft: #e7f0ff;
+  --good: #0f9d58;
+  --warn: #b7791f;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: linear-gradient(180deg, #f7faff 0%, #edf3fb 100%);
+}
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.06);
+}
+.hero h1 {
+  margin: 0 0 10px;
+  font-size: 28px;
+  line-height: 1.2;
+}
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+.meta-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+}
+.meta-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.meta-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+section {
+  margin-top: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 18px 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+section h2 {
+  margin: 0 0 12px;
+  font-size: 20px;
+  line-height: 1.25;
+}
+.section-note,
+.bullet-notes li,
+.empty-note {
+  color: var(--muted);
+}
+.report-table-wrap {
+  overflow-x: auto;
+}
+.report-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  line-height: 1.35;
+}
+.report-table th,
+.report-table td {
+  border: 1px solid var(--border);
+  padding: 7px 9px;
+  white-space: nowrap;
+  vertical-align: top;
+  background: #fff;
+}
+.report-table th {
+  background: #edf4ff;
+  font-weight: 600;
+  text-align: left;
+}
+.report-table td:not(:first-child) {
+  text-align: right;
+}
+.report-table td:nth-child(2),
+.report-table td:nth-child(3),
+.report-table td:last-child {
+  font-variant-numeric: tabular-nums;
+}
+.bullet-notes {
+  margin: 0;
+  padding-left: 18px;
+}
+.bullet-notes li + li {
+  margin-top: 6px;
+}
+</style>
+
+</head>
+<body>
+  <div class="page">
+    <div class="hero">
+      <h1>Phase 0 Low Turnover Early-Period OOS Report</h1>
+      <div class="meta-grid">
+        <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">legacy_momentum_low_turnover_v1</span></div>
+        <div class="meta-card"><span class="meta-label">连续样本外区间</span><span class="meta-value">2018-08-21 至 2022-10-31</span></div>
+        <div class="meta-card"><span class="meta-label">样本外交易日</span><span class="meta-value">1016</span></div>
+        <div class="meta-card"><span class="meta-label">基准</span><span class="meta-value">SH.000300 / 沪深300</span></div>
+      </div>
+    </div>
+    <section>
+      <h2>结论摘要</h2>
+      <div class="report-table-wrap"><table class="report-table"><thead><tr><th>对象</th><th>总收益</th><th>年化收益</th><th>Sharpe</th><th>最大回撤</th><th>期末资产</th></tr></thead><tbody><tr><td>策略连续 OOS</td><td>86.59%</td><td>16.73%</td><td>1.5285</td><td>-13.17%</td><td>1,865,898.14</td></tr><tr><td>基准 沪深300</td><td>5.47%</td><td>1.33%</td><td>0.1679</td><td>-39.59%</td><td>1,054,724.72</td></tr></tbody></table></div>
+    </section>
+    <section>
+<h2>截至 2021-10-29 的连续资产观察</h2>
+<p class="section-note">这里的观察点用于早期历史区间校验，walk-forward 仍保持 2 年训练 + 1 年验证；报表只截取 2018-08 到 2022-10 的验证期输出。</p>
+<div class="report-table-wrap"><table class="report-table"><thead><tr><th>观察点</th><th>策略连续资产</th><th>基准连续资产</th><th>策略累计收益</th><th>基准累计收益</th></tr></thead><tbody><tr><td>2021-10-29</td><td>1,898,834.80</td><td>1,475,589.56</td><td>89.88%</td><td>47.56%</td></tr></tbody></table></div>
+</section>
+
+    <section>
+      <h2>Fold 收益分解</h2>
+      <div class="report-table-wrap"><table class="report-table"><thead><tr><th>fold</th><th>验证区间</th><th>交易日数</th><th>策略折收益</th><th>基准折收益</th><th>超额收益</th><th>折Sharpe</th><th>折最大回撤</th><th>平均暴露</th></tr></thead><tbody><tr><td>1</td><td>2018-08-21 -> 2019-09-02</td><td>252</td><td>19.33%</td><td>15.68%</td><td>3.64%</td><td>1.7923</td><td>-6.97%</td><td>22.03%</td></tr><tr><td>2</td><td>2019-09-03 -> 2020-09-15</td><td>252</td><td>28.13%</td><td>21.83%</td><td>6.29%</td><td>2.6316</td><td>-5.24%</td><td>26.37%</td></tr><tr><td>3</td><td>2020-09-16 -> 2021-09-29</td><td>252</td><td>25.95%</td><td>3.10%</td><td>22.84%</td><td>2.2239</td><td>-6.80%</td><td>23.80%</td></tr><tr><td>4</td><td>2021-09-30 -> 2022-10-19</td><td>252</td><td>-2.79%</td><td>-21.87%</td><td>19.09%</td><td>-0.1863</td><td>-11.24%</td><td>28.89%</td></tr><tr><td>5</td><td>2022-10-20 -> 2022-10-31</td><td>8</td><td>-0.32%</td><td>-7.09%</td><td>6.77%</td><td>-3.0106</td><td>-0.45%</td><td>16.92%</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>连续曲线尾部快照</h2>
+      <div class="report-table-wrap"><table class="report-table"><thead><tr><th>日期</th><th>策略连续资产</th><th>基准连续资产</th><th>策略累计收益</th><th>基准累计收益</th></tr></thead><tbody><tr><td>2022-10-18</td><td>1,879,130.10</td><td>1,153,794.36</td><td>87.91%</td><td>15.38%</td></tr><tr><td>2022-10-19</td><td>1,871,873.91</td><td>1,135,235.15</td><td>87.19%</td><td>13.52%</td></tr><tr><td>2022-10-20</td><td>1,871,873.91</td><td>1,128,742.13</td><td>87.19%</td><td>12.87%</td></tr><tr><td>2022-10-21</td><td>1,863,361.93</td><td>1,125,122.87</td><td>86.34%</td><td>12.51%</td></tr><tr><td>2022-10-24</td><td>1,864,945.99</td><td>1,092,200.86</td><td>86.49%</td><td>9.22%</td></tr><tr><td>2022-10-25</td><td>1,866,811.34</td><td>1,090,421.29</td><td>86.68%</td><td>9.04%</td></tr><tr><td>2022-10-26</td><td>1,866,440.04</td><td>1,099,274.04</td><td>86.64%</td><td>9.93%</td></tr><tr><td>2022-10-27</td><td>1,865,230.72</td><td>1,091,530.52</td><td>86.52%</td><td>9.15%</td></tr><tr><td>2022-10-28</td><td>1,869,551.23</td><td>1,064,533.39</td><td>86.96%</td><td>6.45%</td></tr><tr><td>2022-10-31</td><td>1,865,898.14</td><td>1,054,724.72</td><td>86.59%</td><td>5.47%</td></tr></tbody></table></div>
+    </section>
+    <section>
+      <h2>解释</h2>
+      <ul class="bullet-notes">
+        <li>账单预览表中的 1000000 重置点来自 walk-forward 新折开始，不代表策略把前一折收益回吐到 100 万。</li>
+        <li>这份报表把四个验证折按真实时间顺序拼成一条连续 OOS 曲线，用于回答“长期到底赚没赚钱”。</li>
+        <li>这份报表只解决连续 OOS 与基准对比问题；行情分段验证另列为下一项任务。</li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

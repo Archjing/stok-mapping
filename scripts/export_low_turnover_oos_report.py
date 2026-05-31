@@ -183,6 +183,10 @@ def _build_report_html(
     benchmark_symbol: str,
     benchmark_name: str,
     fold_breakdown: pd.DataFrame,
+    *,
+    report_title: str,
+    checkpoint_date: str | None,
+    checkpoint_note: str,
 ) -> str:
     merged = stitched.merge(
         benchmark[["date", "benchmark_daily_return", "benchmark_asset", "benchmark_profit_rate_continuous"]],
@@ -201,7 +205,7 @@ def _build_report_html(
     start_date = merged["date"].iloc[0].date()
     end_date = merged["date"].iloc[-1].date()
     total_days = int(len(merged))
-    preview_row = _checkpoint_row("截至 2025-05-30", stitched, benchmark, "2025-05-30")
+    preview_row = _checkpoint_row("观察点", stitched, benchmark, checkpoint_date) if checkpoint_date else {}
     preview_df = pd.DataFrame([preview_row]) if preview_row else pd.DataFrame()
 
     curve_tail = merged[["date", "strategy_asset", "benchmark_asset", "strategy_profit_rate_continuous", "benchmark_profit_rate_continuous"]].tail(10).copy()
@@ -216,8 +220,8 @@ def _build_report_html(
     if not preview_df.empty:
         preview_html = (
             "<section>\n"
-            "<h2>截至 2025-05-30 的连续资产校正（对应预览阅读时间点）</h2>\n"
-            "<p class=\"section-note\">这一步专门用来纠正账单预览的阅读偏差：这里的 2025-05-30 是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。</p>\n"
+            f"<h2>截至 {checkpoint_date} 的连续资产观察</h2>\n"
+            f"<p class=\"section-note\">{checkpoint_note}</p>\n"
             f"{_html_table(preview_df)}\n"
             "</section>\n"
         )
@@ -346,13 +350,13 @@ section h2 {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Phase 0 Low Turnover Continuous OOS Report</title>
+  <title>{report_title}</title>
   {style}
 </head>
 <body>
   <div class="page">
     <div class="hero">
-      <h1>Phase 0 Low Turnover Continuous OOS Report</h1>
+      <h1>{report_title}</h1>
       <div class="meta-grid">
         <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">legacy_momentum_low_turnover_v1</span></div>
         <div class="meta-card"><span class="meta-label">连续样本外区间</span><span class="meta-value">{start_date} 至 {end_date}</span></div>
@@ -394,6 +398,12 @@ def main() -> None:
     parser.add_argument("--report-output", type=Path, default=Path("reports/phase0_low_turnover_oos_report.html"))
     parser.add_argument("--curve-output", type=Path, default=Path("reports/phase0_low_turnover_oos_curve.csv"))
     parser.add_argument("--fold-output", type=Path, default=Path("reports/phase0_low_turnover_oos_fold_compare.csv"))
+    parser.add_argument("--title", default="Phase 0 Low Turnover Continuous OOS Report")
+    parser.add_argument("--checkpoint-date", default="2025-05-30")
+    parser.add_argument(
+        "--checkpoint-note",
+        default="这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+    )
     args = parser.parse_args()
 
     config = load_config(args.config)
@@ -424,7 +434,16 @@ def main() -> None:
     curve_df["excess_profit_rate"] = curve_df["strategy_profit_rate_continuous"] - curve_df["benchmark_profit_rate_continuous"]
 
     fold_breakdown = _fold_breakdown(stitched, benchmark)
-    report = _build_report_html(stitched, benchmark, benchmark_symbol, benchmark_name, fold_breakdown)
+    report = _build_report_html(
+        stitched,
+        benchmark,
+        benchmark_symbol,
+        benchmark_name,
+        fold_breakdown,
+        report_title=args.title,
+        checkpoint_date=args.checkpoint_date,
+        checkpoint_note=args.checkpoint_note,
+    )
 
     args.report_output.parent.mkdir(parents=True, exist_ok=True)
     curve_df.to_csv(args.curve_output, index=False, encoding="utf-8")
