@@ -21,9 +21,10 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
 - 已增加开发期定时任务：交易日 `16:30` 日线增量更新，每周一 `03:30` 财务因子更新。
 - 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，账单导出和策略解释性输出已补齐基础版本。
-- 当前主阻塞点不是数据管线或 Sharpe 门槛，而是账户级仿真约束、公告日 PTI 校验和日报接入。
+- 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
+- 当前主阻塞点不是数据管线或 Sharpe 门槛，而是更长期稳定性验证、数据源升级和日常研判自动化。
 
-最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum_low_turnover_v1`，总体 verdict 为 `PASS`：`annualized_return_mean = 0.1440`，`sharpe_mean = 1.0886`，`max_drawdown_mean = -0.1012`，`win_rate_mean = 0.5129`，`turnover_annual_mean = 1.50`。
+最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum_low_turnover_v1`，总体 verdict 为 `PASS`：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`。主测试成本口径为 `slippage = 0.00246`。
 
 ## 架构层次
 
@@ -152,6 +153,68 @@ uv sync
 ```bash
 ./.venv/bin/python -m phase0.cli cost-sensitivity --config config.yaml --use-config-scenarios
 ```
+
+导出当前主策略账单、日资产表和 HTML 预览：
+
+```bash
+./.venv/bin/python -m phase0.cli bill --config config.yaml
+```
+
+账单使用 `phase0.execution` 中的账户级仿真 v2 参数，当前默认包含 `price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`、涨跌停检查和停牌检查。输出会记录全部成交、部分成交、未成交及原因。
+
+按账户级仿真规则重跑 effective gate：
+
+```bash
+./.venv/bin/python -m phase0.cli execution-gate --config config.yaml
+```
+
+`execution-gate` 是独立于默认 `phase0_effectiveness_report.md` 的“实盘仿真回测”管线。默认读取 `config.yaml` 中的 `live_execution_backtest.default_profile`，再按名称加载 `live_execution_backtest.profiles.<profile>` 的完整参数组合，不在脚本里硬编码 profile 参数。
+
+当前内置两套 profile：
+
+- `research`：策略研究回测，当前使用 `slippage: 0.001`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: close`，并关闭涨跌停 / 停牌检查和流动性参与率限制。
+- `live`：实盘仿真回测，当前使用 `slippage: 0.00246`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`，并开启涨跌停和停牌检查。
+
+显式指定 profile：
+
+```bash
+./.venv/bin/python -m phase0.cli execution-gate --config config.yaml --profile research
+./.venv/bin/python -m phase0.cli execution-gate --config config.yaml --profile live
+```
+
+临时覆盖单项执行参数，用于压力测试或敏感性检查：
+
+```bash
+./.venv/bin/python -m phase0.cli execution-gate --config config.yaml \
+  --profile live \
+  --slippage 0.003 \
+  --commission 0.00025 \
+  --stamp-duty-sell 0.0005 \
+  --price-mode conservative \
+  --max-participation-rate 0.03
+```
+
+默认输出目录为：
+
+```text
+reports/live_execution_backtest/
+```
+
+可用 `--output-dir` 为不同 profile 或压力测试生成独立批次目录：
+
+```bash
+./.venv/bin/python -m phase0.cli execution-gate --config config.yaml \
+  --profile live \
+  --output-dir reports/live_execution_backtest/live_profile
+```
+
+导出 07:30 盘前观察池：
+
+```bash
+./.venv/bin/python -m phase0.cli premarket --config config.yaml
+```
+
+观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。
 
 完整重建离线历史库：
 

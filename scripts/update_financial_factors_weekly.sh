@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="/home/zj/workspace/stok-mapping"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PYTHON_BIN="${PROJECT_ROOT}/.venv/bin/python"
 LOCK_FILE="${PROJECT_ROOT}/logs/financial_factors_weekly.lock"
 UPDATE_CMD=("${PYTHON_BIN}" -m phase0.cli update-financials --config config.yaml)

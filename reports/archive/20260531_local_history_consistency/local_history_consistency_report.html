@@ -33,7 +33,8 @@ body {
 .hero p { margin: 0; color: var(--muted); }
 section { margin-top: 18px; padding: 18px 20px; }
 section h2 { margin: 0 0 12px; font-size: 20px; }
-.report-table-wrap { overflow-x: auto; }
+.report-table-wrap { overflow: auto;
+  max-height: 70vh; }
 .report-table {
   width: max-content;
   min-width: 100%;
@@ -48,18 +49,35 @@ section h2 { margin: 0 0 12px; font-size: 20px; }
   vertical-align: top;
   background: #fff;
 }
-.report-table th { background: #edf4ff; text-align: left; font-weight: 600; }
+.report-table th { position: sticky; top: 0; z-index: 1; background: #edf4ff; text-align: left; font-weight: 600; }
 .report-table td:not(:first-child) { text-align: right; }
 .report-table td:first-child:nth-last-child(n+2),
 .report-table td:nth-child(2):nth-last-child(n+1) { font-variant-numeric: tabular-nums; }
 .section-note { margin: 0 0 12px; color: var(--muted); }
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 </style>
 
 </head>
 <body>
   <div class="page">
     <div class="hero">
-      <h1>Local History Consistency Report</h1>
+      <div class="title-row"><h1>Local History Consistency Report</h1><span class="generated-at">生成时间：2026-05-31 06:35</span></div>
       <p>外部来源：smoke_test | 校验对象：本地 SQLite 日线库 | 复权口径：qfq</p>
     </div>
     <section>

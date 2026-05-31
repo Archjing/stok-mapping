@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -187,7 +188,8 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 .table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70vh;
   border: 1px solid var(--border);
   background: var(--surface);
 }
@@ -214,6 +216,9 @@ td:nth-child(3) {
   text-align: left;
 }
 th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: #eaf1f8;
   font-weight: 700;
 }
@@ -230,6 +235,20 @@ th {
     grid-template-columns: 1fr;
   }
 }
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+}
 </style>
 """
     return f"""<!DOCTYPE html>
@@ -243,7 +262,10 @@ th {
 <body>
   <main class="page">
     <div class="hero">
-      <h1>低换手经典动量：早期区间与当前区间对比</h1>
+      <div class="title-row">
+        <h1>低换手经典动量：早期区间与当前区间对比</h1>
+        <span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
+      </div>
       <p class="note">两段都沿用 walk-forward 的 2 年训练 + 1 年验证方法。该表用于观察策略是否只适配最近区间。</p>
     </div>
     <div class="decision">{html.escape(conclusion)}</div>

@@ -1,0 +1,2 @@
+﻿pti_verdict,rows,symbols,financial_lag_days,announce_date_coverage,missing_announce_date_rows,missing_report_date_rows,announce_before_report_rows,duplicate_same_announce_rows,unresolved_available_date_rows,earliest_report_date,latest_report_date,earliest_available_date,latest_available_date,pti_rule
+PASS,167340,5611,1,1.0000,0,0,0,0,0,2018-06-30,2026-03-31,2018-07-11,2026-05-22,strategy may use a financial row only when trade_date >= announce_date + financial_lag_days

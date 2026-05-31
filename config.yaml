@@ -131,15 +131,16 @@ phase0:
         commission: 0.0
         stamp_duty_sell: 0.0
   manual_history_import:
-    qfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily_qfq.zip"
-    bfq_zip: "/home/zj/workspace/tmp/A股数据_zip/daily.zip"
-    stock_list_csv: "/home/zj/workspace/tmp/A股数据_zip/股票列表.csv"
-    trading_calendar_csv: "/home/zj/workspace/tmp/A股数据_zip/交易日历.csv"
-    delisted_stock_csv: "/home/zj/workspace/tmp/A股数据_zip/退市股票列表.csv"
-    index_list_csv: "/home/zj/workspace/tmp/A股数据_zip/指数/指数列表.csv"
-    csi_index_list_csv: "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数列表.csv"
-    index_daily_zip: "/home/zj/workspace/tmp/A股数据_zip/指数/指数_日_kline.zip"
-    csi_index_daily_zip: "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数_日_kline.zip"
+    # Set A_SHARE_DATA_DIR to the external raw data directory in .env or shell.
+    qfq_zip: "${A_SHARE_DATA_DIR}/daily_qfq.zip"
+    bfq_zip: "${A_SHARE_DATA_DIR}/daily.zip"
+    stock_list_csv: "${A_SHARE_DATA_DIR}/股票列表.csv"
+    trading_calendar_csv: "${A_SHARE_DATA_DIR}/交易日历.csv"
+    delisted_stock_csv: "${A_SHARE_DATA_DIR}/退市股票列表.csv"
+    index_list_csv: "${A_SHARE_DATA_DIR}/指数/指数列表.csv"
+    csi_index_list_csv: "${A_SHARE_DATA_DIR}/指数/中证指数列表.csv"
+    index_daily_zip: "${A_SHARE_DATA_DIR}/指数/指数_日_kline.zip"
+    csi_index_daily_zip: "${A_SHARE_DATA_DIR}/指数/中证指数_日_kline.zip"
     output_db: "data/manual_history/a_share_history.sqlite"
     years: 10
     chunk_size: 250000
@@ -307,4 +308,63 @@ phase0:
             cash_flow_quality: 0.20
             profit_growth: 0.20
             revenue_growth: 0.15
-            low_debt: 0.15
+          low_debt: 0.15
+  execution:
+    price_mode: "next_open"
+    conservative_price_buffer: 0.001
+    lot_size: 100
+    max_participation_rate: 0.05
+    enable_limit_check: true
+    enable_suspension_check: true
+    limit_up_down_pct:
+      default: 0.10
+      star: 0.20
+      chinext: 0.20
+      bj: 0.30
+  live_execution_backtest:
+    name: "实盘仿真回测"
+    default_profile: "live"
+    gate_source: "account_daily_assets"
+    output_dir: "reports/live_execution_backtest"
+    bill_output: "reports/live_execution_backtest/live_execution_bill.csv"
+    daily_output: "reports/live_execution_backtest/live_execution_daily_assets.csv"
+    preview_output: "reports/live_execution_backtest/live_execution_bill_preview.html"
+    fold_output: "reports/live_execution_backtest/live_execution_walk_forward_folds.csv"
+    report_output: "reports/live_execution_backtest/live_execution_effectiveness_report.md"
+    profiles:
+      research:
+        name: "策略研究回测"
+        walk_forward:
+          slippage: 0.001
+          commission: 0.00025
+          stamp_duty_sell: 0.0005
+        execution:
+          price_mode: "close"
+          conservative_price_buffer: 0.001
+          lot_size: 100
+          max_participation_rate: 0.0
+          enable_limit_check: false
+          enable_suspension_check: false
+          limit_up_down_pct:
+            default: 0.10
+            star: 0.20
+            chinext: 0.20
+            bj: 0.30
+      live:
+        name: "实盘仿真回测"
+        walk_forward:
+          slippage: 0.00246
+          commission: 0.00025
+          stamp_duty_sell: 0.0005
+        execution:
+          price_mode: "next_open"
+          conservative_price_buffer: 0.001
+          lot_size: 100
+          max_participation_rate: 0.05
+          enable_limit_check: true
+          enable_suspension_check: true
+          limit_up_down_pct:
+            default: 0.10
+            star: 0.20
+            chinext: 0.20
+            bj: 0.30

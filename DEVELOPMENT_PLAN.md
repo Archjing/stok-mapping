@@ -2,8 +2,8 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-05-31（连续 OOS HTML 报表与任务清单同步）
-> 状态：**Phase 0 已通过；当前进入策略收口与 Phase 1 准备**
+> 最后修订：2026-06-01（实盘仿真 profile、OOS profile 与 HTML 报表体验收口）
+> 状态：**Phase 0 已通过；账户级仿真与报表链路已收口，当前进入 Phase 1 / Week 2 准备**
 > 法律声明：本工具定位为**量化研究与风险提示工具**，所有输出属于观察池、信号等级、风险暴露、情景推演和策略验证结果，不构成任何形式的投资建议、荐股或交易指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
 
@@ -20,8 +20,18 @@
 - 策略层已拆为 `phase0/strategies/` 注册表结构
 - 候选样本治理已固化，当前 compare 已统一为 portfolio 口径
 - 当前 selected candidate 已切换为 `legacy_momentum_low_turnover_v1`
+- 主测试默认成本口径已切换为 `slippage = 0.00246`，用于更贴近普通个人实盘执行假设
+- 成本敏感性测试已从 `phase0 run` 中拆出，必须通过单独 CLI 显式指定场景再运行
 - 连续 OOS 资金曲线与沪深300基准对比报表已生成，已纠正 walk-forward 分折重置带来的阅读偏差
-- 当前主阻塞点不再是 Sharpe 门槛，而是**把通过结果沉淀为更完整的可解释输出、账户仿真约束、行情分段验证和日常研判链路**
+- 账单导出已接入正式 CLI / report 链路，`phase0 run` 会同步生成账单、日资产表和 HTML 预览
+- 账户级账单已补齐 A 股 `100` 股整手成交、现金约束、卖出回款和交易成本字段
+- 账户级仿真 v2 已补齐 `execution.price_mode`、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留
+- `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值
+- 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
+- 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
+- `07:30` 盘前观察池已接入 CLI，按最近交易日信号输出持仓、候选、权重和观察理由
+- HTML 报表体验已统一：标题右侧显示生成时间，宽表按 `96vw` 横向滚动，长表按 `70vh` 纵向滚动，表头固定
+- 当前主阻塞点不再是 Sharpe 门槛，而是**把通过策略转入更长期的稳定性验证、数据源升级和日常研判自动化**
 
 ### 当前主线
 
@@ -36,7 +46,7 @@
 
 ### 当前选中候选与门槛状态
 
-根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-31 04:11:56）：
+根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-31 18:59:23，主测试 `slippage = 0.00246`）：
 
 - 当前 selected candidate：`legacy_momentum_low_turnover_v1`
 - 当前总 verdict：`PASS`
@@ -49,11 +59,11 @@
 | 指标 | 当前值 | 门槛 | 状态 |
 |------|--------|------|------|
 | `selected_candidate_eligible` | `True` | `True` | PASS |
-| `annualized_return_mean` | `0.1440` | `> 0` | PASS |
-| `sharpe_mean` | `1.0886` | `> 0.5` | PASS |
-| `max_drawdown_mean` | `-0.1012` | `> -0.25` | PASS |
-| `win_rate_mean` | `0.5129` | `> 0.45` | PASS |
-| `oos_return_decay_ratio` | `-2.1206` | `< 0.30` | PASS |
+| `annualized_return_mean` | `0.1331` | `> 0` | PASS |
+| `sharpe_mean` | `1.0083` | `> 0.5` | PASS |
+| `max_drawdown_mean` | `-0.1042` | `> -0.25` | PASS |
+| `win_rate_mean` | `0.5110` | `> 0.45` | PASS |
+| `oos_return_decay_ratio` | `-2.4116` | `< 0.30` | PASS |
 
 解释：
 
@@ -61,23 +71,26 @@
 - 回测窗口已扩大到 7 年，使 portfolio 候选均达到 `4` 个 fold 的最低治理门槛。
 - `legacy_momentum_low_turnover_v1` 已替代旧 `legacy_momentum` 成为当前主候选。
 - 低换手、宽持有区间、较慢调仓与换手惩罚显著降低了年化换手：`13.48 -> 1.50`。
+- 在 `base_research_cost`、`main_personal_execution`、`stress_slippage_0_003`、`stress_slippage_0_005` 等场景下，低换手候选仍是主要有效候选；但成本敏感性属于单独验证路径，不再混入每次主测试。
 
 ### 当前工作重心
 
 当前阶段最优先的是：
 
 1. 固化 `legacy_momentum_low_turnover_v1` 的解释链路，保持 report / gate / bill / 变更日志口径一致。
-2. 把账单、资产轨迹、买卖原因和策略参数整理为标准化导出产物。
-3. 在账户仿真里补齐 A 股整手成交、现金约束和调仓执行细节。
-4. 在财务因子进入更深历史回测前完成公告日 point-in-time 校验。
-5. 补连续 OOS 资金曲线、基准对比和行情分段验证，区分策略有效性与行情顺风。
+2. 维护账单、资产轨迹、买卖原因和策略参数的标准 CLI / report 链路。
+3. 维护账户级仿真 v2，并在后续真实账户复盘时接入本地持仓 / 成交回报 CSV 对账。
+4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
+5. 基于已通过的财务因子 PTI 校验，谨慎恢复质量成长 / 多因子后续验证。
+6. 将盘前观察池接入定时任务和日报摘要，形成可复盘的日常研判记录。
+7. 按 Week 2 顺序先推进 FRED 宏观 / 利率 / VIX 数据源，再推进 Tiingo 美股个股 / ETF 主源。
 
 当前**不是**优先做的事：
 
 - 再盲目堆叠新的主候选策略
 - 扩展跨市场主 ranker
 - 让 LLM 直接参与交易决策
-- 在账户级仿真约束未补齐前进入实盘化
+- 把账户级仿真结果误解为实盘可自动下单
 
 ### 通过后四步执行顺序
 
@@ -85,10 +98,13 @@
 
 | 优先级 | 任务 | 现在做它的理由 | 完成标准 |
 |------|------|------|------|
-| `P0` | 将账单导出纳入正式 `CLI / report` 链路 | 当前账单、日资产表和 HTML 预览仍依赖单独脚本，先把产物固化，后续验证、归档和日报才能共用同一口径。 | `phase0 run` 后可稳定生成账单、日资产表和 HTML 预览，不再依赖手工单跑脚本。 |
-| `P0` | 增加 A 股整手成交、现金约束和账户级撮合细节 | 当前回测更偏目标权重层，距离真实 A 股账户执行还有差距；不补这层，账单的实盘参考价值有限。 | 回测能体现 `100` 股整手、买入受现金限制、卖出回笼现金，以及调仓后现金/持仓/总资产联动。 |
-| `P1` | 完成财务因子公告日 point-in-time 校验方案 | 后续质量成长、多因子扩展都依赖财务字段，必须先封住未来函数争议。 | 有明确校验方案和结论，能证明历史回测只使用当时已公告的数据。 |
-| `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 日报或观察池能直接引用 `legacy_momentum_low_turnover_v1` 的当日候选、权重和主要理由。 |
+| `P0` | 将账单导出纳入正式 `CLI / report` 链路 | 当前账单、日资产表和 HTML 预览需要固化为标准产物，后续验证、归档和日报才能共用同一口径。 | 已完成。`phase0 run` 与 `phase0 bill` 可稳定生成账单、日资产表和 HTML 预览。 |
+| `P0` | 增加 A 股整手成交、现金约束和账户级撮合细节 | 当前回测更偏目标权重层，距离真实 A 股账户执行还有差距；不补这层，账单的实盘参考价值有限。 | 已完成。账单体现 `100` 股整手、买入受现金限制、卖出回笼现金，以及现金/持仓/总资产联动。 |
+| `P1` | 账户级仿真 v2：A 股真实交易约束增强 | 当前账单已完成账户级 v1，但仍缺次日开盘/保守成交价、涨跌停、停牌、流动性和未成交记录。 | 已完成。账单能展示全部成交、部分成交、未成交及原因；盘前观察池显示执行风险提示；真实账户 CSV 对账格式已预留。 |
+| `P1` | 区分策略研究与实盘仿真 profile | 同一策略在研究口径和接近实盘口径下参数不同，混用会导致报告不可比较。 | 已完成。`execution-gate` 与 `oos-report` 支持 `--profile research/live`，并从 `config.yaml` 读取参数组合。 |
+| `P1` | 统一 HTML 报表展示规范 | 报表需要适合人工复核，长表和宽表必须可读、可滚动、可定位生成时间。 | 已完成。所有现有 HTML 与生成脚本已补生成时间、横纵滚动和固定表头。 |
+| `P1` | 完成财务因子公告日 point-in-time 校验方案 | 后续质量成长、多因子扩展都依赖财务字段，必须先封住未来函数争议。 | 已完成。`reports/phase0_financial_pti_report.html` 当前结论为 `PASS`。 |
+| `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 已完成。`phase0 premarket` 输出候选、权重、理由和 HTML 报告。 |
 
 补充约束：
 
@@ -567,15 +583,16 @@ Phase 0 已完成基础闭环验证：
 
 最新 gate 中：
 
-- `legacy_momentum_low_turnover_v1`：`annualized_return_mean = 0.1440`
-- `legacy_momentum_low_turnover_v1`：`sharpe_mean = 1.0886`
-- `legacy_momentum_low_turnover_v1`：`max_drawdown_mean = -0.1012`
-- `legacy_momentum_low_turnover_v1`：`win_rate_mean = 0.5129`
+- `legacy_momentum_low_turnover_v1`：`annualized_return_mean = 0.1331`
+- `legacy_momentum_low_turnover_v1`：`sharpe_mean = 1.0083`
+- `legacy_momentum_low_turnover_v1`：`max_drawdown_mean = -0.1042`
+- `legacy_momentum_low_turnover_v1`：`win_rate_mean = 0.5110`
 - `legacy_momentum_low_turnover_v1`：`turnover_annual_mean = 1.50`
+- 主测试成本口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
 
 因此当前真实缺口变为：
 
-1. 把通过结论沉淀成标准化账单、资产轨迹和买卖原因导出。
+1. 把账单导出从独立脚本进一步沉淀为标准 CLI / report 链路。
 2. 在账户仿真层补齐 A 股整手成交、现金约束和更贴近实盘的执行假设。
 3. 完成财务因子公告日 point-in-time 校验，避免后续扩展时引入未来函数争议。
 
@@ -796,10 +813,16 @@ stok-mapping/
 - 回测窗口已从 `5` 年扩大到 `7` 年，portfolio 候选均达到 `4` 个 fold。
 - 财务因子历史已扩展到 `32` 个季度，覆盖 `2018-06-30` 至 `2026-03-31`。
 - 已新增成本敏感性报告，输出 current / low-slippage / zero-cost 三档。
+- 主测试已改为默认 `slippage = 0.00246`，成本敏感性测试已改为单独 CLI 路径，需显式指定场景运行。
 - 已修复财务因子 point-in-time merge 的 datetime dtype 边界问题。
 - 已新增 `legacy_momentum_low_turnover_v1`，并通过完整 Phase 0 gate。
 - 已生成低换手策略账单 CSV、资产日表和 HTML 预览。
+- 已将低换手策略连续 OOS 报表改为内嵌 CSS 的 HTML 文件。
+- 已为账单导出脚本增加行情面板缓存，减少重复生成账单时的行情加载和对齐成本。
 - 已在通过策略和回测关键代码块补充中文注释。
+- 已完成账户级仿真 v2，覆盖成交价口径、整手、现金、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
+- 已将 `execution-gate` 与 `oos-report` 做成 profile 化管线，支持 `research` / `live` 两类参数组合。
+- 已统一 HTML 报表展示规范：生成时间、横向滚动、纵向滚动、固定表头。
 
 ### 本周候选方向
 
@@ -837,20 +860,27 @@ stok-mapping/
 - [x] 扩展 portfolio 候选的有效 fold 覆盖
 - [x] 保持 compare / report / gate / change log 同口径输出
 - [x] 加入成本敏感性报告，区分信号无效和成本吞噬
+- [x] 将主测试默认滑点更新为 `0.00246`
+- [x] 将成本敏感性测试拆成显式 CLI 路径，避免每次主测试自动跑压力场景
 - [x] 将财务因子历史扩展到 32 个季度
 - [x] 修复财务因子 point-in-time merge 的 datetime dtype 边界问题
 - [x] 优先修复 Sharpe 缺口
 - [x] 设计低换手 / 延长持有 / slippage-aware 参数选择方案
 - [x] 跑完整 Phase 0，正式确认 `legacy_momentum_low_turnover_v1` 替代 `legacy_momentum`
 - [x] 生成低换手策略账单 CSV、资产日表与 HTML 预览
+- [x] 为账单导出脚本增加行情面板缓存与 `--refresh-cache` / `--no-panel-cache` 控制
 - [x] 在通过策略和回测代码补充中文注释
-- [ ] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
-- [ ] 将账单导出纳入标准 CLI / report 链路
-- [ ] 增加 A 股整手成交、现金约束和账户级撮合细节
-- [ ] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
+- [x] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
+- [x] 将账单导出纳入标准 CLI / report 链路
+- [x] 增加 A 股整手成交、现金约束和账户级撮合细节
+- [x] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
 - [x] 补连续样本外资金曲线验证，消除 walk-forward 分折重置造成的误读
 - [x] 生成“连续 OOS 资金曲线 + 基准对比 + 各 fold 收益分解”HTML 报表
-- [ ] 补行情分段验证，区分顺风行情、震荡行情和回撤阶段的表现
+- [x] 补行情分段验证，区分顺风行情、震荡行情和回撤阶段的表现
+- [x] 推进账户级仿真 v2：成交价口径、涨跌停、停牌、流动性、未成交原因和真实账户对账预留
+- [x] 将 `execution-gate` 参数 profile 化，区分策略研究与实盘仿真回测
+- [x] 将 `oos-report` 参数 profile 化，保持与 `execution-gate` 相同的 `research` / `live` 逻辑
+- [x] 统一 HTML 报表展示体验：生成时间、横纵滚动、固定表头
 
 ### 条件满足后再推进
 
@@ -862,7 +892,7 @@ stok-mapping/
 - [ ] 优先引入 FRED 作为宏观 / 利率 / VIX 主源
 - [ ] 再引入 Tiingo 作为美股个股 / ETF 主源
 - [ ] 保留 `yfinance` 作为 fallback，不做一次性全替换
-- [ ] 强化 `07:30` 盘前日报自动生成链路
+- [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档
 - [ ] 精修映射标的池与行业层分析
 - [ ] 在不破坏当前应用导向的前提下，引入 sklearn 基线模型辅助策略研究
 

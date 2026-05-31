@@ -4,6 +4,7 @@ import argparse
 import html
 import sqlite3
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,15 @@ from phase0.walk_forward import (
     _load_symbol_cached,
     _load_symbol_map,
 )
+
+
+DEFAULT_BILL_OUTPUT = "reports/phase0_low_turnover_bill.csv"
+DEFAULT_DAILY_OUTPUT = "reports/phase0_low_turnover_daily_assets.csv"
+DEFAULT_PREVIEW_OUTPUT = "reports/phase0_low_turnover_bill_preview.html"
+DEFAULT_PANEL_CACHE = "reports/cache/low_turnover_panel.pkl"
+DEFAULT_PREVIEW_HEAD_ROWS = 120
+DEFAULT_PREVIEW_TAIL_ROWS = 120
+PREVIEW_SCROLL_WIDTH_VW = 96
 
 
 def _format_preview_html(df: pd.DataFrame, *, total_rows: int) -> str:
@@ -55,20 +65,31 @@ body {
   max-width: 100%;
 }
 .meta {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
   margin-bottom: 16px;
 }
 .meta h1 {
-  margin: 0 0 6px;
+  margin: 0;
   font-size: 22px;
   line-height: 1.2;
 }
 .meta p {
-  margin: 0;
+  flex-basis: 100%;
+  margin: -4px 0 0;
   color: var(--muted);
   font-size: 14px;
 }
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+}
 .bill-preview-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70vh;
+  max-width: 96vw;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
@@ -79,6 +100,7 @@ body {
   line-height: 1.35;
   width: max-content;
   min-width: 100%;
+  max-width: none;
 }
 .bill-preview th,
 .bill-preview td {
@@ -108,6 +130,15 @@ body {
   text-align: center;
   white-space: normal;
 }
+.bill-preview tr.status-full td {
+  background: #ffffff;
+}
+.bill-preview tr.status-partial td {
+  background: #fff7e6;
+}
+.bill-preview tr.status-unfilled td {
+  background: #fff0f0;
+}
 </style>
 """
         header = "".join(f"<th>{html.escape(str(col))}</th>" for col in visible_columns)
@@ -126,13 +157,22 @@ body {
                 value = "" if pd.isna(row[col]) else str(row[col])
                 cls = ' class="param-cell"' if col == "策略参数" else ""
                 cells.append(f"<td{cls}>{html.escape(value)}</td>")
-            rows.append("<tr>" + "".join(cells) + "</tr>")
+            status = str(row.get("交易状态", ""))
+            row_cls = ""
+            if status == "全部成交":
+                row_cls = ' class="status-full"'
+            elif status == "部分成交":
+                row_cls = ' class="status-partial"'
+            elif status == "未成交":
+                row_cls = ' class="status-unfilled"'
+            rows.append(f"<tr{row_cls}>" + "".join(cells) + "</tr>")
         body = (
             style
             + '<div class="page">\n'
             + '<div class="meta">\n'
             + "<h1>Phase 0 Low Turnover Bill Preview</h1>\n"
-            + f"<p>Rows: {total_rows} | Preview: first {len(df)} rows</p>\n"
+            + f'<span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>\n'
+            + f"<p>Full CSV rows: {total_rows} | Dashboard rows rendered: {len(df)}</p>\n"
             + "</div>\n"
             + '<div class="bill-preview-wrap">\n'
             + '<table class="bill-preview">\n'
@@ -145,33 +185,36 @@ body {
     return "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Phase 0 Low Turnover Bill Preview</title>\n</head>\n<body>\n" + body + "\n</body>\n</html>\n"
 
 
-def _build_preview_slice(bill_df: pd.DataFrame) -> pd.DataFrame:
+def _build_preview_slice(
+    bill_df: pd.DataFrame,
+    *,
+    head_rows: int = DEFAULT_PREVIEW_HEAD_ROWS,
+    tail_rows: int = DEFAULT_PREVIEW_TAIL_ROWS,
+) -> pd.DataFrame:
     if bill_df.empty:
         return bill_df.copy()
 
     preview = bill_df.copy()
     preview["交易日期"] = pd.to_datetime(preview["交易日期"])
-    first_date = preview["交易日期"].min()
-    last_date = preview["交易日期"].max()
-    first_cutoff = first_date + pd.DateOffset(years=1)
-    last_cutoff = last_date - pd.DateOffset(years=1)
-
-    first_year = preview[preview["交易日期"] < first_cutoff].copy()
-    last_year = preview[preview["交易日期"] >= last_cutoff].copy()
-
-    if first_year.empty or last_year.empty:
+    head_rows = max(0, int(head_rows))
+    tail_rows = max(0, int(tail_rows))
+    max_direct_rows = head_rows + tail_rows
+    if len(preview) <= max_direct_rows or max_direct_rows <= 0:
         merged = preview.copy()
         merged["__row_type__"] = ""
         merged["交易日期"] = merged["交易日期"].dt.strftime("%Y-%m-%d %H:%M:%S")
         return merged
 
+    first_part = preview.head(head_rows).copy()
+    last_part = preview.tail(tail_rows).copy()
+    omitted_count = max(0, len(preview) - len(first_part) - len(last_part))
     omitted = {col: "" for col in preview.columns}
-    omitted["交易日期"] = "---- 中间数据省略不展示 ----"
+    omitted["交易日期"] = f"---- 中间 {omitted_count} 行完整交易记录省略不展示，请查看 CSV 全量账单 ----"
     omitted["__row_type__"] = "omitted"
 
-    first_year["__row_type__"] = ""
-    last_year["__row_type__"] = ""
-    merged = pd.concat([first_year, pd.DataFrame([omitted]), last_year], ignore_index=True)
+    first_part["__row_type__"] = ""
+    last_part["__row_type__"] = ""
+    merged = pd.concat([first_part, pd.DataFrame([omitted]), last_part], ignore_index=True)
     merged["交易日期"] = merged["交易日期"].astype(str)
     return merged
 
@@ -327,6 +370,154 @@ def _fold_windows(panel: pd.DataFrame, train_years: int, validate_years: int, mi
     return folds
 
 
+def _execution_settings(config: dict[str, Any]) -> dict[str, Any]:
+    cfg = config.get("execution", {})
+    limit_cfg = cfg.get("limit_up_down_pct", {})
+    return {
+        "price_mode": str(cfg.get("price_mode", "next_open")),
+        "conservative_price_buffer": float(cfg.get("conservative_price_buffer", 0.001)),
+        "lot_size": int(cfg.get("lot_size", 100)),
+        "max_participation_rate": float(cfg.get("max_participation_rate", 0.05)),
+        "enable_limit_check": bool(cfg.get("enable_limit_check", True)),
+        "enable_suspension_check": bool(cfg.get("enable_suspension_check", True)),
+        "limit_up_down_pct": {
+            "default": float(limit_cfg.get("default", 0.10)),
+            "star": float(limit_cfg.get("star", 0.20)),
+            "chinext": float(limit_cfg.get("chinext", 0.20)),
+            "bj": float(limit_cfg.get("bj", 0.30)),
+        },
+    }
+
+
+def _limit_pct(symbol: str, execution_cfg: dict[str, Any]) -> float:
+    limits = execution_cfg.get("limit_up_down_pct", {})
+    code = str(symbol).split(".")[-1]
+    market = str(symbol).split(".")[0]
+    if market == "BJ" or code.startswith(("4", "8")):
+        return float(limits.get("bj", 0.30))
+    if market == "SH" and code.startswith("688"):
+        return float(limits.get("star", 0.20))
+    if market == "SZ" and code.startswith("300"):
+        return float(limits.get("chinext", 0.20))
+    return float(limits.get("default", 0.10))
+
+
+def _lot_floor(quantity: float, lot_size: int) -> int:
+    if lot_size <= 1:
+        return max(0, int(np.floor(quantity)))
+    return max(0, int(np.floor(quantity / lot_size) * lot_size))
+
+
+def _prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFrame, execution_cfg: dict[str, Any]) -> pd.DataFrame:
+    sf = signal_frame.copy()
+    sf["date"] = pd.to_datetime(sf["date"])
+    sf["symbol"] = sf["symbol"].astype(str)
+
+    cols = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount"] if col in price_frame.columns]
+    prices = price_frame[cols].copy()
+    prices["date"] = pd.to_datetime(prices["date"])
+    prices["symbol"] = prices["symbol"].astype(str)
+    for col in ["open", "high", "low", "close", "volume", "amount"]:
+        if col not in prices.columns:
+            prices[col] = np.nan
+        prices[col] = pd.to_numeric(prices[col], errors="coerce")
+
+    # Signal rows are dated by the day whose signal is applied. Execution uses
+    # a configurable execution price, while account valuation still uses close.
+    sf = sf.merge(prices, on=["date", "symbol"], how="left")
+    price_mode = str(execution_cfg.get("price_mode", "next_open"))
+    buffer = float(execution_cfg.get("conservative_price_buffer", 0.001))
+    if price_mode == "close":
+        sf["execution_price_buy"] = sf["close"]
+        sf["execution_price_sell"] = sf["close"]
+    elif price_mode == "conservative":
+        base = sf["open"].where(sf["open"].notna() & (sf["open"] > 0), sf["close"])
+        sf["execution_price_buy"] = base * (1.0 + buffer)
+        sf["execution_price_sell"] = base * (1.0 - buffer)
+    else:
+        sf["execution_price_buy"] = sf["open"].where(sf["open"].notna() & (sf["open"] > 0), sf["close"])
+        sf["execution_price_sell"] = sf["open"].where(sf["open"].notna() & (sf["open"] > 0), sf["close"])
+        price_mode = "next_open"
+
+    sf["valuation_price"] = sf["close"]
+    sf = sf.sort_values(["symbol", "date"]).reset_index(drop=True)
+    sf["previous_close"] = sf.groupby("symbol")["close"].shift(1)
+    sf["price_mode"] = price_mode
+    return sf.sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def _trade_block_reasons(row: pd.Series, action: str, execution_cfg: dict[str, Any]) -> list[str]:
+    reasons: list[str] = []
+    open_price = float(row.get("open", np.nan) or np.nan)
+    close_price = float(row.get("close", np.nan) or np.nan)
+    volume = float(row.get("volume", np.nan) or np.nan)
+    amount = float(row.get("amount", np.nan) or np.nan)
+    if bool(execution_cfg.get("enable_suspension_check", True)):
+        if pd.isna(open_price) or open_price <= 0 or pd.isna(close_price) or close_price <= 0:
+            reasons.append("停牌/无有效价格")
+        if pd.notna(volume) and volume <= 0:
+            reasons.append("停牌/成交量为0")
+        if pd.notna(amount) and amount <= 0:
+            reasons.append("停牌/成交额为0")
+    previous_close = row.get("previous_close")
+    if bool(execution_cfg.get("enable_limit_check", True)) and pd.notna(previous_close) and float(previous_close) > 0 and pd.notna(open_price):
+        limit_pct = _limit_pct(str(row.get("symbol", "")), execution_cfg)
+        limit_up = float(previous_close) * (1.0 + limit_pct)
+        limit_down = float(previous_close) * (1.0 - limit_pct)
+        tolerance = 0.001
+        if action == "买" and open_price >= limit_up * (1.0 - tolerance):
+            reasons.append("涨停不可买")
+        if action == "卖" and open_price <= limit_down * (1.0 + tolerance):
+            reasons.append("跌停不可卖")
+    return reasons
+
+
+def _append_order_record(
+    records_for_date: list[dict[str, Any]],
+    *,
+    row: pd.Series,
+    date: pd.Timestamp,
+    symbol: str,
+    action: str,
+    deal_price: float,
+    target_qty: int,
+    actual_qty: int,
+    trade_amount: float,
+    trade_cost: float,
+    trade_status: str,
+    unfilled_reason: str,
+    target_weight: float,
+    trade_constraint: str,
+    execution_cfg: dict[str, Any],
+    classify_reason,
+    income_type: str,
+) -> None:
+    record = row.to_dict()
+    record.update(
+        {
+            "date": date,
+            "symbol": symbol,
+            "trade_action": action,
+            "deal_price": deal_price,
+            "stock_vol": actual_qty,
+            "target_stock_vol": target_qty,
+            "unfilled_stock_vol": max(0, target_qty - actual_qty),
+            "trade_amount": trade_amount,
+            "trade_cost": trade_cost,
+            "target_weight": target_weight,
+            "actual_weight_after_trade": 0.0,
+            "trade_constraint": trade_constraint,
+            "trade_status": trade_status,
+            "unfilled_reason": unfilled_reason,
+            "price_mode": str(execution_cfg.get("price_mode", "next_open")),
+            "max_participation_rate": float(execution_cfg.get("max_participation_rate", 0.0)),
+        }
+    )
+    record["trade_reason"] = classify_reason(pd.Series(record))
+    record["income_type"] = income_type
+    records_for_date.append(record)
+
+
 def _ledger_for_fold(
     signal_frame: pd.DataFrame,
     *,
@@ -339,52 +530,14 @@ def _ledger_for_fold(
     commission: float,
     stamp_duty_sell: float,
     params_text: str,
+    execution_cfg: dict[str, Any],
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    sf = signal_frame.copy()
-    sf["date"] = pd.to_datetime(sf["date"])
-    if "close" not in sf.columns:
-        prices = price_frame[["date", "symbol", "close"]].copy()
-        prices["date"] = pd.to_datetime(prices["date"])
-        prices["symbol"] = prices["symbol"].astype(str)
-        sf["symbol"] = sf["symbol"].astype(str)
-        sf = sf.merge(prices, on=["date", "symbol"], how="left")
+    sf = _prepare_execution_frame(signal_frame, price_frame, execution_cfg)
     sf = sf.sort_values(["date", "symbol"]).reset_index(drop=True)
     sf["stock_name"] = sf["symbol"].map(names).fillna("")
     sf["prev_weight"] = sf.groupby("symbol")["weight"].shift(1).fillna(0.0)
     sf["prev_held_days"] = sf.groupby("symbol")["held_days"].shift(1).fillna(0.0)
     sf["delta_weight"] = sf["weight"] - sf["prev_weight"]
-    sf["buy_value"] = sf["delta_weight"].clip(lower=0.0) * initial_cash
-    sf["sell_value"] = (-sf["delta_weight"].clip(upper=0.0)) * initial_cash
-    sf["buy_cost"] = sf["buy_value"] * (slippage + commission)
-    sf["sell_cost"] = sf["sell_value"] * (slippage + commission + stamp_duty_sell)
-    sf["trade_cash_flow"] = sf["sell_value"] - sf["buy_value"] - sf["buy_cost"] - sf["sell_cost"]
-    sf["position_value"] = sf["weight"] * initial_cash
-    sf["position_pnl"] = sf["position_ret"] * initial_cash
-
-    daily = (
-        sf.groupby("date", as_index=False)
-        .agg(
-            trade_cash_flow=("trade_cash_flow", "sum"),
-            exposure=("weight", "sum"),
-            daily_pnl=("position_pnl", "sum"),
-            buy_amount=("buy_value", "sum"),
-            sell_amount=("sell_value", "sum"),
-            buy_cost=("buy_cost", "sum"),
-            sell_cost=("sell_cost", "sum"),
-        )
-        .sort_values("date")
-    )
-    daily["trade_cost"] = daily["buy_cost"] + daily["sell_cost"]
-    daily["net_daily_pnl"] = daily["daily_pnl"] - daily["trade_cost"]
-    daily["account_total_assets"] = initial_cash + daily["net_daily_pnl"].cumsum()
-    daily["stock_assets"] = daily["account_total_assets"] * daily["exposure"].clip(lower=0.0, upper=1.0)
-    daily["cash_assets"] = daily["account_total_assets"] - daily["stock_assets"]
-    daily["profit"] = daily["account_total_assets"] - initial_cash
-    daily["profit_rate"] = daily["account_total_assets"] / initial_cash - 1.0
-
-    trades = sf[sf["delta_weight"].abs() > 1e-12].copy()
-    if trades.empty:
-        return trades, daily
     buy_top_n = int(params["buy_top_n"])
     hold_top_n = int(params["hold_top_n"])
     buy_threshold = float(params["buy_threshold"])
@@ -429,30 +582,326 @@ def _ledger_for_fold(
 
         return "持仓不变"
 
-    trades["trade_action"] = np.where(trades["delta_weight"] > 0, "买", "卖")
-    trades["trade_reason"] = trades.apply(classify_reason, axis=1)
-    trades["deal_price"] = trades["close"]
-    trades["stock_vol"] = np.floor((trades["delta_weight"].abs() * initial_cash) / trades["deal_price"].replace(0, np.nan) / 100) * 100
-    trades["stock_vol"] = trades["stock_vol"].fillna(0).astype(int)
-    trades["trade_amount"] = trades["delta_weight"].abs() * initial_cash
-    trades["income_type"] = np.where(trades["trade_action"] == "卖", "超时卖/调仓卖", "")
+    cash = float(initial_cash)
+    positions: dict[str, int] = {}
+    previous_total_assets = float(initial_cash)
+    daily_rows: list[dict[str, Any]] = []
+    trade_rows: list[dict[str, Any]] = []
+    lot_size = int(execution_cfg.get("lot_size", 100))
+    max_participation_rate = max(0.0, float(execution_cfg.get("max_participation_rate", 0.0)))
+    last_valuation_prices: dict[str, float] = {}
+
+    for date, day in sf.groupby("date", sort=True):
+        day = day.copy()
+        day["symbol"] = day["symbol"].astype(str)
+        day_by_symbol = day.set_index("symbol", drop=False)
+        valuation_by_symbol = day_by_symbol["valuation_price"].astype(float).to_dict()
+        buy_price_by_symbol = day_by_symbol["execution_price_buy"].astype(float).to_dict()
+        sell_price_by_symbol = day_by_symbol["execution_price_sell"].astype(float).to_dict()
+
+        def valuation_price_for(symbol: str) -> float:
+            value = valuation_by_symbol.get(symbol, np.nan)
+            if pd.notna(value) and float(value) > 0:
+                return float(value)
+            fallback = last_valuation_prices.get(symbol, np.nan)
+            return float(fallback) if pd.notna(fallback) and float(fallback) > 0 else np.nan
+
+        def is_stale_valuation(symbol: str) -> bool:
+            value = valuation_by_symbol.get(symbol, np.nan)
+            return not (pd.notna(value) and float(value) > 0) and symbol in last_valuation_prices
+
+        def trade_price_for(symbol: str, action: str) -> float:
+            source = buy_price_by_symbol if action == "买" else sell_price_by_symbol
+            value = source.get(symbol, np.nan)
+            return float(value) if pd.notna(value) and float(value) > 0 else np.nan
+
+        def max_market_qty(row: pd.Series) -> int:
+            volume = row.get("volume")
+            if max_participation_rate <= 0 or pd.isna(volume):
+                return 10**12
+            return _lot_floor(float(volume) * max_participation_rate, lot_size)
+
+        stock_assets_before_trade = 0.0
+        for symbol, qty in positions.items():
+            price = valuation_price_for(symbol)
+            if pd.notna(price):
+                stock_assets_before_trade += qty * price
+        total_before_trade = cash + stock_assets_before_trade
+
+        buy_amount = 0.0
+        sell_amount = 0.0
+        buy_cost = 0.0
+        sell_cost = 0.0
+        trade_cash_flow = 0.0
+        records_for_date: list[dict[str, Any]] = []
+
+        target_values = {
+            str(row.symbol): max(0.0, float(row.weight or 0.0)) * total_before_trade
+            for row in day.itertuples()
+        }
+
+        sell_orders: list[tuple[str, float, pd.Series]] = []
+        for symbol, qty in list(positions.items()):
+            price = valuation_price_for(symbol)
+            if pd.isna(price) or qty <= 0:
+                continue
+            current_value = qty * price
+            target_value = target_values.get(symbol, 0.0)
+            value_to_sell = max(0.0, current_value - target_value)
+            if value_to_sell <= 0:
+                continue
+            row = day_by_symbol.loc[symbol] if symbol in day_by_symbol.index else pd.Series({"symbol": symbol, "close": price})
+            sell_orders.append((symbol, value_to_sell, row))
+
+        for symbol, value_to_sell, row in sell_orders:
+            price = trade_price_for(symbol, "卖")
+            if pd.isna(price):
+                _append_order_record(
+                    records_for_date,
+                    row=row,
+                    date=date,
+                    symbol=symbol,
+                    action="卖",
+                    deal_price=np.nan,
+                    target_qty=int(positions.get(symbol, 0)),
+                    actual_qty=0,
+                    trade_amount=0.0,
+                    trade_cost=0.0,
+                    trade_status="未成交",
+                    unfilled_reason="无有效执行价",
+                    target_weight=float(row.get("weight", 0.0) or 0.0),
+                    trade_constraint="账户级撮合-v2",
+                    execution_cfg=execution_cfg,
+                    classify_reason=classify_reason,
+                    income_type="超时卖/调仓卖",
+                )
+                continue
+            held_qty = int(positions.get(symbol, 0))
+            target_value = target_values.get(symbol, 0.0)
+            if target_value <= 0:
+                target_qty = held_qty
+            else:
+                target_qty = _lot_floor(value_to_sell / price, lot_size)
+            target_qty = max(0, min(held_qty, target_qty))
+            block_reasons = _trade_block_reasons(row, "卖", execution_cfg)
+            market_qty = max_market_qty(row)
+            qty = 0 if block_reasons else min(target_qty, market_qty)
+            qty = max(0, min(held_qty, qty))
+            if qty <= 0:
+                reason = "；".join(block_reasons or ["流动性不足/低于一手"])
+                _append_order_record(
+                    records_for_date,
+                    row=row,
+                    date=date,
+                    symbol=symbol,
+                    action="卖",
+                    deal_price=price,
+                    target_qty=target_qty,
+                    actual_qty=0,
+                    trade_amount=0.0,
+                    trade_cost=0.0,
+                    trade_status="未成交",
+                    unfilled_reason=reason,
+                    target_weight=float(row.get("weight", 0.0) or 0.0),
+                    trade_constraint="账户级撮合-v2",
+                    execution_cfg=execution_cfg,
+                    classify_reason=classify_reason,
+                    income_type="超时卖/调仓卖",
+                )
+                continue
+            gross = qty * price
+            cost = gross * (slippage + commission + stamp_duty_sell)
+            cash += gross - cost
+            positions[symbol] = held_qty - qty
+            if positions[symbol] <= 0:
+                positions.pop(symbol, None)
+            sell_amount += gross
+            sell_cost += cost
+            trade_cash_flow += gross - cost
+            status = "全部成交" if qty >= target_qty else "部分成交"
+            reason = "" if status == "全部成交" else "流动性限制导致部分成交"
+            _append_order_record(
+                records_for_date,
+                row=row,
+                date=date,
+                symbol=symbol,
+                action="卖",
+                deal_price=price,
+                target_qty=target_qty,
+                actual_qty=qty,
+                trade_amount=gross,
+                trade_cost=cost,
+                trade_status=status,
+                unfilled_reason=reason,
+                target_weight=float(row.get("weight", 0.0) or 0.0),
+                trade_constraint="账户级撮合-v2-卖出回款/涨跌停停牌流动性约束",
+                execution_cfg=execution_cfg,
+                classify_reason=classify_reason,
+                income_type="超时卖/调仓卖",
+            )
+
+        buy_orders: list[tuple[str, float, pd.Series]] = []
+        for symbol, row in day_by_symbol.iterrows():
+            price = trade_price_for(str(symbol), "买")
+            if pd.isna(price):
+                continue
+            valuation_price = valuation_price_for(str(symbol))
+            current_value = positions.get(str(symbol), 0) * valuation_price if pd.notna(valuation_price) else 0.0
+            target_value = target_values.get(str(symbol), 0.0)
+            value_to_buy = max(0.0, target_value - current_value)
+            if value_to_buy > 0:
+                buy_orders.append((str(symbol), value_to_buy, row))
+        buy_orders.sort(key=lambda item: (float(item[2].get("rank", np.inf)) if pd.notna(item[2].get("rank", np.inf)) else np.inf, item[0]))
+
+        for symbol, value_to_buy, row in buy_orders:
+            price = trade_price_for(symbol, "买")
+            if pd.isna(price):
+                _append_order_record(
+                    records_for_date,
+                    row=row,
+                    date=date,
+                    symbol=symbol,
+                    action="买",
+                    deal_price=np.nan,
+                    target_qty=0,
+                    actual_qty=0,
+                    trade_amount=0.0,
+                    trade_cost=0.0,
+                    trade_status="未成交",
+                    unfilled_reason="无有效执行价",
+                    target_weight=float(row.get("weight", 0.0) or 0.0),
+                    trade_constraint="账户级撮合-v2",
+                    execution_cfg=execution_cfg,
+                    classify_reason=classify_reason,
+                    income_type="",
+                )
+                continue
+            buy_rate = slippage + commission
+            max_affordable_qty = _lot_floor(cash / (price * (1.0 + buy_rate)), lot_size)
+            target_qty = _lot_floor(value_to_buy / (price * (1.0 + buy_rate)), lot_size)
+            block_reasons = _trade_block_reasons(row, "买", execution_cfg)
+            market_qty = max_market_qty(row)
+            qty = 0 if block_reasons else min(max_affordable_qty, target_qty, market_qty)
+            qty = max(0, qty)
+            if qty <= 0:
+                reasons = list(block_reasons)
+                if target_qty <= 0:
+                    reasons.append("目标金额低于一手")
+                if max_affordable_qty <= 0:
+                    reasons.append("现金不足一手")
+                if market_qty <= 0:
+                    reasons.append("流动性不足/低于一手")
+                _append_order_record(
+                    records_for_date,
+                    row=row,
+                    date=date,
+                    symbol=symbol,
+                    action="买",
+                    deal_price=price,
+                    target_qty=target_qty,
+                    actual_qty=0,
+                    trade_amount=0.0,
+                    trade_cost=0.0,
+                    trade_status="未成交",
+                    unfilled_reason="；".join(dict.fromkeys(reasons or ["约束后无可成交数量"])),
+                    target_weight=float(row.get("weight", 0.0) or 0.0),
+                    trade_constraint="账户级撮合-v2",
+                    execution_cfg=execution_cfg,
+                    classify_reason=classify_reason,
+                    income_type="",
+                )
+                continue
+            gross = qty * price
+            cost = gross * buy_rate
+            cash -= gross + cost
+            positions[symbol] = int(positions.get(symbol, 0)) + qty
+            buy_amount += gross
+            buy_cost += cost
+            trade_cash_flow -= gross + cost
+            status = "全部成交" if qty >= target_qty else "部分成交"
+            reason = "" if status == "全部成交" else "现金/流动性限制导致部分成交"
+            _append_order_record(
+                records_for_date,
+                row=row,
+                date=date,
+                symbol=symbol,
+                action="买",
+                deal_price=price,
+                target_qty=target_qty,
+                actual_qty=qty,
+                trade_amount=gross,
+                trade_cost=cost,
+                trade_status=status,
+                unfilled_reason=reason,
+                target_weight=float(row.get("weight", 0.0) or 0.0),
+                trade_constraint="账户级撮合-v2-100股整手/现金/涨跌停停牌流动性约束",
+                execution_cfg=execution_cfg,
+                classify_reason=classify_reason,
+                income_type="",
+            )
+
+        stock_assets = 0.0
+        stale_valuation_positions = 0
+        for symbol, qty in positions.items():
+            price = valuation_price_for(symbol)
+            if pd.notna(price):
+                stock_assets += qty * price
+                if is_stale_valuation(symbol):
+                    stale_valuation_positions += 1
+        account_total_assets = cash + stock_assets
+        exposure = stock_assets / account_total_assets if account_total_assets > 0 else 0.0
+        trade_cost = buy_cost + sell_cost
+        daily_pnl = total_before_trade - previous_total_assets
+        net_daily_pnl = account_total_assets - previous_total_assets
+        profit = account_total_assets - initial_cash
+        profit_rate = account_total_assets / initial_cash - 1.0
+
+        for record in records_for_date:
+            qty_after = positions.get(str(record["symbol"]), 0)
+            price = valuation_price_for(str(record["symbol"]))
+            record["actual_weight_after_trade"] = (qty_after * price / account_total_assets) if account_total_assets > 0 and pd.notna(price) else 0.0
+            trade_rows.append(record)
+
+        unfilled_orders = sum(1 for record in records_for_date if str(record.get("trade_status", "")) in {"未成交", "部分成交"})
+        daily_rows.append(
+            {
+                "date": date,
+                "trade_cash_flow": trade_cash_flow,
+                "exposure": exposure,
+                "daily_pnl": daily_pnl,
+                "buy_amount": buy_amount,
+                "sell_amount": sell_amount,
+                "buy_cost": buy_cost,
+                "sell_cost": sell_cost,
+                "trade_cost": trade_cost,
+                "net_daily_pnl": net_daily_pnl,
+                "account_total_assets": account_total_assets,
+                "stock_assets": stock_assets,
+                "cash_assets": cash,
+                "profit": profit,
+                "profit_rate": profit_rate,
+                "unfilled_orders": unfilled_orders,
+                "stale_valuation_positions": stale_valuation_positions,
+            }
+        )
+        for symbol, price in valuation_by_symbol.items():
+            if pd.notna(price) and float(price) > 0:
+                last_valuation_prices[str(symbol)] = float(price)
+        previous_total_assets = account_total_assets
+
+    daily = pd.DataFrame(daily_rows).sort_values("date") if daily_rows else pd.DataFrame()
+    trades = pd.DataFrame(trade_rows)
+    if trades.empty:
+        return trades, daily
+
     trades = trades.merge(
-        daily[
-            [
-                "date",
-                "account_total_assets",
-                "stock_assets",
-                "cash_assets",
-                "profit",
-                "profit_rate",
-            ]
-        ],
+        daily[["date", "account_total_assets", "stock_assets", "cash_assets", "profit", "profit_rate"]],
         on="date",
         how="left",
     )
     trades["fold"] = fold
     trades["selected_params"] = params_text
-    trades["trade_datetime"] = trades["date"].dt.strftime("%Y-%m-%d 15:00:00")
+    trades["trade_datetime"] = pd.to_datetime(trades["date"]).dt.strftime("%Y-%m-%d 15:00:00")
     trades["profit_rate"] = trades["profit_rate"].replace([np.inf, -np.inf], np.nan).fillna(0.0)
     bill = trades[
         [
@@ -465,12 +914,22 @@ def _ledger_for_fold(
             "stock_name",
             "deal_price",
             "stock_vol",
+            "target_stock_vol",
+            "unfilled_stock_vol",
             "profit",
             "profit_rate",
             "income_type",
             "trade_reason",
+            "trade_constraint",
+            "trade_status",
+            "unfilled_reason",
+            "price_mode",
+            "max_participation_rate",
             "fold",
             "trade_amount",
+            "trade_cost",
+            "target_weight",
+            "actual_weight_after_trade",
             "score",
             "rank",
             "selected_params",
@@ -487,12 +946,22 @@ def _ledger_for_fold(
             "stock_name": "股票名称",
             "deal_price": "成交价",
             "stock_vol": "成交量",
+            "target_stock_vol": "目标成交量",
+            "unfilled_stock_vol": "未成交量",
             "profit": "收益额",
             "profit_rate": "收益率",
             "income_type": "收益类型",
             "trade_reason": "交易原因",
+            "trade_constraint": "成交约束",
+            "trade_status": "交易状态",
+            "unfilled_reason": "未成交原因",
+            "price_mode": "成交价口径",
+            "max_participation_rate": "最大成交参与率",
             "fold": "折号",
             "trade_amount": "成交金额",
+            "trade_cost": "交易成本",
+            "target_weight": "目标权重",
+            "actual_weight_after_trade": "实际权重",
             "score": "动量分数",
             "rank": "当日排名",
             "selected_params": "策略参数",
@@ -501,41 +970,48 @@ def _ledger_for_fold(
     return bill, daily
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--output", default="reports/phase0_low_turnover_bill.csv")
-    parser.add_argument("--daily-output", default="reports/phase0_low_turnover_daily_assets.csv")
-    parser.add_argument("--preview-output", default="reports/phase0_low_turnover_bill_preview.html")
-    parser.add_argument("--valid-start", default=None, help="Optional inclusive validation date lower bound, e.g. 2018-08-01")
-    parser.add_argument("--valid-end", default=None, help="Optional inclusive validation date upper bound, e.g. 2022-10-31")
-    parser.add_argument("--years", type=int, default=None, help="Optional history lookback override for period validation")
-    parser.add_argument(
-        "--panel-cache",
-        default="reports/cache/low_turnover_panel.pkl",
-        help="Cached aligned market panel path; relative paths are resolved from project root",
-    )
-    parser.add_argument("--refresh-cache", action="store_true", help="Rebuild the cached market panel before exporting")
-    parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
-    args = parser.parse_args()
-
+def export_low_turnover_bill(
+    *,
+    config_path: Path,
+    output: str | Path = DEFAULT_BILL_OUTPUT,
+    daily_output: str | Path = DEFAULT_DAILY_OUTPUT,
+    preview_output: str | Path = DEFAULT_PREVIEW_OUTPUT,
+    valid_start: str | None = None,
+    valid_end: str | None = None,
+    years: int | None = None,
+    panel_cache: str | Path = DEFAULT_PANEL_CACHE,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+    walk_forward_overrides: dict[str, Any] | None = None,
+    execution_overrides: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Export the selected low-turnover strategy bill used by Phase 0 reports."""
     root = Path.cwd()
-    config_path = _resolve_path(root, args.config)
+    config_path = _resolve_path(root, config_path)
     config = load_config(config_path)
+    if walk_forward_overrides:
+        config.setdefault("walk_forward", {}).update(walk_forward_overrides)
+    if execution_overrides:
+        execution_cfg_raw = dict(config.get("execution", {}))
+        for key, value in execution_overrides.items():
+            if value is not None:
+                execution_cfg_raw[key] = value
+        config["execution"] = execution_cfg_raw
     configure_local_history(config.get("local_history", {}), root)
     configure_us_market_history(config.get("us_market_history", {}), root)
     _load_symbol_cached.cache_clear()
 
     wcfg = config["walk_forward"]
+    execution_cfg = _execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
     symbols = _parse_symbol_list(config, root)
     strategy = get_strategy("legacy_momentum_low_turnover_v1")
-    history_years = int(args.years or config["years"])
-    cache_path = _resolve_path(root, args.panel_cache)
+    history_years = int(years or config["years"])
+    cache_path = _resolve_path(root, panel_cache)
     panel = _load_or_build_panel(
         cache_path=cache_path,
-        refresh_cache=bool(args.refresh_cache),
-        no_panel_cache=bool(args.no_panel_cache),
+        refresh_cache=bool(refresh_cache),
+        no_panel_cache=bool(no_panel_cache),
         cache_key=_panel_cache_key(
             config_path=config_path,
             config=config,
@@ -568,7 +1044,7 @@ def main() -> int:
             commission=float(wcfg["commission"]),
             stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
         )
-        output = strategy.apply(
+        strategy_output = strategy.apply(
             valid,
             params,
             slippage=float(wcfg["slippage"]),
@@ -577,7 +1053,7 @@ def main() -> int:
         )
         params_text = strategy.format_params(params)
         bill, daily = _ledger_for_fold(
-            output.signal_frame,
+            strategy_output.signal_frame,
             price_frame=valid,
             params=params,
             fold=fold,
@@ -587,8 +1063,9 @@ def main() -> int:
             commission=float(wcfg["commission"]),
             stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
             params_text=params_text,
+            execution_cfg=execution_cfg,
         )
-        metric = _calc_metrics(output.returns, output.exposure)
+        metric = _calc_metrics(strategy_output.returns, strategy_output.exposure)
         bill["折年化收益"] = metric["annualized_return"]
         bill["折Sharpe"] = metric["sharpe"]
         daily["fold"] = fold
@@ -598,11 +1075,14 @@ def main() -> int:
 
     bill_df = pd.concat(all_bills, ignore_index=True) if all_bills else pd.DataFrame()
     daily_df = pd.concat(all_daily, ignore_index=True) if all_daily else pd.DataFrame()
-    bill_df = _filter_date_window(bill_df, date_col="交易日期", start=args.valid_start, end=args.valid_end)
-    daily_df = _filter_date_window(daily_df, date_col="date", start=args.valid_start, end=args.valid_end)
-    output_path = root / args.output
-    daily_path = root / args.daily_output
-    preview_path = root / args.preview_output
+    bill_df = _filter_date_window(bill_df, date_col="交易日期", start=valid_start, end=valid_end)
+    daily_df = _filter_date_window(daily_df, date_col="date", start=valid_start, end=valid_end)
+    output_path = _resolve_path(root, output)
+    daily_path = _resolve_path(root, daily_output)
+    preview_path = _resolve_path(root, preview_output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    daily_path.parent.mkdir(parents=True, exist_ok=True)
+    preview_path.parent.mkdir(parents=True, exist_ok=True)
     bill_df.to_csv(output_path, index=False, encoding="utf-8-sig")
     daily_df.to_csv(daily_path, index=False, encoding="utf-8-sig")
 
@@ -612,17 +1092,59 @@ def main() -> int:
     for col in ["账户总资产", "股票资产", "现金资产", "成交价", "收益额", "成交金额"]:
         if col in preview.columns:
             preview[col] = preview[col].map(lambda x: f"{float(x):,.2f}" if str(x) not in {"", "nan", "NaT"} else "")
-    for col in ["收益率", "折年化收益", "折Sharpe", "动量分数"]:
+    for col in ["收益率", "折年化收益", "折Sharpe", "动量分数", "最大成交参与率"]:
         if col in preview.columns:
             preview[col] = preview[col].map(lambda x: f"{float(x):.4f}" if str(x) not in {"", "nan", "NaT"} else "")
     preview_path.write_text(
         _format_preview_html(preview, total_rows=len(bill_df)),
         encoding="utf-8",
     )
+    return {
+        "bill": output_path,
+        "daily": daily_path,
+        "preview": preview_path,
+        "rows": len(bill_df),
+        "daily_rows": len(daily_df),
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--output", default=DEFAULT_BILL_OUTPUT)
+    parser.add_argument("--daily-output", default=DEFAULT_DAILY_OUTPUT)
+    parser.add_argument("--preview-output", default=DEFAULT_PREVIEW_OUTPUT)
+    parser.add_argument("--valid-start", default=None, help="Optional inclusive validation date lower bound, e.g. 2018-08-01")
+    parser.add_argument("--valid-end", default=None, help="Optional inclusive validation date upper bound, e.g. 2022-10-31")
+    parser.add_argument("--years", type=int, default=None, help="Optional history lookback override for period validation")
+    parser.add_argument(
+        "--panel-cache",
+        default=DEFAULT_PANEL_CACHE,
+        help="Cached aligned market panel path; relative paths are resolved from project root",
+    )
+    parser.add_argument("--refresh-cache", action="store_true", help="Rebuild the cached market panel before exporting")
+    parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    args = parser.parse_args()
+
+    result = export_low_turnover_bill(
+        config_path=Path(args.config),
+        output=args.output,
+        daily_output=args.daily_output,
+        preview_output=args.preview_output,
+        valid_start=args.valid_start,
+        valid_end=args.valid_end,
+        years=args.years,
+        panel_cache=args.panel_cache,
+        refresh_cache=bool(args.refresh_cache),
+        no_panel_cache=bool(args.no_panel_cache),
+    )
+    output_path = result["bill"]
+    daily_path = result["daily"]
+    preview_path = result["preview"]
     print(f"bill={output_path}")
     print(f"daily={daily_path}")
     print(f"preview={preview_path}")
-    print(f"rows={len(bill_df)}")
+    print(f"rows={result['rows']}")
     return 0
 
 

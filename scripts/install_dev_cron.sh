@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT_ROOT="/home/zj/workspace/stok-mapping"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CRON_START="# stok-mapping manual history update start"
 CRON_END="# stok-mapping manual history update end"
 DAILY_CRON_LINE="30 16 * * 1-5 bash ${PROJECT_ROOT}/scripts/update_manual_history_daily.sh >> ${PROJECT_ROOT}/logs/manual_history_update.log 2>&1"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import re
+import os
 import sqlite3
 import zipfile
 from dataclasses import dataclass
@@ -684,17 +685,27 @@ def import_manual_history(
     )
 
 
+def _resolve_config_path(value: str | Path | None, *, root: Path) -> Path:
+    if value is None or str(value).strip() == "":
+        raise ValueError("manual_history_import path is not configured")
+    expanded = os.path.expandvars(str(value))
+    if "$" in expanded:
+        raise ValueError(f"manual_history_import path contains unresolved environment variable: {value}")
+    path = Path(expanded).expanduser()
+    return path if path.is_absolute() else root / path
+
+
 def import_from_config(cfg: dict[str, Any], root: Path) -> ImportResult:
     raw = cfg.get("manual_history_import", {})
-    qfq_zip = Path(raw.get("qfq_zip", "/home/zj/workspace/tmp/A股数据_zip/daily_qfq.zip"))
-    bfq_zip = Path(raw.get("bfq_zip", "/home/zj/workspace/tmp/A股数据_zip/daily.zip"))
-    stock_list_csv = Path(raw.get("stock_list_csv", "/home/zj/workspace/tmp/A股数据_zip/股票列表.csv"))
-    trading_calendar_csv = Path(raw.get("trading_calendar_csv", "/home/zj/workspace/tmp/A股数据_zip/交易日历.csv"))
-    delisted_stock_csv = Path(raw.get("delisted_stock_csv", "/home/zj/workspace/tmp/A股数据_zip/退市股票列表.csv"))
-    index_list_csv = Path(raw.get("index_list_csv", "/home/zj/workspace/tmp/A股数据_zip/指数/指数列表.csv"))
-    csi_index_list_csv = Path(raw.get("csi_index_list_csv", "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数列表.csv"))
-    index_daily_zip = Path(raw.get("index_daily_zip", "/home/zj/workspace/tmp/A股数据_zip/指数/指数_日_kline.zip"))
-    csi_index_daily_zip = Path(raw.get("csi_index_daily_zip", "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数_日_kline.zip"))
+    qfq_zip = _resolve_config_path(raw.get("qfq_zip"), root=root)
+    bfq_zip = _resolve_config_path(raw.get("bfq_zip"), root=root)
+    stock_list_csv = _resolve_config_path(raw.get("stock_list_csv"), root=root)
+    trading_calendar_csv = _resolve_config_path(raw.get("trading_calendar_csv"), root=root)
+    delisted_stock_csv = _resolve_config_path(raw.get("delisted_stock_csv"), root=root)
+    index_list_csv = _resolve_config_path(raw.get("index_list_csv"), root=root)
+    csi_index_list_csv = _resolve_config_path(raw.get("csi_index_list_csv"), root=root)
+    index_daily_zip = _resolve_config_path(raw.get("index_daily_zip"), root=root)
+    csi_index_daily_zip = _resolve_config_path(raw.get("csi_index_daily_zip"), root=root)
     local_history = cfg.get("local_history", {})
     db_path = Path(raw.get("output_db", local_history.get("path", "data/manual_history/a_share_history.sqlite")))
     if not db_path.is_absolute():
@@ -717,10 +728,10 @@ def import_from_config(cfg: dict[str, Any], root: Path) -> ImportResult:
 
 def import_index_history_from_config(cfg: dict[str, Any], root: Path) -> IndexImportResult:
     raw = cfg.get("manual_history_import", {})
-    index_list_csv = Path(raw.get("index_list_csv", "/home/zj/workspace/tmp/A股数据_zip/指数/指数列表.csv"))
-    csi_index_list_csv = Path(raw.get("csi_index_list_csv", "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数列表.csv"))
-    index_daily_zip = Path(raw.get("index_daily_zip", "/home/zj/workspace/tmp/A股数据_zip/指数/指数_日_kline.zip"))
-    csi_index_daily_zip = Path(raw.get("csi_index_daily_zip", "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数_日_kline.zip"))
+    index_list_csv = _resolve_config_path(raw.get("index_list_csv"), root=root)
+    csi_index_list_csv = _resolve_config_path(raw.get("csi_index_list_csv"), root=root)
+    index_daily_zip = _resolve_config_path(raw.get("index_daily_zip"), root=root)
+    csi_index_daily_zip = _resolve_config_path(raw.get("csi_index_daily_zip"), root=root)
     local_history = cfg.get("local_history", {})
     db_path = Path(raw.get("output_db", local_history.get("path", "data/manual_history/a_share_history.sqlite")))
     if not db_path.is_absolute():

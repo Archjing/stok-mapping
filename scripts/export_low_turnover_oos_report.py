@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import math
 import sys
+from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.local_history import configure_local_history, load_index_daily_from_local_history
+from scripts.export_execution_effectiveness_report import (
+    _apply_profile_to_config,
+    _live_backtest_settings,
+    _profile_settings,
+)
+from scripts.export_low_turnover_bill import export_low_turnover_bill
+
+
+DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "reports/live_execution_backtest/oos_daily_assets.csv"
+DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "reports/live_execution_backtest/oos_report.html"
+DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "reports/live_execution_backtest/oos_curve.csv"
+DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "reports/live_execution_backtest/oos_fold_compare.csv"
 
 
 def _annualized_return(returns: pd.Series) -> float:
@@ -187,6 +200,8 @@ def _build_report_html(
     report_title: str,
     checkpoint_date: str | None,
     checkpoint_note: str,
+    profile_name: str = "",
+    execution_note: str = "",
 ) -> str:
     merged = stitched.merge(
         benchmark[["date", "benchmark_daily_return", "benchmark_asset", "benchmark_profit_rate_continuous"]],
@@ -266,6 +281,20 @@ body {
   font-size: 28px;
   line-height: 1.2;
 }
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+}
 .meta-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -305,7 +334,8 @@ section h2 {
   color: var(--muted);
 }
 .report-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70vh;
 }
 .report-table {
   width: max-content;
@@ -323,6 +353,9 @@ section h2 {
   background: #fff;
 }
 .report-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: #edf4ff;
   font-weight: 600;
   text-align: left;
@@ -356,12 +389,17 @@ section h2 {
 <body>
   <div class="page">
     <div class="hero">
-      <h1>{report_title}</h1>
+      <div class="title-row">
+        <h1>{report_title}</h1>
+        <span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
+      </div>
       <div class="meta-grid">
         <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">legacy_momentum_low_turnover_v1</span></div>
         <div class="meta-card"><span class="meta-label">连续样本外区间</span><span class="meta-value">{start_date} 至 {end_date}</span></div>
         <div class="meta-card"><span class="meta-label">样本外交易日</span><span class="meta-value">{total_days}</span></div>
         <div class="meta-card"><span class="meta-label">基准</span><span class="meta-value">{benchmark_symbol} / {benchmark_name}</span></div>
+        <div class="meta-card"><span class="meta-label">执行 profile</span><span class="meta-value">{profile_name}</span></div>
+        <div class="meta-card"><span class="meta-label">执行口径</span><span class="meta-value">{execution_note}</span></div>
       </div>
     </div>
     <section>
@@ -391,31 +429,91 @@ section h2 {
 """
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Export continuous OOS report for low-turnover strategy")
-    parser.add_argument("--config", type=Path, default=Path("config.yaml"))
-    parser.add_argument("--daily-assets", type=Path, default=Path("reports/phase0_low_turnover_daily_assets.csv"))
-    parser.add_argument("--report-output", type=Path, default=Path("reports/phase0_low_turnover_oos_report.html"))
-    parser.add_argument("--curve-output", type=Path, default=Path("reports/phase0_low_turnover_oos_curve.csv"))
-    parser.add_argument("--fold-output", type=Path, default=Path("reports/phase0_low_turnover_oos_fold_compare.csv"))
-    parser.add_argument("--title", default="Phase 0 Low Turnover Continuous OOS Report")
-    parser.add_argument("--checkpoint-date", default="2025-05-30")
-    parser.add_argument(
-        "--checkpoint-note",
-        default="这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+def export_low_turnover_oos_report(
+    *,
+    config_path: Path,
+    profile: str | None = None,
+    output_dir: str | Path | None = None,
+    daily_assets_path: Path | None = None,
+    report_output: Path | None = None,
+    curve_output: Path | None = None,
+    fold_output: Path | None = None,
+    title: str = "Phase 0 Low Turnover Continuous OOS Report",
+    checkpoint_date: str | None = "2025-05-30",
+    checkpoint_note: str = "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+    slippage: float | None = None,
+    commission: float | None = None,
+    stamp_duty_sell: float | None = None,
+    price_mode: str | None = None,
+    lot_size: int | None = None,
+    max_participation_rate: float | None = None,
+    enable_limit_check: bool | None = None,
+    enable_suspension_check: bool | None = None,
+) -> dict[str, Path | str]:
+    root = Path.cwd()
+    config_path = config_path if config_path.is_absolute() else root / config_path
+    config = load_config(config_path)
+    selected_profile = str(profile or config.get("live_execution_backtest", {}).get("default_profile", "live"))
+    profile_cfg = _profile_settings(config, selected_profile)
+    effective_config, _, _ = _apply_profile_to_config(
+        config,
+        profile_cfg,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+        price_mode=price_mode,
+        lot_size=lot_size,
+        max_participation_rate=max_participation_rate,
+        enable_limit_check=enable_limit_check,
+        enable_suspension_check=enable_suspension_check,
     )
-    args = parser.parse_args()
+    live_cfg = _live_backtest_settings(config)
+    output_root = Path(output_dir or live_cfg.get("output_dir") or "reports/live_execution_backtest")
+    output_root = output_root if output_root.is_absolute() else root / output_root
+    if daily_assets_path is None:
+        daily_assets_path = output_root / "oos_daily_assets.csv"
+    if report_output is None:
+        report_output = output_root / "oos_report.html"
+    if curve_output is None:
+        curve_output = output_root / "oos_curve.csv"
+    if fold_output is None:
+        fold_output = output_root / "oos_fold_compare.csv"
+    daily_assets_path = daily_assets_path if daily_assets_path.is_absolute() else root / daily_assets_path
+    report_output = report_output if report_output.is_absolute() else root / report_output
+    curve_output = curve_output if curve_output.is_absolute() else root / curve_output
+    fold_output = fold_output if fold_output.is_absolute() else root / fold_output
 
-    config = load_config(args.config)
-    configure_local_history(config.get("local_history", {}), Path.cwd())
+    configure_local_history(effective_config.get("local_history", {}), root)
 
-    daily_assets = _load_assets(args.daily_assets)
+    if daily_assets_path.exists() and daily_assets_path.name != "oos_daily_assets.csv":
+        daily_assets = _load_assets(daily_assets_path)
+    else:
+        bill_path = output_root / "oos_bill.csv"
+        preview_path = output_root / "oos_bill_preview.html"
+        bill_walk_forward_overrides = {
+            key: effective_config.get("walk_forward", {}).get(key)
+            for key in ["slippage", "commission", "stamp_duty_sell"]
+            if key in effective_config.get("walk_forward", {})
+        }
+        export_low_turnover_bill(
+            config_path=config_path,
+            output=bill_path,
+            daily_output=daily_assets_path,
+            preview_output=preview_path,
+            refresh_cache=refresh_cache,
+            no_panel_cache=no_panel_cache,
+            walk_forward_overrides=bill_walk_forward_overrides,
+            execution_overrides=effective_config.get("execution", {}),
+        )
+        daily_assets = _load_assets(daily_assets_path)
     if daily_assets.empty:
         raise SystemExit("daily assets csv is empty")
 
-    initial_cash = float(config.get("walk_forward", {}).get("initial_cash", 1_000_000))
+    initial_cash = float(effective_config.get("walk_forward", {}).get("initial_cash", 1_000_000))
     stitched = _build_stitched_curve(daily_assets, initial_cash)
-    benchmark_symbol = str(config.get("benchmark_symbol", "SH.000300"))
+    benchmark_symbol = str(effective_config.get("benchmark_symbol", "SH.000300"))
     benchmark = _load_benchmark_curve(
         benchmark_symbol,
         pd.Timestamp(stitched["date"].min()),
@@ -440,19 +538,85 @@ def main() -> None:
         benchmark_symbol,
         benchmark_name,
         fold_breakdown,
-        report_title=args.title,
-        checkpoint_date=args.checkpoint_date,
-        checkpoint_note=args.checkpoint_note,
+        report_title=title,
+        checkpoint_date=checkpoint_date,
+        checkpoint_note=checkpoint_note,
+        profile_name=f"{selected_profile} / {profile_cfg.get('name', selected_profile)}",
+        execution_note=(
+            f"slippage={effective_config.get('walk_forward', {}).get('slippage')}, "
+            f"price_mode={effective_config.get('execution', {}).get('price_mode')}, "
+            f"participation={effective_config.get('execution', {}).get('max_participation_rate')}"
+        ),
     )
 
-    args.report_output.parent.mkdir(parents=True, exist_ok=True)
-    curve_df.to_csv(args.curve_output, index=False, encoding="utf-8")
-    fold_breakdown.to_csv(args.fold_output, index=False, encoding="utf-8")
-    args.report_output.write_text(report, encoding="utf-8")
+    report_output.parent.mkdir(parents=True, exist_ok=True)
+    curve_output.parent.mkdir(parents=True, exist_ok=True)
+    fold_output.parent.mkdir(parents=True, exist_ok=True)
+    curve_df.to_csv(curve_output, index=False, encoding="utf-8")
+    fold_breakdown.to_csv(fold_output, index=False, encoding="utf-8")
+    report_output.write_text(report, encoding="utf-8")
 
-    print(args.report_output)
-    print(args.curve_output)
-    print(args.fold_output)
+    return {
+        "profile": selected_profile,
+        "daily_assets": daily_assets_path,
+        "report": report_output,
+        "curve": curve_output,
+        "fold": fold_output,
+    }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Export continuous OOS report for low-turnover strategy")
+    parser.add_argument("--config", type=Path, default=Path("config.yaml"))
+    parser.add_argument("--profile", choices=["research", "live"], default=None)
+    parser.add_argument("--output-dir", type=Path, default=None)
+    parser.add_argument("--daily-assets", type=Path, default=None)
+    parser.add_argument("--report-output", type=Path, default=None)
+    parser.add_argument("--curve-output", type=Path, default=None)
+    parser.add_argument("--fold-output", type=Path, default=None)
+    parser.add_argument("--title", default="Phase 0 Low Turnover Continuous OOS Report")
+    parser.add_argument("--checkpoint-date", default="2025-05-30")
+    parser.add_argument(
+        "--checkpoint-note",
+        default="这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+    )
+    parser.add_argument("--slippage", type=float, default=None)
+    parser.add_argument("--commission", type=float, default=None)
+    parser.add_argument("--stamp-duty-sell", type=float, default=None)
+    parser.add_argument("--price-mode", choices=["close", "next_open", "conservative"], default=None)
+    parser.add_argument("--lot-size", type=int, default=None)
+    parser.add_argument("--max-participation-rate", type=float, default=None)
+    parser.add_argument("--enable-limit-check", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--enable-suspension-check", action=argparse.BooleanOptionalAction, default=None)
+    parser.add_argument("--refresh-cache", action="store_true")
+    parser.add_argument("--no-panel-cache", action="store_true")
+    args = parser.parse_args()
+
+    result = export_low_turnover_oos_report(
+        config_path=args.config,
+        profile=args.profile,
+        output_dir=args.output_dir,
+        daily_assets_path=args.daily_assets,
+        report_output=args.report_output,
+        curve_output=args.curve_output,
+        fold_output=args.fold_output,
+        title=args.title,
+        checkpoint_date=args.checkpoint_date,
+        checkpoint_note=args.checkpoint_note,
+        refresh_cache=bool(args.refresh_cache),
+        no_panel_cache=bool(args.no_panel_cache),
+        slippage=args.slippage,
+        commission=args.commission,
+        stamp_duty_sell=args.stamp_duty_sell,
+        price_mode=args.price_mode,
+        lot_size=args.lot_size,
+        max_participation_rate=args.max_participation_rate,
+        enable_limit_check=args.enable_limit_check,
+        enable_suspension_check=args.enable_suspension_check,
+    )
+    print(result["report"])
+    print(result["curve"])
+    print(result["fold"])
 
 
 if __name__ == "__main__":

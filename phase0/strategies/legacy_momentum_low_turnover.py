@@ -229,6 +229,7 @@ class LegacyMomentumLowTurnoverStrategy(BaseStrategy):
                     "rank",
                     "selected",
                     "raw_weight",
+                    "weight_unshifted",
                     "weight",
                     "held_days",
                     "ret",

@@ -83,7 +83,8 @@ section h2 {
   color: var(--muted);
 }
 .report-table-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70vh;
 }
 .report-table {
   width: max-content;
@@ -101,6 +102,9 @@ section h2 {
   background: #fff;
 }
 .report-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   background: #edf4ff;
   font-weight: 600;
   text-align: left;
@@ -120,13 +124,30 @@ section h2 {
 .bullet-notes li + li {
   margin-top: 6px;
 }
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 </style>
 
 </head>
 <body>
   <div class="page">
     <div class="hero">
-      <h1>Phase 0 Low Turnover Early-Period OOS Report</h1>
+      <div class="title-row"><h1>Phase 0 Low Turnover Early-Period OOS Report</h1><span class="generated-at">生成时间：2026-05-31 18:03</span></div>
       <div class="meta-grid">
         <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">legacy_momentum_low_turnover_v1</span></div>
         <div class="meta-card"><span class="meta-label">连续样本外区间</span><span class="meta-value">2018-08-21 至 2022-10-31</span></div>

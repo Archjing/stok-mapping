@@ -28,6 +28,128 @@ from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
 
 
+def _export_phase0_low_turnover_bill(
+    *,
+    config_path: Path,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+) -> dict:
+    from scripts.export_low_turnover_bill import export_low_turnover_bill
+
+    return export_low_turnover_bill(
+        config_path=config_path,
+        refresh_cache=refresh_cache,
+        no_panel_cache=no_panel_cache,
+    )
+
+
+def _export_phase0_market_regime_report() -> dict:
+    from scripts.export_market_regime_report import export_market_regime_report
+
+    return export_market_regime_report(
+        input_path=Path("reports/phase0_low_turnover_oos_curve.csv"),
+        summary_output=Path("reports/phase0_market_regime_summary.csv"),
+        segment_output=Path("reports/phase0_market_regime_segments.csv"),
+        html_output=Path("reports/phase0_market_regime_report.html"),
+    )
+
+
+def _export_phase0_oos_report(
+    *,
+    config_path: Path,
+    profile: str | None = None,
+    output_dir: str | None = None,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+    slippage: float | None = None,
+    commission: float | None = None,
+    stamp_duty_sell: float | None = None,
+    price_mode: str | None = None,
+    lot_size: int | None = None,
+    max_participation_rate: float | None = None,
+    enable_limit_check: bool | None = None,
+    enable_suspension_check: bool | None = None,
+) -> dict:
+    from scripts.export_low_turnover_oos_report import export_low_turnover_oos_report
+
+    return export_low_turnover_oos_report(
+        config_path=config_path,
+        profile=profile,
+        output_dir=output_dir,
+        refresh_cache=refresh_cache,
+        no_panel_cache=no_panel_cache,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+        price_mode=price_mode,
+        lot_size=lot_size,
+        max_participation_rate=max_participation_rate,
+        enable_limit_check=enable_limit_check,
+        enable_suspension_check=enable_suspension_check,
+    )
+
+
+def _export_phase0_financial_pti(config_path: Path) -> dict:
+    from scripts.audit_financial_pti import audit_financial_pti
+
+    return audit_financial_pti(
+        config_path=config_path,
+        summary_output=Path("reports/phase0_financial_pti_summary.csv"),
+        sample_output=Path("reports/phase0_financial_pti_problem_samples.csv"),
+        html_output=Path("reports/phase0_financial_pti_report.html"),
+    )
+
+
+def _export_phase0_premarket(
+    *,
+    config_path: Path,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+) -> dict:
+    from scripts.export_premarket_watchlist import export_premarket_watchlist
+
+    return export_premarket_watchlist(
+        config_path=config_path,
+        refresh_cache=refresh_cache,
+        no_panel_cache=no_panel_cache,
+    )
+
+
+def _export_phase0_execution_gate(
+    *,
+    config_path: Path,
+    profile: str | None = None,
+    output_dir: str | None = None,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+    slippage: float | None = None,
+    commission: float | None = None,
+    stamp_duty_sell: float | None = None,
+    price_mode: str | None = None,
+    lot_size: int | None = None,
+    max_participation_rate: float | None = None,
+    enable_limit_check: bool | None = None,
+    enable_suspension_check: bool | None = None,
+) -> dict:
+    from scripts.export_execution_effectiveness_report import export_execution_effectiveness_report
+
+    return export_execution_effectiveness_report(
+        config_path=config_path,
+        profile=profile,
+        output_dir=output_dir,
+        refresh_cache=refresh_cache,
+        no_panel_cache=no_panel_cache,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+        price_mode=price_mode,
+        lot_size=lot_size,
+        max_participation_rate=max_participation_rate,
+        enable_limit_check=enable_limit_check,
+        enable_suspension_check=enable_suspension_check,
+    )
+
+
 def run_phase0(config_path: Path) -> int:
     console = Console()
     root = config_path.parent
@@ -149,6 +271,13 @@ def run_phase0(config_path: Path) -> int:
     write_walk_forward_report(report_dir / "phase0_walk_forward_report.md", summary=summary, folds_df=folds_df)
     write_effectiveness_gate_report(report_dir / "phase0_effectiveness_report.md", wf_summary=summary)
 
+    console.print("4) Exporting selected low-turnover bill and daily assets...")
+    bill_result = _export_phase0_low_turnover_bill(config_path=config_path)
+    console.print(f"Bill: {bill_result['bill']}")
+    console.print(f"Daily assets: {bill_result['daily']}")
+    console.print(f"Bill preview: {bill_result['preview']}")
+    console.print(f"Bill rows: {bill_result['rows']}")
+
     console.print("[green]Phase 0 complete[/green]")
     console.print(f"Reports: {report_dir}")
     return 0
@@ -230,6 +359,46 @@ def main() -> int:
         action="store_true",
         help="Use cost_sensitivity.scenarios from config.yaml. Required when --scenario is omitted.",
     )
+    bill_parser = sub.add_parser("bill", help="Export selected phase0 low-turnover bill artifacts")
+    bill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    bill_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    bill_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    market_regime_parser = sub.add_parser("market-regime", help="Export phase0 market-regime validation report")
+    market_regime_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    oos_parser = sub.add_parser("oos-report", help="Export phase0 continuous OOS report with execution profile")
+    oos_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    oos_parser.add_argument("--profile", choices=["research", "live"], default=None, help="Execution parameter profile: research or live")
+    oos_parser.add_argument("--output-dir", default=None, help="Optional standalone output directory for OOS artifacts")
+    oos_parser.add_argument("--slippage", type=float, default=None, help="Override profile slippage for this run")
+    oos_parser.add_argument("--commission", type=float, default=None, help="Override profile commission for this run")
+    oos_parser.add_argument("--stamp-duty-sell", type=float, default=None, help="Override profile sell stamp duty for this run")
+    oos_parser.add_argument("--price-mode", choices=["close", "next_open", "conservative"], default=None, help="Override profile execution price mode")
+    oos_parser.add_argument("--lot-size", type=int, default=None, help="Override profile lot size")
+    oos_parser.add_argument("--max-participation-rate", type=float, default=None, help="Override profile max market-volume participation rate")
+    oos_parser.add_argument("--enable-limit-check", action=argparse.BooleanOptionalAction, default=None, help="Override profile limit-up/down check")
+    oos_parser.add_argument("--enable-suspension-check", action=argparse.BooleanOptionalAction, default=None, help="Override profile suspension check")
+    oos_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    oos_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    financial_pti_parser = sub.add_parser("financial-pti", help="Audit financial factor point-in-time validity")
+    financial_pti_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    premarket_parser = sub.add_parser("premarket", help="Export phase0 07:30 premarket watchlist")
+    premarket_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    premarket_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    premarket_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    execution_gate_parser = sub.add_parser("execution-gate", help="Run phase0 account execution effectiveness gate")
+    execution_gate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    execution_gate_parser.add_argument("--profile", choices=["research", "live"], default=None, help="Execution parameter profile: research or live")
+    execution_gate_parser.add_argument("--output-dir", default=None, help="Optional standalone output directory for live execution backtest artifacts")
+    execution_gate_parser.add_argument("--slippage", type=float, default=None, help="Override profile slippage for this run")
+    execution_gate_parser.add_argument("--commission", type=float, default=None, help="Override profile commission for this run")
+    execution_gate_parser.add_argument("--stamp-duty-sell", type=float, default=None, help="Override profile sell stamp duty for this run")
+    execution_gate_parser.add_argument("--price-mode", choices=["close", "next_open", "conservative"], default=None, help="Override profile execution price mode")
+    execution_gate_parser.add_argument("--lot-size", type=int, default=None, help="Override profile lot size")
+    execution_gate_parser.add_argument("--max-participation-rate", type=float, default=None, help="Override profile max market-volume participation rate")
+    execution_gate_parser.add_argument("--enable-limit-check", action=argparse.BooleanOptionalAction, default=None, help="Override profile limit-up/down check")
+    execution_gate_parser.add_argument("--enable-suspension-check", action=argparse.BooleanOptionalAction, default=None, help="Override profile suspension check")
+    execution_gate_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    execution_gate_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     universe_parser = sub.add_parser("build-universe", help="Build local-factor A-share universe")
     universe_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     history_parser = sub.add_parser("import-history", help="Import manual A-share history zip files")
@@ -260,6 +429,108 @@ def main() -> int:
     )
 
     args = parser.parse_args()
+    if args.cmd == "bill":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 bill export started[/bold]")
+        result = _export_phase0_low_turnover_bill(
+            config_path=config_path,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+        )
+        console.print(f"[green]Bill export complete[/green]")
+        console.print(f"Bill: {result['bill']}")
+        console.print(f"Daily assets: {result['daily']}")
+        console.print(f"Preview: {result['preview']}")
+        console.print(f"Rows: {result['rows']}")
+        return 0
+    if args.cmd == "market-regime":
+        console = Console()
+        console.print("[bold]Phase 0 market-regime report started[/bold]")
+        result = _export_phase0_market_regime_report()
+        console.print("[green]Market-regime report complete[/green]")
+        console.print(f"Summary: {result['summary']}")
+        console.print(f"Segments: {result['segments']}")
+        console.print(f"HTML: {result['html']}")
+        console.print(f"Rows: {result['rows']}")
+        return 0
+    if args.cmd == "oos-report":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 OOS report started[/bold]")
+        result = _export_phase0_oos_report(
+            config_path=config_path,
+            profile=args.profile,
+            output_dir=args.output_dir,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+            slippage=args.slippage,
+            commission=args.commission,
+            stamp_duty_sell=args.stamp_duty_sell,
+            price_mode=args.price_mode,
+            lot_size=args.lot_size,
+            max_participation_rate=args.max_participation_rate,
+            enable_limit_check=args.enable_limit_check,
+            enable_suspension_check=args.enable_suspension_check,
+        )
+        console.print("[green]OOS report complete[/green]")
+        console.print(f"Profile: {result['profile']}")
+        console.print(f"Daily assets: {result['daily_assets']}")
+        console.print(f"Report: {result['report']}")
+        console.print(f"Curve: {result['curve']}")
+        console.print(f"Fold: {result['fold']}")
+        return 0
+    if args.cmd == "financial-pti":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 financial PTI audit started[/bold]")
+        result = _export_phase0_financial_pti(config_path)
+        console.print(f"[green]Financial PTI audit complete[/green]")
+        console.print(f"Verdict: {result['verdict']}")
+        console.print(f"Summary: {result['summary']}")
+        console.print(f"Samples: {result['samples']}")
+        console.print(f"HTML: {result['html']}")
+        return 0
+    if args.cmd == "premarket":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 premarket watchlist started[/bold]")
+        result = _export_phase0_premarket(
+            config_path=config_path,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+        )
+        console.print("[green]Premarket watchlist complete[/green]")
+        console.print(f"Watchlist: {result['watchlist']}")
+        console.print(f"Report: {result['report']}")
+        console.print(f"Rows: {result['rows']}")
+        console.print(f"Signal date: {result['signal_date']}")
+        console.print(f"Check time: {result['check_time']}")
+        return 0
+    if args.cmd == "execution-gate":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 account execution gate started[/bold]")
+        result = _export_phase0_execution_gate(
+            config_path=config_path,
+            profile=args.profile,
+            output_dir=args.output_dir,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+            slippage=args.slippage,
+            commission=args.commission,
+            stamp_duty_sell=args.stamp_duty_sell,
+            price_mode=args.price_mode,
+            lot_size=args.lot_size,
+            max_participation_rate=args.max_participation_rate,
+            enable_limit_check=args.enable_limit_check,
+            enable_suspension_check=args.enable_suspension_check,
+        )
+        console.print("[green]Account execution gate complete[/green]")
+        console.print(f"Verdict: {result['verdict']}")
+        console.print(f"Folds: {result['folds']}")
+        console.print(f"Report: {result['report']}")
+        return 0
     if args.cmd == "update-financials":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

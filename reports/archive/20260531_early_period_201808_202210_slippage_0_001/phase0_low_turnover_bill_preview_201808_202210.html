@@ -44,7 +44,8 @@ body {
   font-size: 14px;
 }
 .bill-preview-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: 70vh;
   border: 1px solid var(--border);
   background: var(--surface);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
@@ -84,10 +85,27 @@ body {
   text-align: center;
   white-space: normal;
 }
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+  font-weight: 400;
+}
+
 </style>
 <div class="page">
 <div class="meta">
-<h1>Phase 0 Low Turnover Bill Preview</h1>
+<div class="title-row"><h1>Phase 0 Low Turnover Bill Preview</h1><span class="generated-at">生成时间：2026-05-31 17:58</span></div>
 <p>Rows: 615 | Preview: first 293 rows</p>
 </div>
 <div class="bill-preview-wrap">

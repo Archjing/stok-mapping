@@ -22,15 +22,16 @@
 
 ### 当前缺口
 - 当前 gate 已无硬性缺口
-- `annualized_return_mean = 0.1440`
-- `sharpe_mean = 1.0886`
-- `max_drawdown_mean = -0.1012`
-- `win_rate_mean = 0.5129`
+- `annualized_return_mean = 0.1331`
+- `sharpe_mean = 1.0083`
+- `max_drawdown_mean = -0.1042`
+- `win_rate_mean = 0.5110`
+- 当前主测试成本口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
 
 ### 当前判断
 - 低换手改造已经替代旧 `legacy_momentum` 成为当前主候选。
 - 当前主要工作从“修复 Sharpe”切换为“收口解释链路、补齐账户仿真约束、接入日常输出”。
-- 成本敏感性显示新候选在 `current_cost` 下已可通过 gate，后续不需要再靠零成本结论证明有效。
+- 成本敏感性已改为单独 CLI 路径，显示新候选在 `main_personal_execution` 下仍可通过 gate，后续不需要再靠零成本结论证明有效。
 
 ## 3. 本周候选范围
 
@@ -54,7 +55,8 @@
 - [x] 将 `legacy_momentum` 从 symbol-scope 改为 portfolio-scope baseline
 - [x] 将回测窗口从 `5` 年扩大到 `7` 年
 - [x] 将财务因子维护窗口从 `8` 季度扩大到 `32` 季度
-- [x] 新增成本敏感性报告：`current_cost` / `low_slippage` / `zero_cost`
+- [x] 新增成本敏感性报告：`base_research_cost` / `main_personal_execution` / `stress_slippage_0_003` / `stress_slippage_0_005` / `low_slippage` / `zero_cost`
+- [x] 将成本敏感性从主测试中拆出，必须显式调用 `phase0.cli cost-sensitivity`
 - [x] 修复 point-in-time 财务因子 merge 的 datetime dtype 边界
 - [x] 更新 `README.md`、`DEVELOPMENT_PLAN.md`、`reports/phase0_strategy_change_log.md`
 
@@ -62,8 +64,8 @@
 
 > 目的：为 Week 2 的 FRED / Tiingo 数据源升级做口径确认，不改变当前 Week 1 以策略验证为主的顺序。
 
-- [ ] 确认 `FRED` 首批序列清单：`GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS`
-- [ ] 确认 `Tiingo` 首批标的清单：`NVDA`、`AAPL`、`TSLA`、`KWEB`
+- [x] 确认 `FRED` 首批序列清单：`GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS`
+- [x] 确认 `Tiingo` 首批标的清单：`NVDA`、`AAPL`、`TSLA`、`KWEB`
 - [x] 确认 `yfinance` 在过渡期继续保留为 fallback
 - [x] 确认 Week 1 已按治理需要修改 `phase0` 正式回测链路，并完成报告/变更日志同步
 - [x] 把 US/HK market history 和 yfinance fallback 结论写入变更日志和主计划书
@@ -202,11 +204,12 @@
 ## 2. 当前基线
 
 - selected candidate：`legacy_momentum_low_turnover_v1`
-- annualized_return_mean：`0.1440`
-- sharpe_mean：`1.0886`
-- max_drawdown_mean：`-0.1012`
-- win_rate_mean：`0.5129`
+- annualized_return_mean：`0.1331`
+- sharpe_mean：`1.0083`
+- max_drawdown_mean：`-0.1042`
+- win_rate_mean：`0.5110`
 - turnover_annual_mean：`1.50`
+- main_personal_execution Sharpe：`1.0083`
 - low_slippage Sharpe：`1.0094`
 - zero_cost Sharpe：`0.8371`
 
@@ -231,7 +234,7 @@
 ## 4. 验收要求
 
 - [x] 每次策略逻辑或参数修改都写明理由和参考依据
-- [x] 每轮都输出 current / low_slippage / zero_cost 三档成本敏感性
+- [x] 成本敏感性测试改为显式路径，按需要输出 base / main / stress / low / zero 等场景
 - [x] 不用零成本结果替代 current-cost gate
 - [x] 不因单个 fold 表现好直接晋级
 - [x] 变更写入 `reports/phase0_strategy_change_log.md`
@@ -246,30 +249,49 @@
 - [x] 生成低换手策略账单 CSV、资产日表与 HTML 预览
 - [x] 在账单中补充卖出原因、买入驱动力和中间年份折叠预览
 - [x] 在通过策略与回测代码补充中文注释，解释模拟了什么看盘、研判和交易行为
-- [ ] 将账单导出纳入标准 CLI / report 链路
-- [ ] 在账户仿真中补齐 A 股整手成交、现金约束和撮合细节
-- [ ] 完成财务因子公告日 point-in-time 校验方案
-- [ ] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
+- [x] 将主测试默认滑点更新为 `0.00246`
+- [x] 将成本敏感性测试拆分为显式 CLI 路径，主测试不再自动运行压力场景
+- [x] 为账单导出脚本增加行情面板缓存，支持 `--refresh-cache` 和 `--no-panel-cache`
+- [x] 将账单导出纳入标准 CLI / report 链路
+- [x] 在账户仿真中补齐 A 股整手成交、现金约束和撮合细节
+- [x] 完成财务因子公告日 point-in-time 校验方案
+- [x] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
 - [x] 补连续样本外资金曲线验证，避免把 walk-forward 分折重置误读成长期横盘
 - [x] 生成“连续 OOS 资金曲线 + 基准对比 + 各 fold 收益分解”HTML 报表
-- [ ] 补行情分段验证，区分顺风行情与更普遍的策略有效性
+- [x] 补行情分段验证，区分顺风行情与更普遍的策略有效性
+- [x] 将 `execution-gate` 做成独立“实盘仿真回测”管线，支持 `research` / `live` profile
+- [x] 将 `oos-report` 补齐 `--profile` 参数，保持与 `execution-gate` 相同配置逻辑
+- [x] 统一 HTML 报表展示体验：生成时间、横向滚动、纵向滚动和固定表头
 
 ## 2. 当前状态
 
 - [x] 当前 selected candidate：`legacy_momentum_low_turnover_v1`
 - [x] current-cost gate：PASS
 - [x] 账单导出脚本：`scripts/export_low_turnover_bill.py`
+- [x] 账单导出缓存：默认 `reports/cache/low_turnover_panel.pkl`
 - [x] 预览产物：`reports/phase0_low_turnover_bill_preview.html`
 - [x] 日资产产物：`reports/phase0_low_turnover_daily_assets.csv`
 - [x] 连续 OOS 报表脚本：`scripts/export_low_turnover_oos_report.py`
 - [x] 连续 OOS 报表：`reports/phase0_low_turnover_oos_report.html`
+- [x] 成本敏感性命令：`phase0.cli cost-sensitivity`
+- [x] 账单导出命令：`phase0.cli bill`
+- [x] 行情分段命令：`phase0.cli market-regime`
+- [x] 行情分段报表：`reports/phase0_market_regime_report.html`
+- [x] 财务 PTI 命令：`phase0.cli financial-pti`
+- [x] 财务 PTI 报表：`reports/phase0_financial_pti_report.html`
+- [x] 盘前观察池命令：`phase0.cli premarket`
+- [x] 盘前观察池报表：`reports/phase0_premarket_report.html`
+- [x] 实盘仿真 gate 命令：`phase0.cli execution-gate --profile research|live`
+- [x] profile 化 OOS 命令：`phase0.cli oos-report --profile research|live`
+- [x] 当前 HTML 报表规范：标题显示生成时间；表格横向按 `96vw` 滚动，纵向按 `70vh` 滚动，表头固定
 
 ## 3. 下一步实际编码顺序
 
-- [ ] 先把账单导出接入正式命令入口，避免每次靠单独脚本调用
-- [ ] 再补账户级交易约束，优先 A 股 `100` 股 / `1` 手整手买入与现金检查
-- [ ] 然后做公告日 PTI 校验，给质量成长类候选扫清后续回测前提
-- [ ] 最后把 selected strategy 输出接入日报 / 观察池
+- [x] 先把账单导出接入正式命令入口，避免每次靠单独脚本调用
+- [x] 再补账户级交易约束，优先 A 股 `100` 股 / `1` 手整手买入与现金检查
+- [x] 然后做行情分段验证，回答策略是否依赖顺风行情
+- [x] 接着做公告日 PTI 校验，给质量成长类候选扫清后续回测前提
+- [x] 最后把 selected strategy 输出接入日报 / 观察池
 
 ## 4. 通过后执行优先级表
 
@@ -277,12 +299,132 @@
 | --- | --- | --- | --- |
 | `P0` | 账单导出正式化 | 把当前单独脚本产物纳入统一回测输出，保证每次 Phase 0 重跑后账单和日资产自动更新。 | `phase0 run` 后稳定产出账单 CSV、日资产 CSV 和 HTML 预览。 |
 | `P0` | 账户级实盘约束 | 让组合权重回测更接近 A 股真实执行。 | 支持 `100` 股整手、现金检查、卖出回款和账户余额联动。 |
-| `P1` | 财务因子 PTI 校验 | 为后续质量成长 / 多因子扩展建立可信时间线。 | 明确公告日可见性规则，并形成校验结论。 |
 | `P1` | 连续 OOS 与基准对比报表 | 纠正 fold 重置带来的阅读偏差，直接回答“是否只是跟上行情”。 | 有连续拼接后的样本外资金曲线、基准曲线和 fold 收益分解表。 |
 | `P1` | 行情分段验证 | 识别策略是不是只在顺风阶段有效。 | 能按顺风 / 震荡 / 回撤等阶段输出分段表现。 |
+| `P1` | 财务因子 PTI 校验 | 为后续质量成长 / 多因子扩展建立可信时间线。 | 明确公告日可见性规则，并形成校验结论。 |
 | `P1` | 日报 / 观察池接入 | 让已通过策略进入日常使用链路。 | `07:30` 输出可直接引用当前 selected strategy 的候选、权重和理由。 |
+| `P1` | profile 化实盘仿真与 OOS 报告 | 避免策略研究口径和实盘仿真口径混用。 | `execution-gate` 与 `oos-report` 均支持 `research` / `live` profile，并由 `config.yaml` 管理参数。 |
+| `P1` | HTML 报表可读性收口 | 长表和宽表需要适合人工检查。 | 所有 HTML 标题显示生成时间，表格支持横纵滚动和固定表头。 |
 | `P2` | 备选策略继续精修 | 避免主线未收口前重新发散。 | 仅在前四项完成后，再恢复 residual / multifactor 迭代。 |
 | `P2` | FRED / Tiingo 升级 | 继续平台能力建设，但不打断当前主线。 | 在不影响当前策略收口的前提下分阶段推进。 |
+
+---
+
+# Week 1.7｜账户级仿真 v2：A 股真实交易约束增强
+
+## 1. 本周目标
+
+> 在已完成的账户级 v1 基础上，把当前“目标权重 + 整手 + 现金约束”的账单模拟，升级为更接近 A 股真实交易环境的执行仿真。
+
+- [x] 成交价口径从固定收盘价扩展为可配置口径
+- [x] 补涨跌停约束，避免模拟中出现现实无法成交的买卖
+- [x] 补停牌约束，停牌日不允许生成成交
+- [x] 补流动性约束，限制单笔/单日成交量占市场成交量比例
+- [x] 在账单中记录未成交、部分成交和约束原因
+- [x] 为未来真实账户持仓 CSV / 券商成交回报导入预留接口
+- [x] 保持项目边界：只做研究和模拟，不接自动下单
+
+## 2. 当前基线
+
+- [x] 当前账单脚本：`scripts/export_low_turnover_bill.py`
+- [x] 当前账单命令：`phase0.cli bill`
+- [x] 当前盘前观察池命令：`phase0.cli premarket`
+- [x] 已支持 `100` 股整手成交
+- [x] 已支持买入现金约束
+- [x] 已支持卖出回款进入现金
+- [x] 已支持佣金、滑点、卖出印花税
+- [x] 已输出现金资产、股票资产、账户总资产、交易成本和交易原因
+
+账户级仿真 v2 已覆盖：
+
+- [x] `close` / `next_open` / `conservative` 三类成交价口径，其中默认 `next_open`
+- [x] 涨停买不进、跌停卖不出
+- [x] 停牌或无有效成交数据时不生成成交
+- [x] 成交量不足导致部分成交或不成交
+- [x] 真实账户持仓 CSV 输入格式预留：`refdocs/todo/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
+- [x] 券商成交回报 CSV 输入格式预留：`refdocs/todo/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
+
+## 3. 开发模块拆分
+
+### 3.1 执行价格模型
+
+- [x] 新增成交价配置项，例如 `execution.price_mode`
+- [x] 支持至少三种口径：
+  - [x] `close`：沿用当前收盘价近似，作为研究基线
+  - [x] `next_open`：使用开盘价口径，模拟盘前信号次日开盘执行
+  - [x] `conservative`：买入取更不利价格、卖出取更不利价格，用于压力测试
+- [x] 报表中记录本次使用的成交价口径
+- [x] 保持历史报告可复现，默认值变更写入变更日志
+
+### 3.2 涨跌停交易约束
+
+- [x] 在行情面板中保留 `pre_close` 或可推导的前收盘价
+- [x] 按 A 股常见规则计算涨跌停边界，先支持主板 `10%`、创业板/科创板 `20%`
+- [x] 买入遇到涨停时标记为未成交
+- [x] 卖出遇到跌停时标记为未成交
+- [x] 对无法判断涨跌停规则的股票使用保守默认，并在报告中提示
+
+### 3.3 停牌约束
+
+- [x] 明确停牌识别规则：无当日 bar、成交量为 0、金额为 0 或数据源停牌标记
+- [x] 停牌日不允许买入或卖出
+- [x] 已持仓股票停牌时继续按可用价格估值，无法估值时沿用上一有效价并标记
+- [x] 账单中增加停牌导致未成交的原因说明
+
+### 3.4 流动性与成交量约束
+
+- [x] 新增配置项，例如 `execution.max_participation_rate`
+- [x] 限制单票单日模拟成交量不超过当日市场成交量的一定比例
+- [x] 超出限制时按可成交数量部分成交
+- [x] 部分成交后现金、持仓、目标权重和实际权重必须一致
+- [x] 报表增加“目标成交量 / 实际成交量 / 未成交量”
+
+### 3.5 未成交与部分成交账单
+
+- [x] 在账单中增加交易状态：`全部成交` / `部分成交` / `未成交`
+- [x] 在账单中增加未成交原因字段
+- [x] 在日资产表中保留当日未成交订单数量
+- [x] HTML 预览用颜色区分成交、部分成交、未成交
+- [x] 盘前观察池中对可能无法成交的标的给出风险提示
+
+### 3.6 真实账户对账预留
+
+- [x] 定义本地持仓 CSV 输入格式，但暂不接券商 API
+- [x] 定义成交回报 CSV 输入格式，但暂不自动下单
+- [x] 预留模拟持仓 vs 真实持仓差异表字段
+- [x] 预留模拟成交 vs 真实成交差异表字段
+- [x] 文档明确：该模块只用于复盘和研究，不产生交易指令
+
+## 4. 验收标准
+
+- [x] 单元或脚本级校验：成交量仍满足 `100` 股整手规则
+- [x] 单元或脚本级校验：现金余额不为负
+- [x] 单元或脚本级校验：涨停买入不会生成已成交买单
+- [x] 单元或脚本级校验：跌停卖出不会生成已成交卖单
+- [x] 单元或脚本级校验：停牌日不会生成成交
+- [x] 单元或脚本级校验：成交量不超过配置的参与率限制
+- [x] 报表可展示全部成交、部分成交、未成交及原因
+- [x] README / 开发计划说明当前仍不是自动交易系统
+- [x] `execution-gate --profile live` 可按实盘仿真参数生成独立 gate 报告
+- [x] `oos-report --profile live` 可按实盘仿真参数生成独立连续 OOS 报告
+- [x] HTML 账单和报告支持横向/纵向滚动，避免长表撑爆页面
+
+## 5. 暂不做事项
+
+- [x] 不接券商 API
+- [x] 不自动下单
+- [x] 不做盘中高频撮合
+- [x] 不做逐笔盘口回放
+- [x] 不把真实账户文件纳入 Git
+- [x] 不因为执行仿真更真实就跳过 walk-forward / gate 验证
+
+## 6. 推荐执行顺序
+
+1. 先做成交价口径配置，解决“收盘价近似成交”的最大阅读偏差。
+2. 再做涨跌停和停牌约束，解决现实中无法成交的问题。
+3. 然后做流动性参与率限制，解决成交量过大的可实现性问题。
+4. 接着改账单和 HTML，让未成交 / 部分成交可见。
+5. 最后预留真实账户 CSV 对账，不接自动交易。
 
 ---
 
@@ -290,38 +432,40 @@
 
 ## 1. 本周目标
 
-- [ ] 明确形成项目级结论：**FRED 先、Tiingo 后、yfinance 保留 fallback**
-- [ ] 完成第二周文档、边界和接入设计准备
-- [ ] 为下一周正式编码实施做好输入条件
+- [x] 明确形成项目级结论：**FRED 先、Tiingo 后、yfinance 保留 fallback**
+- [x] 完成第二周文档、边界和接入设计准备
+- [x] 为下一周正式编码实施做好输入条件
+- [ ] 开始 FRED adapter 最小实现，先覆盖宏观 / 利率 / VIX 序列
+- [ ] FRED 稳定后再推进 Tiingo adapter，不与 FRED 同时硬切
 
 ## 2. 当前基线确认
 
-- [ ] A 股盘后主源仍是 `Tushare Pro`
-- [ ] A 股 fallback 仍是本地 SQLite / AkShare / 新浪原始快照
-- [ ] 美股 / ETF / VIX / CNH 当前已落库到 `us_market_history.sqlite`，过渡 provider 仍为 `yfinance`
-- [ ] 宏观 / 利率当前尚未拆独立主源
-- [ ] 当前第二周工作**不修改** `phase0` 主回测逻辑
+- [x] A 股盘后主源仍是 `Tushare Pro`
+- [x] A 股 fallback 仍是本地 SQLite / AkShare / 新浪原始快照
+- [x] 美股 / ETF / VIX / CNH 当前已落库到 `us_market_history.sqlite`，过渡 provider 仍为 `yfinance`
+- [x] 宏观 / 利率当前尚未拆独立主源
+- [x] 当前第二周工作**不修改** `phase0` 主回测逻辑
 
 ## 3. 数据源分层结论
 
 ### 3.1 FRED 接管范围
-- [ ] GDP → `GDP`
-- [ ] CPI → `CPIAUCSL`
-- [ ] 联邦基金利率（月）→ `FEDFUNDS`
-- [ ] 联邦基金利率（日）→ `DFF`
-- [ ] VIX → `VIXCLS`
+- [x] GDP → `GDP`
+- [x] CPI → `CPIAUCSL`
+- [x] 联邦基金利率（月）→ `FEDFUNDS`
+- [x] 联邦基金利率（日）→ `DFF`
+- [x] VIX → `VIXCLS`
 
 ### 3.2 Tiingo 接管范围
-- [ ] `NVDA`
-- [ ] `AAPL`
-- [ ] `TSLA`
-- [ ] `KWEB`
+- [x] `NVDA`
+- [x] `AAPL`
+- [x] `TSLA`
+- [x] `KWEB`
 
 ### 3.3 暂不处理范围
-- [ ] CNH / FX 主源替换
-- [ ] 所有美股指数一次性替换
-- [ ] 当前 A 股正式主链路改造
-- [ ] 直接移除 `yfinance`
+- [x] CNH / FX 主源替换
+- [x] 所有美股指数一次性替换
+- [x] 当前 A 股正式主链路改造
+- [x] 直接移除 `yfinance`
 
 ## 4. FRED 接入任务
 
@@ -371,12 +515,12 @@
 
 ## 7. 本周归档要求
 
-- [ ] `yfinance` 当前保留职责
-- [ ] `FRED` 建议接管的宏观 / 利率序列
-- [ ] `Tiingo` 建议接管的美股标的范围
-- [ ] 暂不替换的数据范围
+- [x] `yfinance` 当前保留职责
+- [x] `FRED` 建议接管的宏观 / 利率序列
+- [x] `Tiingo` 建议接管的美股标的范围
+- [x] 暂不替换的数据范围
 - [ ] `config.yaml` 的目标重构方向
-- [ ] 下一步实际编码顺序
+- [x] 下一步实际编码顺序
 
 归档位置：
 - [ ] `DEVELOPMENT_PLAN.md`
@@ -386,17 +530,17 @@
 ## 8. 本周成功标准
 
 ### 硬门槛
-- [ ] 明确形成“FRED 先、Tiingo 后、yfinance 保留 fallback”的项目级结论
-- [ ] 明确 FRED 的首批序列清单
-- [ ] 明确 Tiingo 的首批标的清单
-- [ ] 明确哪些数据源不在本周替换范围内
-- [ ] 明确下一步实施顺序：**先实现 FRED，再实现 Tiingo**
+- [x] 明确形成“FRED 先、Tiingo 后、yfinance 保留 fallback”的项目级结论
+- [x] 明确 FRED 的首批序列清单
+- [x] 明确 Tiingo 的首批标的清单
+- [x] 明确哪些数据源不在本周替换范围内
+- [x] 明确下一步实施顺序：**先实现 FRED，再实现 Tiingo**
 
 ### 软判断
-- [ ] 数据源职责边界清楚
-- [ ] 不与当前正式链路冲突
-- [ ] 不引入一次性大替换风险
-- [ ] 文档口径统一
+- [x] 数据源职责边界清楚
+- [x] 不与当前正式链路冲突
+- [x] 不引入一次性大替换风险
+- [x] 文档口径统一
 
 ## 9. 本周不做事项
 
@@ -410,8 +554,8 @@
 ## 10. 本周结束后的分流
 
 ### 如果本周方案成熟
-- [ ] 下一周进入 **FRED 实现周**
-- [ ] FRED 稳定后再进入 **Tiingo 接入周**
+- [x] 下一周进入 **FRED 实现周**
+- [x] FRED 稳定后再进入 **Tiingo 接入周**
 
 ### 如果本周方案不充分
 - [ ] 继续保持 `yfinance` 不动
