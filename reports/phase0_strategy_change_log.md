@@ -40,3 +40,34 @@
 ### 边界说明
 
 该变更不接券商 API，不自动下单，不做盘中高频撮合，不做逐笔盘口回放。真实账户对账当前只预留本地 CSV 输入格式，后续用于复盘模拟持仓和真实持仓、模拟成交和真实成交的差异。
+
+## 2026-06-01｜FRED 最小接入与连通性验收
+
+### 变更原因
+
+项目进入 Week 2 数据源升级主线，优先把宏观 / 利率 / VIX 从 `yfinance` 逻辑中规范拆分，形成独立且可配置的 FRED 入口，为 overlay 与日报解释层提供更稳定的数据基础。
+
+### 主要变更
+
+- `phase0/data_sources.py` 新增 `fetch_fred_series(series_id, years=None, start=None, end=None, api_key_env="FRED_API_KEY")`。
+- `check_connectivity()` 新增 `fred` 分支，按配置检查首批序列并输出 `source=fred`、`target=<series_id>`。
+- `config.yaml` 新增 `data_sources.fred` 配置块：
+  - `enabled`
+  - `api_key_env`
+  - `series.gdp/cpi/fedfunds/fedfunds_daily/vix`
+
+### 验收结果
+
+- 使用项目 `.env` 中 `FRED_API_KEY` 完成连通性检查（不在日志中明文输出 key）。
+- 首批 5 个序列全部返回 `OK`：
+  - `GDP`（latest: `2026-01-01`）
+  - `CPIAUCSL`（latest: `2026-04-01`）
+  - `FEDFUNDS`（latest: `2026-04-01`）
+  - `DFF`（latest: `2026-05-28`）
+  - `VIXCLS`（latest: `2026-05-28`）
+- 已更新 `reports/phase0_data_source_report.md`，报告中包含 5 条 `fred` 连通性记录。
+
+### 边界说明
+
+- 本次仅完成 FRED 最小接入和连通性验收，不改 `phase0` 主回测逻辑。
+- FRED 当前仅承接宏观 / 利率 / VIX，不替代美股个股 / ETF 行情，不接入主 ranker。

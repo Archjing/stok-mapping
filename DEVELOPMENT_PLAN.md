@@ -476,7 +476,9 @@ LLM 不直接生成评分与交易信号。
 
 当前状态：
 
-- FRED 尚未接入代码。
+- FRED 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_fred_series`，`check_connectivity` 已纳入 `fred` 源检查。
+- `config.yaml` 已新增 `data_sources.fred.enabled / api_key_env / series` 配置项。
+- 已在非受限网络环境完成首批 5 个序列连通性验收，并写入 `reports/phase0_data_source_report.md`。
 - 接入任务单见：`refdocs/todo/FRED_IMPLEMENTATION_TASKS.md`
 
 ### 5.5 yfinance 的定位
@@ -893,7 +895,7 @@ stok-mapping/
 - [x] 预留 `hk_market_history.sqlite`，但在港股数据源生产化前不挂应用
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 执行统一周执行附件中的数据源升级计划
-- [ ] 优先引入 FRED 作为宏观 / 利率 / VIX 主源
+- [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
 - [ ] 再引入 Tiingo 作为美股个股 / ETF 主源
 - [ ] 保留 `yfinance` 作为 fallback，不做一次性全替换
 - [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档

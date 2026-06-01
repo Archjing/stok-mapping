@@ -342,6 +342,7 @@ scripts/deepseek_agent_mcp.py
 - `cloe-bridge`
 - `cloe-research`
 - `cloe-risk`
+- `cloe-premarket`
 
 Cloe 可作为外部 agent / 调度入口，但只用于研究摘要、消息通道和跨工具编排。当前技术底座是 OpenClaw Gateway：
 
@@ -361,6 +362,8 @@ acpx openclaw -s cloe-bridge "请审查当前 Phase 0 报告并列出主要风�
 ```bash
 scripts/cloe_agent.sh "请检查当前开发计划和周任务清单是否一致。"
 scripts/cloe_research_agent.sh "请基于 reports/phase0_effectiveness_report.md 生成研究摘要与风险点。"
+scripts/cloe_risk_agent.sh "请从最新回测与执行报告提炼风险告警，按高/中/低分级。"
+scripts/cloe_premarket_agent.sh "请基于 phase0_premarket_watchlist.csv 生成盘前要点和情景提示。"
 ```
 
 MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易指令。

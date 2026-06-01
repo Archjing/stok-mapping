@@ -104,6 +104,7 @@ Codex 侧应优先通过 `scripts/cloe_agent.sh` 调用，保持会话、工作�
 - `cloe-bridge`
 - `cloe-research`
 - `cloe-risk`
+- `cloe-premarket`
 
 项目内已提供 `cloe-research` 封装脚本：
 
@@ -121,6 +122,42 @@ CLOE_RESEARCH_ACPX_FORMAT=text
 ```
 
 兼容回退：如果没有设置 `CLOE_RESEARCH_*`，脚本会回退到 `CLOE_ACPX_*` / `OPENCLAW_ACPX_*`。
+
+### 四点六、新增 `cloe-risk` 配置档
+
+用于风险告警和问题清单提炼：
+
+```bash
+scripts/cloe_risk_agent.sh "请审查 execution-gate 与 OOS 报告，按高/中/低列出风险点。"
+```
+
+默认会话名：`cloe-risk`。  
+可选环境变量：
+
+```bash
+CLOE_RISK_ACPX_SESSION=cloe-risk
+CLOE_RISK_ACPX_TIMEOUT=600
+CLOE_RISK_ACPX_FORMAT=text
+```
+
+### 四点七、新增 `cloe-premarket` 配置档
+
+用于盘前观察池解读和开盘情景提示：
+
+```bash
+scripts/cloe_premarket_agent.sh "请基于 phase0_premarket_watchlist.csv 输出盘前关注点和情景推演。"
+```
+
+默认会话名：`cloe-premarket`。  
+可选环境变量：
+
+```bash
+CLOE_PREMARKET_ACPX_SESSION=cloe-premarket
+CLOE_PREMARKET_ACPX_TIMEOUT=600
+CLOE_PREMARKET_ACPX_FORMAT=text
+```
+
+以上两个脚本同样支持回退到 `CLOE_ACPX_*` / `OPENCLAW_ACPX_*`。
 
 ## 五、与本项目的职责边界
 
