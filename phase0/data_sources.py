@@ -382,6 +382,75 @@ def fetch_hk_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame
     return out[[c for c in keep if c in out.columns]].copy()
 
 
+def fetch_tushare_hk_daily(
+    symbol: str,
+    years: int,
+    token_env: str = "TUSHARE_TOKEN",
+    api_url: str = "http://api.tushare.pro",
+) -> pd.DataFrame:
+    end = date.today()
+    start = end - timedelta(days=365 * years + 20)
+    raw = str(symbol).strip().upper()
+    if raw.startswith("HK."):
+        code = raw.split(".", 1)[1]
+    elif raw.endswith(".HK"):
+        code = raw.split(".", 1)[0]
+    else:
+        code = raw
+    ts_code = f"{code.zfill(5)}.HK"
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        raise RuntimeError(f"missing_token_env:{token_env}")
+    payload = {
+        "api_name": "hk_daily",
+        "token": token,
+        "params": {
+            "ts_code": ts_code,
+            "start_date": start.strftime("%Y%m%d"),
+            "end_date": end.strftime("%Y%m%d"),
+        },
+        "fields": "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount",
+    }
+    resp = requests.post(api_url, json=payload, timeout=30)
+    resp.raise_for_status()
+    data = resp.json()
+    if data.get("code") != 0:
+        raise RuntimeError(f"Tushare hk_daily failed: code={data.get('code')}, msg={data.get('msg')}")
+    fields = data.get("data", {}).get("fields", [])
+    items = data.get("data", {}).get("items", [])
+    if not fields or not items:
+        return pd.DataFrame()
+    df = pd.DataFrame(items, columns=fields)
+    out = df.rename(
+        columns={
+            "trade_date": "date",
+            "vol": "volume",
+        }
+    ).copy()
+    out["date"] = pd.to_datetime(out["date"], format="%Y%m%d", errors="coerce")
+    out["symbol"] = f"HK.{code.zfill(5)}"
+    for col in ["open", "high", "low", "close", "volume", "amount"]:
+        out[col] = pd.to_numeric(out.get(col), errors="coerce")
+    if "adjusted_close" not in out.columns:
+        out["adjusted_close"] = out.get("close")
+    keep = [
+        "date",
+        "symbol",
+        "open",
+        "high",
+        "low",
+        "close",
+        "adjusted_close",
+        "volume",
+        "amount",
+        "pct_chg",
+        "change",
+    ]
+    out = out[[c for c in keep if c in out.columns]].dropna(subset=["date", "open", "high", "low", "close"])
+    out = out.sort_values("date").drop_duplicates(subset=["date"])
+    return out.reset_index(drop=True)
+
+
 def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResult]:
     results: list[ConnectivityResult] = []
     configure_akshare_throttle(cfg.get("akshare", {}))

@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.data_sources import fetch_hk_daily, fetch_yf_daily
+from phase0.data_sources import fetch_hk_daily, fetch_tushare_hk_daily, fetch_yf_daily
 
 
 DEFAULT_US_MARKET_SYMBOLS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
@@ -53,7 +53,7 @@ class MarketHistoryUpdateResult:
 _us_settings = MarketHistorySettings()
 _hk_settings = MarketHistorySettings(
     path=Path("data/hk_market_history.sqlite"),
-    provider="akshare_hk",
+    provider="tushare_hk",
     symbols=list(DEFAULT_HK_MARKET_SYMBOLS),
     runtime_yfinance_fallback=False,
     market_name="hk_market",
@@ -114,6 +114,7 @@ def _ensure_tables(conn: sqlite3.Connection, settings: MarketHistorySettings) ->
         f"""
         CREATE TABLE IF NOT EXISTS {daily_table} (
             market TEXT NOT NULL,
+            hk TEXT,
             symbol TEXT NOT NULL,
             date TEXT NOT NULL,
             open REAL,
@@ -128,6 +129,10 @@ def _ensure_tables(conn: sqlite3.Connection, settings: MarketHistorySettings) ->
         )
         """
     )
+    # Backward-compatible migration for pre-existing databases.
+    cols = [row[1] for row in conn.execute(f"PRAGMA table_info({daily_table})").fetchall()]
+    if "hk" not in cols:
+        conn.execute(f"ALTER TABLE {daily_table} ADD COLUMN hk TEXT")
     conn.execute(
         f"""
         CREATE TABLE IF NOT EXISTS {audit_table} (
@@ -228,6 +233,7 @@ def _normalize_frame(symbol: str, df: pd.DataFrame, settings: MarketHistorySetti
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     out["symbol"] = symbol
     out["market"] = _market_for_symbol(symbol, settings)
+    out["hk"] = "HK" if out["market"].eq("HK").any() else pd.NA
     out["source"] = settings.provider
     out["fetched_at"] = datetime.now().isoformat(timespec="seconds")
     for col in ["open", "high", "low", "close", "adjusted_close", "volume"]:
@@ -236,15 +242,26 @@ def _normalize_frame(symbol: str, df: pd.DataFrame, settings: MarketHistorySetti
         else:
             out[col] = pd.NA
     out = out.dropna(subset=["date", "open", "high", "low", "close"])
-    keep = ["market", "symbol", "date", "open", "high", "low", "close", "adjusted_close", "volume", "source", "fetched_at"]
+    keep = ["market", "hk", "symbol", "date", "open", "high", "low", "close", "adjusted_close", "volume", "source", "fetched_at"]
     return out[keep].drop_duplicates(["symbol", "date"])
 
 
 def _fetch_market_daily(symbol: str, settings: MarketHistorySettings) -> pd.DataFrame:
+    def _to_yf_symbol(raw_symbol: str) -> str:
+        raw = str(raw_symbol).strip().upper()
+        if raw.startswith("HK."):
+            code = raw.split(".", 1)[1]
+            if code.isdigit():
+                code = str(int(code)).zfill(4)
+            return f"{code}.HK"
+        return raw
+
     if settings.provider == "yfinance":
-        return fetch_yf_daily(symbol, years=settings.years)
+        return fetch_yf_daily(_to_yf_symbol(symbol), years=settings.years)
     if settings.provider in {"akshare_hk", "akshare-hk"}:
         return fetch_hk_daily(symbol, years=settings.years, adjust="qfq")
+    if settings.provider in {"tushare_hk", "tushare-hk"}:
+        return fetch_tushare_hk_daily(symbol, years=settings.years)
     raise ValueError(f"Unsupported market history provider: {settings.provider}")
 
 
@@ -301,9 +318,9 @@ def _update_market_history(
                 conn.execute(
                     f"""
                     INSERT OR REPLACE INTO {daily_table} (
-                        market, symbol, date, open, high, low, close, adjusted_close, volume, source, fetched_at
+                        market, symbol, date, open, high, low, close, adjusted_close, volume, source, fetched_at, hk
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         row.market,
@@ -317,6 +334,7 @@ def _update_market_history(
                         row.volume,
                         row.source,
                         row.fetched_at,
+                        row.hk,
                     ),
                 )
                 if existed:

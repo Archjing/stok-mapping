@@ -86,16 +86,46 @@ phase0:
     runtime_yfinance_fallback: false
     symbols: ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
   hk_market_history:
-    enabled: false
+    enabled: true
     path: "data/hk_market_history.sqlite"
     daily_table: "hk_daily_bars"
     source_audit_table: "hk_data_source_runs"
-    provider: "akshare_hk"
+    provider: "yfinance"
     years: 5
     max_staleness_days: 3
     min_symbol_coverage: 1.0
-    run_before_phase0: false
-    symbols: ["HK.00700", "HK.09988"]
+    run_before_phase0: true
+    symbols:
+      - "HK.00700"  # 腾讯控股
+      - "HK.09988"  # 阿里巴巴-W
+      - "HK.03690"  # 美团-W
+      - "HK.01810"  # 小米集团-W
+      - "HK.00981"  # 中芯国际
+      - "HK.01211"  # 比亚迪股份
+      - "HK.09618"  # 京东集团-SW
+      - "HK.09888"  # 百度集团-SW
+      - "HK.01024"  # 快手-W
+      - "HK.09999"  # 网易-S
+      - "HK.02015"  # 理想汽车-W
+      - "HK.09868"  # 小鹏汽车-W
+      - "HK.01347"  # 华虹半导体
+      - "HK.00992"  # 联想集团
+      - "HK.00005"  # 汇丰控股
+      - "HK.00388"  # 香港交易所
+      - "HK.01299"  # 友邦保险
+      - "HK.02318"  # 中国平安
+      - "HK.00939"  # 建设银行
+      - "HK.01398"  # 工商银行
+      - "HK.03988"  # 中国银行
+      - "HK.00941"  # 中国移动
+      - "HK.00728"  # 中国电信
+      - "HK.00883"  # 中国海洋石油
+      - "HK.01088"  # 中国神华
+      - "HK.02899"  # 紫金矿业
+      - "HK.02020"  # 安踏体育
+      - "HK.09633"  # 农夫山泉
+      - "HK.02269"  # 药明生物
+      - "HK.06160"  # 百济神州
   financial_factors:
     enabled: true
     table: "market_financial_factors"

@@ -525,13 +525,14 @@ LLM 不直接生成评分与交易信号。
 
 ### 5.3 港股
 
-- **当前状态**：预留 `data/hk_market_history.sqlite`、`hk_daily_bars`、`hk_data_source_runs` 和 CLI 命令
-- **应用挂载状态**：未挂载，`hk_market_history.enabled: false`
+- **当前状态**：`data/hk_market_history.sqlite` 已启用并完成 30 标的初始观察池批量落库（provider: `yfinance`）
+- **应用挂载状态**：数据层已可用，策略主链路仍未挂载（保持独立验证阶段）
 - **候选策略记录**：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 当前说明：
 
-- 港股数据源进入可生产状态前，不参与策略、报告或质量审计。
+- 港股库当前已完成数据质量验证与验收报告：`reports/hk_market_history_batch_load_report.md`。
+- 最新一次批量结果：覆盖率 `30/30`，最新交易日 `2026-06-01`，累计 `37044` 行。
 - 后续启用前必须先完成覆盖率、新鲜度、复权口径和交易日历校验。
 - 2026-06-02 Tiingo 实测 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式均返回 `404 Ticker not found`，当前不适合作为港股正式源。
 - 港股映射 A 股策略后续按“先数据验证、再解释力测试、最后回测接入”的顺序推进。
@@ -614,7 +615,7 @@ LLM 不直接生成评分与交易信号。
 | 开发/研究辅助源 | AkShare / yfinance | 已用，长期降级为 fallback |
 | US market 跨市场库 | yfinance -> `us_market_history.sqlite` | 过渡期已接入 |
 | 美股 / ETF 后续主源 | Tiingo | 最小 EOD 接入已完成，未来评估替换过渡 provider |
-| 港股历史库 | `hk_market_history.sqlite` | 结构预留，暂不挂应用 |
+| 港股历史库 | `hk_market_history.sqlite` | 已完成 30 标的批量落库与验收，暂不挂策略主链路 |
 | 宏观 / 利率 / VIX 后续主源 | FRED | 最小接入已完成 |
 | 新闻源候选 | Alpha Vantage / Benzinga / Finnhub | 独立模块规划，不接入主 ranker |
 | 数据存储 | SQLite | 已用 |

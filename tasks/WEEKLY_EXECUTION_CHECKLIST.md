@@ -559,6 +559,7 @@
 - [x] FRED 稳定后再进入 **Tiingo 接入周**
 - [x] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证；2026-06-02 已确认 Tiingo 不适合作为港股正式源，港股链路继续保持预留状态
 - [x] 港股映射策略记录见：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
+- [x] 港股库完成 30 标的批量落库与验收报告：`reports/hk_market_history_batch_load_report.md`（coverage `30/30`，latest `2026-06-01`）
 
 ### W2.10.2 如果本周方案不充分
 - [ ] 继续保持 `yfinance` 不动
