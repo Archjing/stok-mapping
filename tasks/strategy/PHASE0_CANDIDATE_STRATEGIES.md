@@ -7,23 +7,31 @@
 
 当前事实基线：
 
-- 当前 Phase 0 胜出的候选是 `legacy_momentum`
-- `legacy_momentum` 当前均值：`ann=0.3360`，`sharpe=0.3358`，`mdd=-0.3074`
-- 现有效果门槛未通过，主要问题是：**夏普不够、回撤偏大**
+- ~~当前 Phase 0 胜出的候选是 `legacy_momentum`~~
+- ~~`legacy_momentum` 当前均值：`ann=0.3360`，`sharpe=0.3358`，`mdd=-0.3074`~~
+- ~~现有效果门槛未通过，主要问题是：**夏普不够、回撤偏大**~~
+- 当前 Phase 0 selected candidate 已更新为 `legacy_momentum_low_turnover_v1`
+- 当前总 verdict 为 `PASS`
+- 当前主测试口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
+- 当前通过指标：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`
 - 跨市场主导策略当前表现弱，不适合继续做主 ranker
+- 当前策略开发重心已从“冲 Phase 0 gate”转为“保持低换手 baseline、补数据源、做解释层和调仓建议链路”
 
 ---
 
 ## T2.1.1 建议优先级
 
 ### T2.1.1.1 P0：立刻可测
-1. **短周期残差动量 + 反转增强**
-2. **多因子 + 量价二次筛选**
-3. **规则型均线/K线 baseline**
+1. ~~**短周期残差动量 + 反转增强**~~
+2. ~~**多因子 + 量价二次筛选**~~
+3. ~~**规则型均线/K线 baseline**~~
+4. **低换手 baseline 稳定性复核与解释链路维护**
+5. **港股 / 美股 / FRED overlay 解释力测试**
 
 ### T2.1.1.2 P1：补少量字段后可测
 4. **多因子 + SVM 选股**
 5. **高维特征直接映射组合权重（轻量版 ML-AC）**
+6. **规则型 / 因子型信号稳定后，再引入 sklearn 基线研究对照**
 
 ### T2.1.1.3 P2：补较多数据后再测
 6. **网络因子四因子扩展**
@@ -249,13 +257,17 @@
 ## T2.1.3 最推荐的实际推进顺序
 
 ### T2.1.3.1 第一步：马上做
-- **A. 短周期残差动量 + 反转增强**
-- **B. 多因子 + 量价二次筛选**
-- **C. 均线/K线 baseline**
+- ~~**A. 短周期残差动量 + 反转增强**~~
+- ~~**B. 多因子 + 量价二次筛选**~~
+- ~~**C. 均线/K线 baseline**~~
+- **A. 维护 `legacy_momentum_low_turnover_v1` 作为当前正式 baseline**
+- **B. 保持账单 / gate / premarket / report 链路口径一致**
+- **C. 先做 FRED / Tiingo / 港股历史库的解释层数据验证**
 
 ### T2.1.3.2 第二步：补少量字段后做
 - **D. 多因子 + SVM 选股**
 - **E. 轻量版 ML-AC 权重映射**
+- **F. 港股映射 A 股解释力测试通过后，再进入 T3.1 策略代码化**
 
 ### T2.1.3.3 第三步：延后
 - **F. 网络因子**
@@ -266,23 +278,32 @@
 
 ## T2.1.4 建议直接写进当前项目待办的 5 项任务
 
-- [ ] 重做 `residual_momentum_reversal_v1`，先用更简单的线性打分和更少参数验证方向是否有效
-- [ ] 在 `phase0/walk_forward.py` 增加“多因子 + 量价二次筛选”的候选策略版本
-- [ ] 新增一个 `ma_kline_baseline_v1` 候选策略，作为非 ML 基线
-- [ ] 给当前候选策略统一增加：夏普、最大回撤、换手、行业集中度对比输出
-- [ ] 若上述任一候选优于 `legacy_momentum`，再决定是否推进到 SVM 或轻量 ML-AC 版本
+- [x] ~~重做 `residual_momentum_reversal_v1`，先用更简单的线性打分和更少参数验证方向是否有效~~
+- [x] ~~在 `phase0/walk_forward.py` 增加“多因子 + 量价二次筛选”的候选策略版本~~
+- [x] ~~新增一个 `ma_kline_baseline_v1` 候选策略，作为非 ML 基线~~
+- [x] 给当前候选策略统一增加：夏普、最大回撤、换手、行业集中度对比输出
+- [x] ~~若上述任一候选优于 `legacy_momentum`，再决定是否推进到 SVM 或轻量 ML-AC 版本~~
+- [x] 当前已由 `legacy_momentum_low_turnover_v1` 替代旧 `legacy_momentum`
+- [ ] 继续维护当前 baseline 的日报解释、调仓建议和账户仿真口径
+- [ ] 在数据源稳定后，重新评估 SVM / ML-AC 是否作为研究对照进入 Phase 1.5
 
 ---
 
 ## T2.1.5 简短结论
 
-如果目标是**最短路径提升当前 Phase 0 表现**，优先做：
+~~如果目标是**最短路径提升当前 Phase 0 表现**，优先做：~~
 
-1. **短周期残差动量 + 反转增强**
-2. **多因子 + 量价二次筛选**
-3. **均线/K线 baseline**
+1. ~~**短周期残差动量 + 反转增强**~~
+2. ~~**多因子 + 量价二次筛选**~~
+3. ~~**均线/K线 baseline**~~
 
 如果目标是**中期打造更像正式选股系统的主 ranker**，优先做：
 
 4. **多因子 + SVM**
 5. **轻量版 ML-AC**
+
+当前结论：
+
+1. `legacy_momentum_low_turnover_v1` 已经完成 Phase 0 晋级并成为当前正式 baseline。
+2. residual / multifactor / MA-K 线候选保留为历史诊断和后续备选，不再占据当前最高优先级。
+3. 当前优先级是把通过策略稳定接入日报、调仓建议、账户仿真和跨市场 overlay 解释层。

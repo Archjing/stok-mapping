@@ -103,16 +103,23 @@ def _export_phase0_financial_pti(config_path: Path) -> dict:
 def _export_phase0_premarket(
     *,
     config_path: Path,
+    output: str | Path | None = None,
+    report_output: str | Path | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
     from scripts.export_premarket_watchlist import export_premarket_watchlist
 
-    return export_premarket_watchlist(
-        config_path=config_path,
-        refresh_cache=refresh_cache,
-        no_panel_cache=no_panel_cache,
-    )
+    kwargs = {
+        "config_path": config_path,
+        "refresh_cache": refresh_cache,
+        "no_panel_cache": no_panel_cache,
+    }
+    if output is not None:
+        kwargs["output"] = output
+    if report_output is not None:
+        kwargs["report_output"] = report_output
+    return export_premarket_watchlist(**kwargs)
 
 
 def _export_phase0_execution_gate(
@@ -341,6 +348,90 @@ def _configured_cost_scenarios(cfg: dict) -> list[dict[str, float | str]]:
     ]
 
 
+def _print_manual_history_update_result(console: Console, result) -> None:
+    color = "green" if result.ok else "red"
+    console.print(f"[{color}]Manual history update status: {result.status}[/{color}]")
+    console.print(f"Database: {result.db_path}")
+    console.print(f"Calendar latest trade date: {result.calendar_trade_date}")
+    console.print(f"Target trade date: {result.target_trade_date}")
+    console.print(f"Before latest: {result.before_latest_date or 'N/A'} coverage={result.before_coverage:.4f}")
+    console.print(f"After latest: {result.after_latest_date or 'N/A'} coverage={result.after_coverage:.4f}")
+    console.print(f"Fetched rows: {result.fetched_rows}")
+    console.print(f"Inserted rows: {result.inserted_rows}")
+    console.print(f"Metadata updated rows: {result.metadata_updated_rows}")
+    console.print(f"Primary source: {result.primary_source or 'N/A'}")
+    if result.metadata_coverage:
+        console.print(
+            "Metadata coverage: "
+            f"market_cap={result.metadata_coverage.get('market_cap', 0.0):.4f}, "
+            f"pe={result.metadata_coverage.get('pe_ratio', 0.0):.4f}, "
+            f"pb={result.metadata_coverage.get('pb_ratio', 0.0):.4f}, "
+            f"turnover={result.metadata_coverage.get('turnover_rate', 0.0):.4f}"
+        )
+    if result.warnings:
+        for warning in result.warnings:
+            console.print(f"[yellow]Warning:[/yellow] {warning}")
+
+
+def run_daily_brief_pipeline(
+    *,
+    config_path: Path,
+    skip_update: bool = False,
+    check_only: bool = False,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+) -> int:
+    console = Console()
+    cfg = load_config(config_path)
+    console.print("[bold]Phase 0 daily brief pipeline started[/bold]")
+
+    history_result = None
+    if skip_update:
+        console.print("[yellow]1) Skipping A-share history update[/yellow]")
+    else:
+        console.print("1) Updating A-share history...")
+        history_result = update_manual_history_from_config(cfg, config_path.parent, check_only=check_only)
+        _print_manual_history_update_result(console, history_result)
+        if not history_result.ok:
+            console.print("[red]Daily brief stopped because A-share history update failed.[/red]")
+            return 2
+        if check_only:
+            console.print("[yellow]Daily brief stopped after freshness check because --check-only was set.[/yellow]")
+            return 0
+
+    should_refresh_cache = bool(refresh_cache)
+    if history_result is not None and int(history_result.inserted_rows) > 0:
+        should_refresh_cache = True
+        console.print("[yellow]2) New A-share rows inserted; refreshing strategy panel cache[/yellow]")
+    else:
+        console.print("2) Generating premarket watchlist...")
+
+    result = _export_phase0_premarket(
+        config_path=config_path,
+        output="reports/{brief_date}/phase0_premarket_watchlist_{brief_date}.csv",
+        report_output="reports/{brief_date}/phase0_premarket_report_{brief_date}.html",
+        refresh_cache=should_refresh_cache,
+        no_panel_cache=bool(no_panel_cache),
+    )
+    console.print("[green]Daily brief pipeline complete[/green]")
+    console.print(f"Watchlist: {result['watchlist']}")
+    console.print(f"Report: {result['report']}")
+    if "ledger" in result:
+        console.print(f"Simulation ledger: {result['ledger']}")
+    console.print(f"Rows: {result['rows']}")
+    console.print(f"Signal date: {result['signal_date']}")
+    console.print(f"Check time: {result['check_time']}")
+
+    if history_result is not None and history_result.after_latest_date and result.get("signal_date"):
+        if str(history_result.after_latest_date) != str(result["signal_date"]):
+            console.print(
+                "[yellow]Warning:[/yellow] "
+                f"history latest date is {history_result.after_latest_date}, "
+                f"but strategy signal date is {result['signal_date']}."
+            )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Phase 0 pipeline")
     sub = parser.add_subparsers(dest="cmd")
@@ -385,6 +476,12 @@ def main() -> int:
     premarket_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     premarket_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     premarket_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    daily_brief_parser = sub.add_parser("daily-brief", help="Update A-share history and export the current strategy daily brief")
+    daily_brief_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    daily_brief_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update and only export the brief")
+    daily_brief_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export the brief")
+    daily_brief_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    daily_brief_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     execution_gate_parser = sub.add_parser("execution-gate", help="Run phase0 account execution effectiveness gate")
     execution_gate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     execution_gate_parser.add_argument("--profile", choices=["research", "live"], default=None, help="Execution parameter profile: research or live")
@@ -507,6 +604,14 @@ def main() -> int:
         console.print(f"Signal date: {result['signal_date']}")
         console.print(f"Check time: {result['check_time']}")
         return 0
+    if args.cmd == "daily-brief":
+        return run_daily_brief_pipeline(
+            config_path=Path(args.config).resolve(),
+            skip_update=bool(args.skip_update),
+            check_only=bool(args.check_only),
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+        )
     if args.cmd == "execution-gate":
         config_path = Path(args.config).resolve()
         console = Console()
@@ -590,28 +695,7 @@ def main() -> int:
         cfg = load_config(config_path)
         result = update_manual_history_from_config(cfg, config_path.parent, check_only=args.check_only)
         console = Console()
-        color = "green" if result.ok else "red"
-        console.print(f"[{color}]Manual history update status: {result.status}[/{color}]")
-        console.print(f"Database: {result.db_path}")
-        console.print(f"Calendar latest trade date: {result.calendar_trade_date}")
-        console.print(f"Target trade date: {result.target_trade_date}")
-        console.print(f"Before latest: {result.before_latest_date or 'N/A'} coverage={result.before_coverage:.4f}")
-        console.print(f"After latest: {result.after_latest_date or 'N/A'} coverage={result.after_coverage:.4f}")
-        console.print(f"Fetched rows: {result.fetched_rows}")
-        console.print(f"Inserted rows: {result.inserted_rows}")
-        console.print(f"Metadata updated rows: {result.metadata_updated_rows}")
-        console.print(f"Primary source: {result.primary_source or 'N/A'}")
-        if result.metadata_coverage:
-            console.print(
-                "Metadata coverage: "
-                f"market_cap={result.metadata_coverage.get('market_cap', 0.0):.4f}, "
-                f"pe={result.metadata_coverage.get('pe_ratio', 0.0):.4f}, "
-                f"pb={result.metadata_coverage.get('pb_ratio', 0.0):.4f}, "
-                f"turnover={result.metadata_coverage.get('turnover_rate', 0.0):.4f}"
-            )
-        if result.warnings:
-            for warning in result.warnings:
-                console.print(f"[yellow]Warning:[/yellow] {warning}")
+        _print_manual_history_update_result(console, result)
         if not result.ok:
             return 2
         if (

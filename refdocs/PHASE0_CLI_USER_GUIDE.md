@@ -23,14 +23,14 @@ uv sync
 最常用的三个命令：
 
 ```bash
+# 日常简报 pipeline：先更新 A 股历史库，再导出当前主策略观察池
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+
 # 全量 Phase0 主流程
 ./.venv/bin/python -m phase0.cli run --config config.yaml
 
-# 仅更新 A 股本地历史库
+# 仅更新 A 股本地历史库，用于单独排查数据新鲜度
 ./.venv/bin/python -m phase0.cli update-history --config config.yaml
-
-# 导出 07:30 盘前观察池
-./.venv/bin/python -m phase0.cli premarket --config config.yaml
 ```
 
 ---
@@ -45,6 +45,7 @@ uv sync
 - `market-regime`
 - `oos-report`
 - `financial-pti`
+- `daily-brief`
 - `premarket`
 - `execution-gate`
 - `build-universe`
@@ -79,6 +80,36 @@ uv sync
 ```
 
 ### 3.2 导出类命令
+
+`daily-brief`：日常简报 pipeline。默认先执行 A 股历史库增量更新，再导出当前有效主策略的 07:30 盘前观察池；如果历史库插入了新行，会自动刷新低换手策略 panel cache。
+
+```bash
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml --skip-update
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml --check-only
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml --refresh-cache
+```
+
+常用口径：
+
+- `--skip-update`：不更新 A 股库，只基于当前本地库重新生成简报。
+- `--check-only`：只检查 A 股库新鲜度，不生成简报。
+- `--refresh-cache`：即使没有新数据，也强制重建策略 panel cache。
+
+`daily-brief` 输出按简报日期归档，日期取自简报 `盘前检查时间` 的日期部分，不使用系统运行日期：
+
+```text
+reports/<brief_date>/phase0_premarket_watchlist_<brief_date>.csv
+reports/<brief_date>/phase0_premarket_report_<brief_date>.html
+```
+
+连续模拟仓位流水：
+
+```text
+data/simulated_trading/phase0_daily_brief_ledger.csv
+```
+
+当前阶段，`daily-brief` 会把上一期模拟目标仓位作为本期模拟当前仓位，再把本期策略目标权重作为程序自动操作后的目标仓位。表格中的 `交易动作`、`当前权重`、`目标权重`、`权重变化` 是连续模拟口径，`策略信号动作` 是策略本次孤立信号口径。后续接入用户模拟交易确认后，连续模拟仓位应切到用户实际成交/持仓状态。
 
 `bill`：导出低换手账单与资产曲线文件。
 
@@ -192,8 +223,11 @@ uv sync
 - `reports/phase0_cost_sensitivity.csv`
 - `reports/phase0_low_turnover_bill.csv`
 - `reports/phase0_low_turnover_bill_preview.html`
-- `reports/phase0_premarket_watchlist.csv`
-- `reports/phase0_premarket_watchlist_report.html`
+- `reports/<brief_date>/phase0_premarket_watchlist_<brief_date>.csv`（`daily-brief`）
+- `reports/<brief_date>/phase0_premarket_report_<brief_date>.html`（`daily-brief`）
+- `reports/phase0_premarket_watchlist.csv`（单独 `premarket`）
+- `reports/phase0_premarket_report.html`（单独 `premarket`）
+- `data/simulated_trading/phase0_daily_brief_ledger.csv`
 
 本地数据库：
 
@@ -251,12 +285,12 @@ uv sync
 
 日常（开发/研究）：
 
-1. `update-history`
+1. `daily-brief`
 2. `update-financials`（按周）
 3. `update-us-market-history`
 4. `update-hk-market-history`
-5. `run`
-6. `premarket`
+5. `run`（策略评估或验收时）
+6. `premarket`（仅在需要跳过数据更新、单独重生成观察池时使用）
 
 验收（策略阶段）：
 

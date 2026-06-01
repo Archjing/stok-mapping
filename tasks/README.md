@@ -13,6 +13,7 @@
 | `T3` | [`cross-market/`](./cross-market/) | 跨市场映射与港股/A 股候选任务 |
 | `T4` | [`account/`](./account/) | 账户级仿真、真实账户对账和交易计划辅助相关任务 |
 | `T5` | [`research/`](./research/) | 论文、策略摘要和研究支持资料 |
+| `T6` | [`ops/`](./ops/) | 统一调度器、后台 pipeline、任务重试和运行状态管理 |
 
 ## T0.2 当前项目基线
 
@@ -37,6 +38,7 @@
 | `T3.1` | 港股映射 A 股候选策略 | [`cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](./cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](./account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`research/STRATEGY_SUMMARY.md`](./research/STRATEGY_SUMMARY.md) |
+| `T6.1` | 统一调度器与后台 Pipeline | [`ops/SCHEDULER_PIPELINE_TASKS.md`](./ops/SCHEDULER_PIPELINE_TASKS.md) |
 
 ## T0.4 维护规则
 

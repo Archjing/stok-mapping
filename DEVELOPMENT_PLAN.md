@@ -887,7 +887,7 @@ stok-mapping/
 | 国内 fallback 基座 | 本地 SQLite / AkShare / 新浪 | 最稳、可控、可补位 |
 | US market 过渡库 | `us_market_history.sqlite` | 当前已替代运行时 yfinance 临时抓取 |
 | 美股/ETF 主源方向 | Tiingo | 比 yfinance 更适合长期主链路 |
-| 港股库 | `hk_market_history.sqlite` | 当前预留，生产化后再挂应用 |
+| 港股库 | `hk_market_history.sqlite` | 已完成 30 标的落库与验收，暂不挂策略主链路 |
 | 宏观/利率/VIX 主源方向 | FRED | 更适合正式主链路 |
 | yfinance | 仅 fallback | 保留低摩擦备用价值 |
 | 财务因子 | 已接入，但历史回测前需 PTI 校验 | 防未来函数 |
@@ -902,49 +902,88 @@ stok-mapping/
 
 ### 本周目标
 
-围绕 A 股本土主因子完成一轮低换手改造验证，正式确认新候选替代旧 baseline，并补齐账单导出与解释性产物。
+~~围绕 A 股本土主因子完成一轮低换手改造验证，正式确认新候选替代旧 baseline，并补齐账单导出与解释性产物。~~
+
+围绕 Week 2 数据源升级主线，完成 FRED / Tiingo 最小接入、明确新闻源边界、验证港股历史数据可用性，并把可复用数据资产沉淀到 `data/`，把验收与运行结果沉淀到 `reports/`。
 
 ### 本周已完成
 
-- `legacy_momentum` 已从 symbol-scope 改为 portfolio-scope baseline。
-- 回测窗口已从 `5` 年扩大到 `7` 年，portfolio 候选均达到 `4` 个 fold。
-- 财务因子历史已扩展到 `32` 个季度，覆盖 `2018-06-30` 至 `2026-03-31`。
-- 已新增成本敏感性报告，输出 current / low-slippage / zero-cost 三档。
-- 主测试已改为默认 `slippage = 0.00246`，成本敏感性测试已改为单独 CLI 路径，需显式指定场景运行。
-- 已修复财务因子 point-in-time merge 的 datetime dtype 边界问题。
-- 已新增 `legacy_momentum_low_turnover_v1`，并通过完整 Phase 0 gate。
-- 已生成低换手策略账单 CSV、资产日表和 HTML 预览。
-- 已将低换手策略连续 OOS 报表改为内嵌 CSS 的 HTML 文件。
-- 已为账单导出脚本增加行情面板缓存，减少重复生成账单时的行情加载和对齐成本。
-- 已在通过策略和回测关键代码块补充中文注释。
-- 已完成账户级仿真 v2，覆盖成交价口径、整手、现金、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
-- 已将 `execution-gate` 与 `oos-report` 做成 profile 化管线，支持 `research` / `live` 两类参数组合。
-- 已统一 HTML 报表展示规范：生成时间、横向滚动、纵向滚动、固定表头。
+> 以下删除线条目为前序 Week 1 / Phase 0 收口已完成项，保留作上下文，不再代表当前一周执行重点。
+
+- ~~`legacy_momentum` 已从 symbol-scope 改为 portfolio-scope baseline。~~
+- ~~回测窗口已从 `5` 年扩大到 `7` 年，portfolio 候选均达到 `4` 个 fold。~~
+- ~~财务因子历史已扩展到 `32` 个季度，覆盖 `2018-06-30` 至 `2026-03-31`。~~
+- ~~已新增成本敏感性报告，输出 current / low-slippage / zero-cost 三档。~~
+- ~~主测试已改为默认 `slippage = 0.00246`，成本敏感性测试已改为单独 CLI 路径，需显式指定场景运行。~~
+- ~~已修复财务因子 point-in-time merge 的 datetime dtype 边界问题。~~
+- ~~已新增 `legacy_momentum_low_turnover_v1`，并通过完整 Phase 0 gate。~~
+- ~~已生成低换手策略账单 CSV、资产日表和 HTML 预览。~~
+- ~~已将低换手策略连续 OOS 报表改为内嵌 CSS 的 HTML 文件。~~
+- ~~已为账单导出脚本增加行情面板缓存，减少重复生成账单时的行情加载和对齐成本。~~
+- ~~已在通过策略和回测关键代码块补充中文注释。~~
+- ~~已完成账户级仿真 v2，覆盖成交价口径、整手、现金、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。~~
+- ~~已将 `execution-gate` 与 `oos-report` 做成 profile 化管线，支持 `research` / `live` 两类参数组合。~~
+- ~~已统一 HTML 报表展示规范：生成时间、横向滚动、纵向滚动、固定表头。~~
+- `T1.1` FRED 最小接入已完成：`fetch_fred_series()`、`check_connectivity()`、`config.yaml` 配置和 `.env` key 加载均已验证。
+- FRED 首批序列已完成非受限网络验收：`GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS` 均可返回数据。
+- FRED 缓存策略已补齐：缓存目录迁入 `data/cache/fred/`，默认 TTL 为 `24` 小时，报告只保留验收记录。
+- `T1.2` Tiingo 最小接入已完成：`fetch_tiingo_daily()` 覆盖 `NVDA`、`AAPL`、`TSLA`、`KWEB`，并保留 `yfinance` fallback。
+- Tiingo 港股可用性已实测：`HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式返回 `404 Ticker not found`，不作为港股正式源。
+- Tiingo News API 已探测：当前 token 对 `/tiingo/news` 返回 `403 permission_denied:news_api`，新闻源改为独立模块规划。
+- 已新增 Tiingo news probe 最小脚本，用于验证 ticker 列表、主题标签、时间窗口三类过滤能力。
+- 已明确新闻源策略：Tiingo 只保留为美股 / ETF / ADR 日线源，新闻模块后续优先 probe Alpha Vantage，生产级候选为 Benzinga。
+- 已验证港股历史数据源路径：AkShare 当前环境下不可稳定抓取港股；Tushare 港股接口可用但频率限制过强；yfinance 当前可用于港股历史库 bootstrap。
+- `hk_market_history.sqlite` 已启用并完成 30 标的初始港股观察池批量落库，覆盖率 `30/30`，最新交易日 `2026-06-01`，累计 `37044` 行。
+- 已生成港股批量落库报告：`reports/hk_market_history_batch_load_report.md`，包含 30 标的覆盖、审计记录、样本行和中文名称 `name_zh`。
+- 已新增 `phase0.cli` 当前使用说明：`refdocs/PHASE0_CLI_USER_GUIDE.md`。
+- 已同步 `README.md`、`refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
 
 ### 本周候选方向
 
-1. **低换手 legacy momentum 改造并正式替代旧 baseline**
-2. **账单 / 资产轨迹 / 买卖原因导出标准化**
-3. **账户级仿真与实盘约束补齐**
-4. **公告日 point-in-time 校验与日报接入**
+前序候选方向：
+
+1. ~~**低换手 legacy momentum 改造并正式替代旧 baseline**~~
+2. ~~**账单 / 资产轨迹 / 买卖原因导出标准化**~~
+3. ~~**账户级仿真与实盘约束补齐**~~
+4. ~~**公告日 point-in-time 校验与日报接入**~~
+
+当前 Week 2 候选方向：
+
+1. **FRED 宏观 / 利率 / VIX 主源最小化接入**
+2. **Tiingo 美股个股 / ETF EOD 源最小化接入**
+3. **新闻源从 Tiingo 中拆出，形成独立 provider 规划**
+4. **港股历史库从结构预留推进到 30 标的数据层验收**
 
 ### 推荐实施顺序
 
-从治理风险看：
+~~从治理风险看：~~
 
-1. 样本覆盖门槛与 portfolio 口径已完成，继续保持为强制治理。
-2. 当前先围绕 `legacy_momentum_low_turnover_v1` 做解释链路和账户仿真收口。
-3. residual / multifactor-volume-price 暂时降为备选，等主线收口后再继续精修。
+1. ~~样本覆盖门槛与 portfolio 口径已完成，继续保持为强制治理。~~
+2. ~~当前先围绕 `legacy_momentum_low_turnover_v1` 做解释链路和账户仿真收口。~~
+3. ~~residual / multifactor-volume-price 暂时降为备选，等主线收口后再继续精修。~~
+
+从当前数据源治理看：
+
+1. 保持 A 股本土主策略和账户级仿真链路稳定，不把新数据源直接接入主 ranker。
+2. FRED / Tiingo / HK 历史库都先以独立数据资产和验收报告形式存在。
+3. 下一步先做港股映射解释力测试，再决定是否进入 `T3.1` 策略代码化。
+4. 新闻源先做 provider probe 和日报解释，不进入首批交易建议主线。
 
 ### 本周成功标准
 
-- compare mode 不再混用 symbol-scope 与 portfolio-scope 结果
-- 至少一个 portfolio 候选在足够 fold 覆盖下通过 gate
-- `sharpe_mean > 0.5`
-- `max_drawdown_mean > -0.25`
-- `win_rate_mean > 0.45`
-- current-cost 与 low-slippage 场景差距可解释，且不是完全依赖零成本才有效
-- 变更日志有清晰晋级或失败原因
+- ~~compare mode 不再混用 symbol-scope 与 portfolio-scope 结果~~
+- ~~至少一个 portfolio 候选在足够 fold 覆盖下通过 gate~~
+- ~~`sharpe_mean > 0.5`~~
+- ~~`max_drawdown_mean > -0.25`~~
+- ~~`win_rate_mean > 0.45`~~
+- ~~current-cost 与 low-slippage 场景差距可解释，且不是完全依赖零成本才有效~~
+- ~~变更日志有清晰晋级或失败原因~~
+- FRED 首批宏观 / 利率 / VIX 序列可通过 connectivity 验收，并有缓存策略。
+- Tiingo EOD 最小接口可运行，职责边界和 fallback 关系清晰。
+- Tiingo 不承担港股正式源和新闻源的结论已记录到计划与变更日志。
+- 港股历史库至少完成 30 标的覆盖、新鲜度、审计记录和报告输出。
+- `data/` 与 `reports/` 的职责边界在 README 和架构文档中保持一致。
+- 所有数据源变更不破坏当前 Phase 0 策略、账单、gate、premarket 主链路。
 
 ---
 
@@ -956,17 +995,18 @@ stok-mapping/
 
 当前任务层级：
 
-| 层级编号 | 任务域 | 子任务文档 |
-| --- | --- | --- |
-| `T0` | 周任务执行总清单 | [`tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md) |
-| `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) |
-| `T1.2` | Tiingo 美股个股 / ETF 主源 | [`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) |
-| `T2.1` | Phase 0 候选策略池 | [`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
-| `T2.2` | 策略开发任务单模板 | [`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](tasks/strategy/STRATEGY_DEV_CHECKLIST.md) |
-| `T2.3` | 策略积木工程化计划 | [`tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) |
-| `T3.1` | 港股映射 A 股候选策略 | [`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) |
-| `T4.1` | 真实账户对账 CSV 预留格式 | [`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) |
-| `T5.1` | 中文 A 股量化策略论文提炼 | [`tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) |
+| 层级编号 | 任务域 | 子任务文档 | 当前状态 |
+| --- | --- | --- | --- |
+| `T0` | 周任务执行总清单 | [`tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md) | 持续执行，仍有未完成项 |
+| `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) | **已完成** |
+| `T1.2` | Tiingo 美股个股 / ETF 主源 | [`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
+| `T2.1` | Phase 0 候选策略池 | [`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
+| `T2.2` | 策略开发任务单模板 | [`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](tasks/strategy/STRATEGY_DEV_CHECKLIST.md) | 模板文档，不按完成项结算 |
+| `T2.3` | 策略积木工程化计划 | [`tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
+| `T3.1` | 港股映射 A 股候选策略 | [`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
+| `T4.1` | 真实账户对账 CSV 预留格式 | [`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
+| `T5.1` | 中文 A 股量化策略论文提炼 | [`tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
+| `T6.1` | 统一调度器与后台 Pipeline | [`tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
 
 ### 当前最高优先级
 
@@ -977,6 +1017,7 @@ stok-mapping/
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
+- [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
 - [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 
 ### 条件满足后再推进

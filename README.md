@@ -233,13 +233,36 @@ reports/live_execution_backtest/
   --output-dir reports/live_execution_backtest/live_profile
 ```
 
-导出 07:30 盘前观察池：
+生成日常简报 pipeline：
+
+```bash
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+```
+
+`daily-brief` 默认先执行 A 股本地历史库增量更新，再导出当前有效主策略的 07:30 盘前观察池；如果历史库插入了新行，会自动刷新低换手策略 panel cache，避免基于旧缓存生成简报。
+
+`daily-brief` 的报告按简报日期归档，日期来自简报中的 `盘前检查时间`，不是系统运行时间。输出路径格式为：
+
+```text
+reports/<brief_date>/phase0_premarket_watchlist_<brief_date>.csv
+reports/<brief_date>/phase0_premarket_report_<brief_date>.html
+```
+
+日常简报还会维护一份连续模拟仓位流水：
+
+```text
+data/simulated_trading/phase0_daily_brief_ledger.csv
+```
+
+现阶段该流水默认按程序自动生成的目标仓位滚动；后续接入用户模拟交易确认后，可用用户实际成交/持仓状态替代这份自动状态。简报中的 `交易动作`、`当前权重`、`目标权重`、`权重变化` 使用连续模拟口径，`策略信号动作` 保留本次策略模型自身的信号口径。
+
+单独导出 07:30 盘前观察池：
 
 ```bash
 ./.venv/bin/python -m phase0.cli premarket --config config.yaml
 ```
 
-观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。
+观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。`premarket` 不负责更新 A 股本地历史库，日常使用优先跑 `daily-brief`。
 
 完整重建离线历史库：
 
@@ -301,10 +324,27 @@ reports/live_execution_backtest/
 bash scripts/install_dev_cron.sh
 ```
 
-该 cron 任务默认安装两条开发期任务：
+该命令只向系统 cron 安装一个项目入口：
 
-- 交易日 `16:30` 运行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。
-- 每周一 `03:30` 运行 `scripts/update_financial_factors_weekly.sh`，日志写入 `logs/financial_factors_update.log`。
+```text
+* * * * * bash scripts/run_project_scheduler.sh
+```
+
+具体任务由 `scripts/run_project_scheduler.sh` 统一管理，当前默认包含：
+
+- 每周一 `03:30`：更新 A 股季度财务因子，日志写入 `logs/financial_factors_update.log`。
+- 交易日 `07:20`：运行 `daily-brief`，生成盘前日报和连续模拟仓位流水，日志写入 `logs/daily_brief_pipeline.log`。
+- 交易日 `16:20`：更新港股历史库，日志写入 `logs/hk_market_history_update.log`。
+- 交易日 `16:30`：更新 A 股本地历史库，日志写入 `logs/manual_history_update.log`。
+- 交易日 `17:10`：更新 US market 历史库，日志写入 `logs/us_market_history_update.log`。
+
+调度器本身日志写入：
+
+```text
+logs/project_scheduler.log
+```
+
+后续新增定时任务时，应优先扩展 `scripts/run_project_scheduler.sh`，保持系统 cron 里只有一个项目入口。
 
 ## 策略开发
 

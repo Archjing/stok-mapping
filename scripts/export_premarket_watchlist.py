@@ -32,6 +32,16 @@ from scripts.export_low_turnover_bill import (
 
 DEFAULT_WATCHLIST_OUTPUT = "reports/phase0_premarket_watchlist.csv"
 DEFAULT_REPORT_OUTPUT = "reports/phase0_premarket_report.html"
+DEFAULT_SIMULATION_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
+
+
+def _resolve_output_template(root: Path, value: str | Path, summary: dict[str, Any]) -> Path:
+    brief_date = str(summary["check_time"])[:10]
+    formatted = str(value).format(
+        brief_date=brief_date,
+        signal_date=str(summary["signal_date"]),
+    )
+    return _resolve_path(root, formatted)
 
 
 def _format_pct(value: Any, digits: int = 2) -> str:
@@ -52,9 +62,19 @@ def _format_price(value: Any) -> str:
     return f"{float(value):.2f}"
 
 
-def _trade_action(row: pd.Series) -> str:
-    current_weight = float(row.get("weight", 0.0) or 0.0)
-    target_weight = float(row.get("weight_unshifted", 0.0) or 0.0)
+def _parse_pct(value: Any) -> float:
+    if pd.isna(value):
+        return 0.0
+    raw = str(value).strip().replace("%", "")
+    if not raw:
+        return 0.0
+    try:
+        return float(raw) / 100.0
+    except ValueError:
+        return 0.0
+
+
+def _weight_action(current_weight: float, target_weight: float) -> str:
     if current_weight <= 1e-12 and target_weight > 1e-12:
         return "关注买入"
     if current_weight > 1e-12 and target_weight <= 1e-12:
@@ -66,6 +86,26 @@ def _trade_action(row: pd.Series) -> str:
     if current_weight > 1e-12:
         return "继续持有"
     return "候选观察"
+
+
+def _trade_action(row: pd.Series) -> str:
+    current_weight = float(row.get("weight", 0.0) or 0.0)
+    target_weight = float(row.get("weight_unshifted", 0.0) or 0.0)
+    return _weight_action(current_weight, target_weight)
+
+
+def _simulation_note(row: pd.Series, previous_source: str) -> str:
+    action = str(row.get("sim_trade_action", ""))
+    current_weight = float(row.get("sim_current_weight", 0.0) or 0.0)
+    target_weight = float(row.get("sim_target_weight", 0.0) or 0.0)
+    source = previous_source or "本次策略信号"
+    if action in {"关注买入", "关注加仓"}:
+        return f"连续模拟从{source}持仓{_format_pct(current_weight)}调整到{_format_pct(target_weight)}"
+    if action in {"关注卖出", "关注减仓"}:
+        return f"连续模拟从{source}持仓{_format_pct(current_weight)}调整到{_format_pct(target_weight)}"
+    if action == "继续持有":
+        return f"连续模拟维持{_format_pct(target_weight)}目标仓位"
+    return "未进入连续模拟持仓，仅保留观察"
 
 
 def _trade_reason(row: pd.Series, params: dict[str, Any]) -> str:
@@ -109,7 +149,7 @@ def _execution_risk_note(row: pd.Series, execution_cfg: dict[str, Any]) -> str:
     previous_close = row.get("previous_close")
     volume = row.get("volume")
     amount = row.get("amount")
-    action = _trade_action(row)
+    action = str(row.get("sim_trade_action") or _trade_action(row))
 
     if bool(execution_cfg.get("enable_suspension_check", True)):
         if pd.isna(close_price) or float(close_price) <= 0:
@@ -147,6 +187,80 @@ def _next_trade_date(db_path: Path, signal_date: pd.Timestamp) -> str:
     except sqlite3.Error:
         return fallback
     return str(row[0]) if row and row[0] else fallback
+
+
+def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path) -> tuple[dict[str, float], str]:
+    if ledger_path.exists():
+        try:
+            ledger = pd.read_csv(ledger_path, encoding="utf-8-sig")
+        except Exception:
+            ledger = pd.DataFrame()
+        if not ledger.empty and {"brief_date", "symbol", "target_weight"}.issubset(ledger.columns):
+            prior = ledger[ledger["brief_date"].astype(str) < brief_date].copy()
+            if not prior.empty:
+                source_date = str(prior["brief_date"].max())
+                latest = prior[prior["brief_date"].astype(str) == source_date].copy()
+                latest["target_weight"] = pd.to_numeric(latest["target_weight"], errors="coerce").fillna(0.0)
+                return dict(zip(latest["symbol"].astype(str), latest["target_weight"].astype(float), strict=False)), source_date
+
+    report_root = root / "reports"
+    candidates: list[tuple[str, Path]] = []
+    if report_root.exists():
+        for path in report_root.glob("????-??-??/phase0_premarket_watchlist*.csv"):
+            report_date = path.parent.name
+            if report_date < brief_date:
+                candidates.append((report_date, path))
+    for source_date, path in sorted(candidates, reverse=True):
+        try:
+            previous = pd.read_csv(path, encoding="utf-8-sig")
+        except Exception:
+            continue
+        if previous.empty or "股票代码" not in previous.columns:
+            continue
+        weight_col = "目标权重"
+        if "模拟目标权重" in previous.columns:
+            weight_col = "模拟目标权重"
+        if weight_col not in previous.columns:
+            continue
+        weights = previous[weight_col].map(_parse_pct)
+        return dict(zip(previous["股票代码"].astype(str), weights.astype(float), strict=False)), source_date
+    return {}, ""
+
+
+def _write_simulation_ledger(
+    *,
+    path: Path,
+    brief_date: str,
+    signal_date: str,
+    watchlist: pd.DataFrame,
+) -> None:
+    rows = pd.DataFrame(
+        {
+            "brief_date": brief_date,
+            "signal_date": signal_date,
+            "symbol": watchlist["股票代码"].astype(str),
+            "name": watchlist["股票名称"].astype(str),
+            "action": watchlist["交易动作"].astype(str),
+            "current_weight": watchlist["当前权重"].map(_parse_pct),
+            "target_weight": watchlist["目标权重"].map(_parse_pct),
+            "weight_change": watchlist["权重变化"].map(_parse_pct),
+        }
+    )
+    rows = rows[(rows["current_weight"].abs() > 1e-12) | (rows["target_weight"].abs() > 1e-12)].copy()
+    if path.exists():
+        try:
+            existing = pd.read_csv(path, encoding="utf-8-sig")
+        except Exception:
+            existing = pd.DataFrame()
+    else:
+        existing = pd.DataFrame()
+    if not existing.empty and "brief_date" in existing.columns:
+        existing = existing[existing["brief_date"].astype(str) != brief_date].copy()
+    out = pd.concat([existing, rows], ignore_index=True) if not existing.empty else rows
+    if not out.empty:
+        out = out.sort_values(["brief_date", "symbol"]).reset_index(drop=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    out.to_csv(path, index=False, encoding="utf-8-sig")
 
 
 def _format_html(watchlist: pd.DataFrame, summary: dict[str, Any]) -> str:
@@ -246,17 +360,20 @@ th {
         "信号日期",
         "盘前检查时间",
         "交易动作",
+        "策略信号动作",
         "股票代码",
         "股票名称",
         "收盘价",
         "当前权重",
         "目标权重",
+        "权重变化",
         "动量分数",
         "当日排名",
         "持有天数",
         "成交价口径",
         "最大成交参与率",
         "执行风险提示",
+        "连续模拟说明",
         "观察理由",
     ]
     rows = []
@@ -278,6 +395,8 @@ th {
         ("观察股票数", summary.get("watchlist_rows", 0)),
         ("当前总暴露", _format_pct(summary.get("current_exposure", 0.0))),
         ("目标总暴露", _format_pct(summary.get("target_exposure", 0.0))),
+        ("买入/加仓", summary.get("buy_or_add_rows", 0)),
+        ("卖出/减仓", summary.get("sell_or_reduce_rows", 0)),
         ("训练窗 Sharpe", _format_num(summary.get("train_sharpe", 0.0))),
     ]
     return (
@@ -312,6 +431,7 @@ def export_premarket_watchlist(
     no_panel_cache: bool = False,
     top_candidates: int = 20,
     training_days: int | None = None,
+    simulation_ledger: str | Path = DEFAULT_SIMULATION_LEDGER,
 ) -> dict[str, Any]:
     root = Path.cwd()
     config_path = _resolve_path(root, config_path)
@@ -374,6 +494,7 @@ def export_premarket_watchlist(
     signal["date"] = pd.to_datetime(signal["date"])
     signal_date = signal["date"].max()
     latest = signal[signal["date"] == signal_date].copy()
+    latest["symbol"] = latest["symbol"].astype(str)
     price_cols = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount"] if col in train.columns]
     prices = train[price_cols].copy().drop_duplicates(["date", "symbol"])
     prices["date"] = pd.to_datetime(prices["date"])
@@ -383,43 +504,64 @@ def export_premarket_watchlist(
         prices["previous_close"] = prices.groupby("symbol")["close"].shift(1)
     latest = latest.merge(prices, on=["date", "symbol"], how="left")
     db_path = _resolve_path(root, config.get("local_history", {}).get("path", ""))
-    names = _load_names(db_path, latest["symbol"].astype(str).unique().tolist())
+    check_time = f"{_next_trade_date(db_path, signal_date)} 07:30"
+    brief_date = check_time[:10]
+    ledger_path = _resolve_path(root, simulation_ledger)
+    previous_positions, previous_source = _load_previous_sim_positions(root, brief_date, ledger_path)
+
+    missing_previous = sorted(set(previous_positions) - set(latest["symbol"].astype(str)))
+    if missing_previous:
+        missing_rows = pd.DataFrame({"date": signal_date, "symbol": missing_previous})
+        latest = pd.concat([latest, missing_rows], ignore_index=True, sort=False)
+    names = _load_names(db_path, sorted(set(latest["symbol"].astype(str)) | set(previous_positions)))
 
     latest["current_weight"] = latest["weight"].fillna(0.0).astype(float)
     latest["target_weight"] = latest.get("weight_unshifted", latest["current_weight"]).fillna(0.0).astype(float)
     latest["weight_change"] = latest["target_weight"] - latest["current_weight"]
     latest["trade_action"] = latest.apply(_trade_action, axis=1)
+    if previous_positions:
+        latest["sim_current_weight"] = latest["symbol"].astype(str).map(previous_positions).fillna(0.0).astype(float)
+    else:
+        latest["sim_current_weight"] = latest["current_weight"]
+    latest["sim_target_weight"] = latest["target_weight"]
+    latest["sim_weight_change"] = latest["sim_target_weight"] - latest["sim_current_weight"]
+    latest["sim_trade_action"] = latest.apply(
+        lambda row: _weight_action(float(row["sim_current_weight"]), float(row["sim_target_weight"])),
+        axis=1,
+    )
     latest["trade_reason"] = latest.apply(lambda row: _trade_reason(row, params), axis=1)
     latest["execution_risk_note"] = latest.apply(lambda row: _execution_risk_note(row, execution_cfg), axis=1)
+    latest["simulation_note"] = latest.apply(lambda row: _simulation_note(row, previous_source), axis=1)
 
     candidates = latest[
-        (latest["current_weight"] > 0)
-        | (latest["target_weight"] > 0)
+        (latest["sim_current_weight"] > 0)
+        | (latest["sim_target_weight"] > 0)
         | (latest["rank"].fillna(np.inf).astype(float) <= int(top_candidates))
     ].copy()
     candidates = candidates.sort_values(
-        ["target_weight", "current_weight", "rank", "symbol"],
+        ["sim_target_weight", "sim_current_weight", "rank", "symbol"],
         ascending=[False, False, True, True],
     )
 
-    check_time = f"{_next_trade_date(db_path, signal_date)} 07:30"
     watchlist = pd.DataFrame(
         {
             "信号日期": candidates["date"].dt.date.astype(str),
             "盘前检查时间": check_time,
-            "交易动作": candidates["trade_action"],
+            "交易动作": candidates["sim_trade_action"],
+            "策略信号动作": candidates["trade_action"],
             "股票代码": candidates["symbol"].astype(str),
             "股票名称": candidates["symbol"].astype(str).map(names).fillna(""),
             "收盘价": candidates["close"].map(_format_price) if "close" in candidates.columns else "",
-            "当前权重": candidates["current_weight"].map(_format_pct),
-            "目标权重": candidates["target_weight"].map(_format_pct),
-            "权重变化": candidates["weight_change"].map(_format_pct),
+            "当前权重": candidates["sim_current_weight"].map(_format_pct),
+            "目标权重": candidates["sim_target_weight"].map(_format_pct),
+            "权重变化": candidates["sim_weight_change"].map(_format_pct),
             "动量分数": candidates["score"].map(lambda value: _format_num(value, 4)),
             "当日排名": candidates["rank"].map(lambda value: "" if pd.isna(value) else str(int(value))),
             "持有天数": candidates["held_days"].map(lambda value: "" if pd.isna(value) else str(int(value))),
             "成交价口径": str(execution_cfg.get("price_mode", "next_open")),
             "最大成交参与率": _format_pct(float(execution_cfg.get("max_participation_rate", 0.0)), 2),
             "执行风险提示": candidates["execution_risk_note"],
+            "连续模拟说明": candidates["simulation_note"],
             "观察理由": candidates["trade_reason"],
             "策略参数": strategy.format_params(params),
         }
@@ -428,18 +570,28 @@ def export_premarket_watchlist(
     summary = {
         "signal_date": signal_date.date().isoformat(),
         "check_time": check_time,
+        "brief_date": check_time[:10],
         "watchlist_rows": len(watchlist),
-        "current_exposure": float(latest["current_weight"].sum()),
-        "target_exposure": float(latest["target_weight"].sum()),
+        "current_exposure": float(latest["sim_current_weight"].sum()),
+        "target_exposure": float(latest["sim_target_weight"].sum()),
+        "buy_or_add_rows": int(watchlist["交易动作"].astype(str).str.contains("买|加仓", regex=True).sum()),
+        "sell_or_reduce_rows": int(watchlist["交易动作"].astype(str).str.contains("卖|减仓", regex=True).sum()),
+        "previous_position_source": previous_source,
         "train_sharpe": float(metric["sharpe"]),
     }
-    output_path = _resolve_path(root, output)
-    report_path = _resolve_path(root, report_output)
+    output_path = _resolve_output_template(root, output, summary)
+    report_path = _resolve_output_template(root, report_output, summary)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     watchlist.to_csv(output_path, index=False, encoding="utf-8-sig")
     report_path.write_text(_format_html(watchlist, summary), encoding="utf-8")
-    return {"watchlist": output_path, "report": report_path, "rows": len(watchlist), **summary}
+    _write_simulation_ledger(
+        path=ledger_path,
+        brief_date=brief_date,
+        signal_date=signal_date.date().isoformat(),
+        watchlist=watchlist,
+    )
+    return {"watchlist": output_path, "report": report_path, "ledger": ledger_path, "rows": len(watchlist), **summary}
 
 
 def main() -> int:

@@ -478,6 +478,7 @@ def _fetch_incremental_rows(
     min_coverage: float,
     data_cfg: dict[str, Any],
     warnings: list[str],
+    allow_spot_fallback: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, int, str, list[SourceAttempt]]:
     attempts: list[SourceAttempt] = []
     tcfg = tushare_config(data_cfg.get("tushare", {}))
@@ -520,6 +521,10 @@ def _fetch_incremental_rows(
     elif tcfg.enabled:
         warnings.append(f"tushare enabled but token env {tcfg.token_env} is not set.")
         attempts.append(SourceAttempt(source="tushare.daily+daily_basic+adj_factor", fetched_rows=0, coverage=0.0, status="missing_token"))
+
+    if not allow_spot_fallback:
+        warnings.append("Skipped live spot fallback for a closed-date backfill before configured min_run_time.")
+        return pd.DataFrame(), pd.DataFrame(), 0, "tushare.daily+daily_basic+adj_factor", attempts
 
     raw = _fetch_spot_snapshot(warnings)
     fetched_rows = len(raw) if raw is not None else 0
@@ -770,6 +775,8 @@ def update_manual_history_from_config(
         )
         target_is_covered = before_latest is not None and before_latest >= target_trade_date and before_target_coverage >= min_latest_coverage
         freshness_ok = before_staleness <= max_staleness_days and before_coverage >= min_latest_coverage
+        target_is_today = target_trade_date == date.today()
+        block_live_spot_write = before_min_run_time and target_is_today
         metadata_before = _metadata_coverage(conn, meta_table=meta_table, market=market)
         metadata_needs_refresh = refresh_metadata and metadata_before.get("min_field", 0.0) < min_metadata_coverage
 
@@ -807,7 +814,7 @@ def update_manual_history_from_config(
                 warnings=[],
             )
 
-        if before_min_run_time and not metadata_needs_refresh:
+        if block_live_spot_write and not metadata_needs_refresh:
             warnings.append(
                 f"Skipped live spot write before configured min_run_time={min_run_time.strftime('%H:%M')}; "
                 "writing now could label intraday quotes as daily close."
@@ -852,6 +859,7 @@ def update_manual_history_from_config(
             min_coverage=min_latest_coverage,
             data_cfg=data_cfg,
             warnings=warnings,
+            allow_spot_fallback=not before_min_run_time,
         )
         for attempt in source_attempts:
             _record_source_audit(
@@ -877,7 +885,7 @@ def update_manual_history_from_config(
         metadata_updated_rows += local_turnover_updated_rows
         metadata_after = _metadata_coverage(conn, meta_table=meta_table, market=market)
 
-        if before_min_run_time and target_is_covered and freshness_ok:
+        if block_live_spot_write and target_is_covered and freshness_ok:
             status = "metadata_updated" if metadata_updated_rows > 0 else "up_to_date"
             if metadata_after.get("min_field", 0.0) < min_metadata_coverage:
                 warnings.append(
@@ -904,7 +912,7 @@ def update_manual_history_from_config(
                 primary_source=primary_source,
             )
 
-        if before_min_run_time:
+        if block_live_spot_write:
             warnings.append(
                 f"Skipped live spot write before configured min_run_time={min_run_time.strftime('%H:%M')}; "
                 "writing now could label intraday quotes as daily close."
