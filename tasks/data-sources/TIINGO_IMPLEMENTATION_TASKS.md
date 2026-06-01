@@ -28,6 +28,7 @@
 - [x] CNH / FX 代理
 - [x] 所有美股指数一次性替换
 - [x] A 股 / 港股正式链路
+- [x] 新闻源与文本摘要链路（拆到 `T1.3` 独立新闻源模块）
 
 ---
 
@@ -85,6 +86,7 @@ data_sources:
 - [x] 不用 Tiingo 承接宏观 / 利率 / VIX
 - [x] 不用 Tiingo 替代 A 股正式数据主链路
 - [x] 不一次性替换所有指数与外汇代理
+- [x] 不继续扩展 Tiingo News API；当前 token 对 `/tiingo/news` 返回 `403 permission_denied:news_api`
 
 ---
 

@@ -479,7 +479,7 @@
 
 ### W2.4.2 代码设计准备
 - [x] 明确 FRED adapter 入口
-- [ ] 明确 FRED 数据缓存策略
+- [x] 明确 FRED 数据缓存策略
 - [x] 明确 FRED 对 `config.yaml` 的新增配置项
 - [x] 明确 FRED 与现有 `yfinance` 的职责边界
 
@@ -508,11 +508,11 @@
 
 ## W2.6 配置层重构草案
 
-- [ ] 宏观、利率、VIX、个股、ETF、FX 的配置职责清晰拆分
-- [ ] `tushare`：A 股盘后主源
-- [ ] `fred`：宏观 / 利率 / VIX
+- [x] 宏观、利率、VIX、个股、ETF、FX 的配置职责清晰拆分
+- [x] `tushare`：A 股盘后主源
+- [x] `fred`：宏观 / 利率 / VIX
 - [x] `tiingo`：美股个股 / ETF / EOD
-- [ ] `yfinance`：fallback / FX 代理 / 临时研究源
+- [x] `yfinance`：fallback / FX 代理 / 临时研究源
 
 ## W2.7 本周归档要求
 
@@ -520,7 +520,7 @@
 - [x] `FRED` 建议接管的宏观 / 利率序列
 - [x] `Tiingo` 建议接管的美股标的范围
 - [x] 暂不替换的数据范围
-- [ ] `config.yaml` 的目标重构方向
+- [x] `config.yaml` 的目标重构方向
 - [x] 下一步实际编码顺序
 
 归档位置：
@@ -557,7 +557,7 @@
 ### W2.10.1 如果本周方案成熟
 - [x] 下一周进入 **FRED 实现周**
 - [x] FRED 稳定后再进入 **Tiingo 接入周**
-- [ ] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证
+- [x] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证；2026-06-02 已确认 Tiingo 不适合作为港股正式源，港股链路继续保持预留状态
 - [x] 港股映射策略记录见：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 ### W2.10.2 如果本周方案不充分

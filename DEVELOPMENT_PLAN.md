@@ -85,6 +85,7 @@
 6. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
 7. 将盘前观察池接入定时任务和日报摘要，形成可复盘的日常研判记录。
 8. 按 Week 2 顺序先推进 FRED 宏观 / 利率 / VIX 数据源，再推进 Tiingo 美股个股 / ETF 主源。
+9. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
 
 当前**不是**优先做的事：
 
@@ -112,6 +113,7 @@
 
 - 在上述四步完成前，不把 residual / multifactor 等备选策略重新拉回主线。
 - `FRED` / `Tiingo` 数据源升级继续保留，但优先级低于当前通过策略的收口工作。
+- 新闻源扩展作为 `T1.3` 独立任务，不归入 Tiingo EOD 接入，不直接生成交易信号。
 
 ---
 
@@ -252,7 +254,7 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 当前状态：
 
 - 当前跨市场 overlay 已先落库到 `data/us_market_history.sqlite`，策略运行读取本地 `us_daily_bars`，不再运行时临时抓取 yfinance。
-- US market 当前 provider 仍为 `yfinance`，但定位是过渡数据源；后续美股个股/ETF 计划接入 `Tiingo`，宏观/利率/VIX 计划接入 `FRED`。
+- US market 当前 provider 仍为 `yfinance`，但定位是过渡数据源；Tiingo 已完成美股个股 / ETF EOD 最小接入和连通性检查，后续再评估是否接管 `us_market_history` 对应标的；FRED 已完成宏观 / 利率 / VIX 最小接入。
 - 港股库 `data/hk_market_history.sqlite` 仅保留结构和 CLI，当前 `enabled: false`，等港股数据源接入并通过覆盖率/新鲜度验证后再挂到应用。
 - 港股映射 A 股候选策略已记录到 `tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`，后续补全代码；当前先做数据层验证，不并入 Phase 0 主线。
 
@@ -394,6 +396,20 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 
 ### 4.1.6 新闻 / 文本摘要因子（辅助）
 
+新闻源作为独立数据源模块推进，不归入 Tiingo EOD 日线适配器。当前规划是：
+
+- `Tiingo` 只保留为美股个股 / ETF / ADR 的 EOD 日线源；当前 token 对 `/tiingo/news` 返回 `403 permission_denied:news_api`，不继续扩展 Tiingo News。
+- `Alpha Vantage` 作为第一轮低成本新闻源 probe provider，验证 `tickers`、`topics`、`time_from/time_to`、`sort/limit` 和字段结构。
+- `Benzinga` 作为后续付费 / 生产级新闻源候选，重点评估 ticker、channel/topic、date range、实时性、成本和授权边界。
+- `Finnhub` 仅作为单票 company news 备选，不作为首批主新闻源。
+
+组合新闻拉取原则：
+
+- 不假设多 ticker 一次传入时 provider 使用 OR 语义。
+- 观察池新闻按逐 ticker 请求，再按 `url / title / published_at` 聚合去重。
+- 项目内部业务标签需要映射到 provider 固定 topic 枚举。
+- 原始响应进入 `data/raw_data/news/<provider>/`，清洗后的新闻事件表进入 `data/features/news/`，探测报告进入 `reports/`。
+
 LLM 仅负责：
 
 - 政策/财报/研报摘要
@@ -502,8 +518,9 @@ LLM 不直接生成评分与交易信号。
 
 当前状态：
 
-- Tiingo 尚未接入代码。
+- Tiingo 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_tiingo_daily`，`check_connectivity` 已覆盖 `NVDA`、`AAPL`、`TSLA`、`KWEB`。
 - 当前跨市场标的已先由 `yfinance` 增量写入 US market 本地 SQLite，策略读取落库数据，避免每次评估时临时在线抓取。
+- Tiingo 暂不承接新闻源；新闻源独立任务见 `T1.3`。
 - 接入任务单见：`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
 
 ### 5.3 港股
@@ -516,6 +533,7 @@ LLM 不直接生成评分与交易信号。
 
 - 港股数据源进入可生产状态前，不参与策略、报告或质量审计。
 - 后续启用前必须先完成覆盖率、新鲜度、复权口径和交易日历校验。
+- 2026-06-02 Tiingo 实测 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式均返回 `404 Ticker not found`，当前不适合作为港股正式源。
 - 港股映射 A 股策略后续按“先数据验证、再解释力测试、最后回测接入”的顺序推进。
 
 ### 5.4 宏观 / 利率 / VIX
@@ -538,7 +556,22 @@ LLM 不直接生成评分与交易信号。
 
 现阶段例外是 `us_market_history.sqlite` 的过渡期更新仍使用 `yfinance` provider；策略读取的是本地库，不直接依赖运行时在线请求。等 Tiingo/FRED 接入后，再把对应标的迁移到正式主源。
 
-### 5.6 当前意义
+### 5.6 新闻源
+
+- **第一轮 probe provider**：Alpha Vantage `NEWS_SENTIMENT`
+- **生产级候选**：Benzinga Newsfeed
+- **单票备选**：Finnhub company news
+- **不再扩展**：Tiingo News API
+
+当前状态：
+
+- 已验证 Tiingo News API 当前 token 权限不足，访问 `/tiingo/news` 返回 `403 permission_denied:news_api`。
+- Alpha Vantage 只作为低成本可用性验证源，不直接承诺为长期主源。
+- Alpha Vantage 多 ticker / 多 topic 过滤不按项目组合 OR 语义假设；组合观察池必须逐 ticker 拉取后聚合去重。
+- 新闻源只服务盘前解释、风险提示和后续文本摘要因子，不进入首批交易建议主线。
+- 接入任务单见：`tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
+
+### 5.7 当前意义
 
 这个策略保留了旧版计划中“数据源升级”的应用导向思路：
 
@@ -580,9 +613,10 @@ LLM 不直接生成评分与交易信号。
 | A股主数据链路 | Tushare + 本地 SQLite fallback | 已采纳主方向 |
 | 开发/研究辅助源 | AkShare / yfinance | 已用，长期降级为 fallback |
 | US market 跨市场库 | yfinance -> `us_market_history.sqlite` | 过渡期已接入 |
-| 美股 / ETF 后续主源 | Tiingo | 计划接入，未来替换过渡 provider |
+| 美股 / ETF 后续主源 | Tiingo | 最小 EOD 接入已完成，未来评估替换过渡 provider |
 | 港股历史库 | `hk_market_history.sqlite` | 结构预留，暂不挂应用 |
-| 宏观 / 利率 / VIX 后续主源 | FRED | 计划接入 |
+| 宏观 / 利率 / VIX 后续主源 | FRED | 最小接入已完成 |
+| 新闻源候选 | Alpha Vantage / Benzinga / Finnhub | 独立模块规划，不接入主 ranker |
 | 数据存储 | SQLite | 已用 |
 | 回测框架 | pandas + walk-forward | 已用 |
 | 策略插件 | `phase0/strategies/` registry | 已用 |

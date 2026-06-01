@@ -8,7 +8,7 @@
 | 层级编号 | 目录 / 文件 | 作用 |
 | --- | --- | --- |
 | `T0` | [`WEEKLY_EXECUTION_CHECKLIST.md`](./WEEKLY_EXECUTION_CHECKLIST.md) | 周任务执行总清单，承接总体计划的近期执行节奏 |
-| `T1` | [`data-sources/`](./data-sources/) | 数据源升级任务：FRED、Tiingo 等 |
+| `T1` | [`data-sources/`](./data-sources/) | 数据源升级任务：FRED、Tiingo、新闻源等 |
 | `T2` | [`strategy/`](./strategy/) | 策略候选、策略开发检查清单、策略积木工程化计划 |
 | `T3` | [`cross-market/`](./cross-market/) | 跨市场映射与港股/A 股候选任务 |
 | `T4` | [`account/`](./account/) | 账户级仿真、真实账户对账和交易计划辅助相关任务 |
@@ -30,6 +30,7 @@
 | --- | --- | --- |
 | `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`data-sources/FRED_IMPLEMENTATION_TASKS.md`](./data-sources/FRED_IMPLEMENTATION_TASKS.md) |
 | `T1.2` | Tiingo 美股个股 / ETF 主源 | [`data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](./data-sources/TIINGO_IMPLEMENTATION_TASKS.md) |
+| `T1.3` | 新闻源独立模块 | [`data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](./data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md) |
 | `T2.1` | Phase 0 候选策略池 | [`strategy/PHASE0_CANDIDATE_STRATEGIES.md`](./strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
 | `T2.2` | 策略开发任务单模板 | [`strategy/STRATEGY_DEV_CHECKLIST.md`](./strategy/STRATEGY_DEV_CHECKLIST.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |

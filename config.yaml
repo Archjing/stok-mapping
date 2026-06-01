@@ -148,6 +148,10 @@ phase0:
     fred:
       enabled: false
       api_key_env: "FRED_API_KEY"
+      cache:
+        enabled: true
+        dir: "data/cache/fred"
+        ttl_hours: 24
       series:
         gdp: "GDP"
         cpi: "CPIAUCSL"

@@ -58,7 +58,7 @@ refdocs/strategy_explanations/INDEX.md
 - 国内股票主源：`Tushare`
 - 国内 fallback：`AkShare` / 新浪快照 / 本地 SQLite 历史库
 - 美股/ETF/VIX/CNH 当前库：`data/us_market_history.sqlite`，现阶段 provider 为 `yfinance`，后续美股个股与 ETF 计划主源升级为 `Tiingo`
-- 港股库：`data/hk_market_history.sqlite` 为预留结构，当前 `enabled: false`，等港股数据源进入可生产状态后再挂到应用链路
+- 港股库：`data/hk_market_history.sqlite` 为预留结构，当前 `enabled: false`，等港股数据源进入可生产状态后再挂到应用链路；截至 2026-06-02，Tiingo 对 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式实测均返回 `404 Ticker not found`，暂不适合作为港股正式源
 - 宏观 / 利率 / VIX 计划主源：`FRED`
 - `yfinance`：保留为 fallback，不再作为长期正式主源
 
@@ -84,6 +84,8 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md
 tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md
 ```
+
+Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` 和独立探测脚本 `scripts/tiingo_news_probe.py`，用于验证 `ticker 列表 + 主题标签 + 时间窗口` 三类过滤条件及 token 权限状态。当前实测结论是：项目所用 token 可访问 Tiingo 日线接口，但访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻能力暂不可用。
 
 ## 本地数据
 
@@ -119,6 +121,29 @@ data/manual_history/README.md
 - `us_data_source_runs`: US market 数据源更新审计记录，记录 `source`, `fetched_at`, `latest_trade_date`, `coverage` 和写入行数。
 
 `hk_market_history.sqlite` 目前只是预留库名和 CLI 结构，不挂到策略或报告链路。等港股数据源接入、覆盖率与新鲜度验证稳定后，再启用 `hk_market_history.enabled` 并接入应用。
+
+### 数据目录边界
+
+当前代码已经体现了“`data/` 放长期可复用数据资产，`reports/` 放运行输出和验收记录”的大方向，但 `data/raw_data/` 与 `data/features/` 仍是预留目录，尚未成为正式写入路径。
+
+当前已落地的数据资产主要包括：
+
+- `data/manual_history/a_share_history.sqlite`：A 股本地研究数据库，承载日线、股票元数据、交易日历、退市清单、指数数据和财务因子。
+- `data/us_market_history.sqlite`：美股 / ETF / VIX / CNH 跨市场 overlay 本地库。
+- `data/universe/`：股票池和横截面快照产物，包括 `local_factor_universe.csv`、`a_share_snapshot.csv` 以及对应说明报告。
+
+当前 `reports/` 主要用于：
+
+- Phase 0 数据源、walk-forward、effectiveness gate、成本敏感性和策略变更报告。
+- 账单、盘前观察池、HTML 预览、CSV 导出和归档。
+- 报告生成所需的临时缓存，例如 `reports/cache/low_turnover_panel.pkl`。
+
+后续落库边界如下：
+
+- `data/raw_data/`：用于保存接近原始源口径的快照或响应，例如 FRED 序列、Tiingo 日线、Tushare 批量导出和其他外部数据源原始落盘。
+- `data/features/`：用于保存已经清洗、对齐并可被策略或日报复用的特征表，例如跨市场映射特征、宏观状态特征、技术/财务组合特征和信号输入表。
+
+当前 FRED 最小缓存已按数据层边界配置到 `data/cache/fred`。若后续需要保留更接近原始源口径的完整响应归档，可进一步迁入或扩展到 `data/raw_data/fred`。`reports/hk_a_mapping_factors` 目前仍按实验输出处理；若未来成为策略稳定输入，应迁移到 `data/features/cross_market/`。
 
 ## 常用命令
 

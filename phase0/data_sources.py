@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 import os
+from pathlib import Path
 from typing import Any
 
 import akshare as ak
@@ -27,6 +28,7 @@ DEFAULT_TIINGO_SYMBOLS: dict[str, list[str]] = {
     "us_equities": ["NVDA", "AAPL", "TSLA"],
     "thematic_etfs": ["KWEB"],
 }
+DEFAULT_TIINGO_NEWS_SYMBOLS: list[str] = ["NVDA", "KWEB"]
 
 
 @dataclass
@@ -88,6 +90,9 @@ def fetch_fred_series(
     start: date | None = None,
     end: date | None = None,
     api_key_env: str = "FRED_API_KEY",
+    cache_enabled: bool = True,
+    cache_dir: str = "data/cache/fred",
+    cache_ttl_hours: int = 24,
 ) -> pd.DataFrame:
     if not series_id:
         return pd.DataFrame(columns=["date", "value"])
@@ -97,6 +102,24 @@ def fetch_fred_series(
         if years is None:
             years = 10
         start = end - timedelta(days=365 * years + 20)
+    cache_file = (
+        Path(cache_dir)
+        / f"{series_id}_{start.isoformat()}_{end.isoformat()}.csv"
+    )
+    if cache_enabled and cache_file.exists():
+        try:
+            mtime = pd.Timestamp(cache_file.stat().st_mtime, unit="s")
+            age_hours = (pd.Timestamp.utcnow() - mtime.tz_localize("UTC")).total_seconds() / 3600.0
+            if age_hours <= max(1, int(cache_ttl_hours)):
+                cached = pd.read_csv(cache_file)
+                if not cached.empty and {"date", "value"}.issubset(set(cached.columns)):
+                    cached["date"] = pd.to_datetime(cached["date"], errors="coerce")
+                    cached["value"] = pd.to_numeric(cached["value"], errors="coerce")
+                    cached = cached.dropna(subset=["date", "value"]).sort_values("date")
+                    return cached.reset_index(drop=True)
+        except Exception:
+            # Cache read failures should not break online fetch.
+            pass
     params: dict[str, str] = {
         "series_id": str(series_id),
         "observation_start": start.isoformat(),
@@ -123,6 +146,13 @@ def fetch_fred_series(
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out["value"] = pd.to_numeric(out["value"], errors="coerce")
     out = out.dropna(subset=["date", "value"]).sort_values("date")
+    if cache_enabled:
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            out[["date", "value"]].to_csv(cache_file, index=False)
+        except Exception:
+            # Cache write failures should not break online fetch.
+            pass
     return out.reset_index(drop=True)
 
 
@@ -184,6 +214,71 @@ def fetch_tiingo_daily(
     out = out.dropna(subset=["date", "open", "high", "low", "close", "adjusted_close", "volume"]).sort_values("date")
     keep = ["date", "open", "high", "low", "close", "adjusted_close", "volume"]
     return out[keep].reset_index(drop=True)
+
+
+def fetch_tiingo_news(
+    tickers: list[str] | None = None,
+    tags: list[str] | None = None,
+    start: date | None = None,
+    end: date | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    sort_by: str = "publishedDate",
+    token_env: str = "TIINGO_API_TOKEN",
+) -> pd.DataFrame:
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        raise RuntimeError(f"missing_token_env:{token_env}")
+    params: dict[str, str | int] = {
+        "limit": max(1, int(limit)),
+        "offset": max(0, int(offset)),
+        "sortBy": str(sort_by),
+    }
+    if start is not None:
+        params["startDate"] = start.isoformat()
+    if end is not None:
+        params["endDate"] = end.isoformat()
+    clean_tickers = [str(x).strip().upper() for x in (tickers or []) if str(x).strip()]
+    clean_tags = [str(x).strip() for x in (tags or []) if str(x).strip()]
+    if clean_tickers:
+        params["tickers"] = ",".join(clean_tickers)
+    if clean_tags:
+        params["tags"] = ",".join(clean_tags)
+    resp = requests.get(
+        "https://api.tiingo.com/tiingo/news",
+        params=params,
+        headers={"Authorization": f"Token {token}"},
+        timeout=20,
+    )
+    if resp.status_code == 403:
+        raise RuntimeError("permission_denied:news_api")
+    resp.raise_for_status()
+    payload = resp.json()
+    if not isinstance(payload, list) or not payload:
+        return pd.DataFrame(
+            columns=[
+                "published_date",
+                "title",
+                "url",
+                "source",
+                "tickers",
+                "tags",
+                "description",
+            ]
+        )
+    out = pd.DataFrame(payload).copy()
+    if "publishedDate" in out.columns:
+        out["published_date"] = pd.to_datetime(out["publishedDate"], errors="coerce", utc=True).dt.tz_localize(None)
+    else:
+        out["published_date"] = pd.NaT
+    out["title"] = out.get("title", "").fillna("")
+    out["url"] = out.get("url", "").fillna("")
+    out["description"] = out.get("description", "").fillna("")
+    out["source"] = out.get("source", "").fillna("")
+    out["tickers"] = out.get("tickers", [[] for _ in range(len(out))])
+    out["tags"] = out.get("tags", [[] for _ in range(len(out))])
+    keep = ["published_date", "title", "url", "source", "tickers", "tags", "description"]
+    return out[keep].sort_values("published_date", ascending=False, na_position="last").reset_index(drop=True)
 
 
 def fetch_cn_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame:
@@ -294,6 +389,10 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
     if bool(fcfg.get("enabled", False)):
         series_cfg = fcfg.get("series", {})
         api_key_env = str(fcfg.get("api_key_env", "FRED_API_KEY"))
+        cache_cfg = fcfg.get("cache", {})
+        cache_enabled = bool(cache_cfg.get("enabled", True))
+        cache_dir = str(cache_cfg.get("dir", "data/cache/fred"))
+        cache_ttl_hours = int(cache_cfg.get("ttl_hours", 24))
         series_ids: list[str] = []
         if isinstance(series_cfg, dict):
             for default_key in DEFAULT_FRED_SERIES.keys():
@@ -308,7 +407,14 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
                 continue
             seen.add(series_id)
             try:
-                df = fetch_fred_series(series_id, years=years, api_key_env=api_key_env)
+                df = fetch_fred_series(
+                    series_id,
+                    years=years,
+                    api_key_env=api_key_env,
+                    cache_enabled=cache_enabled,
+                    cache_dir=cache_dir,
+                    cache_ttl_hours=cache_ttl_hours,
+                )
                 err = ""
                 if df.empty:
                     err = "empty_or_no_valid_values"

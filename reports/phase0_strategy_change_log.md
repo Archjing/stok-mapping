@@ -101,3 +101,76 @@
 
 - 本次不替换 `phase0` 主回测或 `us_market_history` 的当前 provider。
 - 不处理 FRED、CNH/FX 代理和全部美股指数一次性替换。
+
+## 2026-06-02｜Tiingo 港股可用性与 News API 探测
+
+### 变更原因
+
+为确认 Tiingo 是否可扩展承担港股历史库与新闻流能力，需要做一次脱离文档猜测的实测验证。
+
+### 验证结果
+
+- 直接调用 Tiingo 日线 API 探测以下港股 ticker 格式：
+  - `HK.00700`
+  - `HK.09988`
+  - `00700`
+  - `09988`
+  - `700`
+  - `9988`
+  - `0700.HK`
+  - `9988.HK`
+- 上述格式在 2026-06-02 的 API 实测中均返回 `404 Ticker not found`。
+- 对照组 `TCEHY`、`BABA` 返回 `200` 且可取得连续日线，说明 Tiingo 可作为美股 / ADR 数据源，但不能满足项目当前 `HK.*` 港股历史库需求。
+- 进一步探测 `/tiingo/news` 时，项目当前 token 对以下组合全部返回 `403 You do not have permission to access the News API`：
+  - ticker 列表
+  - 主题标签
+  - 时间窗口
+  - 三者组合过滤
+
+### 代码与脚本补充
+
+- `phase0/data_sources.py` 新增 `fetch_tiingo_news()` 最小实现，参数支持：
+  - `tickers`
+  - `tags`
+  - `start`
+  - `end`
+  - `limit`
+- 新增 `scripts/tiingo_news_probe.py`，用于独立验证：
+  - ticker 列表过滤
+  - 主题标签过滤
+  - 时间窗口过滤
+  - 三者组合过滤
+
+### 结论
+
+- Tiingo 当前不适合作为 `hk_market_history.sqlite` 的正式数据源。
+- Tiingo 当前可继续保留为美股 / ETF / ADR 数据源候选。
+- Tiingo News API 在当前 token 权限下不可用，新闻链路不能接入主流程。
+
+## 2026-06-02｜FRED 缓存策略补全
+
+### 变更原因
+
+Week 2 任务清单中 `W2.4.2` 仍缺“明确 FRED 数据缓存策略”。为避免重复请求 FRED API、降低外部波动对研究流程的影响，需要补齐最小可用缓存方案。
+
+### 主要变更
+
+- `phase0/data_sources.py` 的 `fetch_fred_series()` 新增可配置缓存参数：
+  - `cache_enabled`
+  - `cache_dir`
+  - `cache_ttl_hours`
+- 缓存命中策略：
+  - 按 `series_id + start + end` 生成独立 CSV 缓存键
+  - 缓存文件位于 `data/cache/fred/`
+  - 默认 TTL 为 `24` 小时，超时自动回源
+- `config.yaml` 新增 `data_sources.fred.cache` 配置块：
+  - `enabled: true`
+  - `dir: "data/cache/fred"`
+  - `ttl_hours: 24`
+- `check_connectivity()` 已接入上述配置，FRED 连通性检查走统一缓存策略。
+- 缓存位置已按数据层边界归入 `data/cache/fred`。
+
+### 边界说明
+
+- 缓存仅用于 FRED 宏观 / 利率 / VIX 查询，不改变主回测逻辑和选股排序逻辑。
+- 缓存读写异常会自动降级为在线请求，不中断流程。

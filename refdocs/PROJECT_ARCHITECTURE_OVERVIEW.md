@@ -238,6 +238,8 @@
 - 主要承接 `NVDA`、`AAPL`、`TSLA`、`KWEB` 等跨市场映射核心标的。
 - 在产品中的职责是隔夜情绪与行业映射输入，服务 overlay，不直接替代本土主因子选股。
 - 价值在于为跨市场映射提供更稳定的长期主源，降低过渡期在线源波动对结果的一致性影响。
+- 截至 2026-06-02，Tiingo 对项目预留的港股 ticker（如 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK`）实测均返回 `404 Ticker not found`，因此当前只能视为美股 / ETF / ADR 数据源，不适合作为港股正式主源。
+- Tiingo News API 也已做最小探测，但当前项目 token 访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻链路仍停留在“接口已预留、权限未开通”的状态。
 
 #### 与主线的关系
 
@@ -316,6 +318,48 @@ data/manual_history/a_share_history.sqlite
 来判断当前快照是否还能用于“当日股票池”和“盘前研判”。
 
 这说明最终产品架构里，**数据时效判断** 是一等公民，而不是附属逻辑。
+
+### 数据目录边界与当前落地状态
+
+当前代码已经部分体现数据目录分层：
+
+- `data/`：长期可复用的数据资产和策略输入。
+- `reports/`：运行报告、验收记录、导出物、归档和报告生成缓存。
+
+已经落地到 `data/` 的正式资产包括：
+
+- `data/manual_history/a_share_history.sqlite`：A 股本地研究数据库。
+- `data/us_market_history.sqlite`：美股 / ETF / VIX / CNH 跨市场 overlay 本地库。
+- `data/universe/`：股票池、横截面快照和同目录说明报告。
+
+已经落地到 `reports/` 的输出包括：
+
+- `phase0_data_source_report.md`
+- `phase0_walk_forward_report.md`
+- `phase0_effectiveness_report.md`
+- `phase0_strategy_change_log.md`
+- 盘前观察池、账单、HTML 预览、成本敏感性报告和历史归档。
+
+但完整的数据放置逻辑还没有全部落地：
+
+- `data/raw_data/` 目前仍为空目录，尚未承接外部源原始数据落盘。
+- `data/features/` 目前仍为空目录，尚未承接可复用特征表。
+- FRED 最小缓存当前位于 `data/cache/fred`，已按数据层边界从报告目录迁出；若后续需要保留完整原始源响应，可进一步迁入或扩展到 `data/raw_data/fred`。
+- `reports/hk_a_mapping_factors` 当前按实验/分析输出处理；若后续成为策略稳定输入，应迁移到 `data/features/cross_market/`。
+
+因此，当前状态应理解为：
+
+> **核心 SQLite 数据资产已经进入 `data/`，报告与验收输出已经进入 `reports/`，但 raw data 与 feature store 仍处于预留阶段。**
+
+### 后续落库原则
+
+后续新增数据写入时应遵循以下原则：
+
+- 原始源响应、未充分加工的批量下载、外部数据快照：优先进入 `data/raw_data/` 或明确命名的源数据缓存目录。
+- 已清洗、对齐、可复用、可被策略或日报直接消费的特征表：进入 `data/features/`。
+- 股票池、样本范围和横截面观察对象：进入 `data/universe/`。
+- 运行结果、研究报告、验收记录、导出账单、HTML 预览和人工阅读材料：进入 `reports/`。
+- 仅服务单次报告生成或导出加速的缓存：可以留在 `reports/cache/`。
 
 ---
 
