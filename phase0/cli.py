@@ -438,7 +438,7 @@ def main() -> int:
             refresh_cache=bool(args.refresh_cache),
             no_panel_cache=bool(args.no_panel_cache),
         )
-        console.print(f"[green]Bill export complete[/green]")
+        console.print("[green]Bill export complete[/green]")
         console.print(f"Bill: {result['bill']}")
         console.print(f"Daily assets: {result['daily']}")
         console.print(f"Preview: {result['preview']}")
@@ -485,7 +485,7 @@ def main() -> int:
         console = Console()
         console.print("[bold]Phase 0 financial PTI audit started[/bold]")
         result = _export_phase0_financial_pti(config_path)
-        console.print(f"[green]Financial PTI audit complete[/green]")
+        console.print("[green]Financial PTI audit complete[/green]")
         console.print(f"Verdict: {result['verdict']}")
         console.print(f"Summary: {result['summary']}")
         console.print(f"Samples: {result['samples']}")

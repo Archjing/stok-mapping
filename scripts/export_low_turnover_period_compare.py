@@ -55,7 +55,6 @@ def _load_curve(path: Path) -> pd.DataFrame:
 def _summarize(label: str, path: Path) -> dict[str, str]:
     df = _load_curve(path)
     strategy_returns = df["strategy_daily_return"].fillna(0.0)
-    benchmark_returns = df["benchmark_daily_return"].fillna(0.0)
     strategy_total = float(df["strategy_asset"].iloc[-1] / df["strategy_asset"].iloc[0] - 1.0)
     benchmark_total = float(df["benchmark_asset"].iloc[-1] / df["benchmark_asset"].iloc[0] - 1.0)
     return {

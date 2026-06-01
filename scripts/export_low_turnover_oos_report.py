@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import math
 import sys
 from datetime import datetime
 from datetime import timedelta

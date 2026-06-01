@@ -110,7 +110,6 @@ def _normalize_ah_comparison(raw: pd.DataFrame, a_prices: pd.DataFrame) -> pd.Da
     out["h_code"] = raw[_find_col(raw, ["H股代码", "港股代码", "代码"]) or raw.columns[0]].astype(str)
     out["name"] = raw[_find_col(raw, ["名称", "股票名称", "A股简称"]) or raw.columns[0]].astype(str)
 
-    a_price_col = _find_col(raw, ["A股最新价", "A股价格", "A股价", "最新价"])
     h_price_col = _find_col(raw, ["H股最新价", "H股价格", "H股价", "最新价"])
     premium_col = _find_col(raw, ["比价", "AH股比价", "A/H股比价", "溢价率", "AH溢价率", "A/H溢价率"])
 
@@ -336,7 +335,6 @@ def main() -> int:
             else:
                 filtered["note"] = ""
             hold_frames.append(filtered)
-    hold_raw = pd.concat(hold_raw_frames, ignore_index=True) if hold_raw_frames else pd.DataFrame()
     hold_factor = pd.concat(hold_frames, ignore_index=True) if hold_frames else pd.DataFrame()
 
     ah_raw.to_csv(out_dir / "ah_comparison_raw.csv", index=False)
