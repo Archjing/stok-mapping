@@ -30,7 +30,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 当前系统可以理解为 6 层：
 
-- 数据源接入层：`Tushare`, `AkShare`, `yfinance`，后续计划接入 `FRED` 和 `Tiingo`。
+- 数据源接入层：`Tushare`, `AkShare`, `yfinance`，并已最小接入 `FRED` 和 `Tiingo`。
 - 数据管理层：A 股 / US market 本地 SQLite 历史库、增量更新、覆盖率检查、新鲜度保护。
 - 股票池与特征层：A 股股票池、流动性/市值/行业约束、技术特征、财务因子。
 - 策略与信号层：本土主因子策略、跨市场 overlay、解释层。
@@ -78,7 +78,7 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 
 `phase0 run` 会在策略评估前按 `us_market_history.run_before_phase0` 更新 US market 本地库。策略读取的是落库后的 `us_daily_bars`，不是运行时临时 yfinance 请求；若本地库覆盖率不足且 `runtime_yfinance_fallback: false`，跨市场特征会退化为空并记录告警，避免在线源静默改变回测结果。
 
-当前 `Tiingo` 和 `FRED` 仍是任务单阶段，尚未正式接入 `phase0/data_sources.py`：
+当前 `Tiingo` 和 `FRED` 已完成最小接入，正式入口均在 `phase0/data_sources.py`：
 
 ```text
 tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md

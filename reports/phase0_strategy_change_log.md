@@ -71,3 +71,33 @@
 
 - 本次仅完成 FRED 最小接入和连通性验收，不改 `phase0` 主回测逻辑。
 - FRED 当前仅承接宏观 / 利率 / VIX，不替代美股个股 / ETF 行情，不接入主 ranker。
+
+## 2026-06-02｜Tiingo 最小接入与 fallback 验收
+
+### 变更原因
+
+按 Week 2 顺序，在 FRED 稳定后推进 Tiingo 最小接入。目标是把关键美股个股 / ETF 的 EOD 抓取入口正规化，同时保留 `yfinance` 作为回退源，避免一次性硬切风险。
+
+### 主要变更
+
+- `phase0/data_sources.py` 新增 `fetch_tiingo_daily(symbol, years=None, start=None, end=None, token_env="TIINGO_API_TOKEN")`。
+- `check_connectivity()` 新增 `tiingo` 分支：
+  - 覆盖首批标的 `NVDA`、`AAPL`、`TSLA`、`KWEB`。
+  - 输出 `source=tiingo`、`target=<ticker>`。
+  - Tiingo 失败或空结果时自动回退 `yfinance`，并在 `error` 字段标记 fallback 命中情况。
+- `config.yaml` 新增 `data_sources.tiingo` 配置块：
+  - `enabled`
+  - `token_env`
+  - `us_equities`
+  - `thematic_etfs`
+
+### 验收结果
+
+- 本次完成 Tiingo 最小接入代码、配置和连通性检查路径。
+- 字段口径对齐 `fetch_yf_daily()`：`date/open/high/low/close/adjusted_close/volume`。
+- fallback 行为已在 connectivity 逻辑中落地：Tiingo 不可用时可降级到 `yfinance` 并记录状态。
+
+### 边界说明
+
+- 本次不替换 `phase0` 主回测或 `us_market_history` 的当前 provider。
+- 不处理 FRED、CNH/FX 代理和全部美股指数一次性替换。

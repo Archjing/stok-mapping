@@ -154,6 +154,15 @@ phase0:
         fedfunds: "FEDFUNDS"
         fedfunds_daily: "DFF"
         vix: "VIXCLS"
+    tiingo:
+      enabled: false
+      token_env: "TIINGO_API_TOKEN"
+      us_equities:
+        - "NVDA"
+        - "AAPL"
+        - "TSLA"
+      thematic_etfs:
+        - "KWEB"
     yfinance:
       us_indices:
         - "^NDX"

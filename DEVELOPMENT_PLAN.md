@@ -935,32 +935,14 @@ stok-mapping/
 
 ### 当前最高优先级
 
-- [x] 为候选选择加入最低 fold 数 / symbol 覆盖 / 样本支持约束
-- [x] 重跑 Phase 0，确认低样本 `quality_growth_price_v1` 不再直接晋级
-- [x] 扩展 portfolio 候选的有效 fold 覆盖
-- [x] 保持 compare / report / gate / change log 同口径输出
-- [x] 加入成本敏感性报告，区分信号无效和成本吞噬
-- [x] 将主测试默认滑点更新为 `0.00246`
-- [x] 将成本敏感性测试拆成显式 CLI 路径，避免每次主测试自动跑压力场景
-- [x] 将财务因子历史扩展到 32 个季度
-- [x] 修复财务因子 point-in-time merge 的 datetime dtype 边界问题
-- [x] 优先修复 Sharpe 缺口
-- [x] 设计低换手 / 延长持有 / slippage-aware 参数选择方案
-- [x] 跑完整 Phase 0，正式确认 `legacy_momentum_low_turnover_v1` 替代 `legacy_momentum`
-- [x] 生成低换手策略账单 CSV、资产日表与 HTML 预览
-- [x] 为账单导出脚本增加行情面板缓存与 `--refresh-cache` / `--no-panel-cache` 控制
-- [x] 在通过策略和回测代码补充中文注释
-- [x] 在财务因子历史回测前完成公告日 point-in-time 校验方案设计
-- [x] 将账单导出纳入标准 CLI / report 链路
-- [x] 增加 A 股整手成交、现金约束和账户级撮合细节
-- [x] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
-- [x] 补连续样本外资金曲线验证，消除 walk-forward 分折重置造成的误读
-- [x] 生成“连续 OOS 资金曲线 + 基准对比 + 各 fold 收益分解”HTML 报表
-- [x] 补行情分段验证，区分顺风行情、震荡行情和回撤阶段的表现
-- [x] 推进账户级仿真 v2：成交价口径、涨跌停、停牌、流动性、未成交原因和真实账户对账预留
-- [x] 将 `execution-gate` 参数 profile 化，区分策略研究与实盘仿真回测
-- [x] 将 `oos-report` 参数 profile 化，保持与 `execution-gate` 相同的 `research` / `live` 逻辑
-- [x] 统一 HTML 报表展示体验：生成时间、横纵滚动、固定表头
+- [ ] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
+- [ ] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
+- [ ] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）
+- [ ] 强化 `07:30` 盘前日报自动生成链路，形成“每日产出 + 可复盘归档”
+- [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
+- [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
+- [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
+- [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 
 ### 条件满足后再推进
 
@@ -971,11 +953,11 @@ stok-mapping/
 - [ ] 执行统一周执行附件中的数据源升级计划
 - [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
 - [ ] 再引入 Tiingo 作为美股个股 / ETF 主源
-- [ ] 保留 `yfinance` 作为 fallback，不做一次性全替换
+- [x] 保留 `yfinance` 作为 fallback，不做一次性全替换
 - [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档
 - [ ] 精修映射标的池与行业层分析
 - [ ] 补全港股映射 A 股候选策略代码，前置条件是港股历史数据源质量验证通过
-- [ ] 在不破坏当前应用导向的前提下，引入 sklearn 基线模型辅助策略研究
+- [ ] 在规则型 / 因子型信号链路稳定后，再引入 sklearn 基线模型作为研究对照，不进入首批交易建议主线
 
 ---
 

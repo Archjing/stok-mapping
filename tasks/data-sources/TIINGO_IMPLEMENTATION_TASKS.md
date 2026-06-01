@@ -9,8 +9,8 @@
 
 ## T1.2.0 目标
 
-- [ ] 为关键美股个股 / ETF 提供更正式的 EOD 数据主源
-- [ ] 保留 `yfinance` 作为备用源，避免一次性替换风险
+- [x] 为关键美股个股 / ETF 提供更正式的 EOD 数据主源
+- [x] 保留 `yfinance` 作为备用源，避免一次性替换风险
 - [ ] 为后续跨市场解释层和映射触发标的提供更稳定的数据基础
 
 ---
@@ -18,34 +18,34 @@
 ## T1.2.1 接入范围
 
 ### T1.2.1.1 首批 Tiingo 标的
-- [ ] `NVDA`
-- [ ] `AAPL`
-- [ ] `TSLA`
-- [ ] `KWEB`
+- [x] `NVDA`
+- [x] `AAPL`
+- [x] `TSLA`
+- [x] `KWEB`
 
 ### T1.2.1.2 当前明确不纳入
-- [ ] GDP / CPI / 利率 / VIX（这些交给 FRED）
-- [ ] CNH / FX 代理
-- [ ] 所有美股指数一次性替换
-- [ ] A 股 / 港股正式链路
+- [x] GDP / CPI / 利率 / VIX（这些交给 FRED）
+- [x] CNH / FX 代理
+- [x] 所有美股指数一次性替换
+- [x] A 股 / 港股正式链路
 
 ---
 
 ## T1.2.2 代码任务
 
 ### T1.2.2.1 `phase0/data_sources.py`
-- [ ] 新增 `fetch_tiingo_daily(symbol, years=None, start=None, end=None)`
-- [ ] 统一输出字段：`date`, `open`, `high`, `low`, `close`, `adjusted_close`, `volume`
-- [ ] 明确与现有 `fetch_yf_daily()` 返回字段口径兼容
-- [ ] 对空结果、认证失败、限流失败做标准化处理
+- [x] 新增 `fetch_tiingo_daily(symbol, years=None, start=None, end=None)`
+- [x] 统一输出字段：`date`, `open`, `high`, `low`, `close`, `adjusted_close`, `volume`
+- [x] 明确与现有 `fetch_yf_daily()` 返回字段口径兼容
+- [x] 对空结果、认证失败、限流失败做标准化处理
 
 ### T1.2.2.2 `check_connectivity()`
-- [ ] 在 connectivity report 中加入 `tiingo` 源检查
-- [ ] 仅检查首批 4 个标的
-- [ ] 输出 `source=tiingo`, `target=<ticker>`
+- [x] 在 connectivity report 中加入 `tiingo` 源检查
+- [x] 仅检查首批 4 个标的
+- [x] 输出 `source=tiingo`, `target=<ticker>`
 
 ### T1.2.2.3 fallback 关系
-- [ ] 明确 Tiingo 抓取失败时回退到 `yfinance`
+- [x] 明确 Tiingo 抓取失败时回退到 `yfinance`
 - [ ] 在结果里区分主源 / fallback 命中情况（如后续需要）
 
 ---
@@ -53,10 +53,10 @@
 ## T1.2.3 配置任务
 
 ### T1.2.3.1 `config.yaml`
-- [ ] 新增 `data_sources.tiingo.enabled`
-- [ ] 新增 `data_sources.tiingo.token_env`
-- [ ] 新增 `data_sources.tiingo.us_equities`
-- [ ] 新增 `data_sources.tiingo.thematic_etfs`
+- [x] 新增 `data_sources.tiingo.enabled`
+- [x] 新增 `data_sources.tiingo.token_env`
+- [x] 新增 `data_sources.tiingo.us_equities`
+- [x] 新增 `data_sources.tiingo.thematic_etfs`
 - [ ] 可选：新增 `data_sources.yfinance.fallback_only`
 
 建议结构：
@@ -81,10 +81,10 @@ data_sources:
 
 ## T1.2.4 使用边界
 
-- [ ] Tiingo 只接美股个股 / ETF / EOD
-- [ ] 不用 Tiingo 承接宏观 / 利率 / VIX
-- [ ] 不用 Tiingo 替代 A 股正式数据主链路
-- [ ] 不一次性替换所有指数与外汇代理
+- [x] Tiingo 只接美股个股 / ETF / EOD
+- [x] 不用 Tiingo 承接宏观 / 利率 / VIX
+- [x] 不用 Tiingo 替代 A 股正式数据主链路
+- [x] 不一次性替换所有指数与外汇代理
 
 ---
 
@@ -97,10 +97,10 @@ data_sources:
 - [ ] `KWEB` 查询成功
 
 ### T1.2.5.2 字段一致性验证
-- [ ] 输出字段与 `fetch_yf_daily()` 可兼容
-- [ ] `date` 列格式正确
-- [ ] `adjusted_close` 可正确映射
-- [ ] 空结果 / 异常返回安全处理
+- [x] 输出字段与 `fetch_yf_daily()` 可兼容
+- [x] `date` 列格式正确
+- [x] `adjusted_close` 可正确映射
+- [x] 空结果 / 异常返回安全处理
 
 ### T1.2.5.3 项目集成验证
 - [ ] 不影响现有 `phase0.cli run`
@@ -111,29 +111,29 @@ data_sources:
 
 ## T1.2.6 归档要求
 
-- [ ] 更新 `DEVELOPMENT_PLAN.md`
-- [ ] 更新 `README.md` 的美股数据源说明（如有必要）
-- [ ] 更新 `reports/phase0_strategy_change_log.md`
-- [ ] 记录 Tiingo 首批覆盖标的和 fallback 原则
+- [x] 更新 `DEVELOPMENT_PLAN.md`
+- [x] 更新 `README.md` 的美股数据源说明（如有必要）
+- [x] 更新 `reports/phase0_strategy_change_log.md`
+- [x] 记录 Tiingo 首批覆盖标的和 fallback 原则
 
 ---
 
 ## T1.2.7 成功标准
 
-- [ ] Tiingo 在 `phase0/data_sources.py` 中可独立抓取
-- [ ] 首批 4 个标的可被 connectivity check 覆盖
-- [ ] 返回字段与现有日线结构兼容
-- [ ] `yfinance` 可继续作为 fallback
+- [x] Tiingo 在 `phase0/data_sources.py` 中可独立抓取
+- [x] 首批 4 个标的可被 connectivity check 覆盖
+- [x] 返回字段与现有日线结构兼容
+- [x] `yfinance` 可继续作为 fallback
 - [ ] 文档口径统一
 
 ---
 
 ## T1.2.8 不做事项
 
-- [ ] 不在本轮处理 FRED
-- [ ] 不处理 CNH / FX
-- [ ] 不替换所有美股指数
-- [ ] 不修改当前 A 股回测逻辑
+- [x] 不在本轮处理 FRED
+- [x] 不处理 CNH / FX
+- [x] 不替换所有美股指数
+- [x] 不修改当前 A 股回测逻辑
 
 ---
 

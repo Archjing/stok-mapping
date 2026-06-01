@@ -436,8 +436,8 @@
 - [x] 明确形成项目级结论：**FRED 先、Tiingo 后、yfinance 保留 fallback**
 - [x] 完成第二周文档、边界和接入设计准备
 - [x] 为下一周正式编码实施做好输入条件
-- [ ] 开始 FRED adapter 最小实现，先覆盖宏观 / 利率 / VIX 序列
-- [ ] FRED 稳定后再推进 Tiingo adapter，不与 FRED 同时硬切
+- [x] 开始 FRED adapter 最小实现，先覆盖宏观 / 利率 / VIX 序列
+- [x] FRED 稳定后再推进 Tiingo adapter，不与 FRED 同时硬切
 
 ## W2.2 当前基线确认
 
@@ -471,47 +471,47 @@
 ## W2.4 FRED 接入任务
 
 ### W2.4.1 文档与映射
-- [ ] 形成 FRED 序列映射表
-- [ ] 每个序列都能映射到项目中的明确用途：
-  - [ ] 风险解释层
-  - [ ] 宏观 overlay
-  - [ ] 日报结构化摘要输入
+- [x] 形成 FRED 序列映射表
+- [x] 每个序列都能映射到项目中的明确用途：
+  - [x] 风险解释层
+  - [x] 宏观 overlay
+  - [x] 日报结构化摘要输入
 
 ### W2.4.2 代码设计准备
-- [ ] 明确 FRED adapter 入口
+- [x] 明确 FRED adapter 入口
 - [ ] 明确 FRED 数据缓存策略
-- [ ] 明确 FRED 对 `config.yaml` 的新增配置项
-- [ ] 明确 FRED 与现有 `yfinance` 的职责边界
+- [x] 明确 FRED 对 `config.yaml` 的新增配置项
+- [x] 明确 FRED 与现有 `yfinance` 的职责边界
 
 ### W2.4.3 验收
-- [ ] FRED 引入不会破坏当前 `phase0.cli` 正式链路
-- [ ] FRED 仅承接宏观 / 利率 / VIX，不与美股个股职责混淆
+- [x] FRED 引入不会破坏当前 `phase0.cli` 正式链路
+- [x] FRED 仅承接宏观 / 利率 / VIX，不与美股个股职责混淆
 
 ## W2.5 Tiingo 接入任务
 
 ### W2.5.1 覆盖范围确认
-- [ ] 明确首批接入标的：`NVDA` / `AAPL` / `TSLA` / `KWEB`
-- [ ] 明确这些标的在项目中的用途：
-  - [ ] 美股日线
-  - [ ] 产业映射核心触发标的
-  - [ ] 隔夜解释层输入
+- [x] 明确首批接入标的：`NVDA` / `AAPL` / `TSLA` / `KWEB`
+- [x] 明确这些标的在项目中的用途：
+  - [x] 美股日线
+  - [x] 产业映射核心触发标的
+  - [x] 隔夜解释层输入
 
 ### W2.5.2 代码设计准备
-- [ ] 明确 Tiingo adapter 入口
-- [ ] 明确 Tiingo 与 `yfinance` fallback 关系
-- [ ] 明确 Tiingo 对 `config.yaml` 的新增配置项
-- [ ] 明确 Tiingo 不处理宏观序列
+- [x] 明确 Tiingo adapter 入口
+- [x] 明确 Tiingo 与 `yfinance` fallback 关系
+- [x] 明确 Tiingo 对 `config.yaml` 的新增配置项
+- [x] 明确 Tiingo 不处理宏观序列
 
 ### W2.5.3 验收
-- [ ] Tiingo 只替换最关键的美股个股 / ETF，不扩大范围
-- [ ] `yfinance` 仍保留为 fallback
+- [x] Tiingo 只替换最关键的美股个股 / ETF，不扩大范围
+- [x] `yfinance` 仍保留为 fallback
 
 ## W2.6 配置层重构草案
 
 - [ ] 宏观、利率、VIX、个股、ETF、FX 的配置职责清晰拆分
 - [ ] `tushare`：A 股盘后主源
 - [ ] `fred`：宏观 / 利率 / VIX
-- [ ] `tiingo`：美股个股 / ETF / EOD
+- [x] `tiingo`：美股个股 / ETF / EOD
 - [ ] `yfinance`：fallback / FX 代理 / 临时研究源
 
 ## W2.7 本周归档要求
@@ -524,9 +524,9 @@
 - [x] 下一步实际编码顺序
 
 归档位置：
-- [ ] `DEVELOPMENT_PLAN.md`
-- [ ] `reports/phase0_strategy_change_log.md`
-- [ ] 本附件
+- [x] `DEVELOPMENT_PLAN.md`
+- [x] `reports/phase0_strategy_change_log.md`
+- [x] 本附件
 
 ## W2.8 本周成功标准
 
@@ -545,12 +545,12 @@
 
 ## W2.9 本周不做事项
 
-- [ ] 不重写 `phase0` 回测逻辑
-- [ ] 不改当前 A 股 Tushare 主链路
-- [ ] 不直接移除 `yfinance`
-- [ ] 不把 FRED / Tiingo 一起一次性硬切进生产链路
-- [ ] 不处理 CNH / FX 主源替换
-- [ ] 不推进前端 / PWA / agent 自动化扩展
+- [x] 不重写 `phase0` 回测逻辑
+- [x] 不改当前 A 股 Tushare 主链路
+- [x] 不直接移除 `yfinance`
+- [x] 不把 FRED / Tiingo 一起一次性硬切进生产链路
+- [x] 不处理 CNH / FX 主源替换
+- [x] 不推进前端 / PWA / agent 自动化扩展
 
 ## W2.10 本周结束后的分流
 
@@ -558,7 +558,7 @@
 - [x] 下一周进入 **FRED 实现周**
 - [x] FRED 稳定后再进入 **Tiingo 接入周**
 - [ ] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证
-- [ ] 港股映射策略记录见：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
+- [x] 港股映射策略记录见：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 ### W2.10.2 如果本周方案不充分
 - [ ] 继续保持 `yfinance` 不动

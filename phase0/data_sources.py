@@ -23,6 +23,11 @@ DEFAULT_FRED_SERIES: dict[str, str] = {
     "vix": "VIXCLS",
 }
 
+DEFAULT_TIINGO_SYMBOLS: dict[str, list[str]] = {
+    "us_equities": ["NVDA", "AAPL", "TSLA"],
+    "thematic_etfs": ["KWEB"],
+}
+
 
 @dataclass
 class ConnectivityResult:
@@ -119,6 +124,66 @@ def fetch_fred_series(
     out["value"] = pd.to_numeric(out["value"], errors="coerce")
     out = out.dropna(subset=["date", "value"]).sort_values("date")
     return out.reset_index(drop=True)
+
+
+def fetch_tiingo_daily(
+    symbol: str,
+    years: int | None = None,
+    start: date | None = None,
+    end: date | None = None,
+    token_env: str = "TIINGO_API_TOKEN",
+) -> pd.DataFrame:
+    ticker = str(symbol).strip().upper()
+    if not ticker:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    if end is None:
+        end = date.today()
+    if start is None:
+        if years is None:
+            years = 10
+        start = end - timedelta(days=365 * years + 20)
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        raise RuntimeError(f"missing_token_env:{token_env}")
+    resp = requests.get(
+        f"https://api.tiingo.com/tiingo/daily/{ticker}/prices",
+        params={
+            "startDate": start.isoformat(),
+            "endDate": end.isoformat(),
+            "resampleFreq": "daily",
+        },
+        headers={"Authorization": f"Token {token}"},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    payload = resp.json()
+    if not isinstance(payload, list) or not payload:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    out = pd.DataFrame(payload)
+    out = out.rename(
+        columns={
+            "adjClose": "adjusted_close",
+            "adjVolume": "adjusted_volume",
+        }
+    )
+    if "date" not in out.columns:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    out["date"] = pd.to_datetime(out["date"], errors="coerce", utc=True).dt.tz_localize(None)
+    out["open"] = pd.to_numeric(out.get("open"), errors="coerce")
+    out["high"] = pd.to_numeric(out.get("high"), errors="coerce")
+    out["low"] = pd.to_numeric(out.get("low"), errors="coerce")
+    out["close"] = pd.to_numeric(out.get("close"), errors="coerce")
+    out["adjusted_close"] = pd.to_numeric(
+        out.get("adjusted_close", out.get("close")),
+        errors="coerce",
+    )
+    out["volume"] = pd.to_numeric(
+        out.get("volume", out.get("adjusted_volume")),
+        errors="coerce",
+    )
+    out = out.dropna(subset=["date", "open", "high", "low", "close", "adjusted_close", "volume"]).sort_values("date")
+    keep = ["date", "open", "high", "low", "close", "adjusted_close", "volume"]
+    return out[keep].reset_index(drop=True)
 
 
 def fetch_cn_daily(symbol: str, years: int, adjust: str = "qfq") -> pd.DataFrame:
@@ -269,9 +334,77 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
                     )
                 )
 
-    tcfg = tushare_config(cfg.get("tushare", {}))
-    if tcfg.enabled:
-        if not token_env_is_set(tcfg):
+    tcfg = cfg.get("tiingo", {})
+    if bool(tcfg.get("enabled", False)):
+        token_env = str(tcfg.get("token_env", "TIINGO_API_TOKEN"))
+        targets: list[str] = []
+        for key, default_values in DEFAULT_TIINGO_SYMBOLS.items():
+            vals = tcfg.get(key, default_values)
+            if isinstance(vals, list):
+                targets.extend([str(x).strip().upper() for x in vals if str(x).strip()])
+        seen_targets: set[str] = set()
+        for sym in targets:
+            if sym in seen_targets:
+                continue
+            seen_targets.add(sym)
+            try:
+                df = fetch_tiingo_daily(sym, years=years, token_env=token_env)
+                if not df.empty:
+                    results.append(
+                        ConnectivityResult(
+                            source="tiingo",
+                            target=sym,
+                            ok=True,
+                            rows=len(df),
+                            latest_date=_safe_latest_date(df),
+                        )
+                    )
+                    continue
+                yf_df = fetch_yf_daily(sym, years=years)
+                err = "tiingo_empty_fallback_yfinance_ok" if not yf_df.empty else "tiingo_empty_fallback_yfinance_empty"
+                results.append(
+                    ConnectivityResult(
+                        source="tiingo",
+                        target=sym,
+                        ok=not yf_df.empty,
+                        rows=len(yf_df),
+                        latest_date=_safe_latest_date(yf_df),
+                        error=err,
+                    )
+                )
+            except Exception as exc:
+                try:
+                    yf_df = fetch_yf_daily(sym, years=years)
+                    err = (
+                        f"tiingo_error:{exc};fallback=yfinance_ok"
+                        if not yf_df.empty
+                        else f"tiingo_error:{exc};fallback=yfinance_empty"
+                    )
+                    results.append(
+                        ConnectivityResult(
+                            source="tiingo",
+                            target=sym,
+                            ok=not yf_df.empty,
+                            rows=len(yf_df),
+                            latest_date=_safe_latest_date(yf_df),
+                            error=err,
+                        )
+                    )
+                except Exception as yf_exc:
+                    results.append(
+                        ConnectivityResult(
+                            source="tiingo",
+                            target=sym,
+                            ok=False,
+                            rows=0,
+                            latest_date="",
+                            error=f"tiingo_error:{exc};fallback_yfinance_error:{yf_exc}",
+                        )
+                    )
+
+    tushare_cfg = tushare_config(cfg.get("tushare", {}))
+    if tushare_cfg.enabled:
+        if not token_env_is_set(tushare_cfg):
             results.append(
                 ConnectivityResult(
                     source="tushare",
@@ -279,12 +412,12 @@ def check_connectivity(cfg: dict[str, Any], years: int) -> list[ConnectivityResu
                     ok=False,
                     rows=0,
                     latest_date="",
-                    error=f"missing_token_env:{tcfg.token_env}",
+                    error=f"missing_token_env:{tushare_cfg.token_env}",
                 )
             )
         else:
             try:
-                df = fetch_tushare_smoke(tcfg)
+                df = fetch_tushare_smoke(tushare_cfg)
                 latest = ""
                 if not df.empty and "cal_date" in df.columns:
                     latest = str(pd.to_datetime(df["cal_date"], format="%Y%m%d", errors="coerce").max().date())
