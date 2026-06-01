@@ -81,8 +81,8 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 当前 `Tiingo` 和 `FRED` 仍是任务单阶段，尚未正式接入 `phase0/data_sources.py`：
 
 ```text
-refdocs/todo/TIINGO_IMPLEMENTATION_TASKS.md
-refdocs/todo/FRED_IMPLEMENTATION_TASKS.md
+tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md
+tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md
 ```
 
 ## 本地数据
@@ -373,12 +373,12 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - 主计划：`DEVELOPMENT_PLAN.md`
 - 架构说明：`refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 策略开发标准：`refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
-- 当前统一周执行附件：`refdocs/todo/WEEKLY_EXECUTION_CHECKLIST.md`
-- 策略候选整理：`refdocs/todo/PHASE0_CANDIDATE_STRATEGIES.md`
+- 当前统一周执行附件：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
+- 策略候选整理：`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - 候选策略解释索引：`refdocs/strategy_explanations/INDEX.md`
-- 策略开发检查清单：`refdocs/todo/STRATEGY_DEV_CHECKLIST.md`
-- FRED 接入任务单：`refdocs/todo/FRED_IMPLEMENTATION_TASKS.md`
-- Tiingo 接入任务单：`refdocs/todo/TIINGO_IMPLEMENTATION_TASKS.md`
+- 策略开发检查清单：`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
+- FRED 接入任务单：`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
+- Tiingo 接入任务单：`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
 - 远期展望：`refdocs/OUTLOOK/`
 
 ## 输出文件
