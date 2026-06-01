@@ -337,6 +337,12 @@ refdocs/DEEPSEEK_AGENT_MCP.md
 scripts/deepseek_agent_mcp.py
 ```
 
+外部 OpenClaw agent 会话命名约定使用 `provider-role`，例如：
+
+- `cloe-bridge`
+- `cloe-research`
+- `cloe-risk`
+
 Cloe 可作为外部 agent / 调度入口，但只用于研究摘要、消息通道和跨工具编排。当前技术底座是 OpenClaw Gateway：
 
 ```text
@@ -354,6 +360,7 @@ acpx openclaw -s cloe-bridge "请审查当前 Phase 0 报告并列出主要风�
 
 ```bash
 scripts/cloe_agent.sh "请检查当前开发计划和周任务清单是否一致。"
+scripts/cloe_research_agent.sh "请基于 reports/phase0_effectiveness_report.md 生成研究摘要与风险点。"
 ```
 
 MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易指令。

@@ -97,6 +97,31 @@ CLOE_ACPX_FORMAT=text
 
 Codex 侧应优先通过 `scripts/cloe_agent.sh` 调用，保持会话、工作目录和输出格式一致。`scripts/openclaw_agent.sh` 仅作为旧命令兼容入口保留。
 
+### 四点五、新增 `cloe-research` 配置档（provider-role）
+
+推荐外部 agent 命名约定使用 `provider-role`，例如：
+
+- `cloe-bridge`
+- `cloe-research`
+- `cloe-risk`
+
+项目内已提供 `cloe-research` 封装脚本：
+
+```bash
+scripts/cloe_research_agent.sh "请审查 reports/phase0_effectiveness_report.md，输出风险点和验证建议。"
+```
+
+默认会话名：`cloe-research`。  
+可选环境变量：
+
+```bash
+CLOE_RESEARCH_ACPX_SESSION=cloe-research
+CLOE_RESEARCH_ACPX_TIMEOUT=600
+CLOE_RESEARCH_ACPX_FORMAT=text
+```
+
+兼容回退：如果没有设置 `CLOE_RESEARCH_*`，脚本会回退到 `CLOE_ACPX_*` / `OPENCLAW_ACPX_*`。
+
 ## 五、与本项目的职责边界
 
 Cloe 可以做：

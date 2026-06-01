@@ -145,6 +145,15 @@ phase0:
     years: 10
     chunk_size: 250000
   data_sources:
+    fred:
+      enabled: false
+      api_key_env: "FRED_API_KEY"
+      series:
+        gdp: "GDP"
+        cpi: "CPIAUCSL"
+        fedfunds: "FEDFUNDS"
+        fedfunds_daily: "DFF"
+        vix: "VIXCLS"
     yfinance:
       us_indices:
         - "^NDX"
