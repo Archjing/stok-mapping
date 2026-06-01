@@ -91,10 +91,10 @@ data_sources:
 ## T1.2.5 验证任务
 
 ### T1.2.5.1 连通性验证
-- [ ] `NVDA` 查询成功
-- [ ] `AAPL` 查询成功
-- [ ] `TSLA` 查询成功
-- [ ] `KWEB` 查询成功
+- [x] `NVDA` 查询成功
+- [x] `AAPL` 查询成功
+- [x] `TSLA` 查询成功
+- [x] `KWEB` 查询成功
 
 ### T1.2.5.2 字段一致性验证
 - [x] 输出字段与 `fetch_yf_daily()` 可兼容
@@ -103,9 +103,9 @@ data_sources:
 - [x] 空结果 / 异常返回安全处理
 
 ### T1.2.5.3 项目集成验证
-- [ ] 不影响现有 `phase0.cli run`
-- [ ] `phase0_data_source_report.md` 中出现 Tiingo 源状态
-- [ ] Tiingo 失败时 `yfinance` 仍能回退成功（如可测）
+- [x] 不影响现有 `phase0.cli run`
+- [x] `phase0_data_source_report.md` 中出现 Tiingo 源状态
+- [x] Tiingo 失败时 `yfinance` 仍能回退成功（如可测）
 
 ---
 
@@ -124,7 +124,7 @@ data_sources:
 - [x] 首批 4 个标的可被 connectivity check 覆盖
 - [x] 返回字段与现有日线结构兼容
 - [x] `yfinance` 可继续作为 fallback
-- [ ] 文档口径统一
+- [x] 文档口径统一
 
 ---
 

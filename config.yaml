@@ -155,7 +155,7 @@ phase0:
         fedfunds_daily: "DFF"
         vix: "VIXCLS"
     tiingo:
-      enabled: false
+      enabled: true
       token_env: "TIINGO_API_TOKEN"
       us_equities:
         - "NVDA"

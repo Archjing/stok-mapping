@@ -935,9 +935,9 @@ stok-mapping/
 
 ### 当前最高优先级
 
-- [ ] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
-- [ ] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
-- [ ] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）
+- [x] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
+- [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
+- [x] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）
 - [ ] 强化 `07:30` 盘前日报自动生成链路，形成“每日产出 + 可复盘归档”
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
@@ -952,7 +952,7 @@ stok-mapping/
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 执行统一周执行附件中的数据源升级计划
 - [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
-- [ ] 再引入 Tiingo 作为美股个股 / ETF 主源
+- [x] 再引入 Tiingo 作为美股个股 / ETF 主源（最小实现与连通性验收已完成）
 - [x] 保留 `yfinance` 作为 fallback，不做一次性全替换
 - [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档
 - [ ] 精修映射标的池与行业层分析
