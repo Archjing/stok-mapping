@@ -1,0 +1,348 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1280" viewBox="0 0 1800 1280" role="img" aria-labelledby="title desc">
+  <title id="title">stok-mapping 最终运行形态流程图</title>
+  <desc id="desc">展示 stok-mapping 项目的最终软件架构、模块关系、用户交互方式、自动任务流程，并用状态样式区分已完成、最小接入或过渡、尚未启动。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#4b5563"/>
+    </marker>
+    <marker id="arrow-soft" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#8a7b52"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="7" flood-color="#1f2937" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .page { fill: #faf7ef; }
+      .title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 34px; font-weight: 760; fill: #1f2937; letter-spacing: 0; }
+      .subtitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15px; fill: #5b6472; letter-spacing: 0; }
+      .lane { fill: #fffdf8; stroke: #d9d2c0; stroke-width: 1.4; rx: 16; filter: url(#shadow); }
+      .lane-title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 20px; font-weight: 700; fill: #26313f; letter-spacing: 0; }
+      .lane-note { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 13px; fill: #6b7280; letter-spacing: 0; }
+      .col-title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #374151; letter-spacing: 0; }
+      .node { stroke-width: 1.7; rx: 8; filter: url(#shadow); }
+      .done { fill: #e8f6ed; stroke: #2f8f4e; }
+      .partial { fill: #fff3d4; stroke: #b87514; }
+      .pending { fill: #f4f5f7; stroke: #8a94a6; stroke-dasharray: 8 6; }
+      .neutral { fill: #eef5ff; stroke: #3b73c4; }
+      .node-title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 16px; font-weight: 720; fill: #202938; letter-spacing: 0; }
+      .node-body { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12.5px; fill: #4b5563; letter-spacing: 0; }
+      .chip-text { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0; }
+      .chip-done { fill: #2f8f4e; }
+      .chip-partial { fill: #b87514; }
+      .chip-pending { fill: #7b8494; }
+      .chip-neutral { fill: #3b73c4; }
+      .arrow { fill: none; stroke: #4b5563; stroke-width: 2.2; marker-end: url(#arrow); }
+      .arrow-soft { fill: none; stroke: #8a7b52; stroke-width: 2; marker-end: url(#arrow-soft); stroke-dasharray: 6 6; }
+      .timeline-line { stroke: #7c6f51; stroke-width: 4; stroke-linecap: round; }
+      .timeline-dot { stroke-width: 3; }
+      .small { font-size: 11.5px; }
+      .footer { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #6b7280; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="page" x="0" y="0" width="1800" height="1280"/>
+
+  <text class="title" x="64" y="58">stok-mapping 最终完成形态运行流程图</text>
+  <text class="subtitle" x="64" y="86">A 股本土因子主线 + 跨市场风险 overlay + 严格策略治理 + 盘前研判 / 模拟交易交互层</text>
+
+  <g transform="translate(1160 28)">
+    <rect class="node done" x="0" y="0" width="150" height="34"/>
+    <text class="chip-text chip-done" x="22" y="22">已完成 / 已验证</text>
+    <rect class="node partial" x="170" y="0" width="170" height="34"/>
+    <text class="chip-text chip-partial" x="194" y="22">最小接入 / 过渡</text>
+    <rect class="node pending" x="360" y="0" width="170" height="34"/>
+    <text class="chip-text chip-pending" x="385" y="22">尚未启动 / 待做</text>
+  </g>
+
+  <!-- User interaction lane -->
+  <rect class="lane" x="48" y="118" width="1704" height="220"/>
+  <text class="lane-title" x="72" y="154">一、用户交互与交付层</text>
+  <text class="lane-note" x="72" y="176">最终用户通过 CLI、报告、Agent 摘要和后续可视化工作台消费系统输出；LLM/Agent 只做解释和审查，不绕过 gate。</text>
+
+  <g transform="translate(82 205)">
+    <rect class="node neutral" x="0" y="0" width="220" height="88"/>
+    <text class="node-title" x="18" y="27">用户 / 研究者</text>
+    <text class="node-body" x="18" y="50">查看观察池、风险暴露</text>
+    <text class="node-body" x="18" y="69">确认参数与复盘结果</text>
+    <text class="chip-text chip-neutral" x="156" y="24">交互入口</text>
+  </g>
+
+  <g transform="translate(350 205)">
+    <rect class="node done" x="0" y="0" width="250" height="88"/>
+    <text class="node-title" x="18" y="27">phase0.cli 控制台</text>
+    <text class="node-body" x="18" y="50">run / premarket / bill</text>
+    <text class="node-body" x="18" y="69">execution-gate / oos-report</text>
+    <text class="chip-text chip-done" x="178" y="24">已完成</text>
+  </g>
+
+  <g transform="translate(648 205)">
+    <rect class="node done" x="0" y="0" width="250" height="88"/>
+    <text class="node-title" x="18" y="27">Markdown / CSV / HTML</text>
+    <text class="node-body" x="18" y="50">研究报告、账单、资产表</text>
+    <text class="node-body" x="18" y="69">盘前观察池与 OOS 图表</text>
+    <text class="chip-text chip-done" x="178" y="24">已完成</text>
+  </g>
+
+  <g transform="translate(946 205)">
+    <rect class="node partial" x="0" y="0" width="250" height="88"/>
+    <text class="node-title" x="18" y="27">Cloe / OpenClaw Agent</text>
+    <text class="node-body" x="18" y="50">摘要、第二意见、消息通道</text>
+    <text class="node-body" x="18" y="69">需补稳定日报投递闭环</text>
+    <text class="chip-text chip-partial" x="166" y="24">过渡</text>
+  </g>
+
+  <g transform="translate(1244 205)">
+    <rect class="node pending" x="0" y="0" width="350" height="88"/>
+    <text class="node-title" x="18" y="27">Web / PWA / Tauri 模拟交易工作台</text>
+    <text class="node-body" x="18" y="50">可视化研判、交易模拟、复盘看板</text>
+    <text class="node-body" x="18" y="69">当前仅保留路线图，尚未启动</text>
+    <text class="chip-text chip-pending" x="270" y="24">待开发</text>
+  </g>
+
+  <path class="arrow" d="M302 249 C318 249 330 249 350 249"/>
+  <path class="arrow" d="M600 249 C618 249 632 249 648 249"/>
+  <path class="arrow" d="M898 249 C916 249 930 249 946 249"/>
+  <path class="arrow-soft" d="M1196 249 C1216 249 1228 249 1244 249"/>
+  <path class="arrow-soft" d="M773 293 C760 325 170 325 173 293"/>
+
+  <!-- Main architecture lane -->
+  <rect class="lane" x="48" y="366" width="1704" height="535"/>
+  <text class="lane-title" x="72" y="402">二、主运行链路：数据源 → 本地数据底座 → 股票池/因子 → 策略治理 → 研究输出</text>
+  <text class="lane-note" x="72" y="424">最终系统以本地 SQLite 和可审计报告为核心，跨市场信号只做风险/情绪 overlay，不替代 A 股本土主因子。</text>
+
+  <text class="col-title" x="82" y="462">外部数据源</text>
+  <text class="col-title" x="388" y="462">适配器与本地库</text>
+  <text class="col-title" x="694" y="462">股票池与特征层</text>
+  <text class="col-title" x="1000" y="462">策略验证与治理</text>
+  <text class="col-title" x="1306" y="462">产品输出</text>
+
+  <!-- Column 1 -->
+  <g transform="translate(76 484)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">Tushare A 股主源</text>
+    <text class="node-body" x="16" y="45">日线、元数据、增量更新</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(76 570)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">AkShare / 新浪 fallback</text>
+    <text class="node-body" x="16" y="45">快照与研究辅助备用源</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(76 656)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">FRED 宏观 / 利率 / VIX</text>
+    <text class="node-body" x="16" y="45">最小 adapter 与连通验收完成</text>
+    <text class="chip-text chip-partial" x="168" y="23">最小接入</text>
+  </g>
+  <g transform="translate(76 742)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">Tiingo 美股 / ETF 主源</text>
+    <text class="node-body" x="16" y="45">替代 yfinance 的正式主源</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+  <g transform="translate(76 828)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">港股 / A50 / CNH 输入</text>
+    <text class="node-body" x="16" y="45">盘中确认与外资情绪代理</text>
+    <text class="chip-text chip-pending" x="178" y="23">待挂载</text>
+  </g>
+
+  <!-- Column 2 -->
+  <g transform="translate(382 484)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">Data Adapter 层</text>
+    <text class="node-body" x="16" y="45">data_sources / tushare_source</text>
+    <text class="chip-text chip-partial" x="166" y="23">扩展中</text>
+  </g>
+  <g transform="translate(382 570)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">A 股历史库 SQLite</text>
+    <text class="node-body" x="16" y="45">a_share_history.sqlite</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(382 656)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">US market SQLite</text>
+    <text class="node-body" x="16" y="45">yfinance 过渡落库，等 Tiingo</text>
+    <text class="chip-text chip-partial" x="176" y="23">过渡</text>
+  </g>
+  <g transform="translate(382 742)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">审计与质量记录</text>
+    <text class="node-body" x="16" y="45">覆盖率、新鲜度、失败原因</text>
+    <text class="chip-text chip-partial" x="168" y="23">持续补齐</text>
+  </g>
+  <g transform="translate(382 828)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">HK market 生产挂载</text>
+    <text class="node-body" x="16" y="45">结构预留，未进入应用主链</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+
+  <!-- Column 3 -->
+  <g transform="translate(688 484)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">本地股票池 universe</text>
+    <text class="node-body" x="16" y="45">流动性、市值、行业上限</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(688 570)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">本土量价因子</text>
+    <text class="node-body" x="16" y="45">动量、低波、趋势、反转</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(688 656)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">财务因子 + PTI 校验</text>
+    <text class="node-body" x="16" y="45">ROE、成长、现金流、负债</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(688 742)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">跨市场风险 overlay</text>
+    <text class="node-body" x="16" y="45">隔夜情绪、风险缩放、解释</text>
+    <text class="chip-text chip-partial" x="168" y="23">扩展中</text>
+  </g>
+  <g transform="translate(688 828)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">sklearn / ML 辅助排序</text>
+    <text class="node-body" x="16" y="45">仅服务产品，不替代治理</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+
+  <!-- Column 4 -->
+  <g transform="translate(994 484)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">strategies 注册表</text>
+    <text class="node-body" x="16" y="45">多候选策略工厂</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(994 570)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">walk-forward compare</text>
+    <text class="node-body" x="16" y="45">portfolio 口径样本外验证</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(994 656)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">effectiveness gate</text>
+    <text class="node-body" x="16" y="45">收益、回撤、胜率、衰减</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(994 742)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">账户级仿真 v2</text>
+    <text class="node-body" x="16" y="45">整手、现金、涨停、停牌</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(994 828)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">真实账户 CSV 对账</text>
+    <text class="node-body" x="16" y="45">schema 预留，未接实盘回报</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+
+  <!-- Column 5 -->
+  <g transform="translate(1300 484)">
+    <rect class="node partial" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">07:30 盘前观察池</text>
+    <text class="node-body" x="16" y="45">CLI 已有，自动投递待补</text>
+    <text class="chip-text chip-partial" x="168" y="23">扩展中</text>
+  </g>
+  <g transform="translate(1300 570)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">研究与验证报告</text>
+    <text class="node-body" x="16" y="45">数据源、gate、OOS、regime</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(1300 656)">
+    <rect class="node done" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">账单 / 资产轨迹</text>
+    <text class="node-body" x="16" y="45">CSV + HTML 预览</text>
+    <text class="chip-text chip-done" x="180" y="23">已完成</text>
+  </g>
+  <g transform="translate(1300 742)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">每日归档与投递</text>
+    <text class="node-body" x="16" y="45">日报留痕、摘要、消息推送</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+  <g transform="translate(1300 828)">
+    <rect class="node pending" x="0" y="0" width="250" height="68"/>
+    <text class="node-title" x="16" y="24">模拟交易 / 复盘界面</text>
+    <text class="node-body" x="16" y="45">面向演示和日常使用</text>
+    <text class="chip-text chip-pending" x="178" y="23">待开发</text>
+  </g>
+
+  <path class="arrow" d="M326 690 C344 690 362 690 382 690"/>
+  <path class="arrow" d="M632 690 C650 690 668 690 688 690"/>
+  <path class="arrow" d="M938 690 C956 690 974 690 994 690"/>
+  <path class="arrow" d="M1244 690 C1262 690 1280 690 1300 690"/>
+  <path class="arrow-soft" d="M1550 518 C1618 518 1618 294 1196 269"/>
+  <path class="arrow-soft" d="M1550 862 C1620 862 1620 294 1594 270"/>
+  <path class="arrow-soft" d="M1196 293 C1125 338 1132 416 1119 484"/>
+
+  <!-- Automation lane -->
+  <rect class="lane" x="48" y="930" width="1704" height="260"/>
+  <text class="lane-title" x="72" y="966">三、自动任务与日常运行时间线</text>
+  <text class="lane-note" x="72" y="988">最终目标是形成可复盘的日常研判流水线：数据刷新、股票池重建、盘前日报、执行仿真和归档全部留痕。</text>
+
+  <line class="timeline-line" x1="148" y1="1074" x2="1648" y2="1074"/>
+
+  <g transform="translate(130 1026)">
+    <circle class="timeline-dot done" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-50" y="92">03:30 每周一</text>
+    <text class="node-body small" x="-72" y="112">财务因子刷新</text>
+    <text class="chip-text chip-done" x="-40" y="132">已完成</text>
+  </g>
+
+  <g transform="translate(390 1026)">
+    <circle class="timeline-dot partial" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-54" y="92">06:00 美股收盘后</text>
+    <text class="node-body small" x="-74" y="112">US / FRED / Tiingo 刷新</text>
+    <text class="chip-text chip-partial" x="-36" y="132">扩展中</text>
+  </g>
+
+  <g transform="translate(650 1026)">
+    <circle class="timeline-dot partial" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-42" y="92">07:30 盘前</text>
+    <text class="node-body small" x="-70" y="112">观察池与情景简报</text>
+    <text class="chip-text chip-partial" x="-36" y="132">CLI 已有</text>
+  </g>
+
+  <g transform="translate(910 1026)">
+    <circle class="timeline-dot pending" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-54" y="92">09:15 / 09:25</text>
+    <text class="node-body small" x="-76" y="112">集合竞价修正</text>
+    <text class="chip-text chip-pending" x="-36" y="132">待开发</text>
+  </g>
+
+  <g transform="translate(1170 1026)">
+    <circle class="timeline-dot done" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-46" y="92">16:30 收盘后</text>
+    <text class="node-body small" x="-86" y="112">A 股日线更新 + 股票池重建</text>
+    <text class="chip-text chip-done" x="-36" y="132">已完成</text>
+  </g>
+
+  <g transform="translate(1430 1026)">
+    <circle class="timeline-dot partial" cx="18" cy="48" r="17"/>
+    <text class="node-title small" x="-50" y="92">收盘后验证</text>
+    <text class="node-body small" x="-92" y="112">OOS / 账单 / gate / 归档</text>
+    <text class="chip-text chip-partial" x="-36" y="132">半自动</text>
+  </g>
+
+  <g transform="translate(1610 1004)">
+    <rect class="node pending" x="-72" y="0" width="160" height="66"/>
+    <text class="node-title small" x="-50" y="24">投递与复盘闭环</text>
+    <text class="node-body small" x="-48" y="45">消息、日报、看板</text>
+    <text class="chip-text chip-pending" x="28" y="24">待开发</text>
+  </g>
+
+  <path class="arrow-soft" d="M1188 1026 C1188 958 1424 938 1438 1026"/>
+  <path class="arrow-soft" d="M668 1026 C668 956 1450 950 1540 1036"/>
+
+  <text class="footer" x="64" y="1230">状态依据：DEVELOPMENT_PLAN.md、refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md、当前文件树与 CLI 命令。生成日期：2026-06-01。</text>
+  <text class="footer" x="64" y="1252">边界：所有输出均为研究、观察池、风险解释与模拟验证，不构成交易指令；LLM/Agent 不进入主信号层。</text>
+</svg>
