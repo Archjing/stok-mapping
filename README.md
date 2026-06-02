@@ -44,15 +44,14 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 详细架构说明见：
 
 ```text
-refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md
+docs/PROJECT_ARCHITECTURE_OVERVIEW.md
 ```
 
 项目级流程与标准：
 
 ```text
-refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md
-refdocs/WEB_RESEARCH_REPORT_WORKFLOW.md
-refdocs/strategy_explanations/INDEX.md
+docs/STRATEGY_DEVELOPMENT_GUIDELINES.md
+docs/strategy_explanations/INDEX.md
 ```
 
 ## 数据源策略
@@ -440,11 +439,11 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 ## 计划文档
 
 - 主计划：`DEVELOPMENT_PLAN.md`
-- 架构说明：`refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`
-- 策略开发标准：`refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
+- 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
+- 策略开发标准：`docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
 - 当前统一周执行附件：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 - 策略候选整理：`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
-- 候选策略解释索引：`refdocs/strategy_explanations/INDEX.md`
+- 候选策略解释索引：`docs/strategy_explanations/INDEX.md`
 - 策略开发检查清单：`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
 - FRED 接入任务单：`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
 - Tiingo 接入任务单：`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`

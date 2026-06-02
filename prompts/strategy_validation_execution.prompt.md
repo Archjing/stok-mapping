@@ -17,7 +17,7 @@
 
 ## 工作约束
 
-1. 必须遵守 `refdocs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
+1. 必须遵守 `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
 2. 必须先过 `Operational Smoke Test`
 3. 必须再过 `Strategy Smoke Test`
 4. 只有前两层通过后，才允许进入 walk-forward / compare / gate

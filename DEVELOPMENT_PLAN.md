@@ -936,7 +936,7 @@ stok-mapping/
 - `hk_market_history.sqlite` 已启用并完成 30 标的初始港股观察池批量落库，覆盖率 `30/30`，最新交易日 `2026-06-01`，累计 `37044` 行。
 - 已生成港股批量落库报告：`reports/hk_market_history_batch_load_report.md`，包含 30 标的覆盖、审计记录、样本行和中文名称 `name_zh`。
 - 已新增 `phase0.cli` 当前使用说明：`refdocs/PHASE0_CLI_USER_GUIDE.md`。
-- 已同步 `README.md`、`refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
+- 已同步 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
 
 ### 本周候选方向
 
@@ -1042,7 +1042,7 @@ stok-mapping/
 - `README.md`
 - `CLAUDE.md`
 - `config.yaml`
-- `refdocs/PROJECT_ARCHITECTURE_OVERVIEW.md`
+- `docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - `reports/phase0_effectiveness_report.md`
 - `reports/phase0_walk_forward_report.md`
 - `reports/phase0_strategy_change_log.md`
