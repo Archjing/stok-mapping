@@ -1,6 +1,10 @@
 .venv/
 __pycache__/
 .pytest_cache/
+.claude/
+.codex/
+.agents/skills
+prompts/
 .env
 .claude/settings.local.json
 .codex/claude_agent.local.json
