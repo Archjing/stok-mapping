@@ -14,6 +14,36 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 核心输出是观察池、风险暴露说明、信号等级、盘前情景推演和候选策略对比结果，不输出自动下单指令。
 
+## 常用补跑 / 维护命令
+
+下面命令默认在项目根目录执行。涉及外部数据源时需确保 `.env` 中的 token 已配置，且当前环境具备联网能力。
+
+```bash
+# 重跑日报：先更新 A 股日线历史库，再生成次日 07:30 盘前观察池
+./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+
+# 只生成盘前观察池，不先更新 A 股历史库
+./.venv/bin/python -m phase0.cli premarket --config config.yaml
+
+# 更新 A 股日线历史数据
+./.venv/bin/python -m phase0.cli update-history --config config.yaml
+
+# 更新美股 / ETF / VIX / CNH 日线历史数据
+./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml
+
+# 更新港股日线历史数据
+./.venv/bin/python -m phase0.cli update-hk-market-history --config config.yaml
+
+# 更新 A 股季度财务因子
+./.venv/bin/python -m phase0.cli update-financials --config config.yaml
+
+# 重建本地因子股票池报告
+./.venv/bin/python -m phase0.cli build-universe --config config.yaml
+
+# 运行完整 Phase 0 主流程
+./.venv/bin/python -m phase0.cli run --config config.yaml
+```
+
 ## 当前状态
 
 - Phase 0 基础设施验证已完成，当前结论为 **PASS**，已确认可进入策略收口与 Phase 1 准备。

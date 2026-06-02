@@ -109,7 +109,7 @@ def _simulation_note(row: pd.Series, previous_source: str) -> str:
 
 
 def _trade_reason(row: pd.Series, params: dict[str, Any]) -> str:
-    action = _trade_action(row)
+    action = str(row.get("sim_trade_action") or _trade_action(row))
     score = row.get("score")
     rank = row.get("rank")
     held_days = row.get("held_days")
