@@ -23,3 +23,7 @@ Scope: papers since 2024 related to stock quantitative investment, algorithmic t
 - Sources used for metadata and access checks: OpenAlex API, arXiv/open publisher PDF links, AAAI OJS, Nature/Springer, AIMS Press, Frontiers, and WJAETS public pages.
 - ScienceDirect/IEEE pages that exposed only blocked HTML to this environment were not archived unless an open PDF from another source was available.
 - Markdown files are machine-extracted from PDFs with pypdf and keep page-level sections for a consistent local text format.
+
+## Extended index
+
+- [Quant strategy papers 2024-2026 high-impact index](quant-strategy-papers-2024-2026-index.md)
