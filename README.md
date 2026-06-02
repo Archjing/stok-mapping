@@ -1,3 +1,7 @@
+<div align="center">
+<img src=".\assets\brand\stok-mapping-wordmark.png"  width="90%" align="center">
+</div>
+
 # stok-mapping
 
 A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究与盘前研判工具。

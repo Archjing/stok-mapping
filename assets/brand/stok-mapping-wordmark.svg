@@ -1,46 +1,53 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" role="img" aria-labelledby="title desc">
   <title id="title">stok-mapping wordmark</title>
-  <desc id="desc">Horizontal brand mark for stok-mapping quantitative research software.</desc>
-  <rect width="1800" height="600" rx="72" fill="#f8fafc"/>
-  <svg x="90" y="90" width="420" height="420" viewBox="0 0 1024 1024">
+  <desc id="desc">Horizontal brand mark with a matrix grid, whiteboard formulas, and a sharp red zig-zag signal.</desc>
+  <rect width="1800" height="600" rx="72" fill="#eef6f3"/>
+  <svg x="92" y="90" width="420" height="420" viewBox="0 0 1024 1024">
     <defs>
-      <linearGradient id="bg2" x1="128" y1="80" x2="900" y2="940" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#0f172a"/>
-        <stop offset="0.52" stop-color="#16324f"/>
-        <stop offset="1" stop-color="#113c3a"/>
+      <linearGradient id="bg2" x1="116" y1="96" x2="900" y2="900" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#172a46"/>
+        <stop offset="0.58" stop-color="#123a52"/>
+        <stop offset="1" stop-color="#0f4a55"/>
       </linearGradient>
-      <linearGradient id="signal2" x1="212" y1="642" x2="802" y2="320" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stop-color="#38bdf8"/>
-        <stop offset="0.48" stop-color="#2dd4bf"/>
-        <stop offset="1" stop-color="#facc15"/>
+      <linearGradient id="signal2" x1="214" y1="704" x2="808" y2="322" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#c9625b"/>
+        <stop offset="0.52" stop-color="#bd454d"/>
+        <stop offset="1" stop-color="#d97b57"/>
       </linearGradient>
+      <filter id="iconShadow" x="-18%" y="-18%" width="136%" height="136%">
+        <feDropShadow dx="0" dy="24" stdDeviation="26" flood-color="#718b8f" flood-opacity="0.28"/>
+      </filter>
     </defs>
-    <rect width="1024" height="1024" rx="168" fill="url(#bg2)"/>
-    <g opacity="0.18" stroke="#dbeafe" stroke-width="2">
-      <path d="M178 262h648M178 396h648M178 530h648M178 664h648M178 798h648"/>
-      <path d="M244 188v650M378 188v650M512 188v650M646 188v650M780 188v650"/>
+    <g filter="url(#iconShadow)">
+      <rect x="36" y="36" width="952" height="952" rx="172" fill="url(#bg2)"/>
+      <g opacity="0.30" fill="none" stroke="#8ec8d4" stroke-width="4">
+        <path d="M188 188H836M188 296H836M188 404H836M188 512H836M188 620H836M188 728H836M188 836H836"/>
+        <path d="M188 188V836M296 188V836M404 188V836M512 188V836M620 188V836M728 188V836M836 188V836"/>
+      </g>
+      <g opacity="0.54" fill="#cbe9ef" font-family="DejaVu Sans Mono, ui-monospace, monospace" font-weight="700">
+        <text x="112" y="282" font-size="101" transform="rotate(-5 112 282)">MOM = R<tspan baseline-shift="sub" font-size="60">12-1</tspan></text>
+        <text x="430" y="474" font-size="46" transform="rotate(7 430 474)">E[Rᵢ]=R<tspan baseline-shift="sub" font-size="28">f</tspan>+βᵢ(E[R<tspan baseline-shift="sub" font-size="28">m</tspan>]−R<tspan baseline-shift="sub" font-size="28">f</tspan>)</text>
+        <text x="84" y="830" font-size="82" transform="rotate(3 84 830)">max μᵀw − λwᵀΣw</text>
+      </g>
+      <path d="M196 724L320 548L492 624L622 416L812 314"
+            fill="none" stroke="#ffffff" stroke-width="96" stroke-linecap="butt" stroke-linejoin="bevel" opacity="0.96"/>
+      <path d="M210 710L326 552L494 626L628 412L802 322"
+            fill="none" stroke="url(#signal2)" stroke-width="48" stroke-linecap="butt" stroke-linejoin="bevel"/>
+      <g fill="none" stroke="#f2e85c" stroke-linecap="butt" stroke-linejoin="miter">
+        <circle cx="628" cy="412" r="108" stroke-width="13" stroke-dasharray="32 18"/>
+        <path d="M598 442L662 378" stroke-width="12"/>
+        <path d="M626 378H662V414" stroke-width="12"/>
+      </g>
     </g>
-    <path d="M213 680c76-98 145-128 206-90 38 24 70 54 113 16 43-39 55-126 117-158 44-23 95-2 148-70"
-          fill="none" stroke="url(#signal2)" stroke-width="44" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M213 680c76-98 145-128 206-90 38 24 70 54 113 16 43-39 55-126 117-158 44-23 95-2 148-70"
-          fill="none" stroke="#ecfeff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>
-    <g fill="#e0f2fe" stroke="#0f172a" stroke-width="14">
-      <circle cx="213" cy="680" r="42"/>
-      <circle cx="419" cy="590" r="42"/>
-      <circle cx="532" cy="606" r="42"/>
-      <circle cx="649" cy="448" r="42"/>
-      <circle cx="797" cy="378" r="42"/>
-    </g>
-    <circle cx="649" cy="448" r="104" fill="none" stroke="#facc15" stroke-width="20"/>
   </svg>
-  <text x="570" y="255" fill="#0f172a" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="108" font-weight="800">stok-mapping</text>
-  <text x="576" y="350" fill="#334155" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="38" font-weight="600">factor signals · overlays · premarket research</text>
-  <g transform="translate(578 410)">
-    <rect width="168" height="44" rx="22" fill="#dbeafe"/>
-    <text x="84" y="30" text-anchor="middle" fill="#1d4ed8" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">A-SHARE</text>
-    <rect x="188" width="176" height="44" rx="22" fill="#ccfbf1"/>
-    <text x="276" y="30" text-anchor="middle" fill="#0f766e" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">OVERLAY</text>
-    <rect x="384" width="156" height="44" rx="22" fill="#fef3c7"/>
-    <text x="462" y="30" text-anchor="middle" fill="#a16207" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">SIGNAL</text>
+  <text x="574" y="255" fill="#2f3f48" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="108" font-weight="800">stok-mapping</text>
+  <text x="580" y="350" fill="#687f84" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="38" font-weight="600">factor signals · overlays · premarket research</text>
+  <g transform="translate(582 410)">
+    <rect width="168" height="44" rx="22" fill="#f4ddd9"/>
+    <text x="84" y="30" text-anchor="middle" fill="#b84d46" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">A-SHARE</text>
+    <rect x="188" width="176" height="44" rx="22" fill="#d7eee7"/>
+    <text x="276" y="30" text-anchor="middle" fill="#22766d" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">OVERLAY</text>
+    <rect x="384" width="156" height="44" rx="22" fill="#f7e5d0"/>
+    <text x="462" y="30" text-anchor="middle" fill="#b56a31" font-family="DejaVu Sans, Inter, Arial, sans-serif" font-size="23" font-weight="700">SIGNAL</text>
   </g>
 </svg>
