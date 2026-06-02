@@ -1,0 +1,267 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" role="img" aria-labelledby="title desc">
+  <title id="title">stok-mapping 最终分层架构蓝图</title>
+  <desc id="desc">Canva architecture 风格的项目最终运行形态图，展示用户交互、应用服务、策略治理、因子股票池、数据底座和外部数据源。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#5b6472"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#9a6a14"/>
+    </marker>
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="#1f2937" flood-opacity="0.12"/>
+    </filter>
+    <style>
+      .bg { fill: #f7f3ea; }
+      .title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 34px; font-weight: 780; fill: #1f2937; letter-spacing: 0; }
+      .subtitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15px; fill: #5d6674; letter-spacing: 0; }
+      .layer { fill: #fffdf8; stroke: #d8d0bd; stroke-width: 1.5; rx: 18; filter: url(#cardShadow); }
+      .layerTitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 19px; font-weight: 760; fill: #253044; letter-spacing: 0; }
+      .layerNote { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12.5px; fill: #697386; letter-spacing: 0; }
+      .card { stroke-width: 1.8; rx: 10; filter: url(#cardShadow); }
+      .done { fill: #e8f6ed; stroke: #2e8c55; }
+      .partial { fill: #fff1cf; stroke: #b87514; }
+      .pending { fill: #f3f4f6; stroke: #8a94a6; stroke-dasharray: 8 6; }
+      .core { fill: #eef5ff; stroke: #3669b1; }
+      .cardTitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15.5px; font-weight: 720; fill: #202938; letter-spacing: 0; }
+      .body { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #4b5563; letter-spacing: 0; }
+      .tiny { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 10.5px; font-weight: 700; letter-spacing: 0; }
+      .doneText { fill: #2e8c55; }
+      .partialText { fill: #9a6a14; }
+      .pendingText { fill: #7b8494; }
+      .coreText { fill: #3669b1; }
+      .arrow { fill: none; stroke: #5b6472; stroke-width: 2.2; marker-end: url(#arrow); }
+      .softArrow { fill: none; stroke: #9a6a14; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrowAmber); }
+      .rail { fill: #f0ebe0; stroke: #cfc4ae; stroke-width: 1.3; rx: 14; }
+      .railText { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 13px; fill: #4b5563; letter-spacing: 0; }
+      .footer { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #6b7280; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1800" height="1200"/>
+
+  <text class="title" x="64" y="58">stok-mapping 最终分层架构蓝图</text>
+  <text class="subtitle" x="64" y="84">主线：A 股本土因子选股与验证；跨市场数据只做风险/情绪 overlay；所有输出停留在研究、观察池、模拟验证边界。</text>
+
+  <g transform="translate(1190 30)">
+    <rect class="card done" x="0" y="0" width="150" height="34"/>
+    <text class="tiny doneText" x="25" y="22">已完成 / 已验证</text>
+    <rect class="card partial" x="170" y="0" width="160" height="34"/>
+    <text class="tiny partialText" x="196" y="22">最小接入 / 过渡</text>
+    <rect class="card pending" x="350" y="0" width="160" height="34"/>
+    <text class="tiny pendingText" x="384" y="22">待开发</text>
+  </g>
+
+  <!-- Governance rail -->
+  <rect class="rail" x="1438" y="126" width="300" height="950"/>
+  <text class="layerTitle" x="1462" y="164">贯穿式治理边界</text>
+  <text class="railText" x="1462" y="198">配置驱动：config.yaml</text>
+  <text class="railText" x="1462" y="226">数据审计：覆盖率 / 新鲜度 / 失败原因</text>
+  <text class="railText" x="1462" y="254">策略准入：effectiveness gate</text>
+  <text class="railText" x="1462" y="282">复盘留痕：reports / change log</text>
+  <text class="railText" x="1462" y="310">安全边界：.env 不入库</text>
+  <text class="railText" x="1462" y="338">LLM 边界：不生成交易信号</text>
+  <line x1="1462" y1="370" x2="1710" y2="370" stroke="#d7ccb7" stroke-width="1.4"/>
+  <text class="layerNote" x="1462" y="402">这个竖栏不是单独模块，</text>
+  <text class="layerNote" x="1462" y="424">而是所有层必须遵守的规则。</text>
+  <text class="layerNote" x="1462" y="466">最终形态的价值不只是“跑策略”，</text>
+  <text class="layerNote" x="1462" y="488">而是让数据、信号、报告和决策</text>
+  <text class="layerNote" x="1462" y="510">都有可追溯依据。</text>
+
+  <!-- Layer 1 -->
+  <rect class="layer" x="64" y="126" width="1340" height="132"/>
+  <text class="layerTitle" x="88" y="162">1. 用户交互与交付层</text>
+  <text class="layerNote" x="88" y="184">研究者消费系统输出；Agent 只做摘要和审查；未来工作台承载演示、模拟交易和复盘。</text>
+
+  <g transform="translate(96 204)">
+    <rect class="card core" width="200" height="48"/>
+    <text class="cardTitle" x="18" y="29">用户 / 研究者</text>
+    <text class="tiny coreText" x="132" y="29">入口</text>
+  </g>
+  <g transform="translate(326 204)">
+    <rect class="card done" width="220" height="48"/>
+    <text class="cardTitle" x="18" y="29">CLI + 报告文件</text>
+    <text class="tiny doneText" x="150" y="29">已完成</text>
+  </g>
+  <g transform="translate(576 204)">
+    <rect class="card partial" width="240" height="48"/>
+    <text class="cardTitle" x="18" y="29">Cloe / OpenClaw</text>
+    <text class="tiny partialText" x="164" y="29">过渡</text>
+  </g>
+  <g transform="translate(846 204)">
+    <rect class="card pending" width="280" height="48"/>
+    <text class="cardTitle" x="18" y="29">Web / PWA / Tauri 工作台</text>
+    <text class="tiny pendingText" x="214" y="29">待开发</text>
+  </g>
+  <g transform="translate(1156 204)">
+    <rect class="card pending" width="210" height="48"/>
+    <text class="cardTitle" x="18" y="29">每日投递闭环</text>
+    <text class="tiny pendingText" x="150" y="29">待开发</text>
+  </g>
+
+  <!-- Layer 2 -->
+  <rect class="layer" x="64" y="286" width="1340" height="132"/>
+  <text class="layerTitle" x="88" y="322">2. 应用服务层</text>
+  <text class="layerNote" x="88" y="344">把底层研究能力组织成可运行命令、可读报告和日常研判产品。</text>
+
+  <g transform="translate(96 364)">
+    <rect class="card done" width="220" height="48"/>
+    <text class="cardTitle" x="18" y="29">phase0 run</text>
+    <text class="tiny doneText" x="148" y="29">已完成</text>
+  </g>
+  <g transform="translate(346 364)">
+    <rect class="card partial" width="220" height="48"/>
+    <text class="cardTitle" x="18" y="29">07:30 盘前观察池</text>
+    <text class="tiny partialText" x="152" y="29">扩展中</text>
+  </g>
+  <g transform="translate(596 364)">
+    <rect class="card done" width="220" height="48"/>
+    <text class="cardTitle" x="18" y="29">账单 / 资产轨迹</text>
+    <text class="tiny doneText" x="152" y="29">已完成</text>
+  </g>
+  <g transform="translate(846 364)">
+    <rect class="card done" width="220" height="48"/>
+    <text class="cardTitle" x="18" y="29">OOS / Regime 报告</text>
+    <text class="tiny doneText" x="152" y="29">已完成</text>
+  </g>
+  <g transform="translate(1096 364)">
+    <rect class="card pending" width="270" height="48"/>
+    <text class="cardTitle" x="18" y="29">真实账户 CSV 对账</text>
+    <text class="tiny pendingText" x="188" y="29">待开发</text>
+  </g>
+
+  <!-- Layer 3 -->
+  <rect class="layer" x="64" y="446" width="1340" height="150"/>
+  <text class="layerTitle" x="88" y="482">3. 策略与治理层</text>
+  <text class="layerNote" x="88" y="504">多候选策略必须经过统一 walk-forward、样本治理、成本约束和账户级仿真，不能人工绕过。</text>
+
+  <g transform="translate(96 526)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">strategies 注册表</text>
+    <text class="body" x="18" y="43">多候选策略工厂</text>
+  </g>
+  <g transform="translate(356 526)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">walk-forward compare</text>
+    <text class="body" x="18" y="43">组合口径样本外验证</text>
+  </g>
+  <g transform="translate(616 526)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">effectiveness gate</text>
+    <text class="body" x="18" y="43">收益 / 回撤 / 胜率 / 衰减</text>
+  </g>
+  <g transform="translate(876 526)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">账户级仿真 v2</text>
+    <text class="body" x="18" y="43">整手 / 现金 / 停牌 / 涨跌停</text>
+  </g>
+  <g transform="translate(1136 526)">
+    <rect class="card pending" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">ML 辅助研究</text>
+    <text class="body" x="18" y="43">sklearn 基线，待开发</text>
+  </g>
+
+  <!-- Layer 4 -->
+  <rect class="layer" x="64" y="624" width="1340" height="150"/>
+  <text class="layerTitle" x="88" y="660">4. 因子与股票池层</text>
+  <text class="layerNote" x="88" y="682">本土主因子负责选股与排序；跨市场信号只负责风险缩放、情绪解释和情景推演。</text>
+
+  <g transform="translate(96 704)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">local universe</text>
+    <text class="body" x="18" y="43">流动性 / 市值 / 行业约束</text>
+  </g>
+  <g transform="translate(356 704)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">本土量价因子</text>
+    <text class="body" x="18" y="43">动量 / 趋势 / 低波 / 反转</text>
+  </g>
+  <g transform="translate(616 704)">
+    <rect class="card done" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">财务因子 + PTI</text>
+    <text class="body" x="18" y="43">ROE / 成长 / 现金流 / 负债</text>
+  </g>
+  <g transform="translate(876 704)">
+    <rect class="card partial" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">跨市场 overlay</text>
+    <text class="body" x="18" y="43">风险缩放 / 情绪解释</text>
+  </g>
+  <g transform="translate(1136 704)">
+    <rect class="card pending" width="230" height="52"/>
+    <text class="cardTitle" x="18" y="25">行业 / 港股映射</text>
+    <text class="body" x="18" y="43">待数据质量验证后挂载</text>
+  </g>
+
+  <!-- Layer 5 -->
+  <rect class="layer" x="64" y="802" width="1340" height="132"/>
+  <text class="layerTitle" x="88" y="838">5. 数据底座层</text>
+  <text class="layerNote" x="88" y="860">数据先落本地库，再进入研究链路；新鲜度、覆盖率和来源审计是正式输入条件。</text>
+
+  <g transform="translate(96 880)">
+    <rect class="card done" width="230" height="48"/>
+    <text class="cardTitle" x="18" y="29">A 股 SQLite</text>
+    <text class="tiny doneText" x="152" y="29">已完成</text>
+  </g>
+  <g transform="translate(356 880)">
+    <rect class="card partial" width="230" height="48"/>
+    <text class="cardTitle" x="18" y="29">US market SQLite</text>
+    <text class="tiny partialText" x="158" y="29">过渡</text>
+  </g>
+  <g transform="translate(616 880)">
+    <rect class="card partial" width="230" height="48"/>
+    <text class="cardTitle" x="18" y="29">FRED adapter</text>
+    <text class="tiny partialText" x="154" y="29">最小接入</text>
+  </g>
+  <g transform="translate(876 880)">
+    <rect class="card partial" width="230" height="48"/>
+    <text class="cardTitle" x="18" y="29">source audit</text>
+    <text class="tiny partialText" x="152" y="29">持续补齐</text>
+  </g>
+  <g transform="translate(1136 880)">
+    <rect class="card pending" width="230" height="48"/>
+    <text class="cardTitle" x="18" y="29">HK SQLite 挂载</text>
+    <text class="tiny pendingText" x="158" y="29">待开发</text>
+  </g>
+
+  <!-- Layer 6 -->
+  <rect class="layer" x="64" y="962" width="1340" height="114"/>
+  <text class="layerTitle" x="88" y="998">6. 外部数据源层</text>
+  <text class="layerNote" x="88" y="1020">正式主源与 fallback 分层，避免运行时临时在线抓取破坏可复现性。</text>
+
+  <g transform="translate(96 1036)">
+    <rect class="card done" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">Tushare</text>
+  </g>
+  <g transform="translate(296 1036)">
+    <rect class="card done" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">AkShare fallback</text>
+  </g>
+  <g transform="translate(496 1036)">
+    <rect class="card partial" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">FRED</text>
+  </g>
+  <g transform="translate(696 1036)">
+    <rect class="card pending" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">Tiingo</text>
+  </g>
+  <g transform="translate(896 1036)">
+    <rect class="card partial" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">yfinance fallback</text>
+  </g>
+  <g transform="translate(1096 1036)">
+    <rect class="card pending" width="170" height="34"/>
+    <text class="cardTitle" x="16" y="23">港股 / A50 / CNH</text>
+  </g>
+
+  <!-- Flow arrows -->
+  <path class="arrow" d="M734 962 C734 940 734 940 734 934"/>
+  <path class="arrow" d="M734 802 C734 780 734 780 734 774"/>
+  <path class="arrow" d="M734 624 C734 602 734 602 734 596"/>
+  <path class="arrow" d="M734 446 C734 424 734 424 734 418"/>
+  <path class="arrow" d="M734 286 C734 264 734 264 734 258"/>
+  <path class="softArrow" d="M1126 228 C1220 230 1360 300 1438 396"/>
+  <path class="softArrow" d="M1251 904 C1370 890 1408 808 1438 760"/>
+
+  <text class="footer" x="64" y="1144">状态依据：DEVELOPMENT_PLAN.md、PROJECT_ARCHITECTURE_OVERVIEW.md、当前 CLI 与报告产物。版本：01-canva-architecture。</text>
+  <text class="footer" x="64" y="1166">阅读方式：自下而上是数据进入系统，自上而下是用户消费结果；右侧治理边界贯穿所有层。</text>
+</svg>

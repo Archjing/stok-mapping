@@ -1,0 +1,24 @@
+[2026-05-29 16:30:01 +0800] manual history update started
+Manual history update status: updated
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Calendar latest trade date: 2026-05-29
+Target trade date: 2026-05-29
+Before latest: 2026-05-28 coverage=0.9559
+After latest: 2026-05-29 coverage=0.9556
+Fetched rows: 5524
+Inserted rows: 5505
+Metadata updated rows: 5524
+Primary source: sina.raw_spot
+Metadata coverage: market_cap=0.9998, pe=0.9998, pb=0.9998, turnover=1.0000
+Warning: tushare daily/daily_basic failed: 'adjust_type'
+Warning: akshare.stock_zh_a_spot_em snapshot failed: ('Connection aborted.', 
+RemoteDisconnected('Remote end closed connection without response'))
+Universe rebuild complete
+Source: local_history_sqlite
+Selected: 500/500
+Warning: AkShare all-A snapshot failed: ('Connection aborted.', 
+RemoteDisconnected('Remote end closed connection without response'))
+Warning: AkShare all-A snapshot was empty; used configured local history 
+fallback.
+[2026-05-29 16:33:05 +0800] manual history update finished

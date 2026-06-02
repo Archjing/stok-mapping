@@ -1,0 +1,719 @@
+[
+  {
+    "id": "cn01_ml_stock_return_portfolio",
+    "title": "基于机器学习的股票收益预测与投资组合研究",
+    "doi": "10.12677/orf.2024.142163",
+    "year": 2024,
+    "venue": "运筹与模糊学",
+    "language": "zh",
+    "market_scope": "上证50 / A股",
+    "topic_keywords": [
+      "机器学习",
+      "量化选股",
+      "投资组合",
+      "上证50",
+      "A股"
+    ],
+    "paper_url": "https://www.hanspub.org/journal/PaperInformation?paperID=84203",
+    "pdf_url": "https://pdf.hanspub.org/orf20240200000_97651076.pdf",
+    "relevance_note": "中文论文，以上证50成分股为样本，直接研究机器学习量化选股和投资组合。",
+    "selected_rank": 1,
+    "retrieved_at_utc": "2026-05-28T23:06:23.952001+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4394957380",
+      "title": "Machine Learning Based Stock Return Prediction and Portfolio Research",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "欣 陈"
+      ],
+      "venue": "Operations Research and Fuzziology",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://www.hanspub.org/journal/PaperInformation?paperID=84203",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn01_ml_stock_return_portfolio.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn01_ml_stock_return_portfolio.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/orf20240200000_97651076.pdf",
+      "content_type": "application/pdf",
+      "bytes": 545701
+    },
+    "text_extraction": {
+      "pages": 11,
+      "characters": 16040,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn02_macro_multifactor_investment_strategy",
+    "title": "宏观背景下运用多因子模型的投资策略研究",
+    "doi": "10.12677/fin.2024.144157",
+    "year": 2024,
+    "venue": "金融",
+    "language": "zh",
+    "market_scope": "中国股票市场 / A股",
+    "topic_keywords": [
+      "宏观政策",
+      "多因子模型",
+      "投资策略",
+      "量化投资"
+    ],
+    "paper_url": "https://pdf.hanspub.org/fin2024144_331141103.pdf",
+    "pdf_url": "https://pdf.hanspub.org/fin2024144_331141103.pdf",
+    "relevance_note": "中文论文，聚焦中国市场语境下的多因子选股与资产配置策略。",
+    "selected_rank": 2,
+    "retrieved_at_utc": "2026-05-28T23:06:30.948070+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4400984729",
+      "title": "Research on Investment Strategy Using Multi-Factor Model in Macro Background",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "佳鑫 刘"
+      ],
+      "venue": "Finance",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://pdf.hanspub.org/fin2024144_331141103.pdf",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn02_macro_multifactor_investment_strategy.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn02_macro_multifactor_investment_strategy.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/fin2024144_331141103.pdf",
+      "content_type": "application/pdf",
+      "bytes": 519910
+    },
+    "text_extraction": {
+      "pages": 10,
+      "characters": 14370,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn03_svm_multifactor_hs300",
+    "title": "基于支持向量机模型的多因子量化选股策略",
+    "doi": "10.12677/ecl.2024.1331054",
+    "year": 2024,
+    "venue": "电子商务评论",
+    "language": "zh",
+    "market_scope": "沪深300 / A股",
+    "topic_keywords": [
+      "SVM",
+      "多因子",
+      "量化选股",
+      "沪深300"
+    ],
+    "paper_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94749",
+    "pdf_url": "https://pdf.hanspub.org/ecl2024133_5692311120.pdf",
+    "relevance_note": "中文论文，研究对象明确为沪深300成分股，属于直接可用的A股选股策略参考。",
+    "selected_rank": 3,
+    "retrieved_at_utc": "2026-05-28T23:06:34.376757+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4401794879",
+      "title": "Multi Factor Quantitative Stock Selection Strategy Based on Support Vector Machine Model",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "纳 咪"
+      ],
+      "venue": "E-Commerce Letters",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94749",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn03_svm_multifactor_hs300.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn03_svm_multifactor_hs300.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/ecl2024133_5692311120.pdf",
+      "content_type": "application/pdf",
+      "bytes": 5545834
+    },
+    "text_extraction": {
+      "pages": 10,
+      "characters": 11809,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn04_network_factor_a_share",
+    "title": "考虑股市网络因子的多因子选股策略研究",
+    "doi": "10.12677/sa.2024.134105",
+    "year": 2024,
+    "venue": "统计学与应用",
+    "language": "zh",
+    "market_scope": "中国A股市场",
+    "topic_keywords": [
+      "复杂网络",
+      "Fama-French",
+      "多因子",
+      "量化选股",
+      "A股"
+    ],
+    "paper_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94864",
+    "pdf_url": "https://pdf.hanspub.org/sa2024134_22581331.pdf",
+    "relevance_note": "中文论文，明确基于中国A股市场数据，属于因子扩展型选股策略。",
+    "selected_rank": 4,
+    "retrieved_at_utc": "2026-05-28T23:07:00.797440+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4401400259",
+      "title": "Research on Multi-Factor Stock Selection Strategy Considering Network Factors in the Stock Market",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "云飞 戴"
+      ],
+      "venue": "Statistics and Applications",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94864",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn04_network_factor_a_share.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn04_network_factor_a_share.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/sa2024134_22581331.pdf",
+      "content_type": "application/pdf",
+      "bytes": 472754
+    },
+    "text_extraction": {
+      "pages": 14,
+      "characters": 22211,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn05_ml_asset_characteristics_portfolio",
+    "title": "基于机器学习和资产特征的投资组合选择研究",
+    "doi": "10.12011/SETP2023-1784",
+    "year": 2024,
+    "venue": "系统工程理论与实践",
+    "language": "zh",
+    "market_scope": "中国股票市场",
+    "topic_keywords": [
+      "机器学习",
+      "资产特征",
+      "投资组合选择",
+      "量化投资"
+    ],
+    "paper_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2023-1784",
+    "pdf_url": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2023-1784",
+    "relevance_note": "中文核心期刊论文，研究对象为中国股票市场，偏高质量组合构建方法。",
+    "selected_rank": 5,
+    "retrieved_at_utc": "2026-05-28T23:07:06.518982+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "status": 404,
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai"
+    },
+    "citation_count_openalex": null,
+    "public_attention_metrics": {
+      "source_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2023-1784",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "sysengi_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn05_ml_asset_characteristics_portfolio.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn05_ml_asset_characteristics_portfolio.md",
+    "download": {
+      "downloaded_from": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2023-1784",
+      "content_type": "application/octet-stream",
+      "bytes": 461109
+    },
+    "text_extraction": {
+      "pages": 22,
+      "characters": 48197,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn06_lstm_margin_trading_strategy",
+    "title": "基于LSTM预测信息的在线融资融券组合交易策略",
+    "doi": "10.12011/SETP2022-0819",
+    "year": 2024,
+    "venue": "系统工程理论与实践",
+    "language": "zh",
+    "market_scope": "中国股票市场 / 融资融券",
+    "topic_keywords": [
+      "LSTM",
+      "融资融券",
+      "在线投资组合",
+      "交易策略"
+    ],
+    "paper_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2022-0819",
+    "pdf_url": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2022-0819",
+    "relevance_note": "中文核心期刊论文，属于A股交易制度环境下的模型驱动交易策略。",
+    "selected_rank": 6,
+    "retrieved_at_utc": "2026-05-28T23:07:14.523014+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "status": 404,
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai"
+    },
+    "citation_count_openalex": null,
+    "public_attention_metrics": {
+      "source_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2022-0819",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "sysengi_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn06_lstm_margin_trading_strategy.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn06_lstm_margin_trading_strategy.md",
+    "download": {
+      "downloaded_from": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2022-0819",
+      "content_type": "application/octet-stream",
+      "bytes": 1303545
+    },
+    "text_extraction": {
+      "pages": 19,
+      "characters": 59517,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn07_lasso_pricing_factors_china",
+    "title": "基于双重选择LASSO模型的我国股市定价因子边际有效性研究",
+    "doi": "10.12011/SETP2023-0831",
+    "year": 2024,
+    "venue": "系统工程理论与实践",
+    "language": "zh",
+    "market_scope": "我国股市 / A股",
+    "topic_keywords": [
+      "LASSO",
+      "定价因子",
+      "因子库",
+      "机器学习",
+      "中国股市"
+    ],
+    "paper_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2023-0831",
+    "pdf_url": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2023-0831",
+    "relevance_note": "中文核心期刊论文，直接服务于A股因子构建与因子有效性筛选。",
+    "selected_rank": 7,
+    "retrieved_at_utc": "2026-05-28T23:07:22.595901+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "status": 404,
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai"
+    },
+    "citation_count_openalex": null,
+    "public_attention_metrics": {
+      "source_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2023-0831",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "sysengi_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn07_lasso_pricing_factors_china.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn07_lasso_pricing_factors_china.md",
+    "download": {
+      "downloaded_from": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2023-0831",
+      "content_type": "application/octet-stream",
+      "bytes": 3204485
+    },
+    "text_extraction": {
+      "pages": 16,
+      "characters": 33818,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn08_analyst_text_quant_strategy",
+    "title": "分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化研究",
+    "doi": "10.12011/SETP2022-2601",
+    "year": 2024,
+    "venue": "系统工程理论与实践",
+    "language": "zh",
+    "market_scope": "中国股票市场",
+    "topic_keywords": [
+      "分析师研报",
+      "文本分析",
+      "情感指标",
+      "量化策略"
+    ],
+    "paper_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2022-2601",
+    "pdf_url": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2022-2601",
+    "relevance_note": "中文核心期刊论文，直接构建基于研报文本的量化交易策略。",
+    "selected_rank": 8,
+    "retrieved_at_utc": "2026-05-28T23:07:37.912073+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "status": 404,
+      "error": "<!doctype html>\n<html lang=en>\n<title>404 Not Found</title>\n<h1>Not Found</h1>\n<p>The requested URL was not found on the server. If you entered the URL manually please check your spelling and try agai"
+    },
+    "citation_count_openalex": null,
+    "public_attention_metrics": {
+      "source_url": "https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2022-2601",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "sysengi_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn08_analyst_text_quant_strategy.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn08_analyst_text_quant_strategy.md",
+    "download": {
+      "downloaded_from": "https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2022-2601",
+      "content_type": "application/octet-stream",
+      "bytes": 1497292
+    },
+    "text_extraction": {
+      "pages": 11,
+      "characters": 23497,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn09_svm_price_volume_cs1000",
+    "title": "基于支持向量机的多因子融合量价数据的选股策略的研究",
+    "doi": "10.12677/ecl.2024.133896",
+    "year": 2024,
+    "venue": "电子商务评论",
+    "language": "zh",
+    "market_scope": "中证1000 / A股",
+    "topic_keywords": [
+      "SVM",
+      "量价融合",
+      "多因子选股",
+      "中证1000"
+    ],
+    "paper_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94402",
+    "pdf_url": "https://pdf.hanspub.org/ecl2024133_4112310943.pdf",
+    "relevance_note": "中文论文，围绕中证1000成分股的量价融合选股策略，实操性较强。",
+    "selected_rank": 9,
+    "retrieved_at_utc": "2026-05-28T23:07:42.049457+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4401619084",
+      "title": "Research on Stock Selection Strategy with the Fusion of Data of Multi-Factor, Volume and Price Based on Support Vector Machine",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "新烜 胡"
+      ],
+      "venue": "E-Commerce Letters",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://www.hanspub.org/journal/PaperInformation?paperID=94402",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn09_svm_price_volume_cs1000.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn09_svm_price_volume_cs1000.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/ecl2024133_4112310943.pdf",
+      "content_type": "application/pdf",
+      "bytes": 4205858
+    },
+    "text_extraction": {
+      "pages": 11,
+      "characters": 11787,
+      "extraction_errors": []
+    }
+  },
+  {
+    "id": "cn10_ma_kline_a_share_strategy",
+    "title": "基于均线与K线指标的量化投资策略",
+    "doi": "10.12677/orf.2024.144398",
+    "year": 2024,
+    "venue": "运筹与模糊学",
+    "language": "zh",
+    "market_scope": "A股市场",
+    "topic_keywords": [
+      "均线",
+      "K线",
+      "量化投资",
+      "A股回测"
+    ],
+    "paper_url": "https://www.hanspub.org/journal/PaperInformation?paperID=95273",
+    "pdf_url": "https://pdf.hanspub.org/orf2024144_291701821.pdf",
+    "relevance_note": "中文论文，直接在A股市场回测均线+K线量化策略，适合作为规则型策略参考。",
+    "selected_rank": 10,
+    "retrieved_at_utc": "2026-05-28T23:07:59.947409+00:00",
+    "search_basis": {
+      "time_window": "2024-01-01 and later, with near-year A-share-relevant additions when publicly downloadable",
+      "selection_criteria": [
+        "Chinese-language",
+        "A-share or Chinese stock market object",
+        "quant strategy relevance",
+        "public PDF availability",
+        "reference value"
+      ],
+      "primary_sources": [
+        "Hans Publishers PDFs/pages",
+        "系统工程理论与实践 PDF/article pages",
+        "validated public PDF links"
+      ]
+    },
+    "openalex": {
+      "openalex_id": "https://openalex.org/W4401550808",
+      "title": "Quantitative Investment Strategies Based on Moving Averages and K-Line Indicators",
+      "publication_year": 2024,
+      "publication_date": "2024-01-01",
+      "cited_by_count": 0,
+      "authors": [
+        "先冲 凌"
+      ],
+      "venue": "Operations Research and Fuzziology",
+      "type": "article",
+      "open_access": {
+        "is_oa": false,
+        "oa_status": "closed",
+        "oa_url": null,
+        "any_repository_has_fulltext": false
+      }
+    },
+    "citation_count_openalex": 0,
+    "public_attention_metrics": {
+      "source_url": "https://www.hanspub.org/journal/PaperInformation?paperID=95273",
+      "views": null,
+      "downloads": null,
+      "accesses": null,
+      "page_citations": null,
+      "notes": [
+        "hanspub_public_download_counts_not_exposed_on_article_page",
+        "download_or_access_metric_not_publicly_available"
+      ]
+    },
+    "pdf_file": "refdocs/papers/cn/pdfs/cn10_ma_kline_a_share_strategy.pdf",
+    "markdown_file": "refdocs/papers/cn/markdown/cn10_ma_kline_a_share_strategy.md",
+    "download": {
+      "downloaded_from": "https://pdf.hanspub.org/orf2024144_291701821.pdf",
+      "content_type": "application/pdf",
+      "bytes": 527093
+    },
+    "text_extraction": {
+      "pages": 9,
+      "characters": 14326,
+      "extraction_errors": []
+    }
+  }
+]

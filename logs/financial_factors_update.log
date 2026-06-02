@@ -1,0 +1,26 @@
+[2026-06-01 03:30:01 +0800] financial factor update started
+Financial factor update status: updated
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Periods requested: 20260331, 20251231, 20250930, 20250630, 20250331, 20241231, 
+20240930, 20240630, 20240331, 20231231, 20230930, 20230630, 20230331, 20221231, 
+20220930, 20220630, 20220331, 20211231, 20210930, 20210630, 20210331, 20201231, 
+20200930, 20200630, 20200331, 20191231, 20190930, 20190630, 20190331, 20181231, 
+20180930, 20180630
+Periods updated: 20260331, 20251231, 20250930, 20250630, 20250331, 20241231, 
+20240930, 20240630, 20240331, 20231231, 20230930, 20230630, 20230331, 20221231, 
+20220930, 20220630, 20220331, 20211231, 20210930, 20210630, 20210331, 20201231, 
+20200930, 20200630, 20200331, 20191231, 20190930, 20190630, 20190331, 20181231, 
+20180930, 20180630
+Fetched rows: 167340
+Inserted rows: 167340
+Financial factor coverage: latest=1.0000, roe=0.9919, revenue_growth=0.9996, 
+profit_growth=1.0000, cash_flow_quality=0.9426, debt_to_asset=0.9424
+Universe rebuild complete
+Source: local_history_sqlite
+Selected: 500/500
+Warning: AkShare all-A snapshot failed: ('Connection aborted.', 
+RemoteDisconnected('Remote end closed connection without response'))
+Warning: AkShare all-A snapshot was empty; used configured local history 
+fallback.
+[2026-06-01 03:47:22 +0800] financial factor update finished

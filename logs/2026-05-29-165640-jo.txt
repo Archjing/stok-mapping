@@ -1,0 +1,3259 @@
+╭─── Claude Code v2.1.153 ─────────────────────────────────────────────────────╮
+│                                  │ Tips for getting started                  │
+│           Welcome back!          │ Run /init to create a CLAUDE.md file wit… │
+│                                  │ ───────────────────────────────────────── │
+│              ▐▛███▜▌             │ What's new                                │
+│             ▝▜█████▛▘            │ Check the Claude Code changelog for upda… │
+│               ▘▘ ▝▝              │                                           │
+│                                  │                                           │
+│   Opus 4.7 · API Usage Billing   │                                           │
+│     ~/workspace/stok-mapping     │                                           │
+╰──────────────────────────────────────────────────────────────────────────────╯
+
+
+❯ jo                                                                            
+
+  Thought for 8s (ctrl+o to expand)
+
+● What would you like me to work on?
+
+✻ Brewed for 8s
+
+❯ 联网为我搜索2024年以来的引用数和下载量，受关注度高，具有较高参考价值的、关键  
+  词或主题是股票量化投资策略（你可以补充近似关键词以防搜索面太窄搜索不到结果）  
+  的最多10篇论文，下载归档到当前文件夹下建立的./refdocs子文件夹里，并转换成统一 
+  格式。                                                                        
+
+● 我会先筛选可合法下载的公开论文来源，记录引用/下载或替代关注度指标，然后把 PDF
+  与统一元数据归档到 ./refdocs。
+
+  Thought for 18s (ctrl+o to expand)
+
+● 我会检查当前目录和可用的 PDF 转换工具，然后用公开 API/开放仓库检索候选论文。
+
+● Bash(pwd && ls -la .)
+  ⎿  /home/zj/workspace/stok-mapping
+     total 84
+     drwxr-xr-x  7 zj zj  4096 May 29 02:44 .
+     … +11 lines (ctrl+o to expand)
+
+● Bash(command -v pdftotext || true; command -v python3 || true; command -v
+      pandoc || true; python3 - <<'PY'
+      import importlib.util…)
+  ⎿  Error: Exit code 1
+     /usr/bin/python3
+     /usr/bin/pandoc
+     pypdf False
+     PyPDF2 True
+     pdfminer False
+     Traceback (most recent call last):
+       File "<stdin>", line 3, in <module>
+       File "<frozen importlib.util>", line 92, in find_spec
+     ModuleNotFoundError: No module named 'pdfminer'
+
+  Thought for 27s (ctrl+o to expand)
+
+● 我会用 Semantic Scholar 和 arXiv 等公开来源交叉检索，优先选择有开放 PDF
+  的论文，避免下载付费墙内容。
+
+● Bash(python3 - <<'PY'
+      import urllib.parse, urllib.request, json…)
+  ⎿  https://api.semanticscholar.org/graph/v1/paper/search?query=stock+trad
+     ing+strategy+reinforcement+learning&year=2024-2026&limit=5&fields=titl
+     e%2Cyear%2CcitationCount%2CinfluentialCitationCount%2CopenAccessPdf%2C
+     … +38 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+❯ 完成这个任务所需要的依赖包你可以按需下载，用uv命令管理此项目依赖。            
+
+● 明白，我会用 uv
+  按需管理转换/抓取依赖；接下来先建立可重复脚本来检索、下载、生成统一归档。
+
+  Thought for 11s (ctrl+o to expand)
+
+● Bash(uv --version)
+  ⎿  uv 0.11.8 (x86_64-unknown-linux-gnu)
+
+  Thought for 13s, read 1 file (ctrl+o to expand)
+
+● 我会把抓取逻辑做成一次性脚本运行，依赖用 uv add
+  加入项目，生成的归档可复查和重复执行。
+
+● Bash(uv add requests beautifulsoup4 pypdf)
+  ⎿  Using CPython 3.14.4
+     Creating virtual environment at: .venv
+     Resolved 49 packages in 3.87s
+     … +45 lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+  Thought for 16s (ctrl+o to expand)
+
+● 依赖已加入项目；我现在会批量查询候选并按开放下载、年份、相关性和引用数排序。
+
+  Thought for 13s (ctrl+o to expand)
+
+● Bash(python3 - <<'PY'
+      import urllib.parse, urllib.request, json, time…)
+  ⎿  ERR stock trading strategy reinforcement learning HTTP Error 429:
+     ERR quantitative investment stock strategy deep learning HTTP Error 42
+     9:
+     … +10 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 12s (ctrl+o to expand)
+
+● Semantic Scholar 对匿名请求限流了；我会改用 OpenAlex、arXiv
+  和出版社开放元数据来获取引用指标和开放 PDF。
+
+● Bash(python3 - <<'PY'
+      import requests, textwrap…)
+  ⎿  query stock trading strategy reinforcement learning 200
+     count 9722
+       2024 741 The Role of AI in Hospitals and Clinics: Transforming Healt
+     … +125 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 19s (ctrl+o to expand)
+
+● 我会先用 arXiv 的开放 PDF 作为主下载源，再用 OpenAlex
+  给每篇补引用数，必要时抓取论文页公开的访问/下载指标。
+
+● Bash(python3 - <<'PY'
+      import requests, feedparser…)
+  ⎿  Error: Exit code 1
+     Traceback (most recent call last):
+       File "<stdin>", line 1, in <module>
+     ModuleNotFoundError: No module named 'feedparser'
+
+  Thought for 14s (ctrl+o to expand)
+
+● Bash(uv add feedparser)
+  ⎿  Resolved 51 packages in 4.42s
+        Building sgmllib3k==1.0.0
+           Built sgmllib3k==1.0.0
+     … +4 lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● Bash(uv run python - <<'PY'
+      import urllib.parse, requests, feedparser, time, re…)
+  ⎿  Installed 4 packages in 21ms
+     query all:"stock" AND all:"trading" AND all:"strategy" 200 109504
+     entries 50
+     … +426 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+  Thought for 13s (ctrl+o to expand)
+
+● arXiv/OpenAlex 组合能覆盖开放 PDF 和引用数，但很多开放源不公开下载次数；我会把
+  公开可见的下载/访问指标单独记录，缺失处标为 not_publicly_available。
+
+● Bash(uv run python - <<'PY'
+      import requests, json…)
+  ⎿  ### Stock trading in title 200 https://api.openalex.org/works?filter=t
+     itle.search%3Astock+trading%2Cfrom_publication_date%3A2024-01-01&per-p
+     age=20&sort=cited_by_count%3Adesc&mailto=research%40example.com
+     … +334 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 14s (ctrl+o to expand)
+
+● 我会先验证候选论文的 PDF 链接和元数据来源，确保下载的是开放可访问版本。
+
+● Bash(uv run python - <<'PY'
+      import requests, re…)
+  ⎿  ## master_page 200 https://ojs.aaai.org/index.php/AAAI/article/view/27
+     767 text/html; charset=utf-8
+     Downloads  </a> </div> </div> <div class="item galleys"> <h2 class="pk
+     … +46 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 20s (ctrl+o to expand)
+
+● 我已确定一批高相关开放论文候选；接下来会逐个解析真实 PDF
+  下载地址和可公开抓取的关注度指标。
+
+● Bash(uv run python - <<'PY'
+      import requests, re…)
+  ⎿  ## wjaets 200 https://wjaets.com/content/algorithmic-trading-and-ai-re
+     view-strategies-and-market-impact text/html; charset=UTF-8
+     len 56117 title Algorithmic Trading and AI: A Review of Strategies and
+     … +48 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 17s (ctrl+o to expand)
+
+● 我会进一步筛掉偏“预测但无策略价值”或无法合法下载的条目，优先保留开放 PDF
+  和指标透明的论文。
+
+● Bash(uv run python - <<'PY'
+      import requests,re,json…)
+  ⎿  KEY usageStats
+
+     KEY Usage
+     … +19 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 11s (ctrl+o to expand)
+
+● 我会生成候选清单并测试 PDF 可下载性，随后只归档成功下载且主题相关的最多 10
+  篇。
+
+● Bash(uv run python - <<'PY'
+      import requests, re, time, json, urllib.parse…)
+  ⎿  Q "stock trading" "reinforcement learning" 200 1002
+     Q "stock trading" "deep reinforcement learning" 200 609
+     Q "stock market" "trading strategy" "machine learning" 200 2587
+     … +307 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+  Thought for 14s (ctrl+o to expand)
+
+● 我会测试高引用候选的实际 PDF 响应，避免把 HTML 页面误保存成论文。
+
+● Bash(uv run python - <<'PY'
+      import requests, re, urllib.parse…)
+  ⎿  sentiment_sd_pdf 403 https://www.sciencedirect.com/science/article/pii
+     /S1544612324002575/pdf text/html; charset=UTF-8 None b'<!DOC'
+     sentiment_sd_pdfft 403 https://www.sciencedirect.com/science/article/p
+     … +28 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 32s (ctrl+o to expand)
+
+● 我会抓取每篇的引用数和页面公开指标，并把缺少下载数的来源明确标注为未公开。
+
+● Bash(uv run python - <<'PY'
+      import requests,re,json…)
+  ⎿  ## frontiers 200 https://www.frontiersin.org/journals/artificial-intel
+     ligence/articles/10.3389/frai.2024.1371502/full
+     title Frontiers | Enhancing portfolio management using artificial inte
+     … +37 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 23s (ctrl+o to expand)
+
+● 我会用 OpenAlex
+  的引用数重新核对入选条目，并把“下载量/访问量”按来源页面可公开获取的口径保存。
+
+  Thought for 27s (ctrl+o to expand)
+
+● 我已选出 10 篇开放可下载且相关度/影响力较高的论文；现在开始下载 PDF
+  并生成统一归档结构。
+
+● Bash(uv run python - <<'PY'
+      import requests, json, urllib.parse, re, time…)
+  ⎿  Error: Exit code 1
+
+     ## 10.1609/aaai.v38i1.27767 200
+     title MASTER: Market-Guided Stock Transformer for Stock Price Forecasting
+     year 2024 date 2024-03-24 citations 62
+     venue Proceedings of the AAAI Conference on Artificial Intelligence
+     doi https://doi.org/10.1609/aaai.v38i1.27767
+     oa {'is_oa': True, 'oa_status': 'diamond', 'oa_url': 
+     'https://ojs.aaai.org/index.php/AAAI/article/download/27767/27575', 
+     'any_repository_has_fulltext': False}
+     best pdf https://ojs.aaai.org/index.php/AAAI/article/download/27767/27575 
+     landing https://doi.org/10.1609/aaai.v38i1.27767
+
+     … +62 lines (ctrl+o to expand)
+
+  Thought for 27s (ctrl+o to expand)
+
+● 我会补齐最终元数据字段，并用脚本一次性完成下载、校验、PDF 转 Markdown。
+
+● Bash(uv run python - <<'PY'
+      import requests,re,json…)
+  ⎿  PAT "downloads"
+     chnic University",{"id":118,"slug":120,"name":119,"shortName":667,"ele
+     ctronicISSN":668,"field":669,"specialtyId":28,"journalSectionPaths":67
+     … +65 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 22s (ctrl+o to expand)
+
+● 我会把最终 10 篇下载到 refdocs/pdfs，同时输出统一 Markdown 文本、JSON/CSV
+  元数据和检索说明。
+
+● Bash(ls -la . && mkdir -p refdocs/pdfs refdocs/markdown refdocs/metadata)
+  ⎿  total 252
+     drwxr-xr-x  9 zj zj   4096 May 29 05:18 .
+     drwxrwxr-x 19 zj zj   4096 May 29 04:53 ..
+     … +13 lines (ctrl+o to expand)
+
+  Thought for 12s (ctrl+o to expand)
+
+● Bash(uv run python - <<'PY'
+      import requests…)
+  ⎿  wjaets 200 https://wjaets.com/sites/default/files/fulltext_pdf/WJAETS-
+     2024-0054.pdf application/pdf 786265 b'%PDF-'
+     mdpi_lstm_strategy 403 https://www.mdpi.com/2078-2489/15/3/136/pdf?ver
+     … +5 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 22s (ctrl+o to expand)
+
+● 我会运行归档脚本下载 10 篇 PDF、提取文本为统一 Markdown，并写出 JSON/CSV
+  索引。
+
+● Bash(uv run python - <<'PY'
+      from __future__ import annotations…)
+  ⎿  [01/10] MASTER: Market-Guided Stock Transformer for Stock Price Foreca
+     sting
+       saved refdocs/pdfs/01_master_market_guided_stock_transformer.pdf (30
+     … +25 lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+
+● 论文已全部下载并转换；我会快速校验归档文件数量、元数据字段和 Markdown 可读性。
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(uv run python - <<'PY'
+      from pathlib import Path…)  ⎿  json_records 10
+     pdf_count 10
+     markdown_count 10
+     … +20 lines (ctrl+o to expand)
+
+  Thought for 9s, read 1 file (ctrl+o to expand)
+
+● 归档已校验完成；我会查看工作区改动，确认依赖和新文件位置。
+
+● Bash(git status --short)
+  ⎿   M .gitignore
+      M config.yaml
+      M phase0/cli.py
+     … +17 lines (ctrl+o to expand)
+
+  Thought for 15s, read 1 file (ctrl+o to expand)
+
+● 我会确认 uv
+  是否自动调整了忽略规则，以便在结果里说明依赖管理带来的项目文件变化。
+
+  Read 1 file (ctrl+o to expand)
+
+❯ 论文保存在哪里？ 
+
+● 论文已保存到当前项目的：
+
+  - PDF 原文：/home/zj/workspace/stok-mapping/refdocs/pdfs/
+  - 统一转换后的 Markdown：/home/zj/workspace/stok-mapping/refdocs/markdown/
+  - 论文索引与引用/下载/访问量元数据：
+    - /home/zj/workspace/stok-mapping/refdocs/INDEX.md
+    - /home/zj/workspace/stok-mapping/refdocs/metadata/papers.csv
+    - /home/zj/workspace/stok-mapping/refdocs/metadata/papers.json
+
+  你可以先打开 refdocs/INDEX.md，里面有 10
+  篇论文的列表、引用数、可公开获取的下载/访问指标，以及对应 PDF/Markdown 链接。
+
+✻ Brewed for 24m 11s
+
+❯ /model                                                                        
+  ⎿  Set model to Sonnet 4.6 (1M context) and saved as your default for new
+     sessions
+
+❯ /fast                                                                         
+  ⎿  Fast mode OFF
+
+❯ /fast                                                                         
+  ⎿  Fast mode OFF
+
+❯ /fast 
+  ⎿  Kept Fast mode OFF
+
+❯ 现在，用相同的方法搜中文、研究对象是A股的文献论文                             
+
+  Thought for 25s (ctrl+o to expand)
+
+● 我会沿用上次的归档方式，先筛选可公开下载、主题聚焦 A
+  股的中文论文，再下载到单独子目录并统一转换格式。
+
+❯ 其余要求不变 
+
+● 我会先查找中文开放来源和当前归档结构，避免和上次结果混在一起。
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Bash(uv run python - <<'PY'
+      import requests…)
+  ⎿  https://kns.cnki.net/ 200 https://kns.cnki.net/verify/home?captchaType
+     =blockPuzzle&ident=d3624d&captchaId=5d62c838-b9ca-4a14-96f4-8548c5f4fd
+     99&returnUrl=eyDvWCt4s2-U0foBpgUc98_4QfdbPTouwyvOQSHEC9w%3D text/html
+     … +8 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 14s (ctrl+o to expand)
+
+● 我会先用开放索引检索中文 A 股关键词，确认哪些条目既相关又有可下载原文。
+
+● Bash(uv run python - <<'PY'
+      import requests, urllib.parse, time…)
+  ⎿  Q A股 量化投资 策略 200 15
+     2024 4 The impact of digital industry agglomeration on synergistic pol
+     lution reduction and carbon emission reduction:Taking the
+     … +159 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+● OpenAlex 对中文 A
+  股检索噪声较大；我会转向万方/开放中文期刊页，优先抓取“中文标题 +
+  A股/沪深/中国股市对象 + 可公开 PDF”的条目。
+
+● Bash(uv run python - <<'PY'
+      import requests,re…)
+  ⎿  200 https://s.wanfangdata.com.cn/paper?q=A%E8%82%A1%20%E9%87%8F%E5%8C%
+     96%E6%8A%95%E8%B5%84%20%E7%AD%96%E7%95%A5 text/html
+     <!DOCTYPE html><html><head><meta charset=utf-8><meta http-equiv=X-UA-C
+     … +43 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● 我会直接搜开放网页上的中文 A 股论文线索，再逐篇验证是否有公开 PDF。
+
+● Web Search("2024 2025 中文 A股 量化投资 策略 论文 PDF")
+  ⎿  Did 14 searches in 116s
+
+● Web Search("2024 2025 中文 A股 选股 策略 机器学习 论文 PDF")
+  ⎿  Did 6 searches in 69s
+
+  Thought for 1m 4s (ctrl+o to expand)
+
+● 其余要求我会保持不变；现在先验证候选中文 A
+  股论文的可下载性和公开指标，再按同样结构归档到单独子目录。
+
+● Bash(uv run python - <<'PY'
+      import requests…)
+  ⎿  guet_ai_new_energy 483 https://xb.guet.edu.cn/cn/article/pdf/preview/1
+     0.16725/j.1673-808X.202309.pdf text/html None b'<!DOC'
+     hanspub_stock_return 200 https://pdf.hanspub.org/orf20240200000_976510
+     … +19 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● 我会补抓这些论文的页面元数据和可公开访问/下载指标，尽量保持和上次同一口径。
+
+● Bash(uv run python - <<'PY'
+      import requests,re,urllib.parse…)
+  ⎿  ## hanspub_stock_return 200 https://www.hanspub.org/ text/html; charse
+     t=utf-8
+     title 汉斯期刊 开放获取
+     … +34 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 17s (ctrl+o to expand)
+
+● 我会扩展中文检索词，优先补齐“中文正文 + A股样本 + 公开 PDF”的条目，宁缺毋滥。
+
+● Web Search("2024 中文 A股 多因子 量化 选股 策略 PDF")
+  ⎿  Did 2 searches in 31s
+
+● Web Search("2024 中文 沪深300 量化 选股 策略 PDF")
+  ⎿  Did 6 searches in 69s
+
+● Web Search("2024 中文 A股 机器学习 选股 论文 PDF")
+  ⎿  Did 6 searches in 46s
+
+● Web Search("2025 中文 A股 量化 投资 策略 PDF")
+  ⎿  Did 6 searches in 73s
+
+  Thought for 20s (ctrl+o to expand)
+
+● 我会先读取几篇候选 PDF 的首页摘要，确认它们确实是中文且研究对象是 A
+  股/沪深市场。
+
+● Bash(uv run python - <<'PY'
+      from pypdf import PdfReader…)
+  ⎿  Ignoring wrong pointing object 75 0 (offset 0)
+     Ignoring wrong pointing object 76 0 (offset 0)
+     Ignoring wrong pointing object 77 0 (offset 0)
+     … +152 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● Web Search("site:pdf.hanspub.org A股 量化 选股 filetype:pdf 2024")
+  ⎿  Did 2 searches in 25s
+
+● Web Search("site:sysengi.cjoe.ac.cn A股 实证 量化 投资 PDF 2024")
+  ⎿  Did 9 searches in 60s
+
+  Thought for 13s (ctrl+o to expand)
+
+● 我会补抓更高质量中文期刊页的 PDF 和摘要，优先把真正面向 A
+  股、且公开可下载的条目补足到 10 篇以内。
+
+● Bash(uv run python - <<'PY'
+      import requests,re…)
+  ⎿  ## hans_orf_84203 200 https://www.hanspub.org/journal/PaperInformation
+     ?paperID=84203 text/html; charset=utf-8
+     title
+     … +69 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+  Thought for 17s (ctrl+o to expand)
+● 我已经找到一批高相关中文 A 股候选；接下来补齐正式 PDF
+  链接并核验研究对象后，就按同样格式归档。
+
+● Bash(uv run python - <<'PY'
+      import requests,re…)
+  ⎿  URL https://sysengi.cjoe.ac.cn/CN/10.12011/SETP2023-1784
+     snippet PDF 2023-1784"/><!--文章URL--> <meta name="prism.doi" content=
+     "doi:10.12011/SETP2023-1784"/><!--文章doi：必须带“doi:”-->
+     <!--引用管理
+     … +41 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● 我会验证这些中文期刊的 PDF 真实可下载，然后开始归档。
+
+● Bash(uv run python - <<'PY'
+      import requests…)
+  ⎿  sys_ml_asset 200 https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP2023-1
+     784 application/octet-stream None b'%PDF-'
+     sys_lstm_margin 200 https://sysengi.cjoe.ac.cn/CN/PDF/10.12011/SETP202
+     … +11 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● 我会抽样核对这些新增论文的首页内容，只保留研究对象明确落在中国股市/A股、且对量
+  化策略有参考价值的条目。
+
+● Bash(uv run python - <<'PY'
+      from pypdf import PdfReader…)
+  ⎿  ## sys_ml_asset pages 22
+     第 44 卷 第 1 期 系统工程理论与实践 Vol. 44, No. 1 2024 年 1 月 System
+     s Engineering — Theory & Practice Jan., 2024 doi: 10.12011/SETP2023-17
+     … +141 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+  Thought for 34s (ctrl+o to expand)
+
+● 我会再补两篇更贴近“A股策略实做”的候选，尽量减少偏市场机制、增加直接可回测的策
+  略论文。
+
+● Bash(uv run python - <<'PY'
+      import requests,re…)
+  ⎿  Ignoring wrong pointing object 75 0 (offset 0)
+     Ignoring wrong pointing object 76 0 (offset 0)
+     Ignoring wrong pointing object 77 0 (offset 0)
+     … +105 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● 我会核对最后一篇候选的首页内容，再开始正式归档，确保都是中文且与 A
+  股量化策略直接相关。
+
+● Bash(uv run python - <<'PY'
+      from pypdf import PdfReader…)
+  ⎿  pages 13
+     Open Journal of Transportation Technologies 交通技术, 2026, 15(3), 367
+     -379 Published Online May 2026 in Hans. https://www.hanspub.org/journa
+     … +20 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+● 我会补齐这批中文 A 股论文的引用数元数据，然后直接生成独立归档目录。
+
+● Bash(uv run python - <<'PY'
+      import requests, urllib.parse, json, time…)
+  ⎿  ## stock_return 10.12677/orf.2024.142163 200
+     title Machine Learning Based Stock Return Prediction and Portfolio Res
+     earch
+     … +66 lines (ctrl+o to expand)
+  ⎿  (timeout 3m)
+
+  Thought for 23s (ctrl+o to expand)
+
+● 我先调用检索下载技能补做一轮论文搜索，以确保中文 A 股文献覆盖尽量完整。
+
+● Skill(zlib-download)
+  ⎿  Successfully loaded skill
+
+  Thought for 9s (ctrl+o to expand)
+
+● 我先检查这个检索下载技能是否已配置好；如果没配置，我会继续使用当前已验证的公开
+  来源完成归档。
+
+● Bash(python3 /home/zj/.claude/skills/zlib-download/scripts/book.py preflight)
+  ⎿  {
+       "ready": true,
+       "dependencies": {
+     … +32 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+● 技能可用，但它更适合图书/聚合下载；我会继续以公开学术来源为主归档，避免引入不
+  稳定来源。
+
+● 我已经定下 10 篇中文 A 股相关论文/文章，开始按上次同样的结构下载到
+  refdocs/cn_a_share/。
+
+● Bash(ls -la refdocs && mkdir -p refdocs/cn_a_share/pdfs
+      refdocs/cn_a_share/markdown refdocs/cn_a_share/metadata)
+  ⎿  total 28
+     drwxr-xr-x  5 zj zj 4096 May 29 05:27 .
+     drwxr-xr-x 10 zj zj 4096 May 29 06:40 ..
+     … +4 lines (ctrl+o to expand)
+
+● Bash(uv run python - <<'PY'
+      from __future__ import annotations…)
+  ⎿  [01/10] 基于机器学习的股票收益预测与投资组合研究
+       saved refdocs/cn_a_share/pdfs/cn01_ml_stock_return_portfolio.pdf (54
+     5701 bytes), pages=11
+     … +22 lines (ctrl+o to expand)
+  ⎿  (timeout 10m)
+● 中文 A 股论文已经归档完成；我会快速校验文件数和索引内容。
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(uv run python - <<'PY'
+      from pathlib import Path…)
+  ⎿  json_records 10
+     pdf_count 10
+     markdown_count 10
+     … +13 lines (ctrl+o to expand)
+
+  Read 1 file (ctrl+o to expand)
+
+● 已按和上次相同的方法完成中文、A股相关论文归档，结果在：
+
+  - PDF 原文：/home/zj/workspace/stok-mapping/refdocs/cn_a_share/pdfs/
+  - 统一 Markdown：/home/zj/workspace/stok-mapping/refdocs/cn_a_share/markdown/
+  - 索引与元数据：
+    - /home/zj/workspace/stok-mapping/refdocs/cn_a_share/INDEX.md
+    - /home/zj/workspace/stok-mapping/refdocs/cn_a_share/metadata/papers.csv
+    - /home/zj/workspace/stok-mapping/refdocs/cn_a_share/metadata/papers.json
+
+  这次共归档了 10 篇，优先保留了“中文 + 研究对象明确是 A股/中国股票市场 +
+  可公开下载 PDF + 与量化策略直接相关”的论文；你可以先看
+  refdocs/cn_a_share/INDEX.md。如果你要，我下一步可以再帮你把这 10
+  篇提炼成一个“策略类型/样本区间/特征因子/回测结论”的对照表。
+
+✻ Crunched for 22m 2s
+
+※ recap: 目标是搜集并归档股票量化投资策略参考论文，当前已完成英文和中文A股两套论文下载与统一整理。下一步可从 refdocs/cn_a_share/INDEX.md 开始，提炼每篇的策略、样本区间和回测结论。 (disable recaps in /config)
+
+❯ /model 
+  ⎿  Kept model as Sonnet 4.6 (1M context)
+
+❯ 从refdocs/cn_a_share/INDEX.md 开始，提炼每篇的策略、样本区间和回测结论。      
+
+● 我会先读取索引和论文文本，逐篇提炼出策略、样本区间和回测结论。
+
+● 我会先读取索引和前几篇论文内容，确认统一的提取格式。
+
+  Thought for 17s, read 4 files (ctrl+o to expand)
+
+● 我会把剩余 7 篇论文的摘要和回测段落也抓出来，再整理成统一表格。
+
+  Read 4 files (ctrl+o to expand)
+
+● 我还需要最后 3 篇的细节，随后就能给你一个完整提炼表。
+
+  Read 3 files (ctrl+o to expand)
+
+● 我会再抓取各论文里和“回测”“样本”“收益率”直接相关的段落，确保提炼准确。
+
+  Searched for 2 patterns (ctrl+o to expand)
+
+● 我会直接定位包含关键结论的具体行段，避免给你泛泛总结。
+
+  Thought for 17s, read 4 files (ctrl+o to expand)
+
+● 我再补几处样本区间和实验段落，这样提炼会更准确。
+
+  Thought for 7s, searched for 2 patterns (ctrl+o to expand)
+
+● 我已经提炼完 10 篇的核心信息，下面给你按统一口径整理。
+
+● 下面按 refdocs/cn_a_share/INDEX.md
+  的顺序提炼，每篇只保留你要的三项：策略、样本区间、回测结论。
+
+  #: 1
+  论文: 基于机器学习的股票收益预测与投资组合研究
+  策略: 将多因子模型 + 机器学习回归结合，比较 随机森林 / SVM / 
+    XGBoost，每月选取预测收益率前 10 的股票做等权组合。
+  样本区间: 上证50成分股；日频数据 2016-01 至 2022-12。其中 2016–2021
+    为训练，2022 为样本外预测与回测。
+  回测结论: 三种策略构建的组合都跑赢了 2022 
+    年上证50；但在下跌市中虽然有超额收益，夏普比率仍为负，说明未稳定跑赢无风险利
+  率。
+  ────────────────────────────────────────
+  #: 2
+  论文: 宏观背景下运用多因子模型的投资策略研究
+  策略: 先做宏观/热点板块筛选，构建一级股票池；再用基本面多因子筛选构建二级股票
+  池；再叠加技术面打分与加权形成组合。
+  样本区间: 以 2023 年宏观环境 为背景；样本为 2023 年汽车零部件板块和房地产板块 
+    294 只股票。
+  回测结论: 论文摘要结论是：该组合显著优于市场整体水平，证明策略有效；但文中未像
+  其他论文那样明确给出完整标准化回测指标表。
+  ────────────────────────────────────────
+  #: 3
+  论文: 基于支持向量机模型的多因子量化选股策略
+  策略: 从成长、技术、价值、情绪、动量因子中筛选有效因子，最后保留
+    市值、股本、换手率、ROE、PE；用高斯核 
+    SVM预测上涨概率，每月选涨幅/上涨概率最高的 10 只构造组合。
+  样本区间: 沪深300成分股；2010-01-01 至 2023-01-01。其中 2010–2017
+    为训练集，2018–2023 为样本外测试与回测。
+  回测结论:
+  策略收益稳定且跑赢大盘，组合多样性较好，风险回报能力较高，证明模型有效。
+  ────────────────────────────────────────
+  #: 4
+  论文: 考虑股市网络因子的多因子选股策略研究
+  策略: 在 Fama-French 
+    三因子基础上加入由复杂网络构造的网络因子，形成四因子模型；再根据四因子回归结
+  果构建选股池并调仓。
+  样本区间: 中国 A 股；收益率数据 2013-07-01 至 2023-06-30，按月构建 120
+    个网络窗口。
+  回测结论: 四因子模型比三因子模型更能解释收益率变动；网络因子组合在收益率、波动
+  率、最大回撤率、夏普比率等方面均优于上证A股指数。
+  ────────────────────────────────────────
+  #: 5
+  论文: 基于机器学习和资产特征的投资组合选择研究
+  策略: 提出 ML-AC
+  框架：不先预测收益率，而是直接用高维资产特征预测组合权重；比较
+     Lasso-AC、Ridge-AC、ENet-AC、PCA-AC、RNN-AC、LSTM-AC、DFN-AC 等 8 类策略。
+  样本区间: 中国 A 股所有上市公司；月度数据 1997-01 至 2021-12。采用滚动 10 
+    年训练、1 年测试的样本外评估。
+  回测结论: 样本外表现显著：例如 OLS-5C 夏普 1.608，而 Lasso-AC 夏普 
+    2.353、DFN-AC 夏普 
+    3.741；整体显示高维特征直推权重的方法能明显提升绩效，且对宏观状态变化不太敏
+  感。
+  ────────────────────────────────────────
+  #: 6
+  论文: 基于 LSTM 预测信息的在线融资融券组合交易策略
+  策略: 先用 LSTM + 
+    技术指标预测个股涨跌，再为每只股票构建单资产专家策略，最后通过专家加权优化形
+  成适用于融资融券环境的在线组合。
+  样本区间: 文中实验使用多个市场历史数据集；可见信息表明数据终止年设为
+    2020，并以融资融券双边交易约束建模。
+  回测结论: 结论是：提出的策略在多个数据集上样本外表现良好，在考虑交易费用时仍优
+  于基准；文中提到
+     LSTM-1/N / LSTM-EWO 等策略的夏普、信息比率、卡玛比率均明显更强。
+  ────────────────────────────────────────
+  #: 7
+  论文: 基于双重选择 LASSO 模型的我国股市定价因子边际有效性研究
+  策略: 用 DS-LASSO
+    从高维因子库中筛选真正有边际解释力的定价因子，核心更偏因子筛选/定价有效性，
+  不是直接交易策略。
+  样本区间: 沪深 A 股（剔除 ST、退市等）；月度样本 2006-01 至 2019-12。另做前
+  70%
+     训练、后 30% 测试的样本外预测。
+  回测结论: 在 2014 年后发现的 15 个因子中筛出 7 
+    个边际有效因子；样本外预测中这些真正有效因子的 R² 接近 
+    1%，显著优于无效/冗余因子。更适合作为因子库构建依据，而非成品交易策略。
+  ────────────────────────────────────────
+  #: 8
+  论文: 分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化研究
+  策略: 抓取分析师研报标题，用 SESTM
+    做情感打分；当情感值超过阈值时纳入股票池，并按等权定期轮换回测，形成文本情绪
+  量化策略。
+  样本区间: 研报标题数据 2017-01-01 至 2021-12-31，共 39,786
+    条；股票对象描述处主要写沪深300成分股，后文提实证时有一处写到中证500成分股，
+  文内口径略有不一致。
+  回测结论: 结论明确：基于分析师标题情感的完整量化策略在回测中具有较高投资收益，
+  验证了策略有效性。
+  ────────────────────────────────────────
+  #: 9
+  论文: 基于支持向量机的多因子融合量价数据的选股策略的研究
+  策略: 先做多因子选股，再把量价数据融合进 SVM
+    做二次筛选，目标是优化中证1000选股结果。
+  样本区间: 中证1000成分股；因子与量价样本 2014-10 至 2021-12。其中 2014-10 至 
+    2018-12 为训练，2019-01 至 2021-12 为样本外测试。
+  回测结论: 相比未加入量价数据的模型：收益率 +4.83%、年化收益率 
+    +11.43%；累计收益和夏普更优，最大回撤相近或略高，文中还提到优化后策略年化收
+  益率达到
+      38.01%。
+  ────────────────────────────────────────
+  #: 10
+  论文: 基于均线与K线指标的量化投资策略
+  策略: 把5日均线回归和K线形态捕捉结合：股价低于 5 日均线的 0.95 且出现上涨 K
+    线形态时买入；股价高于 5 日均线的 1.05 或出现下跌 K 线形态时卖出。
+  样本区间: A 股全市场；在 JoinQuant 上对 2022-01-01 至 2022-12-31 做全年回测。
+  回测结论: 全年共交易 138 笔，实现超额收益 19.12%；结论是该规则型技术策略在 A
+    股样本期内有效。
+
+  如果你愿意，我下一步可以继续做两种整理之一：
+
+  1. 把这 10 篇再按策略类型分组：多因子选股 / 机器学习选股 / 文本情绪 / 组合优化
+   / 规则择时
+  2. 输出成一个新的 Markdown 汇总文件，比如
+  refdocs/cn_a_share/STRATEGY_SUMMARY.md
+
+✻ Sautéed for 2m 49s
+
+※ recap: 目标是整理 refdocs/cn_a_share 里的A股量化论文，目前已提炼10篇论文的策略、样本区间和回测结论。下一步可按策略类型分组，或写成汇总文件。 (disable recaps in /config)
+
+❯ 输出成一个新的 Markdown 汇总文件 refdocs/cn_a_share/STRATEGY_SUMMARY.md       
+
+  Thought for 10s (ctrl+o to expand)
+● 我会把刚才提炼的内容整理成新的 Markdown 汇总文件并写到你指定的位置。
+
+● 我先确认目标目录存在，然后直接写入汇总文件。
+
+  Listed 1 directory (ctrl+o to expand)
+
+● Write(refdocs/cn_a_share/STRATEGY_SUMMARY.md)
+  ⎿  Wrote 44 lines to refdocs/cn_a_share/STRATEGY_SUMMARY.md
+      3 基于 `refdocs/cn_a_share/INDEX.md` 及对应论文 Markdown 提取，每篇
+      4 统一整理为：**策略、样本区间、回测结论**。
+      6 |---:|---|---|---|---|本区间 | 回测结论 |
+         机器学习回归**结合，比较 **随机森林 / SVM / XGBoost**，每月选取+
+        *2016-01 至 2022-12**。其中 **2016–2021** 为训练，**2022** 为样本
+        险利率。 |虽然有超额收益，**夏普比率仍为负**，说明未稳定跑赢无风
+        块筛选**，构建一级股票池；再用**基本面多因子筛选**构建二级股票池
+        为背景；样本为 **2023 年汽车零部件板块和房地产板块 294 只股票**。
+        但文中未像其他论文那样明确给出完整标准化回测指标表。 | 策略有效；
+        、情绪、动量因子中筛选有效因子，最后保留 **市| 从成长、技术、价值
+     … +94 lines (ctrl+o to expand)
+
+● 已写入：
+
+  /home/zj/workspace/stok-mapping/refdocs/cn_a_share/STRATEGY_SUMMARY.md
+
+  内容包括：
+  - 10 篇论文的策略 / 样本区间 / 回测结论汇总表
+  - 几条口径说明
+  - 按多因子选股 / 机器学习 / 文本情绪 / 因子研究 / 规则型技术策略做的快速分组
+
+  如果你要，我下一步可以再把这个文件压缩成一个更适合实操的版本，比如只保留：
+  - 最值得复现的前 5 篇
+  - 可直接映射到你当前项目的策略要点
+
+✻ Baked for 1m 29s
+
+❯ 压缩                                                                          
+
+  Thought for 10s (ctrl+o to expand)
+
+● 我会把汇总文件压缩成更短的实操版，只保留最关键的信息。
+
+  Thought for 16s, read 1 file (ctrl+o to expand)
+
+● 我会把这个汇总文件改成更短的实操版，保留最值得复现的内容和极简速览。
+
+● Update(refdocs/cn_a_share/STRATEGY_SUMMARY.md)
+  ⎿  Added 39 lines, removed 34 lines
+       1 -# 中文 A股量化投资策略论文提炼汇总                             
+       1 +# 中文 A股量化投资策略论文提炼汇总（压缩版）                   
+       2  
+       3 -基于 `refdocs/cn_a_share/INDEX.md` 及对应论文 Markdown 提取，每
+         -篇统一整理为：**策略、样本区间、回测结论**。                   
+       3 +只保留**最值得复现**和**最能直接映射到策略实现**的信息。       
+       4  
+       5 -| # | 论文 | 策略 | 样本区间 | 回测结论 |                      
+       6 -|---:|---|---|---|---|                                         
+       7 -| 1 | 基于机器学习的股票收益预测与投资组合研究 | 将**多因子模型
+         - + 机器学习回归**结合，比较 **随机森林 / SVM / XGBoost**，每月 
+         -选取预测收益率前 10 的股票做**等权组合**。 | 上证50成分股；日频
+         -数据 **2016-01 至 2022-12**。其中 **2016–2021** 为训练，**2022*
+         -* 为样本外预测与回测。 | 三种策略构建的组合**都跑赢了 2022 年上
+         -证50**；但在下跌市中虽然有超额收益，**夏普比率仍为负**，说明未 
+         -稳定跑赢无风险利率。 |                                         
+       8 -| 2 | 宏观背景下运用多因子模型的投资策略研究 | 先做**宏观/热点 
+         -板块筛选**，构建一级股票池；再用**基本面多因子筛选**构建二级股 
+         -票池；再叠加**技术面打分**与加权形成组合。 | 以 **2023 年宏观环
+         -境** 为背景；样本为 **2023 年汽车零部件板块和房地产板块 294 只 
+         -股票**。 | 论文摘要结论是：该组合**显著优于市场整体水平**，证明
+         -策略有效；但文中未像其他论文那样明确给出完整标准化回测指标表。 
+         -|                                                              
+       9 -| 3 | 基于支持向量机模型的多因子量化选股策略 | 从成长、技术、价
+         -值、情绪、动量因子中筛选有效因子，最后保留 **市值、股本、换手率
+         -、ROE、PE**；用**高斯核 SVM**预测上涨概率，每月选涨幅/上涨概率 
+         -最高的 10 只构造组合。 | 沪深300成分股；**2010-01-01 至 2023-01
+         --01**。其中 **2010–2017** 为训练集，**2018–2023** 为样本外测试 
+         -与回测。 | 策略收益**稳定且跑赢大盘**，组合多样性较好，风险回报
+         -能力较高，证明模型有效。 |                                     
+      10 -| 4 | 考虑股市网络因子的多因子选股策略研究 | 在 **Fama-French  
+         -三因子**基础上加入由复杂网络构造的**网络因子**，形成**四因子模 
+         -型**；再根据四因子回归结果构建选股池并调仓。 | 中国 A 股；收益 
+         -率数据 **2013-07-01 至 2023-06-30**，按月构建 120 个网络窗口。 
+         -| 四因子模型比三因子模型**更能解释收益率变动**；网络因子组合在*
+         -*收益率、波动率、最大回撤率、夏普比率**等方面均优于**上证A股指 
+         -数**。 |                                                       
+      11 -| 5 | 基于机器学习和资产特征的投资组合选择研究 | 提出 **ML-AC**
+         - 框架：**不先预测收益率**，而是直接用高维资产特征预测**组合权重
+         -**；比较 Lasso-AC、Ridge-AC、ENet-AC、PCA-AC、RNN-AC、LSTM-AC、
+         -DFN-AC 等 8 类策略。 | 中国 A 股所有上市公司；月度数据 **1997-0
+         -1 至 2021-12**。采用**滚动 10 年训练、1 年测试**的样本外评估。 
+         -| 样本外表现显著：例如 **OLS-5C 夏普 1.608**，而 **Lasso-AC 夏 
+         -普 2.353**、**DFN-AC 夏普 3.741**；整体显示高维特征直推权重的方
+         -法能明显提升绩效，且对宏观状态变化不太敏感。 |                 
+      12 -| 6 | 基于LSTM预测信息的在线融资融券组合交易策略 | 先用 **LSTM 
+         -+ 技术指标**预测个股涨跌，再为每只股票构建**单资产专家策略**， 
+         -最后通过**专家加权优化**形成适用于融资融券环境的在线组合。 | 文
+         -中实验使用多个市场历史数据集；可见信息表明数据终止年设为 **2020
+         -**，并以融资融券双边交易约束建模。 | 结论是：提出的策略在多个数
+         -据集上**样本外表现良好**，在考虑交易费用时仍优于基准；文中提到 
+         -**LSTM-1/N / LSTM-EWO** 等策略的夏普、信息比率、卡玛比率均明显 
+         -更强。 |                                                       
+      13 -| 7 | 基于双重选择LASSO模型的我国股市定价因子边际有效性研究 |  
+         -用 **DS-LASSO** 从高维因子库中筛选真正有边际解释力的定价因子， 
+         -核心更偏**因子筛选/定价有效性**，不是直接交易策略。 | 沪深 A 股
+         -（剔除 ST、退市等）；月度样本 **2006-01 至 2019-12**。另做前 70
+         -% 训练、后 30% 测试的样本外预测。 | 在 **2014 年后发现的 15 个 
+         -因子中筛出 7 个边际有效因子**；样本外预测中这些真正有效因子的 *
+         -*R² 接近 1%**，显著优于无效/冗余因子。更适合作为**因子库构建依 
+         -据**，而非成品交易策略。 |                                     
+      14 -| 8 | 分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化 
+         -研究 | 抓取分析师研报标题，用 **SESTM** 做情感打分；当情感值超 
+         -过阈值时纳入股票池，并按**等权**定期轮换回测，形成**文本情绪量 
+         -化策略**。 | 研报标题数据 **2017-01-01 至 2021-12-31**，共 **39
+         -,786** 条；股票对象描述处主要写**沪深300成分股**，后文提实证时 
+         -有一处写到**中证500成分股**，文内口径略有不一致。 | 结论明确： 
+         -基于分析师标题情感的完整量化策略在回测中具有**较高投资收益**， 
+         -验证了策略有效性。 |                                           
+      15 -| 9 | 基于支持向量机的多因子融合量价数据的选股策略的研究 | 先做
+         -**多因子选股**，再把**量价数据**融合进 SVM 做二次筛选，目标是优
+         -化中证1000选股结果。 | 中证1000成分股；因子与量价样本 **2014-10
+         - 至 2021-12**。其中 **2014-10 至 2018-12** 为训练，**2019-01 至
+         - 2021-12** 为样本外测试。 | 相比未加入量价数据的模型：**收益率 
+         -+4.83%**、**年化收益率 +11.43%**；累计收益和夏普更优，最大回撤 
+         -相近或略高，文中还提到优化后策略**年化收益率达到 38.01%**。 |  
+      16 -| 10 | 基于均线与K线指标的量化投资策略 | 把**5日均线回归**和**K
+         -线形态捕捉**结合：股价低于 5 日均线的 0.95 且出现上涨 K 线形态 
+         -时买入；股价高于 5 日均线的 1.05 或出现下跌 K 线形态时卖出。 | 
+         -A 股全市场；在 JoinQuant 上对 **2022-01-01 至 2022-12-31** 做全
+         -年回测。 | 全年共**交易 138 笔**，实现**超额收益 19.12%**；结论
+         -是该规则型技术策略在 A 股样本期内有效。 |                      
+       5 +## 最值得优先看的 5 篇                                         
+       6  
+      18 -## 补充说明                                                    
+       7 +| 优先级 | 论文 | 为什么值得优先看 | 策略 | 样本区间 | 关键结论
+         + |                                                             
+       8 +|---:|---|---|---|---|---|                                     
+       9 +| 1 | 基于机器学习和资产特征的投资组合选择研究 | 方法最系统，直
+         +接解决“如何从特征到权重” | 用高维特征**直接预测组合权重**，比较
+         + Lasso / Ridge / ENet / PCA / RNN / LSTM / DFN | 中国 A 股，月 
+         +度 **1997-01 至 2021-12**；滚动 **10 年训练 + 1 年测试** | 样本
+         +外提升明显，**Lasso-AC 夏普 2.353，DFN-AC 夏普 3.741**，显著优 
+         +于简单线性基准。 |                                             
+      10 +| 2 | 基于支持向量机模型的多因子量化选股策略 | 最接近标准 A 股 
+         +多因子选股工作流 | 筛出 **市值、股本、换手率、ROE、PE**，用**高
+         +斯核 SVM**做上涨概率预测，每月选 10 只 | 沪深300；**2010-01-01 
+         +至 2023-01-01**；其中 **2010–2017** 训练，**2018–2023** 测试 | 
+         +组合**稳定跑赢大盘**，适合作为“因子筛选 + 分类模型选股”的模板。
+         + |                                                             
+      11 +| 3 | 基于支持向量机的多因子融合量价数据的选股策略的研究 | 最适
+         +合落地做“多因子 + 量价增强” | 先多因子选股，再用**量价数据 + SV
+         +M**二次筛选 | 中证1000；**2014-10 至 2021-12**；其中 **2014-10 
+         +至 2018-12** 训练，**2019-01 至 2021-12** 测试 | 相比未加量价数
+         +据：**收益率 +4.83%**，**年化 +11.43%**；优化后文中给出**年化 3
+         +8.01%**。 |                                                    
+      12 +| 4 | 考虑股市网络因子的多因子选股策略研究 | 适合扩展传统因子库
+         +，引入结构信息 | 在 **Fama-French 三因子**上加入**网络因子**， 
+         +形成四因子选股模型 | 中国 A 股；**2013-07-01 至 2023-06-30** | 
+         +四因子模型解释力更强，组合在**收益、波动、最大回撤、夏普**上优 
+         +于**上证A股指数**。 |                                          
+      13 +| 5 | 分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化 
+         +研究 | 最适合做另类数据方向 | 用**分析师研报标题 + SESTM 情绪打
+         +分**构建股票池，等权轮换 | 研报数据 **2017-01-01 至 2021-12-31*
+         +*，共 **39,786** 条 | 回测显示该**文本情绪策略有效**，适合做情 
+         +绪/文本因子扩展。 |                                            
+      14  
+      20 -- 第 7 篇更适合作为**因子筛选与因子库构建参考**，不是直接可落地
+         -的完整交易策略。                                               
+      21 -- 第 8 篇在文内有一处 **沪深300 / 中证500** 的样本口径不完全一 
+         -致，后续如果你要据此复现，建议优先回到原文核对。               
+      22 -- 第 2 篇更偏**策略框架型论文**，公开文本里量化回测细节少于其余
+         -几篇。                                                         
+      15 +## 其余 5 篇一句话速览                                         
+      16  
+      24 -## 快速分组                                                    
+      17 +| 论文 | 一句话结论 |                                          
+      18 +|---|---|                                                      
+      19 +| 基于机器学习的股票收益预测与投资组合研究 | 上证50上用 **RF / 
+         +SVM / XGBoost** 每月选前 10，**能跑赢市场**，但熊市下 **夏普仍 
+         +偏弱**。 |                                                     
+      20 +| 宏观背景下运用多因子模型的投资策略研究 | 更偏**宏观到板块再到
+         +个股筛选**的框架论文，结论说**显著优于市场**，但细化回测指标较 
+         +少。 |                                                         
+      21 +| 基于LSTM预测信息的在线融资融券组合交易策略 | 用 **LSTM + 专家
+         +加权**做融资融券双边交易，**考虑交易费后仍优于基准**。 |       
+      22 +| 基于双重选择LASSO模型的我国股市定价因子边际有效性研究 | 更适 
+         +合拿来做**因子库筛选**，从 15 个新因子中筛出 **7 个真正边际有效
+         +因子**。 |                                                     
+      23 +| 基于均线与K线指标的量化投资策略 | 最简单可复现的规则策略，**2
+         +022 全年 A 股回测超额收益 19.12%**。 |                         
+      24  
+      26 -### 多因子选股                                                 
+      27 -- #2 宏观背景下运用多因子模型的投资策略研究                    
+      28 -- #3 基于支持向量机模型的多因子量化选股策略                    
+      29 -- #4 考虑股市网络因子的多因子选股策略研究                      
+      30 -- #9 基于支持向量机的多因子融合量价数据的选股策略的研究        
+      25 +## 如果你要把这些论文映射到当前项目，建议优先吸收的 3 类东西   
+      26  
+      32 -### 机器学习/深度学习驱动                                      
+      33 -- #1 基于机器学习的股票收益预测与投资组合研究                  
+      34 -- #5 基于机器学习和资产特征的投资组合选择研究                  
+      35 -- #6 基于LSTM预测信息的在线融资融券组合交易策略                
+      27 +### 1. 因子层                                                  
+      28 +- 传统基本面因子：**市值、ROE、PE、换手率、股本**              
+      29 +- 可扩展因子：**量价特征、网络因子、文本情绪因子**             
+      30 +- 因子筛选方法：**IC / IR / 因子暴露 / LASSO**                 
+      31  
+      37 -### 文本情绪 / 另类数据                                        
+      38 -- #8 分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化研
+         -究                                                             
+      32 +### 2. 模型层                                                  
+      33 +- 最稳妥起步：**多因子 + SVM / XGBoost**                       
+      34 +- 进一步提升：**高维特征直接映射权重**                         
+      35 +- 另类数据路线：**文本情绪打分后进入股票池**                   
+      36  
+      40 -### 因子研究 / 策略底层支撑                                    
+      41 -- #7 基于双重选择LASSO模型的我国股市定价因子边际有效性研究     
+      37 +### 3. 回测层                                                  
+      38 +- 常见组合构造：**每月选前 10 只等权**                         
+      39 +- 常见评估指标：**年化收益、夏普、最大回撤、波动率**           
+      40 +- 重要提醒：很多论文能跑赢指数，但**不一定能稳定跑赢无风险利率*
+         +*，尤其在下跌市。 |                                            
+      41  
+      43 -### 规则型技术策略                                             
+      44 -- #10 基于均线与K线指标的量化投资策略                          
+      42 +## 简短结论                                                    
+      43 +                                                               
+      44 +如果只看实操价值，优先顺序建议是：                             
+      45 +1. **#5 基于机器学习和资产特征的投资组合选择研究**             
+      46 +2. **#3 基于支持向量机模型的多因子量化选股策略**               
+      47 +3. **#9 基于支持向量机的多因子融合量价数据的选股策略的研究**   
+      48 +4. **#4 考虑股市网络因子的多因子选股策略研究**                 
+      49 +5. **#8 分析师前瞻性信息对股票投资收益的影响——基于文本分析的量 
+         +化研究**                                                       
+
+● 已压缩完成，文件还是这个：
+
+  /home/zj/workspace/stok-mapping/refdocs/cn_a_share/STRATEGY_SUMMARY.md
+
+  现在内容变成了更短的实操版，主要包括：
+  - 最值得优先看的 5 篇
+  - 其余 5 篇一句话速览
+  - 如何映射到当前项目的 3 类要点：因子层 / 模型层 / 回测层
+  - 一个建议优先顺序
+
+  如果你要，我下一步可以继续把这份压缩版再变成：
+  1. “可直接抄到策略开发任务单里”的 checklist 版
+  2. “适合你当前项目 phase0 的候选策略清单”版
+
+✻ Crunched for 2m 8s
+
+※ recap: Goal is building and summarizing Chinese A-share quant-strategy paper references. I compressed refdocs/cn_a_share/STRATEGY_SUMMARY.md into a practical short version; next I can turn it into a phase0-ready strategy checklist or candidate strategy list. (disable recaps in /config)
+
+❯ 写成：“可直接抄到策略开发任务单里”的 checklist 版 和 “适合你当前项目 phase0   
+  的候选策略清单”版                                                             
+
+  Thought for 16s (ctrl+o to expand)
+
+● 我先读取当前项目 phase0 的目标和现状，再写出这两个可直接用的文档。
+
+  Searched for 1 pattern, read 3 files (ctrl+o to expand)
+
+● 我再看一下当前 Phase 0 回测产物和实现入口，确保候选清单贴合现状。
+
+  Thought for 18s, read 3 files (ctrl+o to expand)
+● 我会把它们写成两个独立 Markdown 文件，方便你直接复用。
+
+● Write(refdocs/cn_a_share/STRATEGY_DEV_CHECKLIST.md)
+  ⎿  Wrote 197 lines to refdocs/cn_a_share/STRATEGY_DEV_CHECKLIST.md
+       2 # 策略开发任务单 Checklist（可直接抄用）
+       3 适用场景：把论文思路落到 `stok-mapping` 当前 Phase 0/1 研究流程
+         里。
+       4 
+       5 ---
+       7 ## 0. 任务头
+       8 
+       9 - [ ] 策略名称：
+      10 - [ ] 策略类型：`多因子 / 机器学习 / 规则型 / 文本情绪 / overlay
+         `
+     … +190 lines (ctrl+o to expand)
+
+● Write(refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES.md)
+  ⎿  Wrote 285 lines to refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES.md
+       2 # Phase 0 候选策略清单（贴合当前项目）
+       3 目标：只列出**适合当前 `stok-mapping` Phase 0 状态**、能和现有数
+         据/回测框架衔接的候选策略。
+       4 
+       5 当前事实基线：
+       7 - 当前 Phase 0 胜出的候选是 `legacy_momentum`
+       8 - `legacy_momentum` 当前均值：`ann=0.3360`，`sharpe=0.3358`，`md
+         d=-0.3074`
+       9 - 现有效果门槛未通过，主要问题是：**夏普不够、回撤偏大**
+      10 - 跨市场主导策略当前表现弱，不适合继续做主 ranker
+     … +281 lines (ctrl+o to expand)
+
+● 已写好两份文档：
+
+  1. Checklist 版
+  /home/zj/workspace/stok-mapping/refdocs/cn_a_share/STRATEGY_DEV_CHECKLIST.md
+  2. 适合当前项目 Phase 0 的候选策略清单版
+  /home/zj/workspace/stok-mapping/refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES
+  .md
+
+  这两份是按你当前项目现状写的，不是泛化模板，已经结合了：
+  - 你现在的 Phase 0 主线
+  - 当前回测结果里 legacy_momentum 胜出但效果门未过
+  - 当前数据条件：本地 A 股日线库、股票池、walk-forward 框架已具备
+  - 当前不适合继续把跨市场映射当主 ranker
+
+  如果你要，我下一步可以直接继续帮你做这件事里的第一步：
+  - 把 PHASE0_CANDIDATE_STRATEGIES.md 里的前 3
+  个候选策略，直接展开成可实现的参数草案，对应到 config.yaml 和
+  phase0/walk_forward.py。
+
+✻ Brewed for 2m 55s
+
+※ recap: Goal is to turn A股量化论文调研 into project-ready strategy docs, and the current task is complete with a checklist and a Phase 0 candidate-strategy list written under refdocs/cn_a_share. Next action is to turn the top 3 Phase 0 candidates into concrete parameter drafts for config.yaml and phase0/walk_forward.py.
+
+❯ 我想本地部署一个LLM帮我使用这个项目开发的工具看盘分析研判，让它帮我决策选股、 
+  交易策略，实现每日短线交易套利。目前能够开源下载部署到本地的LLM里，谁最适合承 
+  担这个任务。                                                                  
+
+  Thought for 15s (ctrl+o to expand)
+
+● 我先查一下目前适合本地部署、擅长工具调用和中英文金融分析的开源模型，再给你一个
+  面向你这个项目场景的明确推荐。
+
+● Web Search("2026 open source local LLM tool use function calling Chinese
+            reasoning Qwen3 DeepSeek Llama 4 local deployment")
+  ⎿  Did 10 searches in 120s
+
+● Web Search("Qwen3 model open weights tool use multilingual function calling
+            2025 2026")
+  ⎿  Did 6 searches in 110s
+
+● Web Search("DeepSeek open weights reasoning model local deployment function
+            calling 2025 2026")
+  ⎿  Did 9 searches in 115s
+
+● Web Search("best open source LLM local agent tool use coding Chinese 2026")
+  ⎿  Did 1 search in 29s
+
+  Thought for 2m 9s (ctrl+o to expand)
+
+● 如果只选一个本地可部署、最适合你这个项目场景的开源/开放权重模型，我的结论是：
+
+  首选：Qwen3（优先 32B 档；资源不够就 14B/8B）
+
+  原因很直接：
+
+  1. 中文最好用
+  你的项目是 A 股、中文研报、中文规则、中文日报输出，Qwen3
+  在中文理解和中文写作上比 Llama 系更贴场景。
+  2. 工具调用/Agent 生态更成熟
+  你这个任务不是“聊天”，而是要让模型：
+    - 读 reports/*.md
+    - 调你的 phase0.cli
+    - 解析回测结果
+    - 输出结构化结论
+  Qwen 官方对 function calling / tool use / Qwen-Agent
+  支持最完整，和这类“看盘研判代理”最匹配。
+  3. 本地部署路径最顺
+  Qwen3 官方明确支持 vLLM / SGLang / Ollama / llama.cpp / LM 
+  Studio，你可以先快速跑起来，再逐步升级到 OpenAI-compatible 的工具调用服务。
+  4. 中英混合金融/代码任务兼容性好
+  你这个项目既要做中文金融分析，又要改 Python/CLI 工具链，Qwen
+  系列在这两头的平衡最好。
+
+  ---
+  但我要先提醒你一个关键现实
+
+  你现在最缺的不是“更聪明的 LLM”，而是“更强的可验证 alpha 引擎”。
+
+  因为你当前项目自己的 Phase 0 Strategy Effectiveness Gate 还是 FAIL：
+
+  - sharpe_mean = 0.3358，没过 > 0.5
+  - max_drawdown_mean = -0.3074，没过 > -0.25
+
+  这意味着：
+
+  - LLM 可以帮你“解释、组织、筛查、总结、复盘”
+  - 但它不能凭空把一个还没过 gate 的策略变成可稳定套利的策略
+
+  所以对你这个项目，最合理的定位不是：
+
+  - “让 LLM 直接替我选股下单”
+
+  而是：
+
+  - 让 LLM 做研究代理 + 风控秘书 + 盘前研判助手
+  - 最终交易信号仍然由可回测、可审计、可复现的策略模块产生
+
+  ---
+  排名建议
+
+  1）最佳总方案：Qwen3 32B
+
+  适合你现在这个项目做“主代理”。
+
+  适合承担：
+  - 盘前日报生成
+  - 读取 phase0 输出并总结
+  - 给出观察池、风险点、情景推演
+  - 帮你比较候选策略
+  - 帮你改代码、补报告、写配置建议
+
+  不建议直接承担：
+  - 自主决定买卖
+  - 自主决定仓位
+  - 自主做“短线套利下单”
+
+  ---
+  2）第二选择：DeepSeek-R1-0528
+
+  如果你更重视推理深度/第二意见，它很好；但如果要做主工具代理，我仍然更偏向
+  Qwen3。
+
+  更适合承担：
+  - 对 Qwen 输出做“二次审查”
+  - 复盘时做反驳/质疑
+  - 生成更严谨的论证链
+
+  不如 Qwen3 的地方：
+  - 做主 Agent 时，中文工具流和工程整合通常没 Qwen 顺手
+  - 完整本地部署后做高频工具调用，性价比不一定最好
+
+  ---
+  3）不建议作为首选：Llama 4
+
+  不是说不能用，而是不适合你的优先级。
+
+  原因：
+  - 你的场景不是英语优先
+  - 你要中文金融研判 + 本地工具调用
+  - Llama 4 对你这个 A 股中文工具链场景，不如 Qwen3 贴合
+  - 而且 Meta 的 Llama 4 更适合英文/通用场景，不是你这个项目的最优解
+
+  ---
+  我对你最实际的推荐：不是单模型，而是“双模型结构”
+
+  主代理：Qwen3 32B
+
+  负责：
+  - 调工具
+  - 读报告
+  - 生成盘前研判
+  - 输出 watchlist / 风险说明 / 失败条件
+
+  审核器：DeepSeek-R1-0528
+
+  负责：
+  - 复核主代理结论
+  - 专门找逻辑漏洞
+  - 质疑过拟合、样本偏差、回测失真
+
+  这个结构比“只靠一个模型拍脑袋决策”靠谱得多。
+
+  ---
+  如果你现在就要落地，我建议这样配
+
+  方案 A：你有 48GB 以上显存
+
+  首选：Qwen3 32B + vLLM/SGLang
+
+  用途：
+  - 作为主研究代理
+  - 通过 OpenAI-compatible API 接你的本地工具
+
+  方案 B：你只有 24GB 左右显存
+
+  首选：Qwen3 14B
+  先把流程跑通，再决定要不要升级。
+
+  用途：
+  - 盘前摘要
+  - 看报告
+  - 生成结构化输出
+  - 轻量代码辅助
+
+  方案 C：你想做“双模型审查”
+
+  - 主：Qwen3 32B
+  - 审：DeepSeek-R1-0528 或其更轻量蒸馏版
+
+  ---
+  对你这个项目，LLM最应该做的 5 件事
+
+  按优先级排：
+
+  1. 读 phase0 回测报告，给出人话摘要
+  2. 根据规则生成盘前研判日报
+  3. 比较候选策略，指出该做哪个下一步实验
+  4. 生成结构化 JSON 输出
+    - watchlist
+    - risk_flags
+    - invalid_conditions
+    - why_not_trade
+  5. 辅助改代码/参数，不直接发交易指令
+
+  ---
+  不建议让 LLM 直接做的 4 件事
+
+  1. 直接决定买卖
+  2. 直接决定仓位
+  3. 直接用自然语言“感觉”选股
+  4. 在没有回测 gate 通过前做自动交易
+
+  ---
+  一句话结论
+
+  最适合你这个任务的本地模型：Qwen3。
+  更具体地说：
+
+  - 主模型：Qwen3 32B
+  - 如果资源不足：Qwen3 14B
+  - 如果要第二意见：DeepSeek-R1-0528 作为审查器
+  - 不建议 Llama 4 作为你的第一选择
+
+  如果你愿意，我下一步可以直接给你一份：
+
+  “Qwen3 本地部署 + 接入 stok-mapping 工具链 + 每日盘前研判 Agent 
+  架构图与实施清单”
+
+  Sources:
+  - Qwen3 官方发布说明 (https://qwenlm.github.io/blog/qwen3/)
+  - Qwen3 GitHub (https://github.com/QwenLM/Qwen3)
+  - Qwen Function Calling 文档
+  (https://qwen.readthedocs.io/en/stable/framework/function_call.html)
+  - Qwen-Agent 官方仓库 (https://github.com/QwenLM/Qwen-Agent)
+  - Qwen-Agent Tool 文档
+  (https://qwenlm.github.io/Qwen-Agent/en/guide/core_moduls/tool/)
+  - Qwen 本地 llama.cpp 部署文档
+  (https://qwen.readthedocs.io/en/latest/run_locally/llama.cpp.html)
+  - DeepSeek-R1 GitHub (https://github.com/deepseek-ai/DeepSeek-R1)
+  - DeepSeek-R1-0528 发布说明 (https://api-docs.deepseek.com/news/news250528)
+  - DeepSeek Tool Calls 文档 (https://api-docs.deepseek.com/guides/tool_calls)
+  - DeepSeek-V3 GitHub (https://github.com/deepseek-ai/DeepSeek-V3)
+  - vLLM Tool Calling 文档
+  (https://docs.vllm.ai/en/v0.14.0/features/tool_calling/)
+  - SGLang DeepSeek 用法 (https://docs.sglang.io/docs/basic_usage/deepseek_v3)
+  - Llama 4 官方公告 (https://ai.meta.com/blog/llama-4-multimodal-intelligence/)
+  - Ollama Tool Calling 文档 (https://docs.ollama.com/capabilities/tool-calling)
+
+✻ Cogitated for 3m 32s
+
+❯ 把你刚刚的结论保存到refdocs                                                   
+
+● 我会把刚才的本地 LLM 选型结论整理成一个 Markdown 文件保存到 refdocs。
+
+● Write(refdocs/LOCAL_LLM_RECOMMENDATION.md)
+  ⎿  Wrote 169 lines to refdocs/LOCAL_LLM_RECOMMENDATION.md
+       2 # 本地部署 LLM 选型结论
+       3 ## 结论
+       4 
+       5 如果只选一个本地可部署、最适合当前 `stok-mapping` 项目场景的开源
+         /开放权重模型，**首选是 Qwen3**。
+       6 
+       7 更具体的推荐顺序：
+       8 
+       9 1. **主模型首选：Qwen3 32B**
+      10 2. **显存不足时：Qwen3 14B / 8B**
+     … +162 lines (ctrl+o to expand)
+
+● 已保存到：
+
+  /home/zj/workspace/stok-mapping/refdocs/LOCAL_LLM_RECOMMENDATION.md
+
+  如果你要，我下一步可以继续直接写第二份：
+
+  - 本地部署方案
+  - 如何把 Qwen3 接到 stok-mapping 的 phase0.cli / 报告读取 / 盘前研判流程里
+
+✻ Worked for 6m 48s
+
+❯ 你刚才检索的范围没有包括开源社区huggingface.co,                               
+  现在去huggingface.co上查找，检索不只是中文LLM，多语言包含中文能力的LLM也在检  
+  索范围，查找有什么模型胜任这个工作。                                          
+
+  Thought for 17s (ctrl+o to expand)
+
+● 我会直接到 Hugging Face 的模型页和模型卡里核对多语言、中文能力、工具调用和本地
+  部署信息，再给你一个更准确的候选清单。
+
+● 我先用 Hugging Face 官方页面和模型卡筛一批候选，再对比它们是否适合你这个项目。
+
+● Web Search("site:huggingface.co Qwen Qwen3 tool calling multilingual Chinese
+            model card")  ⎿  Did 1 search in 16s
+
+● Web Search("site:huggingface.co deepseek-ai DeepSeek R1 0528 model card tool
+            calling")
+  ⎿  Did 3 searches in 21s
+
+● Web Search("site:huggingface.co meta-llama Llama 4 Instruct multilingual model
+             card")
+  ⎿  Did 2 searches in 64s
+
+● Web Search("site:huggingface.co mistralai Magistral Small multilingual
+            reasoning model card huggingface")
+  ⎿  Did 1 search in 17s
+
+● Web Search("site:huggingface.co Qwen3-Coder model card tool use coding
+            multilingual")
+  ⎿  Did 1 search in 12s
+
+● 我已经拿到候选页了，接下来直接读模型卡里的关键信息：多语言/中文、工具调用、许
+  可和本地部署。
+
+● Fetch(https://huggingface.co/Qwen/Qwen3-32B)
+  ⎿  Received 306.7KB (200 OK)
+
+● Fetch(https://huggingface.co/deepseek-ai/DeepSeek-R1-0528)
+  ⎿  Received 302.9KB (200 OK)
+
+● Fetch(https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct)
+  ⎿  Received 419.8KB (200 OK)
+
+● Fetch(https://huggingface.co/mistralai/Magistral-Small-2506)
+  ⎿  Received 176.3KB (200 OK)
+
+● Fetch(https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct)
+  ⎿  Received 305.7KB (200 OK)
+
+● 我再补两类在 Hugging Face 上常见、也值得纳入比较的候选：Gemma 和更明确的 Llama
+   4 模型卡。
+
+● Web Search("site:huggingface.co google Gemma 3 multilingual Chinese tool
+            calling model card")
+  ⎿  Did 5 searches in 44s
+
+● Fetch(https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct)
+  ⎿  Received 310.5KB (200 OK)
+
+● Fetch(https://huggingface.co/google/gemma-3-27b-it)
+  ⎿  Received 383.3KB (200 OK)
+
+● 我查了 Hugging Face 上几类主流候选的模型卡，把范围放宽到了：
+
+  - 不只中文模型
+  - 也包括多语言且包含中文能力
+  - 重点看是否适合你这个任务：
+    - 本地部署
+    - 读中文/英文资料
+    - 调本地工具
+    - 生成盘前分析/策略建议
+    - 辅助开发 stok-mapping
+
+  先给结论：
+
+  结论
+
+  如果基于 Hugging Face 模型卡来选，最适合承担你这个工作的主模型，仍然是 
+  Qwen/Qwen3-32B。
+
+  但更准确地说，应该分成三类：
+
+  1. 最适合做“主研判代理”
+
+  Qwen/Qwen3-32B
+
+  最适合原因：
+  - 模型卡明确写了：
+    - 100+ 语言
+    - agent capabilities
+    - tool use / external tools
+    - 推荐配合 Qwen-Agent
+  - 适合你这种：
+    - 中文 A 股分析
+    - 本地工具调用
+    - 多轮推理
+    - 读长报告
+  - 本地部署路径明确：
+    - Transformers
+    - vLLM
+    - SGLang
+    - Ollama
+    - llama.cpp
+
+  这是我在 Hugging Face 范围内的首选。
+
+  ---
+  2. 最适合做“代码/工具调用助手”
+
+  Qwen/Qwen3-Coder-30B-A3B-Instruct
+
+  这个不是最适合当“主交易分析脑”，但很适合当你项目的工程副驾驶。
+
+  模型卡明确强调：
+  - agentic coding
+  - tool calling
+  - repo-scale long context
+  - OpenAI-compatible 本地服务方式明确
+  - 很适合做：
+    - 读你的 repo
+    - 调 CLI
+    - 写 glue code
+    - 帮你接本地 Agent 工具链
+
+  如果你想把模型接进 phase0.cli、报告读取、自动研判流程，
+  它非常适合做“开发代理”。
+
+  ---
+  3. 最适合做“第二意见/推理审查器”
+
+  deepseek-ai/DeepSeek-R1-0528
+
+  优点：
+  - 模型卡明确写了：
+    - enhanced support for function calling
+    - 有 tool-related benchmarks
+    - 中英 prompt 都直接给了
+    - 推理能力非常强
+
+  缺点也很明显：
+  - 主模型版本是 685B
+  - 对本地部署来说，太重了
+  - 虽然能力强，但作为你这种本地系统的主工作模型不现实
+
+  所以它更适合：
+  - 做第二意见
+  - 做复盘审查
+  - 做高强度推理核对
+
+  不适合作为你本地日常主代理的第一选择。
+
+  ---
+  其他值得纳入但不是首选的模型
+
+  4. mistralai/Magistral-Small-2506
+
+  这是个意外不错的候选。
+
+  模型卡里对你有利的信息：
+  - 24B
+  - 明确支持多语言，且明确包含中文
+  - 有 reasoning
+  - 本地可部署
+  - 通过 vLLM 可启用 tool parser / auto tool choice
+  - Apache-2.0
+
+  它的问题是：
+  - 模型卡没给出很强的“中文金融工具代理”信号
+  - 更像一个通用多语言推理模型
+  - 工具调用生态不如 Qwen 顺手
+
+  结论：它是 Qwen3 之外最值得认真看的备选。
+
+  ---
+  5. google/gemma-3-27b-it
+
+  它的模型卡显示：
+  - 140+ 语言
+  - 27B
+  - 128K context
+  - 本地部署支持好
+
+  但关键问题：
+  - 模型卡里没有明确工具调用 / function calling 支持
+  - 中文没有像 Qwen/Magistral 那样直观强信号
+  - 更像一个多语言通用模型，不是很像你的本地 Agent 主力
+
+  结论：能做分析，不是最好的本地工具代理。
+
+  ---
+  6. meta-llama/Llama-4-Scout/Maverick-Instruct
+
+  Hugging Face 模型卡看下来，对你这个任务不合适做首选。
+
+  原因很硬：
+  - 官方支持语言里没有中文
+  - 模型卡没有明确 function/tool calling 支持
+  - 更适合通用多语言/多模态场景
+  - 不适合作为你这个 A股中文工具链 的主模型
+
+  结论：不推荐。
+
+  ---
+  排名建议
+
+  如果你要“一个主模型”
+
+  第一名：Qwen/Qwen3-32B
+
+  最均衡，最适合。
+
+  ---
+  如果你要“双模型结构”
+
+  主代理
+
+  - Qwen/Qwen3-32B
+
+  工程代理
+
+  - Qwen/Qwen3-Coder-30B-A3B-Instruct
+
+  审查器
+
+  - deepseek-ai/DeepSeek-R1-0528
+
+  这是我认为最合理的本地组合。
+
+  ---
+  如果你机器资源一般
+
+  按实用性排序：
+
+  1. Qwen/Qwen3-32B
+  2. mistralai/Magistral-Small-2506
+  3. google/gemma-3-27b-it
+
+  ---
+  对你这个项目最重要的一点
+
+  在 Hugging Face 这一轮检索后，我的判断比之前更稳了：
+
+  ▎ 最适合你这个项目的，不是“最会聊天”的模型，而是“中文能力强 + 工具调用明确 + 
+  ▎ 本地服务成熟”的模型。
+
+  从这个标准看：
+
+  - Qwen3 仍然第一
+  - Qwen3-Coder 是极强工程辅助
+  - DeepSeek-R1-0528 更适合做审查器
+  - Magistral Small 是最值得注意的国际备选
+  - Gemma 3 和 Llama 4 不如前面几类贴场景
+
+  ---
+  最终建议
+
+  如果你现在就准备本地落地，我建议：
+
+  方案 A：最稳
+
+  - 主模型：Qwen/Qwen3-32B
+  - 用途：盘前分析、报告读取、工具调用、策略复盘
+
+  方案 B：更强工程化
+
+  - 主模型：Qwen/Qwen3-32B
+  - 工程助手：Qwen/Qwen3-Coder-30B-A3B-Instruct
+
+  方案 C：带审查
+
+  - 主模型：Qwen/Qwen3-32B
+  - 审查器：deepseek-ai/DeepSeek-R1-0528
+
+  ---
+  如果你愿意，我下一步可以继续直接帮你做：
+
+  基于 Hugging Face 这几个候选，给你写一份“本地部署选型表 + 你的硬件条件下怎么选
+   + 接 stok-mapping 的架构方案”。
+
+  Sources:
+  - Qwen/Qwen3-32B (https://huggingface.co/Qwen/Qwen3-32B)
+  - Qwen/Qwen3-Coder-30B-A3B-Instruct
+  (https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct)
+  - deepseek-ai/DeepSeek-R1-0528
+  (https://huggingface.co/deepseek-ai/DeepSeek-R1-0528)
+  - mistralai/Magistral-Small-2506
+  (https://huggingface.co/mistralai/Magistral-Small-2506)
+  - google/gemma-3-27b-it (https://huggingface.co/google/gemma-3-27b-it)
+  - meta-llama/Llama-4-Maverick-17B-128E-Instruct
+  (https://huggingface.co/meta-llama/Llama-4-Maverick-17B-128E-Instruct)
+  - meta-llama/Llama-4-Scout-17B-16E-Instruct
+  (https://huggingface.co/meta-llama/Llama-4-Scout-17B-16E-Instruct)
+  - Gemma 3 on Hugging Face Blog (https://huggingface.co/blog/gemma3)
+
+✻ Cooked for 4m 50s
+
+※ recap: Goal is to choose a locally deployable open/open-weight LLM for your A-share research agent; the current task compared Hugging Face model cards and concluded Qwen3-32B is the best main model, with Qwen3-Coder and DeepSeek-R1-0528 as helper roles. Next I can turn this into a concrete local deployment and integration plan for stok-mapping.
+
+❯ 新结论添加进refdocs/LOCAL_LLM_RECOMMENDATION.md                               
+
+  Thought for 11s (ctrl+o to expand)
+
+● 我会把基于 Hugging Face 模型卡的新结论补充进现有选型文档。
+
+  Read 1 file (ctrl+o to expand)
+
+● 我会把 Hugging Face 模型卡检索得到的新候选和修正后的排序补进这份文档。
+
+● Update(refdocs/LOCAL_LLM_RECOMMENDATION.md)  ⎿  Added 15 lines, removed 5 lines
+       2  
+       3  ## 结论
+       4  
+       5 -如果只选一个本地可部署、最适合当前 `stok-mapping` 项目场景的开 
+         -源/开放权重模型，**首选是 Qwen3**。                            
+       5 +如果只选一个本地可部署、最适合当前 `stok-mapping` 项目场景的开 
+         +源/开放权重模型，**首选仍然是 Qwen3**。                        
+       6  
+       7 -更具体的推荐顺序：                                             
+       7 +在补充检索 **Hugging Face 模型卡** 之后，结论进一步细化为：    
+       8  
+       9 -1. **主模型首选：Qwen3 32B**                                   
+       9 +1. **主模型首选：Qwen/Qwen3-32B**                              
+      10  2. **显存不足时：Qwen3 14B / 8B**
+      11 -3. **作为第二意见/审查器：DeepSeek-R1-0528**                   
+      12 -4. **不建议作为第一选择：Llama 4**                             
+      11 +3. **工程/代码代理优先补位：Qwen/Qwen3-Coder-30B-A3B-Instruct**
+      12 +4. **作为第二意见/审查器：deepseek-ai/DeepSeek-R1-0528**       
+      13 +5. **国际多语言备选：mistralai/Magistral-Small-2506**          
+      14 +6. **可分析但不适合做主 Agent：google/gemma-3-27b-it**         
+      15 +7. **不建议作为第一选择：Llama 4**                             
+      16  
+      17 +简化判断：                                                     
+      18 +                                                               
+      19 +- **主研判代理：Qwen3-32B**                                    
+      20 +- **本地工程副驾驶：Qwen3-Coder-30B-A3B-Instruct**             
+      21 +- **推理审查器：DeepSeek-R1-0528**                             
+      22 +- **国际备选：Magistral-Small-2506**                           
+      23 +                                                               
+      24  ---
+      25  
+      26  ## 为什么首选 Qwen3
+
+● Update(refdocs/LOCAL_LLM_RECOMMENDATION.md)
+  ⎿  Added 12 lines, removed 2 lines
+      45  Qwen 官方对 **function calling / tool use / Qwen-Agent** 的支持
+          更完整，更适合做“本地研究代理”。
+      46  
+      47  ### 3. 本地部署路径成熟
+      48 -Qwen3 官方可配合：                                             
+      48 +Qwen3 官方与 Hugging Face 模型卡共同显示，可配合：             
+      49  - `vLLM`
+      50  - `SGLang`
+      51  - `Ollama`
+      52  - `llama.cpp`
+      53  - `LM Studio`
+      54 +- `Transformers`                                               
+      55  
+      56  可以先快速验证，再升级为 OpenAI-compatible 的本地服务。
+      57  
+      57 -### 4. 金融分析 + 代码辅助更平衡                               
+      58 +### 4. 工具调用与 Agent 证据最明确                             
+      59 +补充查看 Hugging Face 模型卡后，Qwen3-32B 明确强调：           
+      60 +- **agent capabilities**                                       
+      61 +- **tool use / external tools**                                
+      62 +- 推荐搭配 **Qwen-Agent**                                      
+      63 +- 支持 thinking / non-thinking 两种工作模式                    
+      64 +                                                               
+      65 +对于你这种“本地工具链 + 日报生成 + 研判代理”的任务，这类信号比 
+         +一般 benchmark 更关键。                                        
+      66 +                                                               
+      67 +### 5. 金融分析 + 代码辅助更平衡                               
+      68  你的项目既要做：
+      69  - 中文金融分析
+      70  - A 股盘前研判
+
+● Update(refdocs/LOCAL_LLM_RECOMMENDATION.md)
+  ⎿  Added 7 lines
+      111  如果资源允许，推荐：
+      112  
+      113  - **主代理：Qwen3 32B**
+      114 +- **工程代理：Qwen3-Coder-30B-A3B-Instruct**                  
+      115  - **审查器：DeepSeek-R1-0528**
+      116  
+      117  分工：
+     ...
+      122  - 生成盘前研判
+      123  - 产出结构化结论
+      124  
+      125 +#### Qwen3-Coder 负责                                         
+      126 +- 读 repo                                                     
+      127 +- 改 `phase0` 工具链                                          
+      128 +- 写 glue code / agent integration                            
+      129 +- 帮你接本地 CLI、报告解析和自动化流程                        
+      130 +                                                              
+      131  #### DeepSeek-R1-0528 负责
+      132  - 复核主代理输出
+      133  - 专门找逻辑漏洞
+
+● Update(refdocs/LOCAL_LLM_RECOMMENDATION.md)
+  ⎿  Added 8 lines
+      150  ### 如果你只有 24GB 左右显存
+      151  推荐：
+      152  - **Qwen3 14B**
+      153 +- 或者把 **Qwen3-Coder-30B-A3B-Instruct** 作为工程助手、主分析
+          +仍由更小 Qwen 承担                                            
+      154  
+      155  适合作为：
+      156  - 盘前摘要
+     ...
+      161  ### 如果你想做“双模型审查”
+      162  推荐：
+      163  - 主：**Qwen3 32B**
+      164 +- 工程：**Qwen3-Coder-30B-A3B-Instruct**                      
+      165  - 审：**DeepSeek-R1-0528** 或其轻量蒸馏版
+      166  
+      167 +### 如果你想考虑非中文系国际备选                              
+      168 +推荐优先级：                                                  
+      169 +- **Magistral-Small-2506**：多语言且模型卡明确包含中文，适合作
+          +为国际备选                                                    
+      170 +- **Gemma-3-27b-it**：多语言强，但模型卡未明确原生工具调用能力
+      171 +- **Llama 4**：官方支持语言不含中文，不适合作为你的第一选择   
+      172 +                                                              
+      173  ---
+      174  
+      175  ## 这个项目里，LLM 最应该承担的 5 件事
+
+● 我把 Hugging Face 范围的新结论也补进文档后，就可以结束这轮检索了。
+
+● 已更新到：
+
+  /home/zj/workspace/stok-mapping/refdocs/LOCAL_LLM_RECOMMENDATION.md
+
+  这次补进去的内容主要包括：
+
+  - 基于 Hugging Face 模型卡 的新排序
+  - 新增 Qwen3-Coder-30B-A3B-Instruct 作为工程代理
+  - 新增 Magistral-Small-2506 作为国际多语言备选
+  - 说明 Gemma 3 和 Llama 4 为什么不适合作为你的第一选择
+  - 把推荐结构细化成：
+    - 主代理：Qwen3-32B
+    - 工程代理：Qwen3-Coder-30B-A3B-Instruct
+    - 审查器：DeepSeek-R1-0528
+
+  如果你要，我下一步可以继续把这份文档再扩展成一份更实用的：
+
+  “按你的硬件条件选模型 + 本地部署命令 + 怎么接到 stok-mapping” 的实施方案。
+
+✻ Churned for 1m 37s
+
+※ recap: Goal is to use local LLMs with your stok-mapping project for A-share analysis and decision support; the current task updated refdocs/LOCAL_LLM_RECOMMENDATION.md with Hugging Face-based model rankings. Next action is to write a practical deployment plan mapping chosen models to your hardware and project toolchain.
+
+❯ 写这个实施方案                                                                
+
+  Thought for 14s (ctrl+o to expand)
+
+● 我会把本地 LLM 的选型、硬件分档、部署命令和接入 stok-mapping
+  的方式整理成一份可执行实施方案，写到 refdocs。
+
+● 我先读取现有的选型文档和项目运行方式，再写成可执行的实施方案。
+
+  Read 3 files (ctrl+o to expand)
+
+● 我会把方案写成一份单独文档，覆盖硬件分档、模型组合、部署命令、接入
+  stok-mapping 的 Agent 架构、每日运行流程和风险边界。
+
+● Write(refdocs/LOCAL_LLM_IMPLEMENTATION_PLAN.md)
+  ⎿  Wrote 522 lines to refdocs/LOCAL_LLM_IMPLEMENTATION_PLAN.md
+      2 # 本地 LLM 部署与接入 `stok-mapping` 实施方案
+      3 目标：在本地部署一个可控的 LLM/Agent 系统，让它**使用 `stok-mappi
+        ng` 已开发的工具**完成盘前阅读、看盘分析、研究总结、候选策略比较
+        与观察池生成。
+      4 
+        *。它不能替代策略引擎，也不应在当前阶段直接自动下单。 前研判助手*
+      6 
+      7 ---
+      8 
+      9 ## 1. 你现在最适合的目标形态
+     … +524 lines (ctrl+o to expand)
+
+● 已写好实施方案，文件在：
+
+  /home/zj/workspace/stok-mapping/refdocs/LOCAL_LLM_IMPLEMENTATION_PLAN.md
+
+  里面已经包括：
+  - 按硬件条件选模型
+  - 单模型 / 双模型 / 三代理结构
+  - vLLM / SGLang / Ollama 的部署建议
+  - 适合 stok-mapping 的 Agent 架构
+  - 建议开放给 LLM 的本地工具集
+  - 输入/输出协议建议
+  - 每日 07:30 盘前研判的落地流程
+  - 风险边界与不要开放的能力
+
+  如果你要，我下一步可以继续直接帮你做最实用的一步：
+
+  把这份方案进一步落成一个“最小可运行 PoC 目录结构 + Python 
+  脚本骨架”，让你可以开始接 Qwen3 到 stok-mapping。
+
+✻ Worked for 2m 10s
+
+❯ 不需要，现在检查项目进度。                                                    
+
+  Thought for 13s (ctrl+o to expand)
+
+● 我先检查当前代码、报告和工作区改动，给你一个简明的项目进度快照。
+
+● 我会并行检查 git 状态、关键报告和当前 Phase 0 是否过门槛。
+
+● Bash(git status --short)
+  ⎿  (No output)
+
+  Searched for 1 pattern, read 3 files (ctrl+o to expand)
+● 我还要补一眼当前未提交改动的大致范围，避免只看报告漏掉开发进展。
+
+● Bash(git status --short && git diff --stat -- config.yaml pyproject.toml
+      phase0 reports refdocs | sed -n '1,120p')
+  ⎿  (No output)
+
+● git 输出这次没返回，我改用更直接的命令再看一次工作区变化。
+
+● Bash(git status --short; git diff --stat -- config.yaml pyproject.toml phase0
+      reports refdocs)
+  ⎿  (No output)
+
+● 我已经有足够信息给你项目快照了，先整理结论。
+
+● 当前项目进度可以概括成一句话：
+
+  Phase 0 基础设施和研究资料层已经比较完整，但主策略效果门槛还没过，项目目前处在
+  “数据与框架就绪、alpha 还需继续打磨”的阶段。
+
+  1. 基础设施进度
+
+  已经基本到位：
+
+  - 本地 A 股历史库已建好：data/manual_history/a_share_history.sqlite
+  - 日线、指数、交易日历、退市清单已导入
+  - 季度财务因子已接入，README 已写明：
+    - ROE
+    - 营收/利润增速
+    - 现金流质量
+    - 资产负债率
+  - phase0.cli 已支持：
+    - run
+    - build-universe
+    - import-history
+    - import-index-history
+    - update-history
+    - update-financials
+
+  说明：Phase 0 作为研究底座已经成型。
+
+  ---
+  2. 当前回测状态
+
+  核心结论：还没过 Effectiveness Gate。
+
+  来自 reports/phase0_effectiveness_report.md:1：
+
+  - Overall verdict: FAIL
+
+  门槛结果：
+
+  - annualized_return_mean > 0 → PASS
+  - sharpe_mean > 0.5 → FAIL
+  - max_drawdown_mean > -0.25 → FAIL
+  - win_rate_mean > 0.45 → PASS
+  - oos_return_decay_ratio < 0.30 → PASS
+
+  关键指标：
+
+  - 年化收益均值：0.3360
+  - 夏普均值：0.3358
+  - 最大回撤均值：-0.3074
+  - 胜率均值：0.4622
+  - 年化换手：51.65
+
+  说明：
+  - 收益不是问题
+  - 主要问题是风险收益比不够好，且回撤偏大
+
+  ---
+  3. 当前胜出的策略
+
+  来自 reports/phase0_walk_forward_report.md:17：
+
+  - 当前选中的候选：legacy_momentum
+
+  候选比较里能看到：
+
+  - legacy_momentum：当前最好
+  - xmarket_* 系列：整体偏弱
+  - residual_momentum_reversal_v1：当前结果也不理想
+
+  这和你项目主线的调整是一致的：
+
+  ▎ 跨市场映射更适合做 overlay，不适合继续当主 ranker。
+
+  ---
+  4. 文献与研究资料进度
+
+  这部分完成度很高，已经形成了可复用资料库。
+
+  已归档英文/公开论文
+
+  在：
+  - refdocs/INDEX.md
+  - refdocs/pdfs/
+  - refdocs/markdown/
+  - refdocs/metadata/
+
+  已归档中文 A 股论文
+
+  在：
+  - refdocs/cn_a_share/INDEX.md
+  - refdocs/cn_a_share/markdown/
+  - refdocs/cn_a_share/pdfs/
+  - refdocs/cn_a_share/metadata/
+
+  已完成的策略文档
+
+  你现在已经有：
+
+  - refdocs/cn_a_share/STRATEGY_SUMMARY.md
+  - refdocs/cn_a_share/STRATEGY_DEV_CHECKLIST.md
+  - refdocs/cn_a_share/PHASE0_CANDIDATE_STRATEGIES.md
+
+  说明：
+  - “该研究什么策略、怎么做任务拆解、下一步先测什么” 这层已经准备好了。
+
+  ---
+  5. 本地 LLM 方案进度
+
+  这部分也已经准备好文档，不是阻塞项。
+
+  已有：
+
+  - refdocs/LOCAL_LLM_RECOMMENDATION.md
+  - refdocs/LOCAL_LLM_IMPLEMENTATION_PLAN.md
+
+  目前结论明确：
+  - 主代理：Qwen3-32B
+  - 工程代理：Qwen3-Coder
+  - 审查器：DeepSeek-R1-0528
+
+  但这部分现在不是主矛盾，主矛盾还是：
+
+  ▎ 策略效果没过门。
+
+  ---
+  6. 当前项目处于哪个阶段
+
+  我会把它定位成：
+
+  已完成
+
+  - 数据底座
+  - 本地 fallback
+  - universe 构建
+  - walk-forward 框架
+  - 候选策略比较框架
+  - 文献归档与策略研究资料层
+  - 本地 LLM 选型与实施方案
+
+  未完成
+
+  - 通过 Effectiveness Gate 的主策略
+  - 回撤更可控的 ranker
+  - 更稳的本土因子组合
+  - 可进入下一阶段的主候选策略
+
+  ---
+  7. 你现在最应该关注的下一步
+
+  按优先级，我建议是：
+
+  1. 继续做策略层迭代，不要先花力气在 Agent 自动化上
+  2. 优先验证你文档里已经列出的 3 个方向：
+    - 短周期残差动量 + 反转增强
+    - 多因子 + 量价二次筛选
+    - 均线/K线 baseline
+  3. 目标不是先追更高收益，而是：
+    - 先把 sharpe_mean 拉过 0.5
+    - 把 max_drawdown_mean 收回到 -0.25 以内
+
+  ---
+  8. 一句话状态结论
+
+  项目“底座、文献、工具、方案”都已经很完整；真正卡住进度的唯一核心问题，是主策略
+  还没有通过效果门槛。
+
+  如果你愿意，我下一步可以直接基于你现有文档，帮你把：
+  “下一轮最该实现的 3 个候选策略”
+  进一步压成一个本周执行清单。
+
+✻ Baked for 1m 24s
+
+※ recap: Goal is to improve stok-mapping into a usable A-share research and pre-market analysis system; we just checked project progress and confirmed the data/docs foundation is ready but Phase 0 strategy performance still fails the gate. Next, implement and test the top three candidate strategies from the new Phase 0 strategy docs.
+
+❯ 将上述检查项目进度结论，写入项目开发日志                                      
+
+  Thought for 12s (ctrl+o to expand)
+
+● 我先定位现有的项目开发日志文件，再把这次进度检查结论追加进去。
+
+  Searched for 1 pattern, read 1 file (ctrl+o to expand)
+
+● 我会把这次进度快照作为新的日志条目追加到
+  reports/phase0_strategy_change_log.md。
+
+● Update(reports/phase0_strategy_change_log.md)
+  ⎿  Added 37 lines
+       72  - `residual_momentum_reversal_v1`: annualized return mean `-0.
+           0539`, Sharpe mean `-0.3902`, max drawdown mean `-0.1477`.
+       73  - It improves drawdown versus `legacy_momentum` but loses mone
+           y and has negative Sharpe in the current Phase 0 setup.
+       74  - Conclusion: do not promote this candidate to the main strate
+           gy. Next useful step is to add industry, market-cap, liquidity
+           , and fundamental data before retesting local factor candidate
+           s.
+       75 +                                                              
+       76 +## 2026-05-29: project progress checkpoint                    
+       77 +                                                              
+       78 +Status summary:                                               
+       79 +- Phase 0 infrastructure is largely in place: local A-share hi
+          +story database, index history, trading calendar, delisted stoc
+          +k list, walk-forward framework, universe builder, and candidat
+          +e comparison outputs are all available.                       
+       80 +- Quarterly financial factors are now integrated into the loca
+          +l database and documented in `README.md`, including `roe`, `re
+          +venue_growth`, `profit_growth`, `operating_cash_flow_to_net_pr
+          +ofit`, and `debt_to_asset`.                                   
+       81 +- Research-document support is now substantially improved: Eng
+          +lish/open-access reference papers, Chinese A-share papers, str
+          +ategy summaries, development checklists, candidate strategy no
+          +tes, local LLM recommendations, and local LLM implementation p
+          +lans have all been archived under `refdocs/`.                 
+       82 +                                                              
+       83 +Current strategy state:                                       
+       84 +- Current selected candidate remains `legacy_momentum`.       
+       85 +- The latest effectiveness gate still fails overall.          
+       86 +- Snapshot from `reports/phase0_effectiveness_report.md`:     
+       87 +  - `annualized_return_mean`: `0.33599064897406206` (pass)    
+       88 +  - `sharpe_mean`: `0.3357946743577156` (fail vs `> 0.5`)     
+       89 +  - `max_drawdown_mean`: `-0.30737744830217145` (fail vs `> -0
+          +.25`)                                                         
+       90 +  - `win_rate_mean`: `0.46218977423976626` (pass)             
+       91 +  - `oos_return_decay_ratio`: `-1.8724556472813825` (pass)    
+       92 +- Interpretation: return level is acceptable for Phase 0, but 
+          +the risk-adjusted profile and drawdown are not yet good enough
+          + to pass the gate.                                            
+       93 +                                                              
+       94 +What is effectively done:                                     
+       95 +- Data foundation: usable.                                    
+       96 +- Walk-forward framework: usable.                             
+       97 +- Candidate comparison framework: usable.                     
+       98 +- Financial factor ingestion: available but not yet fully prom
+          +oted into the main ranking logic.                             
+       99 +- Documentation and literature review layer: strong enough to 
+          +guide the next strategy iteration.                            
+      100 +- Local LLM selection and implementation planning: documented,
+          + but not the main bottleneck.                                 
+      101 +                                                              
+      102 +Main blocker:                                                 
+      103 +- The project is no longer blocked by data plumbing or documen
+          +tation. The main blocker is still alpha quality: the main stra
+          +tegy has not yet passed the effectiveness gate.               
+      104 +                                                              
+      105 +Recommended next focus:                                       
+      106 +- Prioritize strategy iteration over agent automation.        
+      107 +- The next practical candidates to test remain:               
+      108 +  1. short-horizon residual momentum + reversal enhancement,  
+      109 +  2. multi-factor + volume/price second-stage filtering,      
+      110 +  3. simple MA/K-line baseline.                               
+      111 +- Primary objective for the next cycle is not higher raw retur
+          +n first, but improving `sharpe_mean` above `0.5` and reducing 
+          +`max_drawdown_mean` to better than `-0.25`.                   
+
+● 已写入项目开发日志：
+
+  /home/zj/workspace/stok-mapping/reports/phase0_strategy_change_log.md
+
+  我把这次内容作为一个新的日志条目追加进去了，标题是：
+
+  - 2026-05-29: project progress checkpoint
+
+  里面包含了：
+  - 当前基础设施完成度
+  - 财务因子接入状态
+  - 文献/策略资料归档状态
+  - 当前 legacy_momentum 的门槛结果
+  - 现在真正的主阻塞点
+  - 下一步建议优先做的 3 个方向
+
+  如果你要，我下一步可以直接把这个 checkpoint
+  再同步压成一份更适合周报/汇报的简版。
+
+✻ Brewed for 42s
+
+❯ 做开发计划，把：“下一轮最该实现的 3 个候选策略”进一步压成一个本周执行清单     
+
+● 我会先进入规划模式，把这 3 个候选策略拆成一份可执行的本周开发清单。
+
+● Entered plan mode
+  Claude is now exploring and designing an implementation approach.
+
+● 我先并行摸清现有候选策略接入点、配置结构和报告输出方式，再把这 3
+  个候选策略压成可执行的一周计划。
+
+● 2 Explore agents finished (ctrl+o to expand)
+   ├ Explore strategy hooks · 4 tool uses · 0 tokens
+   │ ⎿  Done
+   └ Explore reporting patterns · 16 tool uses · 0 tokens
+     ⎿  Done
+
+  Thought for 1m 38s (ctrl+o to expand)
+
+● 我已经摸清了候选策略接入点和报告链路，接下来让一个规划代理把这 3
+  个候选策略压成一份可执行的一周计划。
+
+● Plan(Plan weekly strategy work)
+  ⎿  Done (23 tool uses · 90.3k tokens · 4m 23s)
+  (ctrl+o to expand)
+
+● 我已经收敛出一条明确路径：先用最低复杂度基线验证，再迭代局部增强，最后冲主候选
+  过门槛。
+
+● Updated plan
+  ⎿  /plan to preview
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ 本周开发计划：下一轮 3 个候选策略执行清单                               │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ 当前 stok-mapping 的 Phase 0 基础设施、回测框架、股票池和本地历史库已经 │
+     │ 可用，主阻塞点不再是数据管线，而是主策略效果未过门槛。当前              │
+     │ legacy_momentum 虽然年化收益为正，但                                    │
+     │ sharpe_mean=0.3358、max_drawdown_mean=-0.3074，导致                     │
+     │ reports/phase0_effectiveness_report.md 仍为 FAIL。                      │
+     │                                                                         │
+     │ 下一轮的目标不是继续扩展跨市场 ranker，而是围绕 A 股本土主因子          │
+     │ 做一周内可落地、可比较、可复盘的三组候选策略实验，并用现有              │
+     │ compare/report/gate 链路验证是否能把夏普拉过 0.5、把平均最大回撤收回到  │
+     │ -0.25 以内。                                                            │
+     │                                                                         │
+     │ 推荐执行顺序                                                            │
+     │                                                                         │
+     │ 1. MA/K 线低复杂度 baseline                                             │
+     │ 2. 短周期残差动量 + 反转增强 v2                                         │
+     │ 3. 多因子 + 量价二次筛选 v1                                             │
+     │                                                                         │
+     │ 理由：                                                                  │
+     │ - 第 1 个最容易落地，先提供一个低复杂度风险基线。                       │
+     │ - 第 2 个已有 residual_momentum_reversal_v1                             │
+     │ 可复用，是最快的本土因子增强路径。                                      │
+     │ - 第 3 个最可能真正冲击现有效果门槛，但依赖共享价格/量能特征和更清晰的  │
+     │ 候选报告，因此放在本周后半段实现。                                      │
+     │                                                                         │
+     │ 本周实施步骤                                                            │
+     │                                                                         │
+     │ Day 1：共享特征与候选报告增强                                           │
+     │                                                                         │
+     │ 目标：一次性补齐 3                                                      │
+     │ 个候选策略都能复用的价格/量能特征和更清晰的候选输出。                   │
+     │                                                                         │
+     │ 修改文件                                                                │
+     │ - phase0/walk_forward.py                                                │
+     │ - phase0/reporting.py                                                   │
+     │ - phase0/cli.py                                                         │
+     │ - config.yaml                                                           │
+     │                                                                         │
+     │ 实施内容                                                                │
+     │ - 在 phase0/walk_forward.py 的现有 symbol panel                         │
+     │ 加载路径上扩展并统一保留：high、low、volume、amount。                   │
+     │ - 在共享特征层新增并统一复用：                                          │
+     │   - gap_ret                                                             │
+     │   - range_pct                                                           │
+     │   - body_pct                                                            │
+     │   - upper_shadow_pct                                                    │
+     │   - lower_shadow_pct                                                    │
+     │   - amount_ma20                                                         │
+     │   - amount_ratio20                                                      │
+     │   - close_vs_ma20                                                       │
+     │   - breakout20                                                          │
+     │ - 保持跨市场信号只做 overlay，不新增新的 cross-market 主 ranker。       │
+     │ - 在候选比较报告中增加 per-candidate 汇总表，替代只依赖                 │
+     │ candidate_comparison 长字符串。                                         │
+     │                                                                         │
+     │ 复用现有函数/结构                                                       │
+     │ - phase0/walk_forward.py：_load_symbol_cached、_calc_metrics、_summariz │
+     │ e_rows、_candidate_score、_run_compare                                  │
+     │ - phase0/reporting.py：write_walk_forward_report、write_effectiveness_g │
+     │ ate_report                                                              │
+     │ - phase0/cli.py：run_phase0                                             │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Day 2：实现候选 1 —— ma_kline_baseline_v1                               │
+     │                                                                         │
+     │ 目标：最快建立一个低复杂度、可解释、可复现的技术面 baseline。           │
+     │                                                                         │
+     │ 修改文件                                                                │
+     │ - phase0/walk_forward.py                                                │
+     │ - config.yaml                                                           │
+     │ - README.md                                                             │
+     │ - reports/phase0_strategy_change_log.md                                 │
+     │                                                                         │
+     │ 最小策略范围                                                            │
+     │ - compare-only candidate：ma_kline_baseline_v1                          │
+     │ - long-only portfolio                                                   │
+     │ - 规则：                                                                │
+     │   - close > ma20                                                        │
+     │   - ma20 > ma60                                                         │
+     │   - body_pct > 0                                                        │
+     │   - upper_shadow_pct 低于阈值                                           │
+     │   - amount_ratio20 >= threshold                                         │
+     │ - 排名：优先用已有 mom20 或 breakout20                                  │
+     │ - 组合：沿用现有 top_n、交易成本、vol/turnover 评估                     │
+     │                                                                         │
+     │ 实现方式                                                                │
+     │ - 在 phase0/walk_forward.py 中新增：                                    │
+     │   - _apply_ma_kline_baseline_portfolio_strategy                         │
+     │   - _select_ma_kline_baseline_params                                    │
+     │   - _format_ma_kline_baseline_params                                    │
+     │   - _run_ma_kline_baseline_portfolio                                    │
+     │ - 在 _run_compare() 中注册候选                                          │
+     │                                                                         │
+     │ 保留条件                                                                │
+     │ - 若不能过全门槛，至少满足以下之一才继续保留：                          │
+     │   - max_drawdown_mean > -0.25                                           │
+     │   - 或者相对 legacy_momentum 的回撤改善 ≥ 0.05 且                       │
+     │ annualized_return_mean > 0                                              │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Day 3-4：实现候选 2 —— residual_momentum_reversal_v2                    │
+     │                                                                         │
+     │ 目标：在已有 residual_momentum_reversal_v1                              │
+     │ 基础上做最小增强，而不是重写。                                          │
+     │                                                                         │
+     │ 修改文件                                                                │
+     │ - phase0/walk_forward.py                                                │
+     │ - config.yaml                                                           │
+     │ - README.md                                                             │
+     │ - reports/phase0_strategy_change_log.md                                 │
+     │                                                                         │
+     │ 最小策略范围                                                            │
+     │ - compare-only candidate：residual_momentum_reversal_v2                 │
+     │ - 继续使用 pool-relative residual momentum，不做完整行业/市值回归中性化 │
+     │ - 增强点只保留两个：                                                    │
+     │   a. 更稳的短周期反转过滤                                               │
+     │   b. 量能/上影线过滤，避免追逐过热信号                                  │
+     │ - 规则建议：                                                            │
+     │   - residual rank：resid_mom5/10/20                                     │
+     │   - reversal filter：mom1 或 mom3                                       │
+     │   - close > ma20                                                        │
+     │   - 维持现有 volatility filter                                          │
+     │   - 新增 amount_ratio20 下限                                            │
+     │   - 新增 upper_shadow_pct 或 gap_ret 上限                               │
+     │ - 默认先关掉 cross-market overlay；如本地效果良好，再做一轮软           │
+     │ risk_scale 复测                                                         │
+     │                                                                         │
+     │ 复用现有函数/结构                                                       │
+     │ - phase0/walk_forward.py：                                              │
+     │   - _add_local_factor_features                                          │
+     │   - _apply_residual_momentum_reversal_portfolio_strategy                │
+     │   - _select_residual_momentum_reversal_params                           │
+     │                                                                         │
+     │ 保留条件                                                                │
+     │ - 必须同时优于当前 residual_momentum_reversal_v1：                      │
+     │   - 更高 annualized_return_mean                                         │
+     │   - 更高 sharpe_mean                                                    │
+     │   - max_drawdown_mean 不更差                                            │
+     │ - 若要继续留在 compare 模式，至少达到：                                 │
+     │   - annualized_return_mean > 0                                          │
+     │   - 且 sharpe_mean >= 0.40 或 max_drawdown_mean > -0.25                 │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Day 5-6：实现候选 3 —— multifactor_volume_price_filter_v1               │
+     │                                                                         │
+     │ 目标：这是本周最重要的“冲门槛”候选。                                    │
+     │                                                                         │
+     │ 修改文件                                                                │
+     │ - phase0/walk_forward.py                                                │
+     │ - config.yaml                                                           │
+     │ - README.md                                                             │
+     │ - reports/phase0_strategy_change_log.md                                 │
+     │                                                                         │
+     │ 最小策略范围                                                            │
+     │ - candidate 名称建议：multifactor_volume_price_filter_v1                │
+     │ - 利用现有 point-in-time 财务因子能力，不改 universe 评分，只在         │
+     │ walk-forward 中用                                                       │
+     │ - 两阶段结构：                                                          │
+     │   a. Stage 1 排名：                                                     │
+     │       - quality_growth_score                                            │
+     │     - residual momentum percentile                                      │
+     │     - low-vol / trend stability percentile                              │
+     │   b. Stage 2 过滤：                                                     │
+     │       - close > ma20 > ma60                                             │
+     │     - amount_ratio20 >= threshold                                       │
+     │     - 可选 breakout20 > 0                                               │
+     │     - upper_shadow_pct <= threshold                                     │
+     │ - 组合规模：top_n 先控制在 5 或 10                                      │
+     │                                                                         │
+     │ 建议的最小复合分数                                                      │
+     │ - 45% quality_growth_score                                              │
+     │ - 35% residual momentum percentile                                      │
+     │ - 20% low-volatility percentile                                         │
+     │                                                                         │
+     │ 复用现有函数/结构                                                       │
+     │ - phase0/walk_forward.py：                                              │
+     │   - _load_financial_factor_frame                                        │
+     │   - _add_point_in_time_financial_factors                                │
+     │   - _add_quality_growth_features                                        │
+     │   - 现有 portfolio runner / compare runner 模式                         │
+     │ - 不改 phase0/universe.py 本周的评分逻辑                                │
+     │                                                                         │
+     │ 保留 / 晋级条件                                                         │
+     │ - 理想目标：直接通过当前 Effectiveness Gate：                           │
+     │   - annualized_return_mean > 0                                          │
+     │   - sharpe_mean > 0.5                                                   │
+     │   - max_drawdown_mean > -0.25                                           │
+     │   - win_rate_mean > 0.45                                                │
+     │   - oos_return_decay_ratio < 0.30                                       │
+     │ - 若未全过，也至少要比当前 legacy_momentum 同时改善：                   │
+     │   - sharpe_mean > 0.3358                                                │
+     │   - max_drawdown_mean > -0.3074                                         │
+     │                                                                         │
+     │ ---                                                                     │
+     │ Day 7：统一 compare、决策与日志归档                                     │
+     │                                                                         │
+     │ 目标：完成一轮有结论的策略周迭代，而不是只留零散实验。                  │
+     │                                                                         │
+     │ 修改文件                                                                │
+     │ - reports/phase0_strategy_change_log.md                                 │
+     │ - 必要时更新 README.md 中当前状态/主线说明                              │
+     │                                                                         │
+     │ 执行内容                                                                │
+     │ - 跑完整 compare mode                                                   │
+     │ - 检查：                                                                │
+     │   - reports/phase0_walk_forward_candidates.csv                          │
+     │   - reports/phase0_walk_forward_report.md                               │
+     │   - reports/phase0_effectiveness_report.md                              │
+     │ - 记录每个候选的：                                                      │
+     │   - 变更原因                                                            │
+     │   - 参数范围                                                            │
+     │   - 最新结果                                                            │
+     │   - 保留 / 淘汰 / 晋级结论                                              │
+     │ - 若本周没有候选过门槛：                                                │
+     │   - 保留 ma_kline_baseline_v1 作为诊断地板                              │
+     │   - 在 residual_momentum_reversal_v2 与                                 │
+     │ multifactor_volume_price_filter_v1 中只保留更优者继续 compare           │
+     │   - 不动 universe 评分，下一周把重点转向特征质量而不是框架 plumbing     │
+     │                                                                         │
+     │ 配置项计划                                                              │
+     │                                                                         │
+     │ 在 config.yaml 中新增以下块，保持 config-first 风格：                   │
+     │                                                                         │
+     │ 1. 共享价格/量能特征块                                                  │
+     │                                                                         │
+     │ - price_volume_features.amount_ma_window                                │
+     │ - price_volume_features.breakout_window                                 │
+     │ - price_volume_features.shadow_clip                                     │
+     │                                                                         │
+     │ 2. ma_kline_baseline 块                                                 │
+     │                                                                         │
+     │ - baseline_ma_kline.enabled                                             │
+     │ - baseline_ma_kline.top_n_values                                        │
+     │ - baseline_ma_kline.trend_windows                                       │
+     │ - baseline_ma_kline.amount_ratio_mins                                   │
+     │ - baseline_ma_kline.upper_shadow_max_values                             │
+     │                                                                         │
+     │ 3. residual_reversal_v2 块                                              │
+     │                                                                         │
+     │ - local_factor.residual_reversal_v2.enabled                             │
+     │ - local_factor.residual_reversal_v2.residual_windows                    │
+     │ - local_factor.residual_reversal_v2.reversal_windows                    │
+     │ - local_factor.residual_reversal_v2.amount_ratio_mins                   │
+     │ - local_factor.residual_reversal_v2.upper_shadow_max_values             │
+     │ - local_factor.residual_reversal_v2.use_xmarket_overlay                 │
+     │                                                                         │
+     │ 4. multifactor_filter 块                                                │
+     │                                                                         │
+     │ - local_factor.multifactor_filter.enabled                               │
+     │ - local_factor.multifactor_filter.factor_weights                        │
+     │ - local_factor.multifactor_filter.top_n_values                          │
+     │ - local_factor.multifactor_filter.amount_ratio_mins                     │
+     │ - local_factor.multifactor_filter.breakout_required                     │
+     │ - local_factor.multifactor_filter.upper_shadow_max_values               │
+     │ - local_factor.multifactor_filter.use_xmarket_overlay                   │
+     │                                                                         │
+     │ 默认建议：                                                              │
+     │ - 新候选第一轮都从 use_xmarket_overlay: false 开始                      │
+     │ - 若本地策略表现成立，再单独加 overlay 做第二轮复测                     │
+     │                                                                         │
+     │ 关键文件                                                                │
+     │                                                                         │
+     │ - phase0/walk_forward.py                                                │
+     │ - config.yaml                                                           │
+     │ - phase0/reporting.py                                                   │
+     │ - phase0/cli.py                                                         │
+     │ - README.md                                                             │
+     │ - reports/phase0_strategy_change_log.md                                 │
+     │                                                                         │
+     │ 验证方式                                                                │
+     │                                                                         │
+     │ 每个候选上线前                                                          │
+     │                                                                         │
+     │ - 检查本地历史库新鲜度和覆盖率                                          │
+     │ - 检查 market_financial_factors 覆盖率是否仍达标                        │
+     │ - 检查 universe 规模是否足够供 walk-forward 使用                        │
+     │                                                                         │
+     │ 每个候选上线后                                                          │
+     │                                                                         │
+     │ - 运行：python -m phase0.cli run --config config.yaml                   │
+     │ - 核对：                                                                │
+     │   - reports/phase0_walk_forward_candidates.csv 中 candidate             │
+     │ 是否正常产出 fold                                                       │
+     │   - reports/phase0_walk_forward_report.md 中是否有 per-candidate 汇总   │
+     │   - reports/phase0_effectiveness_report.md 是否改善 gate 状态           │
+     │ - 追加更新 reports/phase0_strategy_change_log.md                        │
+     │                                                                         │
+     │ 本周成功标准                                                            │
+     │                                                                         │
+     │ 本周计划只有在以下条件全部成立时才算成功：                              │
+     │                                                                         │
+     │ 1. compare mode 中出现一个不是 legacy_momentum 的新优胜候选             │
+     │ 2. reports/phase0_effectiveness_report.md 显示：                        │
+     │   - annualized_return_mean > 0                                          │
+     │   - sharpe_mean > 0.5                                                   │
+     │   - max_drawdown_mean > -0.25                                           │
+     │   - win_rate_mean > 0.45                                                │
+     │   - oos_return_decay_ratio < 0.30                                       │
+     │ 3. 优胜候选不是由极少 fold 的偶然结果支撑                               │
+     │ 4. reports/phase0_strategy_change_log.md 中明确记录晋级原因             │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+❯ save content of this plan to a .md document, then start this plan.            
+  Thought for 21s (ctrl+o to expand)
+
+● 我先把计划文件内容落到项目里的 Markdown 文档，再开始按这个计划执行。
+
+  Read 1 file (ctrl+o to expand)
+
+  Thought for 16s (ctrl+o to expand)
+
+● 我先把执行计划落到项目文档里，然后开始做第一步：共享特征和候选报告增强。
+
+● Write(refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md)
+  ⎿  Wrote 140 lines to refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md
+      2 # 本周开发计划：下一轮 3 个候选策略执行清单
+      4 ## Context
+      5 当前 `stok-mapping` 的 Phase 0 基础设施、回测框架、股票池和本地历
+        前 `legacy_momentum` 虽然年化收益为正，但 `sharpe_mean=0.3358`、`
+        max_drawdown_mean=-0.3074`，导致 `reports/phase0_effectiveness_re
+      6 port.md` 仍为 FAIL。
+        * 做一周内可落地、可比较、可复盘的三组候选策略实验，并用现有 comp
+        are/report/gate 链路验证是否能把夏普拉过 `0.5`、把平均最大回撤收
+      8 回到 `-0.25` 以内。
+      9 ## 推荐执行顺序
+     … +146 lines (ctrl+o to expand)
+
+● 计划文档已经落地；我现在开始执行 Day
+  1，先检查实现入口和报告函数的具体代码位置。
+
+❯ 先暂停执行，切换模型到opus 
+
+● 我已先把计划保存到项目文档：
+
+  - refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md
+
+  并且已经暂停执行 Day 1。
+
+  关于“切换模型到 opus”：
+  我这里不能直接替你切换当前会话模型设置。你可以在 Claude Code 里运行：
+
+  /model
+
+  然后选择 Opus。
+
+  切换好后回我一句“继续”，我就从 Day 1 开始按这份周执行清单推进。
+
+✻ Baked for 2m 11s
+
+❯ /model                                                                        
+  ⎿  Set model to Opus 4.7 (1M context) (default) and saved as your default for
+     new sessions
+
+❯ 检查项目状态：reports/phase0_strategy_change_log.md,                          
+  检查优化润色项目周计划：refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md      
+
+✻ Crunched for 21s
+
+❯ 检查项目状态：reports/phase0_strategy_change_log.md,                          
+    检查优化润色项目周计划：refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md    
+
+✻ Churned for 6s
+
+❯ 打断计划执行。                                                                
+
+✻ Churned for 9s
+
+❯ 检查项目状态：reports/phase0_strategy_change_log.md,                          
+    检查优化润色项目周计划：refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md    
+
+✻ Brewed for 7s
+
+❯ 继续                                                                          
+
+✻ Sautéed for 8s
+
+❯ /model                                                                        
+  ⎿  Set model to Sonnet 4.6 (1M context) and saved as your default for new
+     sessions
+
+❯ 执行计划                                                                      
+
+  Thought for 18s (ctrl+o to expand)
+
+● 我先复核当前项目日志和周计划，再开始执行 Day 1 的共享特征与报告增强。
+● 我会先读取日志和周计划，做一次快速检查和润色，然后再恢复执行计划。
+
+  Read 3 files (ctrl+o to expand)
+
+● 我先把周计划文档和当前项目状态对齐，再立即开始 Day 1 的实现。
+
+● Update(refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md)
+  ⎿  Added 8 lines, removed 1 line
+       8  
+       9  ## 推荐执行顺序
+      10  
+      11 +> 说明：**研究优先级** 与 **实现顺序** 不完全相同。研究上最重要
+         +的三个方向仍然是：                                             
+      12 +> 1. 短周期残差动量 + 反转增强                                 
+      13 +> 2. 多因子 + 量价二次筛选                                     
+      14 +> 3. 规则型均线/K线 baseline                                   
+      15 +>                                                              
+      16 +> 但从一周内落地效率看，建议采用下面的**实现顺序**：           
+      17 +                                                               
+      18  1. **MA/K 线低复杂度 baseline**
+      19  2. **短周期残差动量 + 反转增强 v2**
+      20  3. **多因子 + 量价二次筛选 v1**
+      21  
+      22  理由：
+      16 -- 第 1 个最容易落地，先提供一个低复杂度风险基线。              
+      23 +- 第 1 个最容易落地，先提供一个低复杂度风险基线和诊断地板。    
+      24  - 第 2 个已有 `residual_momentum_reversal_v1` 可复用，是最快的
+          本土因子增强路径。
+      25  - 第 3 个最可能真正冲击现有效果门槛，但依赖共享价格/量能特征和
+          更清晰的候选报告，因此放在本周后半段实现。
+      26  
+
+● 周计划已经对齐；我现在开始 Day 1，先检查 walk_forward.py 和 reporting.py
+  的具体实现点，然后动手修改。
+
+  Read 3 files (ctrl+o to expand)
+
+● 我已经确认周计划和项目状态一致；接下来结束这一步检查，转入 Day 1 实施。
+
+● 我现在开始改 Day 1：先补共享价格/量能特征，再增强候选比较报告。
+
+  Thought for 18s, read 1 file (ctrl+o to expand)
+
+● 我先做 Day 1
+  的核心改动：统一补齐价格/量能特征，并把候选比较输出从长字符串升级成表格。
+
+● Update(phase0/walk_forward.py)
+  ⎿  Added 25 lines, removed 2 lines
+      133      return _load_symbol_cached(symbol, years).copy()
+      134  
+      135  
+      136 +def _shadow_ratio(numerator: pd.Series, denominator: pd.Series
+          +) -> pd.Series:                                               
+      137 +    return (numerator / denominator.replace(0, np.nan)).replac
+          +e([np.inf, -np.inf], np.nan).fillna(0.0)                      
+      138 +                                                              
+      139 +                                                              
+      140  @lru_cache(maxsize=256)
+      141  def _load_symbol_cached(symbol: str, years: int) -> pd.DataFra
+           me:
+      142      if symbol.startswith("HK."):
+     ...
+      145          df = _load_cn_daily(symbol, years)
+      146      if df.empty:
+      147          return df
+      144 -    out = df[["date", "open", "close"]].copy()                
+      145 -    out["date"] = pd.to_datetime(out["date"])                 
+      148 +                                                              
+      149 +    out = pd.DataFrame()                                      
+      150 +    out["date"] = pd.to_datetime(df["date"])                  
+      151 +    for col in ["open", "high", "low", "close", "volume", "amo
+          +unt"]:                                                        
+      152 +        if col in df.columns:                                 
+      153 +            out[col] = pd.to_numeric(df[col], errors="coerce")
+      154 +        else:                                                 
+      155 +            out[col] = np.nan                                 
+      156 +                                                              
+      157      out["ret"] = out["close"].pct_change().fillna(0.0)
+      158      out["oc_ret"] = (out["close"] / out["open"].replace(0, np.
+           nan) - 1.0).fillna(0.0)
+      159 +    out["gap_ret"] = (out["open"] / out["close"].shift(1).repl
+          +ace(0, np.nan) - 1.0).fillna(0.0)                             
+      160 +    out["range_pct"] = _shadow_ratio(out["high"] - out["low"],
+          + out["open"])                                                 
+      161 +    out["body_pct"] = _shadow_ratio((out["close"] - out["open"
+          +]).abs(), out["open"])                                        
+      162 +    real_body = (out["close"] - out["open"]).abs()            
+      163 +    out["upper_shadow_pct"] = _shadow_ratio(out["high"] - out[
+          +["open", "close"]].max(axis=1), real_body)                    
+      164 +    out["lower_shadow_pct"] = _shadow_ratio(out[["open", "clos
+          +e"]].min(axis=1) - out["low"], real_body)                     
+      165 +                                                              
+      166      for window in [3, 5, 10, 20, 60]:
+      167          out[f"mom{window}"] = out["close"].pct_change(window)
+      168          out[f"ma{window}"] = out["close"].rolling(window).mean
+           ()
+      169      out["vol20"] = out["ret"].rolling(20).std() * np.sqrt(252)
+      170 +    out["amount_ma20"] = out["amount"].rolling(20).mean()     
+      171 +    out["amount_ratio20"] = _shadow_ratio(out["amount"], out["
+          +amount_ma20"])                                                
+      172 +    out["close_vs_ma20"] = _shadow_ratio(out["close"] - out["m
+          +a20"], out["ma20"])                                           
+      173 +    rolling_high20 = out["high"].rolling(20).max().shift(1)   
+      174 +    out["breakout20"] = (out["close"] > rolling_high20).astype
+          +(float)                                                       
+      175      out = out.dropna().reset_index(drop=True)
+      176      return out
+      177  
+
+● 共享特征已经补上；我现在给 compare 报告加候选汇总表支持。
+
+● Update(phase0/walk_forward.py)
+  ⎿  Added 19 lines
+      1822      )
+      1823  
+      1824  
+      1825 +                                                             
+      1826 +def _candidate_summary_rows(summaries: dict[str, dict[str, fl
+           +oat]]) -> list[dict[str, Any]]:                              
+      1827 +    rows: list[dict[str, Any]] = []                          
+      1828 +    for name, summary in summaries.items():                  
+      1829 +        rows.append(                                         
+      1830 +            {                                                
+      1831 +                "candidate": name,                           
+      1832 +                "score": _candidate_score(summary),          
+      1833 +                "fold_count": int(summary.get("fold_count", 0
+           +)),                                                          
+      1834 +                "annualized_return_mean": float(summary.get("
+           +annualized_return_mean", 0.0)),                              
+      1835 +                "sharpe_mean": float(summary.get("sharpe_mean
+           +", 0.0)),                                                    
+      1836 +                "max_drawdown_mean": float(summary.get("max_d
+           +rawdown_mean", 0.0)),                                        
+      1837 +                "win_rate_mean": float(summary.get("win_rate_
+           +mean", 0.0)),                                                
+      1838 +                "turnover_annual_mean": float(summary.get("tu
+           +rnover_annual_mean", 0.0)),                                  
+      1839 +            }                                                
+      1840 +        )                                                    
+      1841 +    return sorted(rows, key=lambda row: row["score"], reverse
+           +=True)                                                       
+      1842 +                                                             
+      1843 +                                                             
+      1844  def _run_compare(
+      1845      symbols: list[str],
+      1846      years: int,
+
+● Update(phase0/walk_forward.py)
+  ⎿  Added 3 lines, removed 1 line
+      1979          )
+      1980          for name, summary in summaries.items()
+      1981      )
+      1982 +    candidate_summary_rows = _candidate_summary_rows(summarie
+           +s)                                                           
+      1983      selected = candidates[best_name]
+      1984      for row in selected:
+      1985          row["candidate_summary"] = comparison
+      1986 +        row["selected_candidate"] = best_name                
+      1987      all_candidate_rows: list[dict[str, Any]] = []
+      1988      for name, rows in candidates.items():
+      1989          for row in rows:
+     ...
+      1992              enriched["selected_candidate"] = best_name
+      1993              enriched["is_selected_candidate"] = name == best_
+            name
+      1994              all_candidate_rows.append(enriched)
+      1993 -    return selected, all_candidate_rows                      
+      1995 +    return selected, all_candidate_rows, candidate_summary_ro
+           +ws                                                           
+      1996  
+      1997  
+      1998  def _run_single_symbol(
+
+● compare runner 的返回值变了；我接着把主入口和 summary 一并接上。
+
+● Update(phase0/walk_forward.py)
+  ⎿  Added 2 lines, removed 1 line
+      2086      _load_symbol_cached.cache_clear()
+      2087  
+      2088      candidate_rows: list[dict[str, Any]] = []
+      2089 +    candidate_summary_rows: list[dict[str, Any]] = []        
+      2090      if strategy_cfg.get("mode") == "compare":
+      2090 -        all_rows, candidate_rows = _run_compare(             
+      2091 +        all_rows, candidate_rows, candidate_summary_rows = _r
+           +un_compare(                                                  
+      2092              symbols=symbols,
+      2093              years=years,
+      2094              train_years=int(wcfg["train_years"]),
+
+● Update(phase0/walk_forward.py)
+  ⎿  Added 2 lines
+      2171          summary["selected_candidate"] = str(folds_df["candida
+            te"].iloc[0])
+      2172      if "candidate_summary" in folds_df.columns:
+      2173          summary["candidate_comparison"] = str(folds_df["candi
+            date_summary"].iloc[0])
+      2174 +    if candidate_summary_rows:                               
+      2175 +        summary["candidate_summary_rows"] = candidate_summary
+           +_rows                                                        
+      2176  
+      2177      # Out-of-sample proxy: last 20% folds as recent hold-out 
+            segment
+      2178      cutoff = max(1, int(len(folds_df) * 0.2))
+
+● 主回测汇总已经能带候选表了；我现在改报告渲染。
+
+● Update(phase0/reporting.py)
+  ⎿  Added 63 lines, removed 22 lines
+      106                  ]
+      107              )
+      108  
+      109 +    candidate_summary_rows = summary.get("candidate_summary_ro
+          +ws", []) or []                                                
+      110 +    summary_table_rows = [[k, str(v)] for k, v in summary.item
+          +s() if k != "candidate_summary_rows"]                         
+      111 +    candidate_rows = [                                        
+      112 +        [                                                     
+      113 +            str(row.get("candidate", "")),                    
+      114 +            f"{float(row.get('score', 0.0)):.4f}",            
+      115 +            str(int(row.get("fold_count", 0))),               
+      116 +            f"{float(row.get('annualized_return_mean', 0.0)):.
+          +4f}",                                                         
+      117 +            f"{float(row.get('sharpe_mean', 0.0)):.4f}",      
+      118 +            f"{float(row.get('max_drawdown_mean', 0.0)):.4f}",
+      119 +            f"{float(row.get('win_rate_mean', 0.0)):.4f}",    
+      120 +            f"{float(row.get('turnover_annual_mean', 0.0)):.2f
+          +}",                                                           
+      121 +        ]                                                     
+      122 +        for row in candidate_summary_rows                     
+      123 +    ]                                                         
+      124 +                                                              
+      125      lines = [
+      126          "# Phase 0 Walk-Forward Report",
+      127          "",
+     ...
+      129          "",
+      130          "## Summary",
+      131          "",
+      116 -        _md_table(["metric", "value"], [[k, str(v)] for k, v i
+          -n summary.items()]),                                          
+      132 +        _md_table(["metric", "value"], summary_table_rows),   
+      133          "",
+      118 -        "## Fold Details",                                    
+      119 -        "",                                                   
+      120 -        _md_table(                                            
+      121 -            [                                                 
+      122 -                "symbol",                                     
+      123 -                "fold",                                       
+      124 -                "train_start",                                
+      125 -                "train_end",                                  
+      126 -                "valid_start",                                
+      127 -                "valid_end",                                  
+      128 -                "annual_ret",                                 
+      129 -                "sharpe",                                     
+      130 -                "max_dd",                                     
+      131 -                "win_rate",                                   
+      132 -                "turnover_annual",                            
+      133 -                "trades",                                     
+      134 -                "selected_params",                            
+      135 -            ],                                                
+      136 -            rows,                                             
+      137 -        ),                                                    
+      138 -        "",                                                   
+      134      ]
+      135 +    if candidate_rows:                                        
+      136 +        lines.extend(                                         
+      137 +            [                                                 
+      138 +                "## Candidate Summary",                       
+      139 +                "",                                           
+      140 +                _md_table(                                    
+      141 +                    [                                         
+      142 +                        "candidate",                          
+      143 +                        "score",                              
+      144 +                        "fold_count",                         
+      145 +                        "annualized_return_mean",             
+      146 +                        "sharpe_mean",                        
+      147 +                        "max_drawdown_mean",                  
+      148 +                        "win_rate_mean",                      
+      149 +                        "turnover_annual_mean",               
+      150 +                    ],                                        
+      151 +                    candidate_rows,                           
+      152 +                ),                                            
+      153 +                "",                                           
+      154 +            ]                                                 
+      155 +        )                                                     
+      156 +    lines.extend(                                             
+      157 +        [                                                     
+      158 +            "## Fold Details",                                
+      159 +            "",                                               
+      160 +            _md_table(                                        
+      161 +                [                                             
+      162 +                    "symbol",                                 
+      163 +                    "fold",                                   
+      164 +                    "train_start",                            
+      165 +                    "train_end",                              
+      166 +                    "valid_start",                            
+      167 +                    "valid_end",                              
+      168 +                    "annual_ret",                             
+      169 +                    "sharpe",                                 
+      170 +                    "max_dd",                                 
+      171 +                    "win_rate",                               
+      172 +                    "turnover_annual",                        
+      173 +                    "trades",                                 
+      174 +                    "selected_params",                        
+      175 +                ],                                            
+      176 +                rows,                                         
+      177 +            ),                                                
+      178 +            "",                                               
+      179 +        ]                                                     
+      180 +    )                                                         
+      181      path.write_text("\n".join(lines), encoding="utf-8")
+      182  
+      183  
+
+● Day 1 的代码改动已经完成；我现在把新的共享特征配置项补到 config.yaml，保持
+  config-first。
+
+● Update(config.yaml)
+  ⎿  Error editing file
+
+● config.yaml 在我读取后状态变了，我先重新读一小段再精确补上新配置块。
+
+  Read 1 file (ctrl+o to expand)
+● Update(config.yaml)
+  ⎿  Added 4 lines
+      182            SH.600276: healthcare
+      183            SH.600900: defensive
+      184            SH.600030: financial
+      185 +      price_volume_features:                                  
+      186 +        amount_ma_window: 20                                  
+      187 +        breakout_window: 20                                   
+      188 +        shadow_clip: 5.0                                      
+      189        local_factor:
+      190          enabled: true
+      191          residual_momentum_windows: [10, 20]
+
+● Day 1 的共享特征和候选报告增强已经改完；我先做一次只读校验，确认关键改动点存在
+  ，再汇报给你。
+
+  Searched for 1 pattern (ctrl+o to expand)
+
+● Bash(git diff -- phase0/walk_forward.py phase0/reporting.py config.yaml
+      refdocs/cn_a_share/WEEKLY_EXECUTION_CHECKLIST.md | sed -n '1,240p')
+  ⎿  diff --git a/config.yaml b/config.yaml
+     index e4af0a9..1d8b4b8 100644
+     --- a/config.yaml
+     … +237 lines (ctrl+o to expand)
+
+  Thought for 14s (ctrl+o to expand)
+
+● Day 1 已经完成：共享价格/量能特征和候选汇总表已经接入，我现在开始实现
+  ma_kline_baseline_v1。
+
+● 我先定位现有 portfolio 策略的最小可复用模板，然后把 ma_kline_baseline_v1
+  按同样模式接进去。
+
+  Read 1 file (ctrl+o to expand)
+
+● 我已经拿到可复用模板；现在直接按现有 portfolio 候选风格把 ma_kline_baseline_v1
+   接进去。
+
+● Update(phase0/walk_forward.py)
+  ⎿  Error editing file
+
+❯ 补充信息，现在主数据源已经更改为Tushare，你可以检查git记录更新对项目状态的认知 
+  ⎿  Interrupted · What should Claude do instead?
+
+❯ /plan                                                                         
+  ⎿  Current Plan
+     /home/zj/.claude/plans/pure-moseying-bumblebee.md
+
+     本周开发计划：下一轮 3 个候选策略执行清单
+
+     Context
+
+     当前 stok-mapping 的 Phase 0 基础设施、回测框架、股票池和本地历史库已经可用
+     ，主阻塞点不再是数据管线，而是主策略效果未过门槛。当前 legacy_momentum
+     虽然年化收益为正，但 sharpe_mean=0.3358、max_drawdown_mean=-0.3074，导致
+     reports/phase0_effectiveness_report.md 仍为 FAIL。
+
+     下一轮的目标不是继续扩展跨市场 ranker，而是围绕 A 股本土主因子
+     做一周内可落地、可比较、可复盘的三组候选策略实验，并用现有
+     compare/report/gate 链路验证是否能把夏普拉过 0.5、把平均最大回撤收回到 -0.25
+      以内。
+
+     推荐执行顺序
+
+     1. MA/K 线低复杂度 baseline
+     2. 短周期残差动量 + 反转增强 v2
+     3. 多因子 + 量价二次筛选 v1
+
+     理由：
+     - 第 1 个最容易落地，先提供一个低复杂度风险基线。
+     - 第 2 个已有 residual_momentum_reversal_v1
+     可复用，是最快的本土因子增强路径。
+     - 第 3 个最可能真正冲击现有效果门槛，但依赖共享价格/量能特征和更清晰的候选报
+     告，因此放在本周后半段实现。
+
+     本周实施步骤
+
+     Day 1：共享特征与候选报告增强
+
+     目标：一次性补齐 3 个候选策略都能复用的价格/量能特征和更清晰的候选输出。
+
+     修改文件
+     - phase0/walk_forward.py
+     - phase0/reporting.py
+     - phase0/cli.py
+     - config.yaml
+
+     实施内容
+     - 在 phase0/walk_forward.py 的现有 symbol panel
+     加载路径上扩展并统一保留：high、low、volume、amount。
+     - 在共享特征层新增并统一复用：
+       - gap_ret
+       - range_pct
+       - body_pct
+       - upper_shadow_pct
+       - lower_shadow_pct
+       - amount_ma20
+       - amount_ratio20
+       - close_vs_ma20
+       - breakout20
+     - 保持跨市场信号只做 overlay，不新增新的 cross-market 主 ranker。
+     - 在候选比较报告中增加 per-candidate 汇总表，替代只依赖 candidate_comparison
+      长字符串。
+
+     复用现有函数/结构
+     - phase0/walk_forward.py：_load_symbol_cached、_calc_metrics、_summarize_row
+     s、_candidate_score、_run_compare
+     - phase0/reporting.py：write_walk_forward_report、write_effectiveness_gate_r
+     eport
+     - phase0/cli.py：run_phase0
+
+     ---
+     Day 2：实现候选 1 —— ma_kline_baseline_v1
+
+     目标：最快建立一个低复杂度、可解释、可复现的技术面 baseline。
+
+     修改文件
+     - phase0/walk_forward.py
+     - config.yaml
+     - README.md
+     - reports/phase0_strategy_change_log.md
+
+     最小策略范围
+     - compare-only candidate：ma_kline_baseline_v1
+     - long-only portfolio
+     - 规则：
+       - close > ma20
+       - ma20 > ma60
+       - body_pct > 0
+       - upper_shadow_pct 低于阈值
+       - amount_ratio20 >= threshold
+     - 排名：优先用已有 mom20 或 breakout20
+     - 组合：沿用现有 top_n、交易成本、vol/turnover 评估
+
+     实现方式
+     - 在 phase0/walk_forward.py 中新增：
+       - _apply_ma_kline_baseline_portfolio_strategy
+       - _select_ma_kline_baseline_params
+       - _format_ma_kline_baseline_params
+       - _run_ma_kline_baseline_portfolio
+     - 在 _run_compare() 中注册候选
+
+     保留条件
+     - 若不能过全门槛，至少满足以下之一才继续保留：
+       - max_drawdown_mean > -0.25
+       - 或者相对 legacy_momentum 的回撤改善 ≥ 0.05 且 annualized_return_mean > 0
+
+     ---
+     Day 3-4：实现候选 2 —— residual_momentum_reversal_v2
+
+     目标：在已有 residual_momentum_reversal_v1 基础上做最小增强，而不是重写。
+
+     修改文件
+     - phase0/walk_forward.py
+     - config.yaml
+     - README.md
+     - reports/phase0_strategy_change_log.md
+
+     最小策略范围
+     - compare-only candidate：residual_momentum_reversal_v2
+     - 继续使用 pool-relative residual momentum，不做完整行业/市值回归中性化
+     - 增强点只保留两个：
+       a. 更稳的短周期反转过滤
+       b. 量能/上影线过滤，避免追逐过热信号
+     - 规则建议：
+       - residual rank：resid_mom5/10/20
+       - reversal filter：mom1 或 mom3
+       - close > ma20
+       - 维持现有 volatility filter
+       - 新增 amount_ratio20 下限
+       - 新增 upper_shadow_pct 或 gap_ret 上限
+     - 默认先关掉 cross-market overlay；如本地效果良好，再做一轮软 risk_scale
+     复测
+
+     复用现有函数/结构
+     - phase0/walk_forward.py：
+       - _add_local_factor_features
+       - _apply_residual_momentum_reversal_portfolio_strategy
+       - _select_residual_momentum_reversal_params
+
+     保留条件
+     - 必须同时优于当前 residual_momentum_reversal_v1：
+       - 更高 annualized_return_mean
+       - 更高 sharpe_mean
+       - max_drawdown_mean 不更差
+     - 若要继续留在 compare 模式，至少达到：
+       - annualized_return_mean > 0
+       - 且 sharpe_mean >= 0.40 或 max_drawdown_mean > -0.25
+
+     ---
+     Day 5-6：实现候选 3 —— multifactor_volume_price_filter_v1
+
+     目标：这是本周最重要的“冲门槛”候选。
+
+     修改文件
+     - phase0/walk_forward.py
+     - config.yaml
+     - README.md
+     - reports/phase0_strategy_change_log.md
+
+     最小策略范围
+     - candidate 名称建议：multifactor_volume_price_filter_v1
+     - 利用现有 point-in-time 财务因子能力，不改 universe 评分，只在 walk-forward
+      中用
+     - 两阶段结构：
+       a. Stage 1 排名：
+           - quality_growth_score
+         - residual momentum percentile
+         - low-vol / trend stability percentile
+       b. Stage 2 过滤：
+           - close > ma20 > ma60
+         - amount_ratio20 >= threshold
+         - 可选 breakout20 > 0
+         - upper_shadow_pct <= threshold
+     - 组合规模：top_n 先控制在 5 或 10
+
+     建议的最小复合分数
+     - 45% quality_growth_score
+     - 35% residual momentum percentile
+     - 20% low-volatility percentile
+
+     复用现有函数/结构
+     - phase0/walk_forward.py：
+       - _load_financial_factor_frame
+       - _add_point_in_time_financial_factors
+       - _add_quality_growth_features
+       - 现有 portfolio runner / compare runner 模式
+     - 不改 phase0/universe.py 本周的评分逻辑
+
+     保留 / 晋级条件
+     - 理想目标：直接通过当前 Effectiveness Gate：
+       - annualized_return_mean > 0
+       - sharpe_mean > 0.5
+       - max_drawdown_mean > -0.25
+       - win_rate_mean > 0.45
+       - oos_return_decay_ratio < 0.30
+     - 若未全过，也至少要比当前 legacy_momentum 同时改善：
+       - sharpe_mean > 0.3358
+       - max_drawdown_mean > -0.3074
+
+     ---
+     Day 7：统一 compare、决策与日志归档
+
+     目标：完成一轮有结论的策略周迭代，而不是只留零散实验。
+
+     修改文件
+     - reports/phase0_strategy_change_log.md
+     - 必要时更新 README.md 中当前状态/主线说明
+
+     执行内容
+     - 跑完整 compare mode
+     - 检查：
+       - reports/phase0_walk_forward_candidates.csv
+       - reports/phase0_walk_forward_report.md
+       - reports/phase0_effectiveness_report.md
+     - 记录每个候选的：
+       - 变更原因
+       - 参数范围
+       - 最新结果
+       - 保留 / 淘汰 / 晋级结论
+     - 若本周没有候选过门槛：
+       - 保留 ma_kline_baseline_v1 作为诊断地板
+       - 在 residual_momentum_reversal_v2 与 multifactor_volume_price_filter_v1
+     中只保留更优者继续 compare
+       - 不动 universe 评分，下一周把重点转向特征质量而不是框架 plumbing
+
+     配置项计划
+
+     在 config.yaml 中新增以下块，保持 config-first 风格：
+
+     1. 共享价格/量能特征块
+
+     - price_volume_features.amount_ma_window
+     - price_volume_features.breakout_window
+     - price_volume_features.shadow_clip
+
+     2. ma_kline_baseline 块
+
+     - baseline_ma_kline.enabled
+     - baseline_ma_kline.top_n_values
+     - baseline_ma_kline.trend_windows
+     - baseline_ma_kline.amount_ratio_mins
+     - baseline_ma_kline.upper_shadow_max_values
+
+     3. residual_reversal_v2 块
+
+     - local_factor.residual_reversal_v2.enabled
+     - local_factor.residual_reversal_v2.residual_windows
+     - local_factor.residual_reversal_v2.reversal_windows
+     - local_factor.residual_reversal_v2.amount_ratio_mins
+     - local_factor.residual_reversal_v2.upper_shadow_max_values
+     - local_factor.residual_reversal_v2.use_xmarket_overlay
+
+     4. multifactor_filter 块
+
+     - local_factor.multifactor_filter.enabled
+     - local_factor.multifactor_filter.factor_weights
+     - local_factor.multifactor_filter.top_n_values
+     - local_factor.multifactor_filter.amount_ratio_mins
+     - local_factor.multifactor_filter.breakout_required
+     - local_factor.multifactor_filter.upper_shadow_max_values
+     - local_factor.multifactor_filter.use_xmarket_overlay
+
+     默认建议：
+     - 新候选第一轮都从 use_xmarket_overlay: false 开始
+     - 若本地策略表现成立，再单独加 overlay 做第二轮复测
+
+     关键文件
+
+     - phase0/walk_forward.py
+     - config.yaml
+     - phase0/reporting.py
+     - phase0/cli.py
+     - README.md
+     - reports/phase0_strategy_change_log.md
+
+     验证方式
+
+     每个候选上线前
+
+     - 检查本地历史库新鲜度和覆盖率
+     - 检查 market_financial_factors 覆盖率是否仍达标
+     - 检查 universe 规模是否足够供 walk-forward 使用
+
+     每个候选上线后
+
+     - 运行：python -m phase0.cli run --config config.yaml
+     - 核对：
+       - reports/phase0_walk_forward_candidates.csv 中 candidate 是否正常产出
+     fold
+       - reports/phase0_walk_forward_report.md 中是否有 per-candidate 汇总
+       - reports/phase0_effectiveness_report.md 是否改善 gate 状态
+     - 追加更新 reports/phase0_strategy_change_log.md
+
+     本周成功标准
+
+     本周计划只有在以下条件全部成立时才算成功：
+
+     1. compare mode 中出现一个不是 legacy_momentum 的新优胜候选
+     2. reports/phase0_effectiveness_report.md 显示：
+       - annualized_return_mean > 0
+       - sharpe_mean > 0.5
+       - max_drawdown_mean > -0.25
+       - win_rate_mean > 0.45
+       - oos_return_decay_ratio < 0.30
+     3. 优胜候选不是由极少 fold 的偶然结果支撑
+     4. reports/phase0_strategy_change_log.md 中明确记录晋级原因
+
+     "/plan open" to edit this plan in VS Code
+
+
+❯ /model                                                                        
+  ⎿  Set model to Opus 4.7 (1M context) (default) and saved as your default for
+     new sessions
+
+❯ 现在我要求你看开发计划书.md和WEEKLY_EXECUTION_CHECKLIST.md，理解项目状态。等  
+  待我的命令                                                                    
+
+✻ Baked for 6s
+
+❯ /resume 
+  ⎿  Resume cancelled
+
+❯ 现在我要求你看开发计划书.md和WEEKLY_EXECUTION_CHECKLIST.md，理解项目状态。等  
+  待我的命令                                                                    
+
+✻ Worked for 7s
+
+❯ @agent-planning-code-reviewer 现在我要求你看开发计划书.md和WEEKLY_EXECUTION_C 
+  HECKLIST.md，理解项目状态。等待我的命令                                       
+
+✻ Baked for 7s

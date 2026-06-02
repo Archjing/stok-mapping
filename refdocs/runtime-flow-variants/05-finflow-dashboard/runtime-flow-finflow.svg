@@ -1,0 +1,284 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1200" viewBox="0 0 1800 1200" role="img" aria-labelledby="title desc">
+  <title id="title">stok-mapping 最终金融研究驾驶舱</title>
+  <desc id="desc">FinFlow 风格的项目最终运行形态图，使用金融驾驶舱布局展示数据源、核心引擎、策略治理、自动任务和用户交付。</desc>
+  <defs>
+    <linearGradient id="headerGrad" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0%" stop-color="#12343b"/>
+      <stop offset="55%" stop-color="#1d5c63"/>
+      <stop offset="100%" stop-color="#2f8f4e"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#53606f"/>
+    </marker>
+    <marker id="arrowAmber" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#b87514"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="9" stdDeviation="9" flood-color="#102027" flood-opacity="0.16"/>
+    </filter>
+    <style>
+      .bg { fill: #f5f4ee; }
+      .header { fill: url(#headerGrad); rx: 20; filter: url(#shadow); }
+      .title { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 34px; font-weight: 790; fill: #ffffff; letter-spacing: 0; }
+      .subtitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15px; fill: #d9f2e4; letter-spacing: 0; }
+      .panel { fill: #fffdf8; stroke: #d6d0c2; stroke-width: 1.3; rx: 16; filter: url(#shadow); }
+      .panelDark { fill: #17353b; stroke: #26555d; stroke-width: 1.3; rx: 16; filter: url(#shadow); }
+      .panelTitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 18px; font-weight: 760; fill: #1f2937; letter-spacing: 0; }
+      .panelTitleLight { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 18px; font-weight: 760; fill: #ffffff; letter-spacing: 0; }
+      .label { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #697386; letter-spacing: 0; }
+      .labelLight { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #bed9d0; letter-spacing: 0; }
+      .metric { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 28px; font-weight: 800; fill: #1f2937; letter-spacing: 0; }
+      .metricLight { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 28px; font-weight: 800; fill: #ffffff; letter-spacing: 0; }
+      .card { stroke-width: 1.7; rx: 10; filter: url(#shadow); }
+      .done { fill: #e7f6ed; stroke: #2e8c55; }
+      .partial { fill: #fff0ca; stroke: #b87514; }
+      .pending { fill: #f2f4f7; stroke: #8a94a6; stroke-dasharray: 8 6; }
+      .blue { fill: #eaf2ff; stroke: #3b73c4; }
+      .cardTitle { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 15px; font-weight: 730; fill: #202938; letter-spacing: 0; }
+      .body { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 11.6px; fill: #4b5563; letter-spacing: 0; }
+      .tag { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 10.5px; font-weight: 780; letter-spacing: 0; }
+      .doneText { fill: #2e8c55; }
+      .partialText { fill: #9a6a14; }
+      .pendingText { fill: #7b8494; }
+      .blueText { fill: #3b73c4; }
+      .arrow { fill: none; stroke: #53606f; stroke-width: 2.2; marker-end: url(#arrow); }
+      .softArrow { fill: none; stroke: #b87514; stroke-width: 2; stroke-dasharray: 7 7; marker-end: url(#arrowAmber); }
+      .thin { stroke: #d7d0c0; stroke-width: 1.2; }
+      .footer { font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif; font-size: 12px; fill: #6b7280; letter-spacing: 0; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1800" height="1200"/>
+
+  <rect class="header" x="48" y="32" width="1704" height="136"/>
+  <text class="title" x="82" y="82">stok-mapping 最终金融研究驾驶舱</text>
+  <text class="subtitle" x="82" y="112">把 A 股本土因子、跨市场 overlay、策略治理、盘前研判和模拟账户统一到一个可复盘的运行面板。</text>
+  <text class="subtitle" x="82" y="138">定位：量化研究与风险提示工具；不生成交易指令，不让 LLM 进入主信号层。</text>
+
+  <g transform="translate(1248 64)">
+    <rect class="card done" x="0" y="0" width="142" height="34"/>
+    <text class="tag doneText" x="24" y="22">已完成</text>
+    <rect class="card partial" x="156" y="0" width="142" height="34"/>
+    <text class="tag partialText" x="178" y="22">扩展中</text>
+    <rect class="card pending" x="312" y="0" width="142" height="34"/>
+    <text class="tag pendingText" x="344" y="22">待开发</text>
+  </g>
+
+  <!-- KPI row -->
+  <rect class="panel" x="48" y="198" width="388" height="142"/>
+  <text class="label" x="76" y="232">当前主线</text>
+  <text class="metric" x="76" y="270">本土主因子</text>
+  <text class="label" x="76" y="302">跨市场信号只做 risk overlay</text>
+  <rect class="card done" x="298" y="222" width="108" height="34"/>
+  <text class="tag doneText" x="323" y="244">已验证</text>
+
+  <rect class="panel" x="468" y="198" width="388" height="142"/>
+  <text class="label" x="496" y="232">当前 baseline</text>
+  <text class="metric" x="496" y="270">low_turnover_v1</text>
+  <text class="label" x="496" y="302">通过 Phase 0 gate，账单和 OOS 已落地</text>
+  <rect class="card done" x="718" y="222" width="108" height="34"/>
+  <text class="tag doneText" x="743" y="244">已完成</text>
+
+  <rect class="panel" x="888" y="198" width="388" height="142"/>
+  <text class="label" x="916" y="232">数据源升级</text>
+  <text class="metric" x="916" y="270">FRED / Tiingo</text>
+  <text class="label" x="916" y="302">FRED 最小验收；Tiingo 待接入</text>
+  <rect class="card partial" x="1138" y="222" width="108" height="34"/>
+  <text class="tag partialText" x="1161" y="244">扩展中</text>
+
+  <rect class="panel" x="1308" y="198" width="444" height="142"/>
+  <text class="label" x="1336" y="232">产品化缺口</text>
+  <text class="metric" x="1336" y="270">日报 + 工作台</text>
+  <text class="label" x="1336" y="302">自动投递、真实账户对账、Web/PWA/Tauri</text>
+  <rect class="card pending" x="1600" y="222" width="108" height="34"/>
+  <text class="tag pendingText" x="1629" y="244">待开发</text>
+
+  <!-- Left data source health -->
+  <rect class="panel" x="48" y="372" width="410" height="520"/>
+  <text class="panelTitle" x="76" y="410">数据源健康度</text>
+  <text class="label" x="76" y="434">正式主源、过渡源和待接入源分层治理</text>
+
+  <g transform="translate(76 468)">
+    <rect class="card done" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">Tushare A 股主源</text>
+    <text class="body" x="18" y="43">日线 / 元数据 / 增量更新 / 审计</text>
+    <text class="tag doneText" x="286" y="24">已完成</text>
+  </g>
+  <g transform="translate(76 546)">
+    <rect class="card done" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">AkShare / 新浪 fallback</text>
+    <text class="body" x="18" y="43">快照与辅助数据备用源</text>
+    <text class="tag doneText" x="286" y="24">已完成</text>
+  </g>
+  <g transform="translate(76 624)">
+    <rect class="card partial" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">FRED 宏观 / 利率 / VIX</text>
+    <text class="body" x="18" y="43">最小 adapter 与连通验收完成</text>
+    <text class="tag partialText" x="264" y="24">最小接入</text>
+  </g>
+  <g transform="translate(76 702)">
+    <rect class="card partial" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">US market SQLite</text>
+    <text class="body" x="18" y="43">yfinance 过渡落库，等 Tiingo 替换</text>
+    <text class="tag partialText" x="286" y="24">过渡</text>
+  </g>
+  <g transform="translate(76 780)">
+    <rect class="card pending" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">Tiingo / 港股 / A50 / CNH</text>
+    <text class="body" x="18" y="43">正式接入与生产挂载待开发</text>
+    <text class="tag pendingText" x="286" y="24">待开发</text>
+  </g>
+
+  <!-- Center engine -->
+  <rect class="panelDark" x="490" y="372" width="820" height="520"/>
+  <text class="panelTitleLight" x="524" y="410">核心信号工厂</text>
+  <text class="labelLight" x="524" y="434">本土主因子给出候选；跨市场 overlay 只调整风险解释和情景推演。</text>
+
+  <g transform="translate(540 472)">
+    <rect class="card done" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">local universe</text>
+    <text class="body" x="18" y="50">流动性 / 市值 / 行业上限</text>
+    <text class="tag doneText" x="170" y="68">已完成</text>
+  </g>
+  <g transform="translate(820 472)">
+    <rect class="card done" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">本土因子层</text>
+    <text class="body" x="18" y="50">量价 + 财务 PTI + 可成交性</text>
+    <text class="tag doneText" x="170" y="68">已完成</text>
+  </g>
+  <g transform="translate(1100 472)">
+    <rect class="card partial" width="160" height="78"/>
+    <text class="cardTitle" x="18" y="27">overlay</text>
+    <text class="body" x="18" y="50">隔夜情绪</text>
+    <text class="tag partialText" x="94" y="68">扩展中</text>
+  </g>
+
+  <g transform="translate(540 606)">
+    <rect class="card done" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">strategies registry</text>
+    <text class="body" x="18" y="50">候选策略工厂</text>
+    <text class="tag doneText" x="170" y="68">已完成</text>
+  </g>
+  <g transform="translate(820 606)">
+    <rect class="card done" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">walk-forward</text>
+    <text class="body" x="18" y="50">组合口径样本外比较</text>
+    <text class="tag doneText" x="170" y="68">已完成</text>
+  </g>
+  <g transform="translate(1100 606)">
+    <rect class="card done" width="160" height="78"/>
+    <text class="cardTitle" x="18" y="27">gate</text>
+    <text class="body" x="18" y="50">准入控制</text>
+    <text class="tag doneText" x="94" y="68">已完成</text>
+  </g>
+
+  <g transform="translate(540 740)">
+    <rect class="card done" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">账户级仿真 v2</text>
+    <text class="body" x="18" y="50">整手 / 现金 / 停牌 / 未成交</text>
+    <text class="tag doneText" x="170" y="68">已完成</text>
+  </g>
+  <g transform="translate(820 740)">
+    <rect class="card pending" width="240" height="78"/>
+    <text class="cardTitle" x="18" y="27">真实账户对账</text>
+    <text class="body" x="18" y="50">CSV 成交回报接入</text>
+    <text class="tag pendingText" x="170" y="68">待开发</text>
+  </g>
+  <g transform="translate(1100 740)">
+    <rect class="card pending" width="160" height="78"/>
+    <text class="cardTitle" x="18" y="27">ML</text>
+    <text class="body" x="18" y="50">辅助排序</text>
+    <text class="tag pendingText" x="94" y="68">待开发</text>
+  </g>
+
+  <path class="arrow" d="M780 511 C794 511 806 511 820 511"/>
+  <path class="arrow" d="M1060 511 C1074 511 1086 511 1100 511"/>
+  <path class="arrow" d="M660 550 C660 572 660 584 660 606"/>
+  <path class="arrow" d="M780 645 C794 645 806 645 820 645"/>
+  <path class="arrow" d="M1060 645 C1074 645 1086 645 1100 645"/>
+  <path class="arrow" d="M660 684 C660 706 660 718 660 740"/>
+  <path class="softArrow" d="M1180 550 C1194 588 1192 600 1180 606"/>
+  <path class="softArrow" d="M1180 684 C1194 722 1192 734 1180 740"/>
+
+  <!-- Right output panel -->
+  <rect class="panel" x="1342" y="372" width="410" height="520"/>
+  <text class="panelTitle" x="1370" y="410">交付与复盘面板</text>
+  <text class="label" x="1370" y="434">最终用户实际消费的产物和未来工作台入口</text>
+
+  <g transform="translate(1370 468)">
+    <rect class="card partial" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">07:30 盘前观察池</text>
+    <text class="body" x="18" y="43">CLI 已有，投递与每日归档待补</text>
+    <text class="tag partialText" x="286" y="24">扩展中</text>
+  </g>
+  <g transform="translate(1370 546)">
+    <rect class="card done" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">研究报告</text>
+    <text class="body" x="18" y="43">数据源 / gate / OOS / regime</text>
+    <text class="tag doneText" x="286" y="24">已完成</text>
+  </g>
+  <g transform="translate(1370 624)">
+    <rect class="card done" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">账单与资产轨迹</text>
+    <text class="body" x="18" y="43">CSV + HTML，展示成交和未成交</text>
+    <text class="tag doneText" x="286" y="24">已完成</text>
+  </g>
+  <g transform="translate(1370 702)">
+    <rect class="card partial" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">Cloe / OpenClaw 摘要</text>
+    <text class="body" x="18" y="43">研究摘要、第二意见、消息通道</text>
+    <text class="tag partialText" x="286" y="24">过渡</text>
+  </g>
+  <g transform="translate(1370 780)">
+    <rect class="card pending" width="350" height="58"/>
+    <text class="cardTitle" x="18" y="24">Web/PWA/Tauri 复盘工作台</text>
+    <text class="body" x="18" y="43">模拟交易、看板、日报留痕</text>
+    <text class="tag pendingText" x="286" y="24">待开发</text>
+  </g>
+
+  <path class="arrow" d="M1260 511 C1292 511 1310 511 1342 511"/>
+  <path class="arrow" d="M1260 645 C1292 645 1310 645 1342 645"/>
+  <path class="arrow" d="M1260 779 C1292 779 1310 779 1342 779"/>
+
+  <!-- Bottom automation timeline -->
+  <rect class="panel" x="48" y="924" width="1704" height="190"/>
+  <text class="panelTitle" x="76" y="962">自动任务时间线</text>
+  <text class="label" x="76" y="986">最终形态应把这些任务串成可复盘的日常流水线。</text>
+  <line class="thin" x1="130" y1="1036" x2="1670" y2="1036"/>
+
+  <g transform="translate(154 1014)">
+    <circle class="done" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-52" y="66">03:30 周一</text>
+    <text class="body" x="-62" y="86">财务因子刷新</text>
+  </g>
+  <g transform="translate(424 1014)">
+    <circle class="partial" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-58" y="66">06:00 美股后</text>
+    <text class="body" x="-72" y="86">US/FRED/Tiingo</text>
+  </g>
+  <g transform="translate(694 1014)">
+    <circle class="partial" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-46" y="66">07:30 盘前</text>
+    <text class="body" x="-70" y="86">观察池和简报</text>
+  </g>
+  <g transform="translate(964 1014)">
+    <circle class="pending" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-54" y="66">09:15/09:25</text>
+    <text class="body" x="-64" y="86">竞价修正</text>
+  </g>
+  <g transform="translate(1234 1014)">
+    <circle class="done" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-54" y="66">16:30 收盘</text>
+    <text class="body" x="-84" y="86">A 股更新 + 股票池</text>
+  </g>
+  <g transform="translate(1504 1014)">
+    <circle class="partial" cx="20" cy="22" r="18"/>
+    <text class="cardTitle" x="-50" y="66">收盘后验证</text>
+    <text class="body" x="-88" y="86">OOS / gate / 账单归档</text>
+  </g>
+
+  <path class="softArrow" d="M714 1014 C770 952 1390 948 1524 1014"/>
+
+  <text class="footer" x="64" y="1160">版本：05-finflow-dashboard。阅读方式：左侧看数据源，中间看信号工厂，右侧看产品输出，底部看自动任务。</text>
+  <text class="footer" x="64" y="1182">状态依据：DEVELOPMENT_PLAN.md、PROJECT_ARCHITECTURE_OVERVIEW.md、当前代码与报告产物。</text>
+</svg>
