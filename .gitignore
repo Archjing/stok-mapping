@@ -19,7 +19,9 @@ data/hk_market_history.sqlite-*
 node_modules/*
 node_modules/
 logs/
+docs/
+refdocs/
+tasks/
 reports/cache/
-refdocs/**/*.pdf
 .mcp.json
 node_modules/
