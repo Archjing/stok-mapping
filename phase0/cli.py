@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
+import shutil
+import subprocess
 from pathlib import Path
 
 from rich.console import Console
@@ -26,6 +29,26 @@ from phase0.throttle import configure_akshare_throttle
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
+
+
+def _sync_daily_brief_to_ecs(console: Console, local_dir: Path) -> None:
+    # Daily brief remote mirror. This intentionally lives in the daily-brief
+    # program instead of a separate script so cron/manual reruns share one path.
+    # The ECS target can be overridden by environment if the host/path changes.
+    remote = os.environ.get("BRIEF_SYNC_REMOTE", "root@39.105.102.5")
+    remote_dir = os.environ.get("BRIEF_SYNC_REMOTE_DIR", "/brief/")
+    if not local_dir.exists() or not (local_dir / "index.html").exists():
+        console.print(f"[yellow]Warning:[/yellow] skip ECS brief sync; missing {local_dir / 'index.html'}")
+        return
+    try:
+        subprocess.run(
+            ["rsync", "-avz", "--delete", f"{local_dir}/", f"{remote}:{remote_dir}"],
+            check=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        console.print(f"[yellow]Warning:[/yellow] ECS brief sync failed: {exc}")
+        return
+    console.print(f"Brief ECS: {remote}:{remote_dir}")
 
 
 def _export_phase0_low_turnover_bill(
@@ -413,9 +436,20 @@ def run_daily_brief_pipeline(
         refresh_cache=should_refresh_cache,
         no_panel_cache=bool(no_panel_cache),
     )
+    report_path = Path(result["report"])
+    brief_today_paths = [
+        config_path.parent / "reports" / "brief_today" / "index.html",
+        Path("/mnt/d/ZJ/Dev/brief_today/index.html"),
+    ]
+    for brief_today_path in brief_today_paths:
+        brief_today_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(report_path, brief_today_path)
+    _sync_daily_brief_to_ecs(console, config_path.parent / "reports" / "brief_today")
     console.print("[green]Daily brief pipeline complete[/green]")
     console.print(f"Watchlist: {result['watchlist']}")
     console.print(f"Report: {result['report']}")
+    for brief_today_path in brief_today_paths:
+        console.print(f"Brief today: {brief_today_path}")
     if "ledger" in result:
         console.print(f"Simulation ledger: {result['ledger']}")
     console.print(f"Rows: {result['rows']}")
