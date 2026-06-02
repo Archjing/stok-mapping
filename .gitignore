@@ -4,7 +4,6 @@ __pycache__/
 .claude/
 .codex/
 .agents/skills
-prompts/
 .env
 .claude/settings.local.json
 .codex/claude_agent.local.json
@@ -22,10 +21,6 @@ data/hk_market_history.sqlite
 data/hk_market_history.sqlite-*
 node_modules/*
 node_modules/
-logs/
-docs/
-refdocs/
-tasks/
 reports/cache/
 .mcp.json
 node_modules/
