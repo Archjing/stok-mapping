@@ -1,0 +1,11 @@
+check,status,detail
+daily_table_exists,PASS,market_daily_bars
+adj_factor_table_exists,FAIL,market_adj_factors
+daily_table_columns,PASS,"market,symbol,date,adjust_type,open,high,low,close,volume,amount,adjusted_close,change_pct,change_amount,amplitude,turnover_rate"
+daily_adjust_type_bfq,PASS,"rows=10462385, symbols=5748, range=2016-05-03..2026-05-28"
+daily_adjust_type_qfq,PASS,"rows=10484516, symbols=5761, range=2016-05-03..2026-06-03"
+has_bfq_raw,PASS,True
+has_qfq_current,PASS,True
+can_build_qfq_asof,FAIL,cannot_build_qfq_asof
+phase0_current_adjust_type,INFO,qfq
+phase0_backtest_price_adjustment,INFO,qfq_current

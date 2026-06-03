@@ -10,6 +10,7 @@ from rich.console import Console
 
 from phase0.config import load_config
 from phase0.accounts import export_account_bill_html, load_simulated_accounts
+from phase0.adjustment import run_adjustment_audit
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.external_market_history import (
@@ -20,6 +21,7 @@ from phase0.external_market_history import (
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.local_history import configure_local_history
+from phase0.overfit import run_overfit_diagnostic
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
     write_cost_sensitivity_report,
@@ -578,6 +580,15 @@ def main() -> int:
     universe_pti_parser = sub.add_parser("universe-pti", help="Audit point-in-time universe listing and industry boundaries")
     universe_pti_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     universe_pti_parser.add_argument("--date", required=True, help="As-of date in YYYY-MM-DD")
+    adjustment_parser = sub.add_parser("adjustment-audit", help="Audit A-share price adjustment point-in-time readiness")
+    adjustment_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    adjustment_parser.add_argument("--output-csv", default=None, help="Optional CSV output path")
+    adjustment_parser.add_argument("--output-md", default=None, help="Optional Markdown output path")
+    overfit_parser = sub.add_parser("overfit-diagnostic", help="Generate strategy overfitting diagnostic report")
+    overfit_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    overfit_parser.add_argument("--candidates", default=None, help="Path to walk-forward candidates CSV")
+    overfit_parser.add_argument("--folds", default=None, help="Path to walk-forward folds CSV")
+    overfit_parser.add_argument("--output-dir", default=None, help="Output directory for diagnostic reports")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -741,6 +752,44 @@ def main() -> int:
         console.print(f"Selected count: {result['selected_count']}")
         console.print(f"Boundary violations: {result['boundary_violations']}")
         console.print(f"Historical industry constraint effective: {result['industry_effective']}")
+        return 0
+    if args.cmd == "adjustment-audit":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]A-share price adjustment audit started[/bold]")
+        result = run_adjustment_audit(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            output_csv=Path(args.output_csv).resolve() if args.output_csv else None,
+            output_md=Path(args.output_md).resolve() if args.output_md else None,
+        )
+        color = "green" if result.can_build_qfq_asof else "yellow"
+        console.print(f"[{color}]Adjustment audit verdict: {result.verdict}[/{color}]")
+        console.print(f"Can build qfq_asof: {result.can_build_qfq_asof}")
+        console.print(f"CSV: {result.csv_path}")
+        console.print(f"Markdown: {result.md_path}")
+        for warning in result.warnings[:10]:
+            console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0
+    if args.cmd == "overfit-diagnostic":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]Strategy overfit diagnostic started[/bold]")
+        result = run_overfit_diagnostic(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            candidates_path=Path(args.candidates).resolve() if args.candidates else None,
+            folds_path=Path(args.folds).resolve() if args.folds else None,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+        )
+        console.print("[green]Overfit diagnostic complete[/green]")
+        console.print(f"Selected candidate: {result.selected_candidate}")
+        console.print(f"Selected risk level: {result.selected_risk_level}")
+        console.print(f"CSV: {result.csv_path}")
+        console.print(f"Markdown: {result.md_path}")
+        console.print(f"Rows: {result.rows}")
         return 0
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:

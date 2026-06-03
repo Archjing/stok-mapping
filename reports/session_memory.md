@@ -1166,3 +1166,248 @@ Account bill: reports/2026-06-02/simulated_account_bill_2026-06-02.html
 - 用户本地执行 `./.venv/bin/python -m phase0.cli brief account-bill`，命令成功，输出 `Account: default`、`Date: 2026-06-02`、账单文件 `/home/zj/workspace/stok-mapping/reports/2026-06-02/simulated_account_bill_2026-06-02.html`。该命令从 `data/simulated_trading/simulated_accounts.sqlite` 的 `account_daily_assets` 最大 `brief_date` 自动选择账单日期。
 - 用户本地执行 `./.venv/bin/python -m phase0.cli brief premarket`，命令成功，输出 `panel_cache=hit path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl`，生成原始 premarket 观察池：`/home/zj/workspace/stok-mapping/reports/phase0_premarket_watchlist.csv`，生成原始报告：`/home/zj/workspace/stok-mapping/reports/phase0_premarket_report.html`，`Rows: 28`，`Signal date: 2026-06-02`，`Check time: 2026-06-03 07:30`。
 - 注意：`brief premarket` 是原始盘前观察池导出入口，不走 `brief watchlist` 的日期目录归档、`reports/watchlist_today/index.html` 固定入口和 ECS 同步链路。日常阶段试用观察池仍优先使用 `brief daily` 或 `brief watchlist`。
+
+## 2026-06-03 增量归档：PIT 股票池、历史市值、行业约束、策略模块与计划文档调整
+
+> 来源 session：`/home/zj/.codex/sessions/2026/06/03/rollout-2026-06-03T23-07-58-019e8e06-ea3c-7000-8479-0d565c19a001.jsonl`
+> 完整归档规则：命中解释、解读、是不是、为什么、是什么、如何、怎么、有没有、能不能；以及项目架构讨论、模块边界划分、功能设计讨论、功能路由整理、产品交互与任务流程设计。
+> 其他内容：未命中原文归档规则的会话内容、项目开发文档更新内容已压缩摘要归档。
+> 上次已归档时间戳：上一节止于 2026-06-03 `brief account-bill` 与 `brief premarket` 运行说明。
+
+### 👤 User / 用户 - 当前 API 会话
+我看了csv，所以现在当前策略，PIT修正后2021-2025区间回测，总盈利率只有0.016195712吗
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+是，但要严格表述。
+
+`0.016195712` 不是“2021-2025 四个折连续复利后的真实总收益率”，而是你现在这份 `PIT` 账单/日资产文件里最后一折，也就是第 `4` 折的期末收益率：
+
+- 起点：`2024-07-11`
+- 终点：`2025-07-24`
+- 起始资产：`1,000,000`
+- 期末资产：`1,016,195.71183`
+- 折内收益率：`0.01619571183`，也就是 `1.62%`
+
+我刚核对了 `reports/tmp_validation/stok_mapping_pit_daily.csv` 的四个折：
+
+- 折 1：`2021-05-31` 到 `2022-06-14`，`-6.76%`
+- 折 2：`2022-06-15` 到 `2023-06-27`，`-21.75%`
+- 折 3：`2023-06-28` 到 `2024-07-10`，`-14.88%`
+- 折 4：`2024-07-11` 到 `2025-07-24`，`+1.62%`
+
+所以当前这份 PIT 修正后的低换手账单，按“每折独立重置账户”的口径看，前 3 折是亏的，最后 1 折小幅盈利。你在 `csv` 里看到的 `0.016195712`，对应的是最后这一折，不代表整个 `2021-2025` 段已经被证明是正收益主策略。
+
+### 👤 User / 用户 - 当前 API 会话
+120只股票的股票池，这120只是怎么选出来
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+这 `120` 只不是手工指定的，也不是从当前配置里的 `symbols` 直接拿的。它们是在 `2021-05-28` 这个历史时点，从当时全市场可用快照里按一套股票池规则筛出来的。
+
+规则分三步。
+
+第一步，先构造 `2021-05-28` 的 PIT 快照。
+它会：
+
+- 找到 `2021-05-28` 当时最近交易日的数据
+- 回看最近 `90` 天
+- 对每只股票算最近窗口的 `AVG(amount)`、`AVG(volume)`、最新收盘价、交易天数
+- 只保留当时已经上市、尚未退市的股票
+- 只拼接当时已经公告出来的财务因子
+
+第二步，按股票池过滤规则先砍掉一批。
+当时用的是：
+
+- 市场只要 `SH` 和 `SZ`
+- 排除 `ST`、`*ST`、`退`
+- `latest_price > 0`
+- `amount >= 50,000,000`
+- `min_total_mv = 5,000,000,000` 这个条件在 PIT 模式下实际上没生效，因为历史快照里故意不使用当前市值字段，避免未来函数
+
+过滤完以后，当天可用快照还有 `4296` 只。
+
+第三步，对过滤后的股票打分并截断到 `120` 只。
+分数是：
+
+- `liquidity_rank = amount` 的分位排名
+- `size_rank = circ_mv / total_mv` 的分位排名
+
+但在 PIT 模式下，历史市值字段被置空了，所以 `size_rank` 基本退化成常数，实际主要由 `amount` 决定。于是 `universe_score = 0.60 * liquidity_rank + 0.40 * size_rank` 本质上就接近“按最近 90 天平均成交额排序”。
+
+然后：
+
+- 先选到 `target_size = 500`
+- 最后再按 `walk_forward_limit = 120` 截断成回测实际使用的 `120` 只
+
+### 👤 User / 用户 - 当前 API 会话
+- min_total_mv = 5,000,000,000 这个条件在 PIT 模式下实际上没生效，那这个条件的设计可商榷，这是最小市值吗
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+是，`min_total_mv = 5,000,000,000` 设计上就是“最小总市值门槛”，单位是元，也就是 `50` 亿元总市值。
+
+它原本的意图很明确：
+
+- 过滤掉过小市值股票
+- 降低壳股、题材微盘股、极端波动股的占比
+- 让股票池更偏向可交易、容量更真实的一侧
+
+但你指出的关键问题是对的：在当前 PIT 实现里，这个门槛没有真正生效，因为我为了避免未来函数，把历史快照里的 `total_mv` 置空了。
+
+### 👤 User / 用户 - 当前 API 会话
+历史市值数据可获取吗？如果当前数据源可获取，按完整方案补字段，让这个筛选条件按时点生效
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+可以，而且现有数据源足够做。不是“理论上可获取”，而是“现有数据源已经能拿到历史市值数据，并且代码已改到可按时点生效”：
+
+- 现有源：`Tushare daily_basic`
+- 可取字段：`total_mv`, `circ_mv`, `pe_ttm`, `pb`, `turnover_rate`
+- 现状问题：以前这些值只被塞进静态 `market_stocks`，没有按交易日落库，所以 PIT 回测拿不到历史时点市值
+- 现在改法：新增按日表 `market_daily_basic`，PIT 快照按 `as_of_date` 读取最近可用交易日的历史估值快照，再让 `min_total_mv` 真正参与过滤
+
+### 👤 User / 用户 - 当前 API 会话
+前后两次选出的120只股票池，重合度多少？
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+重合 `98` 只。
+
+按 `2021-05-28` 这一天的两版 `120` 池来算：
+
+- 修正前 `120`
+- 修正后 `120`
+- 交集 `98`
+- 替换掉 `22`
+- 新换入 `22`
+
+两个常用口径：
+
+- 相对 `120` 的重合率：`98 / 120 = 81.67%`
+- Jaccard 相似度：`98 / 142 = 69.01%`
+
+### 👤 User / 用户 - 当前 API 会话
+要不要组织行业集中，我以为这也是策略设计问题。帮我判断应该如何决定如何控制
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+是策略设计问题，但不是“只能二选一”的问题。更准确地说，行业集中要不要控制，取决于你想让这个策略回答什么问题。
+
+如果你的目标是做“可持续的股票选择能力”验证，我建议控制行业集中。
+
+如果你的目标是做“允许行业偏离的赛道轮动/主题暴露策略”，那就不该硬控得太死。
+
+我建议你把项目里的策略分成两类：
+
+1. `核心选股策略`
+2. `行业/主题暴露策略`
+
+按你这个项目当前阶段，我的判断是：
+
+- 当前主策略更应该按 `核心选股策略` 来治理
+- 所以历史股票池应该加行业约束
+- 但约束不宜过重，否则会把流动性和有效信号都压坏
+
+### 👤 User / 用户 - 当前 API 会话
+我记得之前完成了“策略积木”改造，模块化创建、维护策略，我想新建你提到的这两个策略
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+两个策略已经建成策略积木模块，并注册成功：
+
+- `core_selection_quality_momentum_v1`
+- `theme_exposure_momentum_v1`
+
+我按你当前项目的语义做了区分：
+
+- `core_selection_quality_momentum_v1`
+  这是“核心选股策略”。
+  更偏质量成长 + 残差动量 + 低波筛选，目的不是去吃单一行业暴露，而是验证横截面选股能力。
+
+- `theme_exposure_momentum_v1`
+  这是“行业/主题暴露策略”。
+  更偏趋势和主题暴露，允许更明显地押方向，适合做对照，不适合直接和核心选股策略混为一谈。
+
+### 👤 User / 用户 - 当前 API 会话
+也要为这两个策略写解释文档
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+两篇解释文档已经写好了，并且放进当前文档目录：
+
+- `docs/strategy_explanations/core_selection_quality_momentum_v1.md`
+- `docs/strategy_explanations/theme_exposure_momentum_v1.md`
+
+索引也已经补上：
+
+- `docs/strategy_explanations/INDEX.md`
+
+### 👤 User / 用户 - 当前 API 会话
+为什么关闭行业均衡？max_industry_weight的作用
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+不是说“应该永久关闭”，而是说在历史行业字段没有被真正接入 PIT 股票池之前，不能假装它已经生效。
+
+`max_industry_weight` 的作用很直接：限制股票池或组合不要过度集中在某一个行业。
+
+在当前实现里，它的含义是：
+
+- `target_size = 500`
+- `max_industry_weight = 0.12`
+- 所以单一行业最多允许大约 `ceil(500 * 0.12) = 60` 只
+
+它解决的是三个问题：
+
+1. 防止股票池退化成“一个热门行业的成交额排行榜”
+2. 降低行业单边行情对回测结果的污染
+3. 让策略更接近“横截面选股”而不是“赛道押注”
+
+### 👤 User / 用户 - 当前 API 会话
+那么之前的策略训练、回测，是不是没有用这个约束所以选出的股票池可能存在行业集中现象？
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+是。
+
+按目前已经核查过的代码和审计结果，之前的 PIT 历史策略训练与回测里：
+
+- `max_industry_weight` 这个约束在配置里存在
+- 但历史 PIT 股票池没有真正使用有效的行业字段
+- 所以这项约束实际上没有生效
+
+也就是说，之前训练和回测所用的 `120` 只股票池，确实可能存在行业集中现象。
+
+### 👤 User / 用户 - 当前 API 会话
+做第一项
+
+### 🤖 Assistant / 助手 - 当前 API 会话
+第一项已经做完，并且结论很清楚。
+
+我加了一个只读审计入口：
+
+```bash
+./.venv/bin/python -m phase0.cli universe-pti --config config.yaml --date 2021-05-28
+```
+
+这次对 `2021-05-28` 的审计结果是：
+
+- `Selected count = 120`
+- `Boundary violations = 0`
+- `Historical industry constraint effective = False`
+
+也就是说：
+
+- 上市/退市边界这一层目前是正确的。
+- 行业字段这一层目前没有真正参与历史股票池约束。
+
+## 其他会话内容压缩摘要
+
+- 完成 PIT 股票池完整修正方案编码：`phase0/local_history.py` 新增 `load_snapshot_from_local_history_as_of()` 与 `load_trading_dates_from_local_history()`；`phase0/universe.py` 新增 `PointInTimeUniverseResult`、`load_point_in_time_universe()`、`load_point_in_time_universe_symbols()`；`phase0/walk_forward.py` 新增逐折 point-in-time universe 上下文、显式折执行 helper、`_run_compare_point_in_time()`，并让历史 walk-forward 默认使用 `universe.point_in_time_for_backtest: true`。
+- `scripts/export_low_turnover_bill.py` 改为历史账单导出默认走 point-in-time 股票池；新增 `reports/phase0_walk_forward_universe_audit.csv` 产物写出逻辑；`phase0/reporting.py` 在 walk-forward 报告中新增 `Universe Guard` 说明。
+- 历史账单验证文件曾先写入 `/tmp/stok_mapping_pit_*`，后按用户要求复制到 `reports/tmp_validation/`，包括 `stok_mapping_pit_bill.csv`、`stok_mapping_pit_daily.csv`、`stok_mapping_pit_preview.html`，并后续扩展出 `with_daily_basic`、`partial`、`full` 多组验证产物。
+- 解释了 `research/live profile` 与 PIT 股票池的职责边界：profile 只控制执行假设和摩擦成本，`point_in_time_for_backtest` 单独控制历史股票池边界；随后 README 和 DEVELOPMENT_PLAN 中同步加入该说明。
+- 为解决 PIT 下 `min_total_mv` 失效，新增历史市值完整方案：`phase0/tushare_source.py` 的 `daily_basic` 规范化结果新增 `date` 字段；`phase0/update_history.py` 新增 `market_daily_basic` 建表与 `_upsert_daily_basic_rows()`；`phase0/import_history.py` 初始化时创建 `market_daily_basic`；`phase0/local_history.py` 的 PIT 快照读取 `market_daily_basic` 并恢复 `total_mv/circ_mv/pe_ttm/pb/turnover_rate` 历史时点字段。
+- 新增 `phase0/daily_basic_backfill.py` 与 CLI 子命令 `phase0.cli backfill-daily-basic --config config.yaml --start-date ... --end-date ...`，用于按交易日批量回填历史 `daily_basic`。回填过程持续推进并最终完成，数据库 `data/manual_history/a_share_history.sqlite` 中 `market_daily_basic` 达到 `5,209,976` 行、`1030` 个交易日，覆盖 `2021-05-06` 到 `2025-07-31`。
+- 使用完整历史市值口径重跑 PIT 账单，生成 `reports/tmp_validation/stok_mapping_pit_bill_with_daily_basic_full.csv`、`stok_mapping_pit_daily_with_daily_basic_full.csv`、`stok_mapping_pit_preview_with_daily_basic_full.html`。新四折结果为：折 1 `-2.91%`、折 2 `-17.55%`、折 3 `+1.75%`、折 4 `+12.99%`，相对旧版分别改善 `+3.85%`、`+4.20%`、`+16.63%`、`+11.38%`。
+- 解释账单预览中红色行并非“整天模拟失败”，而是 `交易状态=未成交`；大量 `目标成交量=0` 的条目来自整手约束/目标金额不足一手或流动性约束，已识别为账单展示和未成交统计口径噪音，但用户要求先终止该方向重跑，不继续改展示逻辑。
+- 新增策略积木模块：`phase0/strategies/core_selection_quality_momentum.py` 与 `phase0/strategies/theme_exposure_momentum.py`，并在 `phase0/strategies/__init__.py` 注册；`config.yaml` 新增对应配置段并将两者加入 `compare_strategies`，默认 `enabled: false`。
+- 新增两篇策略解释文档：`docs/strategy_explanations/core_selection_quality_momentum_v1.md`、`docs/strategy_explanations/theme_exposure_momentum_v1.md`。同时把旧策略说明文档从 `refdocs/strategy_explanations/` 迁移到 `docs/strategy_explanations/`，并更新 `docs/strategy_explanations/INDEX.md` 为当前目录相对链接。
+- 将主开发计划移动到 `docs/DEVELOPMENT_PLAN.md`，更新 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`docs/STRATEGY_DEVELOPMENT_GUIDELINES.md` 以及 `tasks/` 下各任务文档的父级计划链接；未重写历史归档和 session memory 中对旧路径的叙述性提及。
+- 按用户要求，把 `docs/DEVELOPMENT_PLAN.md` 第八节 `Phase 1 / Phase 1.5 / Phase 2 / Phase 3` 的任务块改成 checkbox，并按现状勾选已完成项。随后用户本地提交 `59f039b big step` 与 `6b40809 edit development plan`。
+- 更新了增量归档 prompt：`prompts/session_memory_archive.prompt.md` 新增硬性要求，项目架构讨论、模块边界划分、功能设计讨论、功能路由整理、产品交互与任务流程设计必须原文完整归档，不能只做压缩摘要。
+- 检查今日 scheduler 执行情况：`daily_brief`、`hk_market_history`、`a_share_history` 成功；`us_market_history` 失败。定位日志到 `phase0/external_market_history.py` 写 SQLite 时仍可能把 `pd.NA` 绑定进 `hk` 等字段。
+- 修复 `phase0/external_market_history.py`：新增 `_to_sql_value()`，在 `INSERT OR REPLACE INTO us_daily_bars` 前统一将 `pd.NA` 转为 `None`。随后手动验证 `./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml --check-only` 返回 `check_ok`，正式运行返回 `updated`，最新日期 `2026-06-02`，覆盖率 `1.0000 (6/6)`，说明 scheduler 明日再跑不会再因为 `NAType` 写库失败。该修复已单独提交：`fdb5211 fix us market history sqlite na binding`。
+- 用户要求查看 `us_market_history.sqlite` 主表 `us_daily_bars` 前十行，以及项目实际使用的 6 个 symbol（`NVDA`、`KWEB`、`^NDX`、`^SOX`、`^VIX`、`CNY=X`）最近三行，已在会话中展示关键样本数据。
+- 本次项目开发文档更新涉及：`docs/DEVELOPMENT_PLAN.md` 路径迁移与第八节 checkbox 化；`README.md` 和 `docs/PROJECT_ARCHITECTURE_OVERVIEW.md` 同步更新主计划路径与 PIT 股票池说明；`docs/strategy_explanations/INDEX.md` 与策略说明文档目录统一到 `docs/strategy_explanations/`；`prompts/session_memory_archive.prompt.md` 补充“项目架构、功能设计讨论必须原文保留”规则。

@@ -106,17 +106,17 @@ def _calc_metrics(returns: pd.Series, signals: pd.Series) -> dict[str, float]:
     }
 
 
-def _load_cn_daily(symbol: str, years: int) -> pd.DataFrame:
+def _load_cn_daily(symbol: str, years: int, as_of_date: date | None = None) -> pd.DataFrame:
     end = date.today()
     start = end - timedelta(days=365 * years + 30)
     if local_history_prefer_daily_for_backtest():
-        local_df = load_daily_from_local_history(symbol, start, end)
+        local_df = load_daily_from_local_history(symbol, start, end, as_of_date=as_of_date)
         if not local_df.empty:
             return local_df
     df = fetch_cn_daily(symbol, years=years, adjust="qfq")
     if not df.empty:
         return df
-    return load_daily_from_local_history(symbol, start, end)
+    return load_daily_from_local_history(symbol, start, end, as_of_date=as_of_date)
 
 
 def _load_hk_daily(symbol: str, years: int) -> pd.DataFrame:

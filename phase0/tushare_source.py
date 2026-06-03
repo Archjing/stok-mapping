@@ -177,6 +177,134 @@ def _normalize_daily_basic(raw: pd.DataFrame) -> pd.DataFrame:
     ).dropna(subset=["symbol", "date"])
 
 
+def normalize_adj_factors(raw: pd.DataFrame, *, source: str = "tushare.adj_factor") -> pd.DataFrame:
+    if raw.empty:
+        return pd.DataFrame(columns=["market", "symbol", "date", "adj_factor", "source"])
+    out = raw.copy()
+    out["symbol"] = out["ts_code"].map(normalize_cn_symbol)
+    out["date"] = pd.to_datetime(out["trade_date"], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+    out["adj_factor"] = pd.to_numeric(out.get("adj_factor"), errors="coerce")
+    out = out.dropna(subset=["symbol", "date", "adj_factor"])
+    out = out[out["symbol"] != ""].copy()
+    out["market"] = "CN"
+    out["source"] = source
+    return out[["market", "symbol", "date", "adj_factor", "source"]]
+
+
+def fetch_tushare_adj_factor_trade_date(trade_date: date, *, cfg: TushareConfig) -> pd.DataFrame:
+    trade_date_text = _parse_trade_date(trade_date)
+    raw = _call(
+        "adj_factor",
+        params={"trade_date": trade_date_text},
+        fields=["ts_code", "trade_date", "adj_factor"],
+        cfg=cfg,
+    )
+    return normalize_adj_factors(raw)
+
+
+def fetch_tushare_adj_factor_symbol(
+    symbol: str,
+    *,
+    start_date: date | str,
+    end_date: date | str,
+    cfg: TushareConfig,
+) -> pd.DataFrame:
+    code = normalize_cn_symbol(symbol)
+    if not code:
+        return pd.DataFrame(columns=["market", "symbol", "date", "adj_factor", "source"])
+    market, digits = code.split(".")
+    ts_code = f"{digits}.{market}"
+    raw = _call(
+        "adj_factor",
+        params={
+            "ts_code": ts_code,
+            "start_date": _parse_trade_date(start_date),
+            "end_date": _parse_trade_date(end_date),
+        },
+        fields=["ts_code", "trade_date", "adj_factor"],
+        cfg=cfg,
+    )
+    return normalize_adj_factors(raw)
+
+
+def normalize_dividend(raw: pd.DataFrame) -> pd.DataFrame:
+    if raw.empty:
+        return pd.DataFrame()
+    out = raw.copy()
+    out["symbol"] = out["ts_code"].map(normalize_cn_symbol)
+    date_fields = ["record_date", "ex_date", "pay_date", "div_listdate", "imp_ann_date", "base_date", "ann_date"]
+    for col in date_fields:
+        if col in out.columns:
+            out[col] = pd.to_datetime(out[col], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+    numeric_fields = [
+        "stk_div",
+        "stk_bo_rate",
+        "stk_co_rate",
+        "cash_div",
+        "cash_div_tax",
+        "base_share",
+    ]
+    for col in numeric_fields:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+    out = out[out["symbol"] != ""].copy()
+    out["market"] = "CN"
+    keep = [
+        "market",
+        "symbol",
+        "ann_date",
+        "div_proc",
+        "stk_div",
+        "stk_bo_rate",
+        "stk_co_rate",
+        "cash_div",
+        "cash_div_tax",
+        "record_date",
+        "ex_date",
+        "pay_date",
+        "div_listdate",
+        "imp_ann_date",
+        "base_date",
+        "base_share",
+    ]
+    return out[[col for col in keep if col in out.columns]].drop_duplicates()
+
+
+def fetch_tushare_dividend(
+    *,
+    start_date: date | str,
+    end_date: date | str,
+    cfg: TushareConfig,
+) -> pd.DataFrame:
+    raw = _call(
+        "dividend",
+        params={
+            "ann_date": "",
+            "start_date": _parse_trade_date(start_date),
+            "end_date": _parse_trade_date(end_date),
+        },
+        fields=[
+            "ts_code",
+            "ann_date",
+            "div_proc",
+            "stk_div",
+            "stk_bo_rate",
+            "stk_co_rate",
+            "cash_div",
+            "cash_div_tax",
+            "record_date",
+            "ex_date",
+            "pay_date",
+            "div_listdate",
+            "imp_ann_date",
+            "base_date",
+            "base_share",
+        ],
+        cfg=cfg,
+    )
+    return normalize_dividend(raw)
+
+
 def fetch_tushare_trade_date(
     trade_date: date,
     *,

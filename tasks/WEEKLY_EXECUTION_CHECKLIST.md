@@ -620,35 +620,35 @@
 
 ### W2.13.1 本周目标
 
-- [ ] 冻结过拟合诊断报告 schema
-- [ ] 实现只读现有产物的 MVP，不触发重新回测
-- [ ] 新增 `phase0.cli overfit-diagnostic`
-- [ ] 输出 CSV / Markdown 诊断报告
-- [ ] 至少覆盖当前 selected candidate：`legacy_momentum_low_turnover_v1`
-- [ ] 报告结论能解释风险来源，而不是只给分数
-- [ ] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
+- [x] 冻结过拟合诊断报告 schema
+- [x] 实现只读现有产物的 MVP，不触发重新回测
+- [x] 新增 `phase0.cli overfit-diagnostic`
+- [x] 输出 CSV / Markdown 诊断报告
+- [x] 至少覆盖当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- [x] 报告结论能解释风险来源，而不是只给分数
+- [x] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
 
 ### W2.13.2 输入产物
 
-- [ ] `reports/phase0_walk_forward_candidates.csv`
-- [ ] `reports/phase0_walk_forward_folds.csv`
-- [ ] `reports/phase0_effectiveness_report.md`
+- [x] `reports/phase0_walk_forward_candidates.csv`
+- [x] `reports/phase0_walk_forward_folds.csv`
+- [x] `reports/phase0_effectiveness_report.md`
 - [ ] `reports/phase0_cost_sensitivity.csv`，若存在则读取
-- [ ] `config.yaml`
+- [x] `config.yaml`
 
 ### W2.13.3 输出产物
 
-- [ ] `reports/overfit_diagnostic/strategy_overfit_diagnostic.csv`
-- [ ] `reports/overfit_diagnostic/strategy_overfit_diagnostic.md`
+- [x] `reports/overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [x] `reports/overfit_diagnostic/strategy_overfit_diagnostic.md`
 - [ ] 后续增强：`reports/overfit_diagnostic/strategy_overfit_diagnostic.html`
 
 ### W2.13.4 MVP 诊断维度
 
 #### W2.13.4.1 OOS / fold 稳定性
 
-- [ ] 读取每个候选的 fold 级年化、Sharpe、最大回撤、胜率、换手
-- [ ] 计算正收益折占比
-- [ ] 计算最差 fold 表现
+- [x] 读取每个候选的 fold 级年化、Sharpe、最大回撤、胜率、换手
+- [x] 计算正收益折占比
+- [x] 计算最差 fold 表现
 - [ ] 标记“只靠最后一折拉高”的风险
 - [ ] 标记 OOS 折数不足的证据风险
 
@@ -657,40 +657,40 @@
 - [ ] 若成本敏感性 CSV 存在，读取不同 scenario 的结果
 - [ ] 检查 research / live / stress 口径下是否仍为正收益
 - [ ] 检查滑点升高后 Sharpe 和年化是否快速坍塌
-- [ ] 对高换手候选上调风险分
+- [x] 对高换手候选上调风险分
 
 #### W2.13.4.3 参数稳定性占位
 
-- [ ] 第一版先从 `selected_params` 解析参数变化
-- [ ] 记录各 fold 选中参数是否高度集中或频繁切换
-- [ ] 标记“尚未执行参数邻域扰动”的待验证风险
+- [x] 第一版先从 `selected_params` 解析参数变化
+- [x] 记录各 fold 选中参数是否高度集中或频繁切换
+- [x] 标记“尚未执行参数邻域扰动”的待验证风险
 - [ ] 后续再增加 `--run-param-perturbation`
 
 #### W2.13.4.4 收益集中度占位
 
-- [ ] 第一版先标记为 `not_available`
-- [ ] 明确后续需要账户账单 / 单票收益贡献输入
-- [ ] 不用空字段伪装已完成诊断
+- [x] 第一版先标记为 `not_available`
+- [x] 明确后续需要账户账单 / 单票收益贡献输入
+- [x] 不用空字段伪装已完成诊断
 
 ### W2.13.5 评分与等级
 
-- [ ] 使用 `0-100` overfit score，分数越高风险越高
-- [ ] 等级：`low / medium / high / critical`
+- [x] 使用 `0-100` overfit score，分数越高风险越高
+- [x] 等级：`low / medium / high / critical`
 - [ ] 初始权重：
   - [ ] OOS / fold 稳定性：`35`
   - [ ] 成本敏感性：`25`
   - [ ] 参数稳定性：`20`
   - [ ] 收益集中度：`10`
   - [ ] 数据挖掘 / 候选数量风险：`10`
-- [ ] 输出 `recommended_action`：`keep / observe / retest / reject`
+- [x] 输出 `recommended_action`：`keep / observe / retest / reject`
 
 ### W2.13.6 代码拆分
 
-- [ ] 新增 `phase0/overfit.py`
-- [ ] 在 `phase0/cli.py` 增加 `overfit-diagnostic` 子命令
-- [ ] 在 `phase0/reporting.py` 增加 Markdown 报告输出函数，或在 `phase0/overfit.py` 内保持 MVP 输出
-- [ ] 避免循环导入，不复用私有回测函数触发新回测
-- [ ] 保持输出路径可通过 CLI 覆盖
+- [x] 新增 `phase0/overfit.py`
+- [x] 在 `phase0/cli.py` 增加 `overfit-diagnostic` 子命令
+- [x] 在 `phase0/reporting.py` 增加 Markdown 报告输出函数，或在 `phase0/overfit.py` 内保持 MVP 输出
+- [x] 避免循环导入，不复用私有回测函数触发新回测
+- [x] 保持输出路径可通过 CLI 覆盖
 
 ### W2.13.7 CLI 设计
 
@@ -710,14 +710,14 @@ python -m phase0.cli overfit-diagnostic \
 
 ### W2.13.8 验收标准
 
-- [ ] 命令可运行并生成 CSV / Markdown
-- [ ] 当前 selected candidate 出现在报告中
-- [ ] 所有 compare 候选都有风险等级
-- [ ] 报告展示每个候选的主要风险原因
-- [ ] 对 OOS 折数不足、负收益折、最差 fold 超阈值、高换手、高成本敏感性给出明确标记
-- [ ] 不破坏 `phase0 run`
-- [ ] 不改变 selected candidate
-- [ ] 不把过拟合分数当成交易信号
+- [x] 命令可运行并生成 CSV / Markdown
+- [x] 当前 selected candidate 出现在报告中
+- [x] 所有 compare 候选都有风险等级
+- [x] 报告展示每个候选的主要风险原因
+- [x] 对 OOS 折数不足、负收益折、最差 fold 超阈值、高换手、高成本敏感性给出明确标记
+- [x] 不破坏 `phase0 run`
+- [x] 不改变 selected candidate
+- [x] 不把过拟合分数当成交易信号
 
 ### W2.13.9 后续集成规则
 
@@ -736,62 +736,62 @@ python -m phase0.cli overfit-diagnostic \
 
 ### W2.14.1 本周目标
 
-- [ ] 审计当前本地 A 股日线库是否同时具备 `bfq_raw`、`qfq_current` 和每日复权因子
-- [ ] 明确当前 `phase0` 回测实际使用的价格口径
-- [ ] 冻结 `market_adj_factors` 表结构和导入规则
-- [ ] 设计并实现 `qfq_asof` 最小 loader，先不静默改变现有默认回测行为
-- [ ] 新增 `adjustment-audit` 报告，标记当前策略结果是否存在复权未来函数风险
+- [x] 审计当前本地 A 股日线库是否同时具备 `bfq_raw`、`qfq_current` 和每日复权因子
+- [x] 明确当前 `phase0` 回测实际使用的价格口径
+- [x] 冻结 `market_adj_factors` 表结构和导入规则
+- [x] 设计并实现 `qfq_asof` 最小 loader，先不静默改变现有默认回测行为
+- [x] 新增 `adjustment-audit` 报告，标记当前策略结果是否存在复权未来函数风险
 - [ ] 输出 `qfq_current` / `qfq_asof` 差异样例，覆盖除权除息样本股和普通样本股
 
 ### W2.14.2 输入产物
 
-- [ ] 本地历史库中的 A 股日线 OHLCV 表
-- [ ] 当前 `phase0/local_history.py` 行情加载逻辑
-- [ ] 当前 `phase0/walk_forward.py` 特征生成和训练窗口边界
+- [x] 本地历史库中的 A 股日线 OHLCV 表
+- [x] 当前 `phase0/local_history.py` 行情加载逻辑
+- [x] 当前 `phase0/walk_forward.py` 特征生成和训练窗口边界
 - [ ] Tushare 或其他数据源可提供的未复权日线与复权因子字段
-- [ ] `config.yaml`
+- [x] `config.yaml`
 
 ### W2.14.3 输出产物
 
-- [ ] `reports/price_adjustment_audit.csv`
-- [ ] `reports/price_adjustment_audit.md`
+- [x] `reports/price_adjustment_audit.csv`
+- [x] `reports/price_adjustment_audit.md`
 - [ ] 后续增强：`reports/price_adjustment_audit.html`
-- [ ] 新增或预留 `market_adj_factors` 表
-- [ ] 新增 `phase0/adjustment.py`
-- [ ] 扩展后的历史行情加载参数：`price_adjustment = bfq_raw / qfq_current / qfq_asof`
+- [x] 新增或预留 `market_adj_factors` 表
+- [x] 新增 `phase0/adjustment.py`
+- [x] 扩展后的历史行情加载参数：`price_adjustment = bfq_raw / qfq_current / qfq_asof`
 
 ### W2.14.4 P0 数据可用性审计
 
-- [ ] 列出本地库已有的价格字段和表名
-- [ ] 检查是否有未复权 OHLCV
-- [ ] 检查是否有当前全历史前复权 OHLCV
-- [ ] 检查是否有按股票、交易日保存的复权因子
+- [x] 列出本地库已有的价格字段和表名
+- [x] 检查是否有未复权 OHLCV
+- [x] 检查是否有当前全历史前复权 OHLCV
+- [x] 检查是否有按股票、交易日保存的复权因子
 - [ ] 检查停牌日、除权除息日、复权因子跳变日覆盖情况
-- [ ] 若缺少 `bfq_raw` 或复权因子，报告必须标记为 `cannot_build_qfq_asof`
+- [x] 若缺少 `bfq_raw` 或复权因子，报告必须标记为 `cannot_build_qfq_asof`
 
 ### W2.14.5 P1 复权因子落表
 
-- [ ] 新增 `market_adj_factors` 表结构设计
-- [ ] 字段至少包含 `market`、`symbol`、`date`、`adj_factor`、`source`、`updated_at`
-- [ ] 对同一 `market / symbol / date / source` 建唯一约束
-- [ ] 导入链路支持幂等更新
-- [ ] 不用字符串拼接推导复权因子，必须来自结构化字段或可信数据源
+- [x] 新增 `market_adj_factors` 表结构设计
+- [x] 字段至少包含 `market`、`symbol`、`date`、`adj_factor`、`source`、`updated_at`
+- [x] 对同一 `market / symbol / date / source` 建唯一约束
+- [x] 导入链路支持幂等更新
+- [x] 不用字符串拼接推导复权因子，必须来自结构化字段或可信数据源
 
 ### W2.14.6 P2 `qfq_asof` loader MVP
 
-- [ ] 新增 `phase0/adjustment.py`
-- [ ] 实现 `compute_qfq_asof(raw_ohlcv, adj_factors, as_of_date)`
-- [ ] 只读取 `date <= as_of_date` 的复权因子
-- [ ] 计算公式固定为 `qfq_asof(t, asof) = bfq_raw(t) * adj_factor(t) / adj_factor(asof)`
-- [ ] `volume`、`amount`、`turnover` 不按价格复权比例乱调，保持原始成交含义
-- [ ] 交易执行仍使用 `bfq_raw`，不使用复权价成交
+- [x] 新增 `phase0/adjustment.py`
+- [x] 实现 `compute_qfq_asof(raw_ohlcv, adj_factors, as_of_date)`
+- [x] 只读取 `date <= as_of_date` 的复权因子
+- [x] 计算公式固定为 `qfq_asof(t, asof) = bfq_raw(t) * adj_factor(t) / adj_factor(asof)`
+- [x] `volume`、`amount`、`turnover` 不按价格复权比例乱调，保持原始成交含义
+- [x] 交易执行仍使用 `bfq_raw`，不使用复权价成交
 
 ### W2.14.7 P3 walk-forward 接入计划
 
-- [ ] 在历史行情加载函数中增加显式 `price_adjustment` 参数
+- [x] 在历史行情加载函数中增加显式 `price_adjustment` 参数
 - [ ] 当 `price_adjustment = qfq_asof` 时，必须传入当前训练折的 `as_of_date`
 - [ ] walk-forward 每折使用训练窗口结束日作为 `as_of_date`
-- [ ] 保留 `qfq_current` 兼容口径，但报告中必须标记为非严格 point-in-time
+- [x] 保留 `qfq_current` 兼容口径，但报告中必须标记为非严格 point-in-time
 - [ ] 对 `legacy_momentum_low_turnover_v1` 跑一次 `qfq_current` / `qfq_asof` 对照
 
 ### W2.14.8 CLI 设计
@@ -811,10 +811,10 @@ python -m phase0.cli adjustment-audit \
 
 ### W2.14.9 验收标准
 
-- [ ] 审计命令可运行并输出 CSV / Markdown
-- [ ] 报告能明确区分 `bfq_raw`、`qfq_current`、`qfq_asof`
-- [ ] 缺少未复权价格或复权因子时，报告明确标记无法进行 as-of 前复权
-- [ ] `qfq_asof` 计算不会使用 `as_of_date` 之后的复权因子
-- [ ] 现有 `phase0 run` 默认行为不被静默改变
-- [ ] 执行成交、涨跌停、停牌判断继续基于真实未复权价格
-- [ ] 报告给出当前主策略价格口径 future leakage 风险结论
+- [x] 审计命令可运行并输出 CSV / Markdown
+- [x] 报告能明确区分 `bfq_raw`、`qfq_current`、`qfq_asof`
+- [x] 缺少未复权价格或复权因子时，报告明确标记无法进行 as-of 前复权
+- [x] `qfq_asof` 计算不会使用 `as_of_date` 之后的复权因子
+- [x] 现有 `phase0 run` 默认行为不被静默改变
+- [x] 执行成交、涨跌停、停牌判断继续基于真实未复权价格
+- [x] 报告给出当前主策略价格口径 future leakage 风险结论

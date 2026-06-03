@@ -46,6 +46,7 @@ class LocalHistorySettings:
     meta_table: str = "market_stocks"
     daily_basic_table: str = "market_daily_basic"
     financial_table: str = "market_financial_factors"
+    adj_factor_table: str = "market_adj_factors"
     index_table: str = "market_index_bars"
     index_meta_table: str = "market_indices"
     calendar_table: str = "trading_calendar"
@@ -56,6 +57,7 @@ class LocalHistorySettings:
     max_snapshot_staleness_days: int = 1
     min_snapshot_coverage: float = 0.80
     allow_stale_universe_fallback: bool = False
+    price_adjustment_for_backtest: str = "qfq_current"
 
 
 _settings = LocalHistorySettings()
@@ -67,15 +69,18 @@ def configure_local_history(cfg: dict[str, Any] | None, root: Path | None = None
     path = Path(raw.get("path", _settings.path))
     if not path.is_absolute() and root is not None:
         path = root / path
+    adjust_type = str(raw.get("adjust_type", "qfq"))
+    default_price_adjustment = "qfq_current" if adjust_type == "qfq" else adjust_type
     _settings = LocalHistorySettings(
         enabled=bool(raw.get("enabled", True)),
         path=path,
         market=str(raw.get("market", "CN")),
-        adjust_type=str(raw.get("adjust_type", "qfq")),
+        adjust_type=adjust_type,
         daily_table=str(raw.get("daily_table", "market_daily_bars")),
         meta_table=str(raw.get("meta_table", "market_stocks")),
         daily_basic_table=str(raw.get("daily_basic_table", "market_daily_basic")),
         financial_table=str(raw.get("financial_table", "market_financial_factors")),
+        adj_factor_table=str(raw.get("adj_factor_table", "market_adj_factors")),
         index_table=str(raw.get("index_table", "market_index_bars")),
         index_meta_table=str(raw.get("index_meta_table", "market_indices")),
         calendar_table=str(raw.get("calendar_table", "trading_calendar")),
@@ -86,6 +91,7 @@ def configure_local_history(cfg: dict[str, Any] | None, root: Path | None = None
         max_snapshot_staleness_days=int(raw.get("max_snapshot_staleness_days", 1)),
         min_snapshot_coverage=float(raw.get("min_snapshot_coverage", 0.80)),
         allow_stale_universe_fallback=bool(raw.get("allow_stale_universe_fallback", False)),
+        price_adjustment_for_backtest=str(raw.get("price_adjustment_for_backtest", default_price_adjustment)),
     )
 
 
@@ -101,9 +107,38 @@ def local_history_prefer_daily_for_backtest() -> bool:
     return bool(_settings.enabled and _settings.prefer_daily_for_backtest and _settings.path.exists())
 
 
-def load_daily_from_local_history(symbol: str, start: date, end: date) -> pd.DataFrame:
+def load_daily_from_local_history(
+    symbol: str,
+    start: date,
+    end: date,
+    price_adjustment: str | None = None,
+    as_of_date: date | str | None = None,
+) -> pd.DataFrame:
     if not (_settings.enabled and _settings.use_for_daily_fallback and _settings.path.exists()):
         return pd.DataFrame()
+    price_mode = price_adjustment or _settings.price_adjustment_for_backtest
+    if price_mode == "qfq_asof":
+        if as_of_date is None:
+            return pd.DataFrame()
+        from phase0.adjustment import build_qfq_asof_bars
+
+        as_of = pd.to_datetime(as_of_date).date()
+        return build_qfq_asof_bars(
+            _settings.path,
+            symbol,
+            start,
+            end,
+            as_of,
+            daily_table=_settings.daily_table,
+            factor_table=_settings.adj_factor_table,
+            market=_settings.market,
+        )
+    if price_mode in {"bfq_raw", "bfq"}:
+        adjust_type = "bfq"
+    elif price_mode in {"qfq_current", "qfq"}:
+        adjust_type = "qfq"
+    else:
+        adjust_type = _settings.adjust_type
     table = _safe_identifier(_settings.daily_table)
     has_adjust = _table_has_column(_settings.path, table, "adjust_type")
     adjust_filter = "AND adjust_type = ?" if has_adjust else ""
@@ -122,7 +157,7 @@ def load_daily_from_local_history(symbol: str, start: date, end: date) -> pd.Dat
             params: tuple[Any, ...]
             params = (_settings.market, normalize_cn_symbol(symbol), start.isoformat(), end.isoformat())
             if has_adjust:
-                params = (*params, _settings.adjust_type)
+                params = (*params, adjust_type)
             df = pd.read_sql_query(
                 query,
                 conn,

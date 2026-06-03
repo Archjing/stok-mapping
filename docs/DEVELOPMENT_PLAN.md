@@ -18,7 +18,7 @@
 - Phase 0 基础设施已验证可用
 - 本地历史库、股票池、walk-forward、候选比较链路已落地
 - 历史回测已默认启用 point-in-time 股票池：每折按训练窗口结束日只读生成股票池，避免当前股票池污染过去样本
-- `T1.4` A 股历史 as-of 前复权与复权因子治理已立项；当前 `qfq_current` 回测仍需通过审计确认是否存在未来分红送转信息污染
+- `T1.4` A 股历史 as-of 前复权与复权因子治理已完成只读审计 MVP；当前本地库有 `bfq/qfq` 日线但缺 `market_adj_factors`，`qfq_current` 结果仍不能解释为严格 point-in-time 价格结果
 - 策略层已拆为 `phase0/strategies/` 注册表结构
 - 候选样本治理已固化，当前 compare 已统一为 portfolio 口径
 - 当前 selected candidate 已切换为 `legacy_momentum_low_turnover_v1`
@@ -31,7 +31,7 @@
 - `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值；profile 控制执行假设，股票池时点边界由 `universe.point_in_time_for_backtest` 单独控制
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
-- `T2.4` 策略过拟合诊断工具已纳入主开发计划，后续 selected candidate 进入观察池、模拟账户长期试用或策略扩展前，必须补充过拟合风险报告
+- `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
 - `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
@@ -87,8 +87,8 @@
 2. 维护账单、资产轨迹、买卖原因和策略参数的标准 CLI / report 链路。
 3. 维护账户级仿真 v2，并在后续真实账户复盘时接入本地持仓 / 成交回报 CSV 对账。
 4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
-5. 将 `T2.4` 策略过拟合诊断工具接入策略治理链路，先做只读现有产物的 MVP，再进入 gate / brief / 模拟账户准入检查。
-6. 推进 `T1.4` A 股历史 as-of 前复权与复权因子治理，先做数据可用性审计和 `qfq_current` / `qfq_asof` 差异报告。
+5. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
+6. 推进 `T1.4` A 股历史 as-of 前复权与复权因子治理，下一步补齐 `market_adj_factors` 后再做 `qfq_current` / `qfq_asof` 差异报告。
 7. 基于已通过的财务因子 PTI 校验，谨慎恢复质量成长 / 多因子后续验证。
 8. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
 9. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试和正式 daily brief 独立产物。
@@ -118,8 +118,8 @@
 | `P1` | 统一 HTML 报表展示规范 | 报表需要适合人工复核，长表和宽表必须可读、可滚动、可定位生成时间。 | 已完成。所有现有 HTML 与生成脚本已补生成时间、横纵滚动和固定表头。 |
 | `P1` | 完成财务因子公告日 point-in-time 校验方案 | 后续质量成长、多因子扩展都依赖财务字段，必须先封住未来函数争议。 | 已完成。`reports/phase0_financial_pti_report.html` 当前结论为 `PASS`。 |
 | `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 已完成。`brief daily` / `brief watchlist` 输出候选、权重、理由、模拟账户快照和 HTML 报告。 |
-| `P1` | 策略过拟合诊断工具 MVP | gate 通过只能说明当前指标达标，不能说明参数、样本、成本和收益来源稳定。必须把过拟合风险作为策略准入治理项。 | 待完成。`phase0.cli overfit-diagnostic` 可基于现有 walk-forward / effectiveness / cost 产物输出 CSV、Markdown 和 HTML 诊断报告。 |
-| `P1` | A 股历史 as-of 前复权与复权因子治理 | 当前默认 `qfq_current` 价格可能使用全历史复权因子，需确认价格特征是否受到未来分红送转信息污染。 | 待完成。新增 `market_adj_factors`、`qfq_asof` loader 和 `adjustment-audit` 报告；默认不静默改变现有回测口径。 |
+| `P1` | 策略过拟合诊断工具 MVP | gate 通过只能说明当前指标达标，不能说明参数、样本、成本和收益来源稳定。必须把过拟合风险作为策略准入治理项。 | MVP 已完成。`phase0.cli overfit-diagnostic` 可基于现有 walk-forward 产物输出 CSV 和 Markdown 诊断报告；HTML 和流程集成待做。 |
+| `P1` | A 股历史 as-of 前复权与复权因子治理 | 当前默认 `qfq_current` 价格可能使用全历史复权因子，需确认价格特征是否受到未来分红送转信息污染。 | 只读审计 MVP 已完成。当前库有 `bfq/qfq`，缺 `market_adj_factors`；`qfq_asof` loader 已预留，因子补齐和对照回测待做。 |
 
 补充约束：
 
@@ -1018,11 +1018,11 @@ stok-mapping/
 | `T0` | 周任务执行总清单 | [`tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md) | 持续执行，仍有未完成项 |
 | `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) | **已完成** |
 | `T1.2` | Tiingo 美股个股 / ETF 主源 | [`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
-| `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **已立项，待实现审计与 MVP** |
+| `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **只读审计 MVP 已完成，待补因子表与对照回测** |
 | `T2.1` | Phase 0 候选策略池 | [`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
 | `T2.2` | 策略开发任务单模板 | [`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](tasks/strategy/STRATEGY_DEV_CHECKLIST.md) | 模板文档，不按完成项结算 |
 | `T2.3` | 策略积木工程化计划 | [`tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
-| `T2.4` | 策略过拟合诊断工具 | [`tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **已纳入主计划，待实现 MVP** |
+| `T2.4` | 策略过拟合诊断工具 | [`tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，待 gate / brief 集成** |
 | `T3.1` | 港股映射 A 股候选策略 | [`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
@@ -1037,8 +1037,9 @@ stok-mapping/
 - [x] 完成 `brief` 命令路由整理：`brief daily` / `brief watchlist` / `brief premarket` / `brief account-bill`
 - [x] 接入模拟账户 SQLite 主账本与最近确认账单快照展示
 - [x] 修复历史回测股票池未来函数风险：walk-forward 与历史账单导出默认使用每折 point-in-time 股票池
-- [ ] 实现 `T2.4` 策略过拟合诊断工具 MVP：基于现有 walk-forward / effectiveness / cost 产物生成策略过拟合风险报告
-- [ ] 实现 `T1.4` A 股历史 as-of 前复权治理审计：确认 `bfq_raw`、复权因子、`qfq_current` / `qfq_asof` 差异与当前回测污染风险
+- [x] 实现 `T2.4` 策略过拟合诊断工具 MVP：基于现有 walk-forward 产物生成策略过拟合风险报告
+- [x] 实现 `T1.4` A 股历史 as-of 前复权治理只读审计：确认当前有 `bfq_raw/qfq_current`，但缺复权因子，暂不能构造严格 `qfq_asof`
+- [ ] 补齐 `market_adj_factors` 历史因子表，再运行 `qfq_current` / `qfq_asof` 对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
