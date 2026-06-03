@@ -360,7 +360,18 @@ phase0:
             cash_flow_quality: 0.20
             profit_growth: 0.20
             revenue_growth: 0.15
-          low_debt: 0.15
+            low_debt: 0.15
+  accounts:
+    simulated:
+      - account_id: "default"
+        name: "默认模拟账户"
+        enabled: true
+        initial_cash: 1000000
+        ledger_path: "data/simulated_trading/phase0_daily_account_ledger.csv"
+        database_path: "data/simulated_trading/simulated_accounts.sqlite"
+        execution_price_mode: "next_open"
+        max_participation_rate: 0.05
+        lot_size: 100
   execution:
     price_mode: "next_open"
     conservative_price_buffer: 0.001

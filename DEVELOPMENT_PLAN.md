@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-01（新增可交易信号与调仓建议单产品边界）
+> 最后修订：2026-06-03（同步 brief/watchlist 路由、模拟账户账本与调度链路状态）
 > 状态：**Phase 0 已通过；账户级仿真与报表链路已收口，当前进入 Phase 1 / Week 2 准备**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -29,7 +29,10 @@
 - `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
-- `07:30` 盘前观察池已接入 CLI，按最近交易日信号输出持仓、候选、权重和观察理由
+- `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
+- `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
+- 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
+- `07:30` 盘前观察池已接入 CLI，按最近交易日信号输出持仓、候选、权重、观察理由、模拟账户快照和风险提示
 - HTML 报表体验已统一：标题右侧显示生成时间，宽表按 `96vw` 横向滚动，长表按 `70vh` 纵向滚动，表头固定
 - 当前主阻塞点不再是 Sharpe 门槛，而是**把通过策略转入更长期的稳定性验证、数据源升级和日常研判自动化**
 
@@ -83,7 +86,7 @@
 4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
 5. 基于已通过的财务因子 PTI 校验，谨慎恢复质量成长 / 多因子后续验证。
 6. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
-7. 将盘前观察池接入定时任务和日报摘要，形成可复盘的日常研判记录。
+7. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试和正式 daily brief 独立产物。
 8. 按 Week 2 顺序先推进 FRED 宏观 / 利率 / VIX 数据源，再推进 Tiingo 美股个股 / ETF 主源。
 9. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
 
@@ -107,7 +110,7 @@
 | `P1` | 区分策略研究与实盘仿真 profile | 同一策略在研究口径和接近实盘口径下参数不同，混用会导致报告不可比较。 | 已完成。`execution-gate` 与 `oos-report` 支持 `--profile research/live`，并从 `config.yaml` 读取参数组合。 |
 | `P1` | 统一 HTML 报表展示规范 | 报表需要适合人工复核，长表和宽表必须可读、可滚动、可定位生成时间。 | 已完成。所有现有 HTML 与生成脚本已补生成时间、横纵滚动和固定表头。 |
 | `P1` | 完成财务因子公告日 point-in-time 校验方案 | 后续质量成长、多因子扩展都依赖财务字段，必须先封住未来函数争议。 | 已完成。`reports/phase0_financial_pti_report.html` 当前结论为 `PASS`。 |
-| `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 已完成。`phase0 premarket` 输出候选、权重、理由和 HTML 报告。 |
+| `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 已完成。`brief daily` / `brief watchlist` 输出候选、权重、理由、模拟账户快照和 HTML 报告。 |
 
 补充约束：
 
@@ -937,6 +940,11 @@ stok-mapping/
 - 已生成港股批量落库报告：`reports/hk_market_history_batch_load_report.md`，包含 30 标的覆盖、审计记录、样本行和中文名称 `name_zh`。
 - 已新增 `phase0.cli` 当前使用说明：`refdocs/PHASE0_CLI_USER_GUIDE.md`。
 - 已同步 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
+- 已整理当前 `phase0.cli` 命令路由：推荐主入口收敛为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`，旧 `daily-brief` / `premarket` 保留兼容。
+- 已将 `07:20` 调度任务切换为 `brief watchlist`，阶段试用观察池固定输出到 `reports/watchlist_today/index.html`，并由程序内置 rsync 同步到 ECS `/brief/`。
+- 已接入模拟账户 SQLite 主账本：自动创建 `simulated_accounts`、`account_daily_assets`、`account_trades`、`account_positions`，并在 watchlist 页面展示最近已确认账单日账户快照。
+- 已修正 watchlist 与正式模拟账单边界：watchlist 为计划层；模拟账单只记录本地日线库已有对应执行日 OHLCV 的已确认交易日。
+- 已新增账户设计与账单查询备忘：`refdocs/simulated_account_design_and_bill_query_note.md`，并约定后续“查看账单”默认展开 SQLite 对应表内容。
 
 ### 本周候选方向
 
@@ -1013,11 +1021,14 @@ stok-mapping/
 - [x] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
 - [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
 - [x] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）
-- [ ] 强化 `07:30` 盘前日报自动生成链路，形成“每日产出 + 可复盘归档”
+- [x] 强化 `07:30` 阶段试用观察池自动生成链路，形成“每日产出 + 可复盘归档”的最小闭环
+- [x] 完成 `brief` 命令路由整理：`brief daily` / `brief watchlist` / `brief premarket` / `brief account-bill`
+- [x] 接入模拟账户 SQLite 主账本与最近确认账单快照展示
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
 - [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
+- [ ] 将 full daily brief 从当前 watchlist 兼容产物中独立出来，形成正式日报产物生成代码
 - [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 
 ### 条件满足后再推进
@@ -1030,7 +1041,8 @@ stok-mapping/
 - [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
 - [x] 再引入 Tiingo 作为美股个股 / ETF 主源（最小实现与连通性验收已完成）
 - [x] 保留 `yfinance` 作为 fallback，不做一次性全替换
-- [ ] 强化 `07:30` 盘前日报自动生成链路，并形成每日可复盘归档
+- [x] 强化 `07:30` 阶段试用观察池自动生成链路，并形成每日可复盘归档的最小闭环
+- [ ] 将正式 daily brief 从当前 watchlist 兼容实现中拆出
 - [ ] 精修映射标的池与行业层分析
 - [ ] 补全港股映射 A 股候选策略代码，前置条件是港股历史数据源质量验证通过
 - [ ] 在规则型 / 因子型信号链路稳定后，再引入 sklearn 基线模型作为研究对照，不进入首批交易建议主线

@@ -9,6 +9,7 @@ from pathlib import Path
 from rich.console import Console
 
 from phase0.config import load_config
+from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.external_market_history import (
     load_us_daily_from_history,
@@ -31,14 +32,14 @@ from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
 
 
-def _sync_daily_brief_to_ecs(console: Console, local_dir: Path) -> None:
-    # Daily brief remote mirror. This intentionally lives in the daily-brief
+def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
+    # Watchlist remote mirror. This intentionally lives in the watchlist
     # program instead of a separate script so cron/manual reruns share one path.
     # The ECS target can be overridden by environment if the host/path changes.
     remote = os.environ.get("BRIEF_SYNC_REMOTE", "root@39.105.102.5")
     remote_dir = os.environ.get("BRIEF_SYNC_REMOTE_DIR", "/brief/")
     if not local_dir.exists() or not (local_dir / "index.html").exists():
-        console.print(f"[yellow]Warning:[/yellow] skip ECS brief sync; missing {local_dir / 'index.html'}")
+        console.print(f"[yellow]Warning:[/yellow] skip ECS watchlist sync; missing {local_dir / 'index.html'}")
         return
     try:
         subprocess.run(
@@ -46,9 +47,9 @@ def _sync_daily_brief_to_ecs(console: Console, local_dir: Path) -> None:
             check=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:
-        console.print(f"[yellow]Warning:[/yellow] ECS brief sync failed: {exc}")
+        console.print(f"[yellow]Warning:[/yellow] ECS watchlist sync failed: {exc}")
         return
-    console.print(f"Brief ECS: {remote}:{remote_dir}")
+    console.print(f"Watchlist ECS: {remote}:{remote_dir}")
 
 
 def _export_phase0_low_turnover_bill(
@@ -143,6 +144,28 @@ def _export_phase0_premarket(
     if report_output is not None:
         kwargs["report_output"] = report_output
     return export_premarket_watchlist(**kwargs)
+
+
+def _export_brief_account_bill(*, config_path: Path, brief_date: str | None = None) -> dict:
+    cfg = load_config(config_path)
+    accounts = load_simulated_accounts(cfg, config_path.parent)
+    if not accounts:
+        raise ValueError("no enabled simulated account configured")
+    account = accounts[0]
+    if brief_date is None:
+        import sqlite3
+
+        with sqlite3.connect(account.database_path) as conn:
+            row = conn.execute(
+                "SELECT MAX(brief_date) FROM account_daily_assets WHERE account_id = ?",
+                (account.account_id,),
+            ).fetchone()
+        brief_date = str(row[0]) if row and row[0] else ""
+    if not brief_date:
+        raise ValueError("no account daily asset rows found; run brief watchlist first")
+    output = config_path.parent / "reports" / brief_date / f"simulated_account_bill_{brief_date}.html"
+    export_account_bill_html(account=account, brief_date=brief_date, output_path=output)
+    return {"account": account.account_id, "brief_date": brief_date, "account_bill": output}
 
 
 def _export_phase0_execution_gate(
@@ -396,7 +419,7 @@ def _print_manual_history_update_result(console: Console, result) -> None:
             console.print(f"[yellow]Warning:[/yellow] {warning}")
 
 
-def run_daily_brief_pipeline(
+def run_watchlist_pipeline(
     *,
     config_path: Path,
     skip_update: bool = False,
@@ -406,7 +429,7 @@ def run_daily_brief_pipeline(
 ) -> int:
     console = Console()
     cfg = load_config(config_path)
-    console.print("[bold]Phase 0 daily brief pipeline started[/bold]")
+    console.print("[bold]Phase 0 watchlist pipeline started[/bold]")
 
     history_result = None
     if skip_update:
@@ -416,10 +439,10 @@ def run_daily_brief_pipeline(
         history_result = update_manual_history_from_config(cfg, config_path.parent, check_only=check_only)
         _print_manual_history_update_result(console, history_result)
         if not history_result.ok:
-            console.print("[red]Daily brief stopped because A-share history update failed.[/red]")
+            console.print("[red]Watchlist stopped because A-share history update failed.[/red]")
             return 2
         if check_only:
-            console.print("[yellow]Daily brief stopped after freshness check because --check-only was set.[/yellow]")
+            console.print("[yellow]Watchlist stopped after freshness check because --check-only was set.[/yellow]")
             return 0
 
     should_refresh_cache = bool(refresh_cache)
@@ -432,26 +455,30 @@ def run_daily_brief_pipeline(
     result = _export_phase0_premarket(
         config_path=config_path,
         output="reports/{brief_date}/phase0_premarket_watchlist_{brief_date}.csv",
-        report_output="reports/{brief_date}/phase0_premarket_report_{brief_date}.html",
+        report_output="reports/{brief_date}/phase0_watchlist_report_{brief_date}.html",
         refresh_cache=should_refresh_cache,
         no_panel_cache=bool(no_panel_cache),
     )
     report_path = Path(result["report"])
-    brief_today_paths = [
-        config_path.parent / "reports" / "brief_today" / "index.html",
+    watchlist_today_paths = [
+        config_path.parent / "reports" / "watchlist_today" / "index.html",
         Path("/mnt/d/ZJ/Dev/brief_today/index.html"),
     ]
-    for brief_today_path in brief_today_paths:
-        brief_today_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(report_path, brief_today_path)
-    _sync_daily_brief_to_ecs(console, config_path.parent / "reports" / "brief_today")
-    console.print("[green]Daily brief pipeline complete[/green]")
+    for watchlist_today_path in watchlist_today_paths:
+        watchlist_today_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(report_path, watchlist_today_path)
+    _sync_watchlist_to_ecs(console, config_path.parent / "reports" / "watchlist_today")
+    console.print("[green]Watchlist pipeline complete[/green]")
     console.print(f"Watchlist: {result['watchlist']}")
     console.print(f"Report: {result['report']}")
-    for brief_today_path in brief_today_paths:
-        console.print(f"Brief today: {brief_today_path}")
+    for watchlist_today_path in watchlist_today_paths:
+        console.print(f"Watchlist today: {watchlist_today_path}")
     if "ledger" in result:
         console.print(f"Simulation ledger: {result['ledger']}")
+    if "account_ledger" in result:
+        console.print(f"Account ledger: {result['account_ledger']}")
+    if "account_bill" in result:
+        console.print(f"Account bill: {result['account_bill']}")
     console.print(f"Rows: {result['rows']}")
     console.print(f"Signal date: {result['signal_date']}")
     console.print(f"Check time: {result['check_time']}")
@@ -464,6 +491,30 @@ def run_daily_brief_pipeline(
                 f"but strategy signal date is {result['signal_date']}."
             )
     return 0
+
+
+def run_daily_brief_pipeline(
+    *,
+    config_path: Path,
+    watchlist: bool = False,
+    skip_update: bool = False,
+    check_only: bool = False,
+    refresh_cache: bool = False,
+    no_panel_cache: bool = False,
+) -> int:
+    console = Console()
+    if not watchlist:
+        console.print(
+            "[yellow]Warning:[/yellow] full daily brief is not implemented yet; "
+            "running --watchlist compatibility mode."
+        )
+    return run_watchlist_pipeline(
+        config_path=config_path,
+        skip_update=skip_update,
+        check_only=check_only,
+        refresh_cache=refresh_cache,
+        no_panel_cache=no_panel_cache,
+    )
 
 
 def main() -> int:
@@ -506,14 +557,46 @@ def main() -> int:
     oos_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     financial_pti_parser = sub.add_parser("financial-pti", help="Audit financial factor point-in-time validity")
     financial_pti_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_parser = sub.add_parser("brief", help="Brief delivery commands")
+    brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
+    brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
+    brief_daily_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_daily_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update")
+    brief_daily_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export")
+    brief_daily_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    brief_daily_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    brief_daily_compat_parser = brief_sub.add_parser("daily-brief", help="Compatibility alias for brief daily")
+    brief_daily_compat_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_daily_compat_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update")
+    brief_daily_compat_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export")
+    brief_daily_compat_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    brief_daily_compat_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    brief_watchlist_parser = brief_sub.add_parser("watchlist", help="Generate the phase0 watchlist trial brief")
+    brief_watchlist_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_watchlist_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update")
+    brief_watchlist_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export")
+    brief_watchlist_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    brief_watchlist_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    brief_premarket_parser = brief_sub.add_parser("premarket", help="Export the raw 07:30 premarket watchlist without updating history")
+    brief_premarket_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_premarket_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
+    brief_premarket_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+    brief_account_bill_parser = brief_sub.add_parser("account-bill", help="Export simulated account bill HTML from SQLite")
+    brief_account_bill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    brief_account_bill_parser.add_argument("--date", default=None, help="Brief/account date in YYYY-MM-DD. Defaults to latest account date.")
     premarket_parser = sub.add_parser("premarket", help="Export phase0 07:30 premarket watchlist")
     premarket_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     premarket_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     premarket_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
-    daily_brief_parser = sub.add_parser("daily-brief", help="Update A-share history and export the current strategy daily brief")
+    daily_brief_parser = sub.add_parser("daily-brief", help="Run the daily delivery pipeline")
     daily_brief_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    daily_brief_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update and only export the brief")
-    daily_brief_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export the brief")
+    daily_brief_parser.add_argument(
+        "--watchlist",
+        action="store_true",
+        help="Export the phase0 watchlist trial brief; the full daily brief is reserved for later product stages",
+    )
+    daily_brief_parser.add_argument("--skip-update", action="store_true", help="Skip A-share history update and only export the watchlist")
+    daily_brief_parser.add_argument("--check-only", action="store_true", help="Only check A-share history freshness; do not export the watchlist")
     daily_brief_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     daily_brief_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     execution_gate_parser = sub.add_parser("execution-gate", help="Run phase0 account execution effectiveness gate")
@@ -622,6 +705,44 @@ def main() -> int:
         console.print(f"Samples: {result['samples']}")
         console.print(f"HTML: {result['html']}")
         return 0
+    if args.cmd == "brief":
+        if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
+            return run_daily_brief_pipeline(
+                config_path=Path(args.config).resolve(),
+                watchlist=True,
+                skip_update=bool(args.skip_update),
+                check_only=bool(args.check_only),
+                refresh_cache=bool(args.refresh_cache),
+                no_panel_cache=bool(args.no_panel_cache),
+            )
+        if args.brief_cmd == "premarket":
+            config_path = Path(args.config).resolve()
+            console = Console()
+            console.print("[bold]Phase 0 premarket watchlist started[/bold]")
+            result = _export_phase0_premarket(
+                config_path=config_path,
+                refresh_cache=bool(args.refresh_cache),
+                no_panel_cache=bool(args.no_panel_cache),
+            )
+            console.print("[green]Premarket watchlist complete[/green]")
+            console.print(f"Watchlist: {result['watchlist']}")
+            console.print(f"Report: {result['report']}")
+            console.print(f"Rows: {result['rows']}")
+            console.print(f"Signal date: {result['signal_date']}")
+            console.print(f"Check time: {result['check_time']}")
+            return 0
+        if args.brief_cmd == "account-bill":
+            console = Console()
+            result = _export_brief_account_bill(
+                config_path=Path(args.config).resolve(),
+                brief_date=args.date,
+            )
+            console.print("[green]Account bill export complete[/green]")
+            console.print(f"Account: {result['account']}")
+            console.print(f"Date: {result['brief_date']}")
+            console.print(f"Account bill: {result['account_bill']}")
+            return 0
+        parser.error("brief requires a subcommand: daily, watchlist, premarket, or account-bill")
     if args.cmd == "premarket":
         config_path = Path(args.config).resolve()
         console = Console()
@@ -641,6 +762,7 @@ def main() -> int:
     if args.cmd == "daily-brief":
         return run_daily_brief_pipeline(
             config_path=Path(args.config).resolve(),
+            watchlist=bool(args.watchlist),
             skip_update=bool(args.skip_update),
             check_only=bool(args.check_only),
             refresh_cache=bool(args.refresh_cache),

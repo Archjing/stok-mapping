@@ -576,6 +576,16 @@
 
 参考专项任务：[`tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](ops/SCHEDULER_PIPELINE_TASKS.md)
 
+### W2.12.0 已完成基线
+
+- [x] 统一调度器 `scripts/run_project_scheduler.sh` 已作为项目内唯一 cron 入口。
+- [x] `07:20` 调度任务已从旧 `daily-brief` 兼容入口切换为 `brief watchlist`。
+- [x] 阶段试用观察池已固定生成 `reports/watchlist_today/index.html`。
+- [x] 阶段试用观察池已在程序内执行 ECS 同步，远端目录默认为 `BRIEF_SYNC_REMOTE_DIR=/brief/`。
+- [x] 当前 `brief` 命令路由已整理为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`。
+- [x] 模拟账户 SQLite 主账本已接入 watchlist pipeline，当前能维护账户配置、日资产、成交流水和持仓快照。
+- [x] watchlist 与正式模拟账单边界已明确：watchlist 是计划层，正式账单只记录本地 OHLCV 已确认的执行日。
+
 ### W2.12.1 交易日判断
 
 - [ ] 当前调度器仍按周一到周五判断，不等同于交易所交易日历。
@@ -591,3 +601,9 @@
 - [ ] 每个任务需要最大重试次数，例如 `3` 次。
 - [ ] 每个任务需要重试间隔，例如 `5` 分钟。
 - [ ] 失败次数、最后失败时间、最后错误摘要需要写入调度状态文件。
+
+### W2.12.3 正式日报产物后续拆分
+
+- [ ] 当前 `brief daily` 仍复用 `brief watchlist` 阶段试用观察池代码。
+- [ ] 后续需要独立重写正式 daily brief 产物生成代码。
+- [ ] 正式 daily brief 应在观察池之外增加市场状态、账户变动、风险解释、候选变化和外部事件摘要。

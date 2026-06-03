@@ -14,6 +14,6 @@ if [[ -f "${PROJECT_ROOT}/.env" ]]; then
   set +a
 fi
 
-echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] daily brief pipeline started"
-"${PYTHON_BIN}" -m phase0.cli daily-brief --config config.yaml
-echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] daily brief pipeline finished"
+echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] watchlist pipeline started"
+"${PYTHON_BIN}" -m phase0.cli brief watchlist --config config.yaml
+echo "[$(date '+%Y-%m-%d %H:%M:%S %z')] watchlist pipeline finished"

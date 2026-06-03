@@ -14,6 +14,13 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
+from phase0.accounts import (
+    build_account_ledger,
+    export_account_bill_html,
+    load_latest_account_snapshot,
+    load_simulated_accounts,
+    price_mode_label,
+)
 from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history
 from phase0.strategies import get_strategy
@@ -33,6 +40,15 @@ from scripts.export_low_turnover_bill import (
 DEFAULT_WATCHLIST_OUTPUT = "reports/phase0_premarket_watchlist.csv"
 DEFAULT_REPORT_OUTPUT = "reports/phase0_premarket_report.html"
 DEFAULT_SIMULATION_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
+STRATEGY_DISPLAY_NAMES = {
+    "legacy_momentum_low_turnover_v1": "低换手经典动量",
+}
+STRATEGY_SHORT_DESCRIPTIONS = {
+    "legacy_momentum_low_turnover_v1": (
+        "当前采用低换手经典动量策略：仍以动量强弱选股，但买入更严格、持有更宽容，"
+        "通过持有区间、周期调仓、最短持有天数和换手惩罚减少来回换股。"
+    ),
+}
 
 
 def _resolve_output_template(root: Path, value: str | Path, summary: dict[str, Any]) -> Path:
@@ -60,6 +76,39 @@ def _format_price(value: Any) -> str:
     if pd.isna(value):
         return ""
     return f"{float(value):.2f}"
+
+
+def _format_money(value: Any) -> str:
+    if pd.isna(value):
+        return ""
+    return f"{float(value):,.2f}"
+
+
+def _format_volume(value: Any) -> str:
+    if pd.isna(value):
+        return ""
+    return f"{float(value):,.0f}"
+
+
+def _display_cell(header: str, value: Any) -> str:
+    text = str(value)
+    if header == "成交价口径":
+        return price_mode_label(text)
+    if header == "观察理由":
+        labels = {
+            "动量分数超过买入阈值": "强势达标",
+            "动量分数跌破持有阈值": "动量转弱",
+        }
+        parts = [labels.get(part, part) for part in text.split("；")]
+        return "；".join(parts)
+    return text
+
+
+def _cell_title(header: str, value: Any, display_value: str) -> str:
+    text = str(value)
+    if header == "观察理由" and text != display_value:
+        return text
+    return ""
 
 
 def _parse_pct(value: Any) -> float:
@@ -263,6 +312,66 @@ def _write_simulation_ledger(
     out.to_csv(path, index=False, encoding="utf-8-sig")
 
 
+def _format_account_snapshot_rows(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
+    if not rows:
+        return ""
+    headers = ["账单日期", "总资产", "股票资产", "现金资产", "执行价口径", "成交金额", "成交股数", "收益额", "说明"]
+    body = []
+    for row in rows:
+        body.append(
+            "<tr>"
+            + "".join(f"<td>{html.escape(str(row.get(header, '')))}</td>" for header in headers)
+            + "</tr>"
+        )
+    return (
+        "<section class=\"account-snapshot\"><h2>模拟账户快照</h2>"
+        "<p><strong>"
+        f"模拟起始日：{html.escape(str(meta.get('start_date', '')))}"
+        f" ｜ 初始资产：{html.escape(_format_money(meta.get('initial_cash', np.nan)))}"
+        "</strong></p>"
+        "<p>展示最近一个已确认模拟账单日；当前观察池为计划层，不直接代表已成交记录。</p>"
+        "<div class=\"table-wrap account-table\"><table><thead><tr>"
+        + "".join(f"<th>{html.escape(header)}</th>" for header in headers)
+        + "</tr></thead><tbody>"
+        + "\n".join(body)
+        + "</tbody></table></div></section>\n"
+    )
+
+
+def _build_account_snapshot_rows(
+    *,
+    summary: dict[str, Any],
+    account_snapshot: dict[str, Any],
+) -> list[dict[str, Any]]:
+    if not account_snapshot:
+        return []
+    total_asset = float(account_snapshot.get("total_asset", 0.0) or 0.0)
+    stock_asset = float(account_snapshot.get("stock_asset", 0.0) or 0.0)
+    cash_asset = float(account_snapshot.get("cash_asset", 0.0) or 0.0)
+    daily_pnl = float(account_snapshot.get("daily_pnl", 0.0) or 0.0)
+    estimated_trade_amount = float(account_snapshot.get("estimated_trade_amount", 0.0) or 0.0)
+    estimated_volume = float(account_snapshot.get("estimated_volume", 0.0) or 0.0)
+    price_mode = str(account_snapshot.get("execution_price_mode", ""))
+    snapshot_date = str(account_snapshot.get("brief_date", ""))
+    current_brief_date = str(summary.get("brief_date", ""))
+    note = "最近已确认模拟执行"
+    if snapshot_date and current_brief_date and snapshot_date != current_brief_date:
+        note = f"当前观察池尚未确认成交，显示最近已确认账单 {snapshot_date}"
+    return [
+        {
+            "账单日期": snapshot_date,
+            "总资产": _format_money(total_asset),
+            "股票资产": _format_money(stock_asset),
+            "现金资产": _format_money(cash_asset),
+            "执行价口径": price_mode_label(price_mode or "next_open"),
+            "成交金额": _format_money(estimated_trade_amount),
+            "成交股数": _format_volume(estimated_volume),
+            "收益额": _format_money(daily_pnl),
+            "说明": note,
+        }
+    ]
+
+
 def _format_html(watchlist: pd.DataFrame, summary: dict[str, Any]) -> str:
     style = """
 <style>
@@ -295,6 +404,14 @@ h1 {
   color: #8b95a1;
   font-size: 13px;
 }
+.helper-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+}
+.helper-link:hover {
+  text-decoration: underline;
+}
 p {
   margin: 0 0 16px;
   color: #4b5563;
@@ -320,11 +437,42 @@ p {
   margin-top: 4px;
   font-size: 16px;
 }
+.notice {
+  color: #6b7280;
+  font-size: 12px;
+  padding: 0;
+  margin: 8px 0 16px;
+  line-height: 1.6;
+}
+.notice strong {
+  color: #4b5563;
+  font-weight: 600;
+}
 .table-wrap {
   overflow: auto;
   max-height: 70vh;
   border: 1px solid #d0d7de;
   background: #fff;
+}
+.account-snapshot {
+  margin: 0 0 18px;
+}
+.account-snapshot h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.account-snapshot p {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+.account-snapshot p strong {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+.account-table {
+  max-height: none;
 }
 table {
   width: max-content;
@@ -354,11 +502,28 @@ th {
 .hold td {
   background: #f8fafc;
 }
+.terms {
+  color: #6b7280;
+  font-size: 12px;
+  margin: 8px 0 16px;
+  line-height: 1.6;
+}
+.terms h2 {
+  margin: 0;
+  font-size: 12px;
+  color: #4b5563;
+  font-weight: 600;
+}
+.terms p {
+  margin: 2px 0 0;
+}
+.term {
+  font-weight: 600;
+  color: #4b5563;
+}
 </style>
 """
     headers = [
-        "信号日期",
-        "盘前检查时间",
         "交易动作",
         "策略信号动作",
         "股票代码",
@@ -376,6 +541,15 @@ th {
         "连续模拟说明",
         "观察理由",
     ]
+    header_tips = {
+        "交易动作": "连续模拟账户口径：根据上一期模拟持仓与本期目标持仓计算今天的调仓行为。",
+        "策略信号动作": "本次模型信号口径：表示策略模型根据最新信号给出的目标状态变化，不等同于最终交易指令。",
+        "成交价口径": "执行假设使用的成交价格口径：执行日收盘价、执行日开盘价或执行日开盘保守价。",
+        "最大成交参与率": "流动性约束：单只股票交易量最多参与市场成交量的比例。",
+        "执行风险提示": "根据价格、成交量、成交额和涨跌停状态提示次日可能的成交障碍。",
+        "连续模拟说明": "解释本次动作如何从上一期模拟持仓滚动到本期目标持仓。",
+        "观察理由": "说明股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。",
+    }
     rows = []
     for _, row in watchlist.iterrows():
         action = str(row["交易动作"])
@@ -386,10 +560,17 @@ th {
             cls = ' class="sell"'
         elif "持有" in action:
             cls = ' class="hold"'
-        cells = [str(row.get(header, "")) for header in headers]
-        rows.append(f"<tr{cls}>" + "".join(f"<td>{html.escape(cell)}</td>" for cell in cells) + "</tr>")
+        cells = []
+        for header in headers:
+            raw_value = row.get(header, "")
+            display_value = _display_cell(header, raw_value)
+            title = _cell_title(header, raw_value, display_value)
+            title_attr = f" title=\"{html.escape(title, quote=True)}\"" if title else ""
+            cells.append(f"<td{title_attr}>{html.escape(display_value)}</td>")
+        rows.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
 
     summary_cards = [
+        ("当前策略", summary.get("strategy_display_name", "")),
         ("信号日期", summary.get("signal_date", "")),
         ("盘前检查时间", summary.get("check_time", "")),
         ("观察股票数", summary.get("watchlist_rows", 0)),
@@ -399,25 +580,55 @@ th {
         ("卖出/减仓", summary.get("sell_or_reduce_rows", 0)),
         ("训练窗 Sharpe", _format_num(summary.get("train_sharpe", 0.0))),
     ]
+    account_snapshot_html = _format_account_snapshot_rows(
+        summary.get("account_snapshot_rows", []),
+        summary.get("account_snapshot_meta", {}),
+    )
     return (
         "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n"
         "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-        "<title>Phase 0 Premarket Watchlist</title>\n"
+        "<title>盘前观察池试用简报</title>\n"
         + style
         + "</head>\n<body>\n<div class=\"page\">\n"
         "<div class=\"title-row\"><h1>Phase 0 盘前观察池</h1>"
         f"<span class=\"generated-at\">生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}</span></div>\n"
-        "<p>基于最近一个已入库交易日收盘后的低换手动量信号生成，供次日 07:30 盘前检查持仓、候选和调仓关注项。</p>\n"
+        "<p>阶段试用简报 · 策略信号观察版。"
+        f"{html.escape(str(summary.get('strategy_description', '')))}"
+        "本页基于最近一个已入库交易日收盘后的信号生成，供下一交易日 07:30 盘前检查持仓、候选和调仓关注项。"
+        "<a class=\"helper-link\" href=\"#terms\">术语说明</a> "
+        "<a class=\"helper-link\" href=\"#disclaimer\">免责声明</a></p>\n"
         "<div class=\"summary\">"
         + "".join(
             f"<div><span>{html.escape(label)}</span><strong>{html.escape(str(value))}</strong></div>"
             for label, value in summary_cards
         )
-        + "</div>\n<div class=\"table-wrap\"><table><thead><tr>"
-        + "".join(f"<th>{html.escape(header)}</th>" for header in headers)
+        + "</div>\n"
+        + account_snapshot_html
+        + "<div class=\"table-wrap\"><table><thead><tr>"
+        + "".join(
+            f"<th title=\"{html.escape(header_tips.get(header, ''), quote=True)}\">{html.escape(header)}</th>"
+            for header in headers
+        )
         + "</tr></thead><tbody>"
         + "\n".join(rows)
-        + "</tbody></table></div>\n</div>\n</body>\n</html>\n"
+        + "</tbody></table></div>\n"
+        "<section class=\"terms\" id=\"terms\"><h2>术语说明：</h2>"
+        "<p><span class=\"term\">交易动作</span> 是连续模拟账户口径，表示模拟账户从上一期持仓滚动到本期目标持仓时今天需要发生的调仓行为。</p>"
+        "<p><span class=\"term\">策略信号动作</span> 是本次模型信号口径，表示策略模型根据最新数据给出的目标状态变化，它是模型信号，不等同于最终交易指令。</p>"
+        "<p><span class=\"term\">成交价口径</span> 描述执行假设采用的价格。"
+        "“执行日收盘价”指观察池对应执行日 15:00 附近的收盘价；"
+        "“执行日开盘价”指观察池对应执行日 09:30 附近的开盘价；"
+        "“执行日开盘保守价”指在执行日开盘价基础上叠加保守缓冲后的估算价格。</p>"
+        "<p><span class=\"term\">最大成交参与率</span> 是流动性约束，限制单只股票交易量最多参与市场成交量的比例。</p>"
+        "<p><span class=\"term\">执行风险提示</span> 用于提示停牌、流动性、涨跌停等可能影响成交的因素。</p>"
+        "<p><span class=\"term\">连续模拟说明</span> 解释本次动作如何承接上一期模拟持仓。</p>"
+        "<p><span class=\"term\">观察理由</span> 概括该股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。"
+        "表格中“强势达标”是“动量分数超过买入阈值”的简写，表示模型强度达到入选条件，不等同于技术分析里常说的“超买”。</p></section>\n"
+        "<div class=\"notice\" id=\"disclaimer\"><strong>风险提示与免责声明：</strong>"
+        "本页面仅基于项目内已入库历史数据、当前策略参数和连续模拟账户状态生成，用于研究复盘、盘前观察和策略验证；"
+        "相关信号、权重、观察理由和执行风险提示均不构成投资建议、收益承诺或自动交易指令。"
+        "实际交易需结合实时行情、账户约束、流动性、政策风险和个人风险承受能力独立判断。</div>\n"
+        "</div>\n</body>\n</html>\n"
     )
 
 
@@ -474,7 +685,8 @@ def export_premarket_watchlist(
 
     train_dates = set(dates.iloc[-train_len:])
     train = panel[panel["date"].isin(train_dates)].copy()
-    strategy = get_strategy("legacy_momentum_low_turnover_v1")
+    strategy_id = "legacy_momentum_low_turnover_v1"
+    strategy = get_strategy(strategy_id)
     params = strategy.select_params(
         train,
         strategy_cfg,
@@ -578,6 +790,44 @@ def export_premarket_watchlist(
         "sell_or_reduce_rows": int(watchlist["交易动作"].astype(str).str.contains("卖|减仓", regex=True).sum()),
         "previous_position_source": previous_source,
         "train_sharpe": float(metric["sharpe"]),
+        "strategy_id": strategy_id,
+        "strategy_display_name": STRATEGY_DISPLAY_NAMES.get(strategy_id, getattr(strategy, "display_name", strategy_id) or strategy_id),
+        "strategy_description": STRATEGY_SHORT_DESCRIPTIONS.get(strategy_id, ""),
+    }
+    accounts = load_simulated_accounts(config, root)
+    account_ledger_path = accounts[0].ledger_path if accounts else Path("")
+    account_bill_path = Path("")
+    _, rebuilt_account_snapshot = (
+        build_account_ledger(
+            root=root,
+            current_watchlist=watchlist,
+            current_brief_date=str(summary["brief_date"]),
+            account=accounts[0],
+            local_history_cfg=config.get("local_history", {}),
+        )
+        if accounts
+        else (pd.DataFrame(), {})
+    )
+    account_snapshot = rebuilt_account_snapshot if rebuilt_account_snapshot else (load_latest_account_snapshot(accounts[0]) if accounts else {})
+    if accounts and account_snapshot:
+        bill_date = str(account_snapshot.get("brief_date", summary["brief_date"]))
+        account_bill_path = _resolve_output_template(
+            root,
+            f"reports/{bill_date}/simulated_account_bill_{bill_date}.html",
+            {**summary, "check_time": f"{bill_date} 00:00"},
+        )
+        export_account_bill_html(
+            account=accounts[0],
+            brief_date=bill_date,
+            output_path=account_bill_path,
+        )
+    summary["account_snapshot_rows"] = _build_account_snapshot_rows(
+        summary=summary,
+        account_snapshot=account_snapshot,
+    )
+    summary["account_snapshot_meta"] = {
+        "start_date": account_snapshot.get("start_date", ""),
+        "initial_cash": accounts[0].initial_cash if accounts else np.nan,
     }
     output_path = _resolve_output_template(root, output, summary)
     report_path = _resolve_output_template(root, report_output, summary)
@@ -591,7 +841,15 @@ def export_premarket_watchlist(
         signal_date=signal_date.date().isoformat(),
         watchlist=watchlist,
     )
-    return {"watchlist": output_path, "report": report_path, "ledger": ledger_path, "rows": len(watchlist), **summary}
+    return {
+        "watchlist": output_path,
+        "report": report_path,
+        "ledger": ledger_path,
+        "account_ledger": account_ledger_path,
+        "account_bill": account_bill_path,
+        "rows": len(watchlist),
+        **summary,
+    }
 
 
 def main() -> int:

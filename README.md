@@ -19,11 +19,17 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 下面命令默认在项目根目录执行。涉及外部数据源时需确保 `.env` 中的 token 已配置，且当前环境具备联网能力。
 
 ```bash
-# 重跑日报：先更新 A 股日线历史库，再生成次日 07:30 盘前观察池
-./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+# 重跑当前日报主入口：先更新 A 股日线历史库，再生成阶段试用观察池页面
+./.venv/bin/python -m phase0.cli brief daily
+
+# 直接运行阶段试用观察池入口，当前与 brief daily 同路径
+./.venv/bin/python -m phase0.cli brief watchlist
 
 # 只生成盘前观察池，不先更新 A 股历史库
-./.venv/bin/python -m phase0.cli premarket --config config.yaml
+./.venv/bin/python -m phase0.cli brief premarket
+
+# 导出最新已确认模拟交易账单
+./.venv/bin/python -m phase0.cli brief account-bill
 
 # 更新 A 股日线历史数据
 ./.venv/bin/python -m phase0.cli update-history --config config.yaml
@@ -53,7 +59,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
-- 已增加开发期定时任务：交易日 `16:30` 日线增量更新，每周一 `03:30` 财务因子更新。
+- 已增加开发期统一调度器：交易日 `07:20` 生成阶段试用观察池，`16:20` 更新港股库，`16:30` 更新 A 股库，`17:10` 更新 US market 库，每周一 `03:30` 更新财务因子。
 - 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，账单导出和策略解释性输出已补齐基础版本。
 - 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
 - 当前主阻塞点不是数据管线或 Sharpe 门槛，而是更长期稳定性验证、数据源升级和日常研判自动化。
@@ -188,6 +194,39 @@ data/manual_history/README.md
 uv sync
 ```
 
+### CLI 路由总览
+
+当前推荐统一使用 `phase0.cli` 的 `brief ...` 层级入口。所有带 `--config` 的命令默认值都是 `config.yaml`，在项目根目录执行时通常可以省略。
+
+| 路由 | 用途 | 状态 |
+| --- | --- | --- |
+| `brief daily` | 当前日报主入口；先更新 A 股历史库，再生成阶段试用观察池页面 | 推荐 |
+| `brief watchlist` | 阶段试用观察池入口；当前与 `brief daily` 同执行路径 | 推荐 |
+| `brief premarket` | 只导出原始盘前观察池，不更新 A 股历史库 | 推荐 |
+| `brief account-bill` | 从 SQLite 导出最新或指定日期的模拟交易账单 HTML | 推荐 |
+| `update-history` | 更新 A 股本地日线历史库 | 推荐 |
+| `update-us-market-history` | 更新 US market 跨市场历史库 | 推荐 |
+| `update-hk-market-history` | 更新港股历史库；当前是否实际启用取决于 `hk_market_history.enabled` | 预留 / 可检查 |
+| `update-financials` | 更新 A 股季度财务因子 | 推荐 |
+| `run` | 运行 Phase 0 主流程 | 研究入口 |
+| `cost-sensitivity` | 运行显式成本敏感性测试 | 研究入口 |
+| `bill` | 导出当前主策略低换手回测账单、日资产表和 HTML 预览 | 研究入口 |
+| `market-regime` | 导出市场状态分段验证报告 | 研究入口 |
+| `oos-report` | 导出连续 OOS 报告 | 研究入口 |
+| `execution-gate` | 运行账户级执行仿真 gate | 研究入口 |
+| `financial-pti` | 审计财务因子 point-in-time 有效性 | 研究入口 |
+| `build-universe` | 构建本地因子股票池 | 维护入口 |
+| `import-history` | 完整重建 / 导入 A 股离线历史库 | 维护入口 |
+| `import-index-history` | 只重建指数元数据和指数日线表 | 维护入口 |
+
+兼容旧入口仍保留，但后续文档和定时任务应优先使用 `brief ...`：
+
+```bash
+./.venv/bin/python -m phase0.cli daily-brief
+./.venv/bin/python -m phase0.cli premarket
+./.venv/bin/python -m phase0.cli brief daily-brief
+```
+
 运行 Phase 0：
 
 ```bash
@@ -219,6 +258,8 @@ uv sync
 ```
 
 账单使用 `phase0.execution` 中的账户级仿真 v2 参数，当前默认包含 `price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`、涨跌停检查和停牌检查。输出会记录全部成交、部分成交、未成交及原因。
+
+成交价口径中的日期含义需要区分：`close` 表示执行日收盘价，即观察池对应执行日 15:00 附近价格；`next_open` 表示执行日开盘价，即观察池对应执行日 09:30 附近价格；`conservative` 表示执行日开盘价叠加保守缓冲后的估算价格。
 
 按账户级仿真规则重跑 effective gate：
 
@@ -266,36 +307,62 @@ reports/live_execution_backtest/
   --output-dir reports/live_execution_backtest/live_profile
 ```
 
-生成日常简报 pipeline：
+生成阶段试用简报 pipeline：
 
 ```bash
-./.venv/bin/python -m phase0.cli daily-brief --config config.yaml
+./.venv/bin/python -m phase0.cli brief daily
+./.venv/bin/python -m phase0.cli brief watchlist
 ```
 
-`daily-brief` 默认先执行 A 股本地历史库增量更新，再导出当前有效主策略的 07:30 盘前观察池；如果历史库插入了新行，会自动刷新低换手策略 panel cache，避免基于旧缓存生成简报。
+`brief daily` 是当前日报主入口。现阶段完整日报产物尚未独立实现，该入口暂时复用 `brief watchlist` 的阶段试用简报生成代码：先执行 A 股本地历史库增量更新，再导出当前有效主策略的 07:30 盘前观察池；如果历史库插入了新行，会自动刷新低换手策略 panel cache，避免基于旧缓存生成观察池。`brief watchlist` 可直接调用同一阶段试用观察池管线。`--config` 默认值为 `config.yaml`，在项目根目录执行时可以省略。
 
-`daily-brief` 的报告按简报日期归档，日期来自简报中的 `盘前检查时间`，不是系统运行时间。输出路径格式为：
+`brief daily` / `brief watchlist` 的报告按简报日期归档，日期来自观察池中的 `盘前检查时间`，不是系统运行时间。输出路径格式为：
 
 ```text
 reports/<brief_date>/phase0_premarket_watchlist_<brief_date>.csv
-reports/<brief_date>/phase0_premarket_report_<brief_date>.html
+reports/<brief_date>/phase0_watchlist_report_<brief_date>.html
 ```
 
-日常简报还会维护一份连续模拟仓位流水：
+`brief watchlist` 会维护模拟账户主账本，SQLite 为主存储：
+
+```text
+data/simulated_trading/simulated_accounts.sqlite
+```
+
+当前会自动创建并更新四张表：
+
+```text
+simulated_accounts       # 模拟账户配置
+account_daily_assets     # 每日账户资产、股票资产、现金资产、收益额
+account_trades           # 每笔模拟交易，含买卖方向、价格、金额、股数、手数
+account_positions        # 每日持仓快照
+```
+
+同时保留一份连续模拟仓位 CSV 流水，作为兼容导出：
 
 ```text
 data/simulated_trading/phase0_daily_brief_ledger.csv
+data/simulated_trading/phase0_daily_account_ledger.csv
 ```
 
 现阶段该流水默认按程序自动生成的目标仓位滚动；后续接入用户模拟交易确认后，可用用户实际成交/持仓状态替代这份自动状态。简报中的 `交易动作`、`当前权重`、`目标权重`、`权重变化` 使用连续模拟口径，`策略信号动作` 保留本次策略模型自身的信号口径。
 
+注意：`brief watchlist` 当前展示的是计划层观察池；模拟账户账单只写入本地日线库已有对应执行日 OHLCV 的已确认日期。`next_open` / `conservative` 使用执行日开盘价附近撮合，`close` 使用执行日收盘价撮合，持仓按执行日收盘价估值。当前账单已接入 100 股整手、现金约束、佣金、卖出印花税、滑点、涨跌停 / 停牌检查和最大成交参与率；未成交 / 部分成交原因的结构化落库仍需后续增强。
+
+单独导出模拟交易账单 HTML：
+
+```bash
+./.venv/bin/python -m phase0.cli brief account-bill
+./.venv/bin/python -m phase0.cli brief account-bill --date 2026-06-03
+```
+
 单独导出 07:30 盘前观察池：
 
 ```bash
-./.venv/bin/python -m phase0.cli premarket --config config.yaml
+./.venv/bin/python -m phase0.cli brief premarket
 ```
 
-观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。`premarket` 不负责更新 A 股本地历史库，日常使用优先跑 `daily-brief`。
+观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。`brief premarket` 不负责更新 A 股本地历史库，日常使用优先跑 `brief daily`。
 
 完整重建离线历史库：
 
@@ -366,7 +433,7 @@ bash scripts/install_dev_cron.sh
 具体任务由 `scripts/run_project_scheduler.sh` 统一管理，当前默认包含：
 
 - 每周一 `03:30`：更新 A 股季度财务因子，日志写入 `logs/financial_factors_update.log`。
-- 交易日 `07:20`：运行 `daily-brief`，生成盘前日报和连续模拟仓位流水，日志写入 `logs/daily_brief_pipeline.log`。
+- 交易日 `07:20`：运行 `brief watchlist`，生成阶段试用观察池页面 `reports/watchlist_today/index.html`，并同步到 ECS 远端目录 `BRIEF_SYNC_REMOTE_DIR`，日志写入 `logs/daily_brief_pipeline.log`。
 - 交易日 `16:20`：更新港股历史库，日志写入 `logs/hk_market_history_update.log`。
 - 交易日 `16:30`：更新 A 股本地历史库，日志写入 `logs/manual_history_update.log`。
 - 交易日 `17:10`：更新 US market 历史库，日志写入 `logs/us_market_history_update.log`。

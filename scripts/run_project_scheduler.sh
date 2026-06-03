@@ -73,7 +73,7 @@ run_daily_brief() {
     "daily_brief" \
     "${DAILY_BRIEF_TIME:-07:20}" \
     "${PROJECT_ROOT}/logs/daily_brief_pipeline.log" \
-    "${PYTHON_BIN}" -m phase0.cli daily-brief --config "${CONFIG_PATH}"
+    "${PYTHON_BIN}" -m phase0.cli brief watchlist --config "${CONFIG_PATH}"
 }
 
 run_hk_market_update() {

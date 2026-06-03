@@ -7,7 +7,7 @@
 
 - [x] 新增统一项目调度器：`scripts/run_project_scheduler.sh`
 - [x] 将系统 crontab 收敛为一个项目入口：`* * * * * bash scripts/run_project_scheduler.sh`
-- [x] 接入 `daily-brief` 日报 pipeline
+- [x] 接入 `brief watchlist` 阶段试用观察池 pipeline
 - [x] 接入 A 股本地历史库更新：`phase0.cli update-history`
 - [x] 接入港股历史库更新：`phase0.cli update-hk-market-history`
 - [x] 接入 US market 历史库更新：`phase0.cli update-us-market-history`
@@ -15,6 +15,11 @@
 - [x] 为每个任务提供独立日志文件
 - [x] 为每个任务提供简单锁目录，避免同一任务并发重复启动
 - [x] 成功后写入每日 stamp，避免同一任务同一天重复执行
+- [x] `07:20` 任务已切换到 `phase0.cli brief watchlist`
+- [x] 阶段试用观察池已固定生成 `reports/watchlist_today/index.html`
+- [x] 阶段试用观察池已内置 ECS rsync 同步，远端默认 `BRIEF_SYNC_REMOTE_DIR=/brief/`
+- [x] `scripts/run_daily_brief_pipeline.sh` 已改为兼容调用 `brief watchlist`
+- [x] 当前 `brief` 命令路由已整理为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`
 
 ## T6.1.2 已知问题：交易日判断仍过于粗糙
 
@@ -35,7 +40,7 @@
 - [ ] `T6.1.2.3.1` 为 A 股任务读取 `data/manual_history/a_share_history.sqlite` 的 `trading_calendar` 表。
 - [ ] `T6.1.2.3.2` 为港股任务接入港股交易日历或以数据源最新交易日判断。
 - [ ] `T6.1.2.3.3` 为 US market 任务接入美股交易日历或以数据源最新交易日判断。
-- [ ] `T6.1.2.3.4` 将 `daily-brief` 的触发条件与 A 股下一个盘前检查日绑定。
+- [ ] `T6.1.2.3.4` 将 `brief watchlist` / `brief daily` 的触发条件与 A 股下一个盘前检查日绑定。
 - [ ] `T6.1.2.3.5` 在日志里记录任务跳过原因：非交易日、已完成、锁占用、未到时间窗口。
 
 ## T6.1.3 已知问题：失败重试策略仍不完整
