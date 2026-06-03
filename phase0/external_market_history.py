@@ -226,6 +226,10 @@ def _record_audit(
     )
 
 
+def _to_sql_value(value: Any) -> Any:
+    return None if pd.isna(value) else value
+
+
 def _normalize_frame(symbol: str, df: pd.DataFrame, settings: MarketHistorySettings) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
@@ -323,18 +327,18 @@ def _update_market_history(
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        row.market,
-                        row.symbol,
-                        row.date,
-                        row.open,
-                        row.high,
-                        row.low,
-                        row.close,
-                        row.adjusted_close,
-                        row.volume,
-                        row.source,
-                        row.fetched_at,
-                        row.hk,
+                        _to_sql_value(row.market),
+                        _to_sql_value(row.symbol),
+                        _to_sql_value(row.date),
+                        _to_sql_value(row.open),
+                        _to_sql_value(row.high),
+                        _to_sql_value(row.low),
+                        _to_sql_value(row.close),
+                        _to_sql_value(row.adjusted_close),
+                        _to_sql_value(row.volume),
+                        _to_sql_value(row.source),
+                        _to_sql_value(row.fetched_at),
+                        _to_sql_value(row.hk),
                     ),
                 )
                 if existed:
