@@ -725,3 +725,96 @@ python -m phase0.cli overfit-diagnostic \
 - [ ] `brief watchlist` 后续展示 selected candidate 的 overfit risk 摘要
 - [ ] `overfit_risk_level = high / critical` 时，不允许新策略直接进入观察池长期试用
 - [ ] 新增策略进入 compare 前，必须保存完整候选结果，避免只记录 winner
+
+## W2.14 A 股历史 as-of 前复权与复权因子治理（T1.4）
+
+参考专项任务：[`tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md)
+
+### W2.14.0 立项定位
+
+> `T1.4` 用来封住价格特征层的 future leakage：回测某个历史 as-of date 时，只能使用该日之前可见的未复权价格和复权因子，不能把未来分红送转导致的全历史前复权变化折回过去。
+
+### W2.14.1 本周目标
+
+- [ ] 审计当前本地 A 股日线库是否同时具备 `bfq_raw`、`qfq_current` 和每日复权因子
+- [ ] 明确当前 `phase0` 回测实际使用的价格口径
+- [ ] 冻结 `market_adj_factors` 表结构和导入规则
+- [ ] 设计并实现 `qfq_asof` 最小 loader，先不静默改变现有默认回测行为
+- [ ] 新增 `adjustment-audit` 报告，标记当前策略结果是否存在复权未来函数风险
+- [ ] 输出 `qfq_current` / `qfq_asof` 差异样例，覆盖除权除息样本股和普通样本股
+
+### W2.14.2 输入产物
+
+- [ ] 本地历史库中的 A 股日线 OHLCV 表
+- [ ] 当前 `phase0/local_history.py` 行情加载逻辑
+- [ ] 当前 `phase0/walk_forward.py` 特征生成和训练窗口边界
+- [ ] Tushare 或其他数据源可提供的未复权日线与复权因子字段
+- [ ] `config.yaml`
+
+### W2.14.3 输出产物
+
+- [ ] `reports/price_adjustment_audit.csv`
+- [ ] `reports/price_adjustment_audit.md`
+- [ ] 后续增强：`reports/price_adjustment_audit.html`
+- [ ] 新增或预留 `market_adj_factors` 表
+- [ ] 新增 `phase0/adjustment.py`
+- [ ] 扩展后的历史行情加载参数：`price_adjustment = bfq_raw / qfq_current / qfq_asof`
+
+### W2.14.4 P0 数据可用性审计
+
+- [ ] 列出本地库已有的价格字段和表名
+- [ ] 检查是否有未复权 OHLCV
+- [ ] 检查是否有当前全历史前复权 OHLCV
+- [ ] 检查是否有按股票、交易日保存的复权因子
+- [ ] 检查停牌日、除权除息日、复权因子跳变日覆盖情况
+- [ ] 若缺少 `bfq_raw` 或复权因子，报告必须标记为 `cannot_build_qfq_asof`
+
+### W2.14.5 P1 复权因子落表
+
+- [ ] 新增 `market_adj_factors` 表结构设计
+- [ ] 字段至少包含 `market`、`symbol`、`date`、`adj_factor`、`source`、`updated_at`
+- [ ] 对同一 `market / symbol / date / source` 建唯一约束
+- [ ] 导入链路支持幂等更新
+- [ ] 不用字符串拼接推导复权因子，必须来自结构化字段或可信数据源
+
+### W2.14.6 P2 `qfq_asof` loader MVP
+
+- [ ] 新增 `phase0/adjustment.py`
+- [ ] 实现 `compute_qfq_asof(raw_ohlcv, adj_factors, as_of_date)`
+- [ ] 只读取 `date <= as_of_date` 的复权因子
+- [ ] 计算公式固定为 `qfq_asof(t, asof) = bfq_raw(t) * adj_factor(t) / adj_factor(asof)`
+- [ ] `volume`、`amount`、`turnover` 不按价格复权比例乱调，保持原始成交含义
+- [ ] 交易执行仍使用 `bfq_raw`，不使用复权价成交
+
+### W2.14.7 P3 walk-forward 接入计划
+
+- [ ] 在历史行情加载函数中增加显式 `price_adjustment` 参数
+- [ ] 当 `price_adjustment = qfq_asof` 时，必须传入当前训练折的 `as_of_date`
+- [ ] walk-forward 每折使用训练窗口结束日作为 `as_of_date`
+- [ ] 保留 `qfq_current` 兼容口径，但报告中必须标记为非严格 point-in-time
+- [ ] 对 `legacy_momentum_low_turnover_v1` 跑一次 `qfq_current` / `qfq_asof` 对照
+
+### W2.14.8 CLI 设计
+
+```bash
+python -m phase0.cli adjustment-audit --config config.yaml
+```
+
+可选：
+
+```bash
+python -m phase0.cli adjustment-audit \
+  --config config.yaml \
+  --sample-size 200 \
+  --output reports/price_adjustment_audit.md
+```
+
+### W2.14.9 验收标准
+
+- [ ] 审计命令可运行并输出 CSV / Markdown
+- [ ] 报告能明确区分 `bfq_raw`、`qfq_current`、`qfq_asof`
+- [ ] 缺少未复权价格或复权因子时，报告明确标记无法进行 as-of 前复权
+- [ ] `qfq_asof` 计算不会使用 `as_of_date` 之后的复权因子
+- [ ] 现有 `phase0 run` 默认行为不被静默改变
+- [ ] 执行成交、涨跌停、停牌判断继续基于真实未复权价格
+- [ ] 报告给出当前主策略价格口径 future leakage 风险结论
