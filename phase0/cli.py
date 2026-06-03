@@ -321,8 +321,15 @@ def run_phase0(config_path: Path) -> int:
         save_walk_forward_csv(folds_df, report_dir / "phase0_walk_forward_folds.csv")
     if candidate_folds_df is not None and not candidate_folds_df.empty:
         save_walk_forward_csv(candidate_folds_df, report_dir / "phase0_walk_forward_candidates.csv")
+    universe_audit_df = wf.get("universe_audit")
+    if universe_audit_df is not None and not universe_audit_df.empty:
+        save_walk_forward_csv(universe_audit_df, report_dir / "phase0_walk_forward_universe_audit.csv")
     write_walk_forward_report(report_dir / "phase0_walk_forward_report.md", summary=summary, folds_df=folds_df)
-    write_effectiveness_gate_report(report_dir / "phase0_effectiveness_report.md", wf_summary=summary)
+    write_effectiveness_gate_report(
+        report_dir / "phase0_effectiveness_report.md",
+        wf_summary=summary,
+        gate_cfg=cfg.get("walk_forward", {}).get("gate", {}),
+    )
 
     console.print("4) Exporting selected low-turnover bill and daily assets...")
     bill_result = _export_phase0_low_turnover_bill(config_path=config_path)

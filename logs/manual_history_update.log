@@ -22,3 +22,24 @@ RemoteDisconnected('Remote end closed connection without response'))
 Warning: AkShare all-A snapshot was empty; used configured local history 
 fallback.
 [2026-05-29 16:33:05 +0800] manual history update finished
+[2026-06-03 16:30:01 +0800] start a_share_history
+Manual history update status: updated
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Calendar latest trade date: 2026-06-03
+Target trade date: 2026-06-03
+Before latest: 2026-06-02 coverage=0.9559
+After latest: 2026-06-03 coverage=0.9566
+Fetched rows: 5511
+Inserted rows: 5511
+Metadata updated rows: 5511
+Primary source: tushare.daily+daily_basic+adj_factor
+Metadata coverage: market_cap=1.0000, pe=1.0000, pb=1.0000, turnover=1.0000
+Universe rebuild complete
+Source: local_history_sqlite
+Selected: 500/500
+Warning: AkShare all-A snapshot failed: ('Connection aborted.', 
+RemoteDisconnected('Remote end closed connection without response'))
+Warning: AkShare all-A snapshot was empty; used configured local history 
+fallback.
+[2026-06-03 16:30:52 +0800] finish a_share_history

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>盘前观察池试用简报</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1f2937;
+  background: #f5f7fb;
+}
+.page {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 24px;
+}
+.title-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.title-row h1 {
+  margin: 0;
+}
+.generated-at {
+  color: #8b95a1;
+  font-size: 13px;
+}
+.helper-link {
+  color: #2563eb;
+  text-decoration: none;
+  font-size: 13px;
+}
+.helper-link:hover {
+  text-decoration: underline;
+}
+p {
+  margin: 0 0 16px;
+  color: #4b5563;
+}
+.summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin: 16px 0 18px;
+}
+.summary div {
+  border: 1px solid #d0d7de;
+  background: #fff;
+  padding: 10px 12px;
+}
+.summary span {
+  display: block;
+  color: #6b7280;
+  font-size: 12px;
+}
+.summary strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 16px;
+}
+.notice {
+  color: #6b7280;
+  font-size: 12px;
+  padding: 0;
+  margin: 8px 0 16px;
+  line-height: 1.6;
+}
+.notice strong {
+  color: #4b5563;
+  font-weight: 600;
+}
+.table-wrap {
+  overflow: auto;
+  max-height: 70vh;
+  border: 1px solid #d0d7de;
+  background: #fff;
+}
+.account-snapshot {
+  margin: 0 0 18px;
+}
+.account-snapshot h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+.account-snapshot p {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 12px;
+}
+.account-snapshot p strong {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+.account-table {
+  max-height: none;
+}
+table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th,
+td {
+  border: 1px solid #d0d7de;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #eef3f9;
+  text-align: left;
+}
+.buy td {
+  background: #eefaf1;
+}
+.sell td {
+  background: #fff0f0;
+}
+.hold td {
+  background: #f8fafc;
+}
+.terms {
+  color: #6b7280;
+  font-size: 12px;
+  margin: 8px 0 16px;
+  line-height: 1.6;
+}
+.terms h2 {
+  margin: 0;
+  font-size: 12px;
+  color: #4b5563;
+  font-weight: 600;
+}
+.terms p {
+  margin: 2px 0 0;
+}
+.term {
+  font-weight: 600;
+  color: #4b5563;
+}
+</style>
+</head>
+<body>
+<div class="page">
+<div class="title-row"><h1>Phase 0 盘前观察池</h1><span class="generated-at">生成时间：2026-06-03 11:03</span></div>
+<p>阶段试用简报 · 策略信号观察版。当前采用低换手经典动量策略：仍以动量强弱选股，但买入更严格、持有更宽容，通过持有区间、周期调仓、最短持有天数和换手惩罚减少来回换股。本页基于最近一个已入库交易日收盘后的信号生成，供下一交易日 07:30 盘前检查持仓、候选和调仓关注项。<a class="helper-link" href="#terms">术语说明</a> <a class="helper-link" href="#disclaimer">免责声明</a></p>
+<div class="summary"><div><span>当前策略</span><strong>低换手经典动量</strong></div><div><span>信号日期</span><strong>2026-06-02</strong></div><div><span>盘前检查时间</span><strong>2026-06-03 07:30</strong></div><div><span>观察股票数</span><strong>28</strong></div><div><span>当前总暴露</span><strong>23.28%</strong></div><div><span>目标总暴露</span><strong>20.63%</strong></div><div><span>买入/加仓</span><strong>5</strong></div><div><span>卖出/减仓</span><strong>5</strong></div><div><span>训练窗 Sharpe</span><strong>1.9054</strong></div></div>
+<section class="account-snapshot"><h2>模拟账户快照</h2><p><strong>模拟起始日：2026-06-02 ｜ 初始资产：1,000,000.00</strong></p><p>展示最近一个已确认模拟账单日；当前观察池为计划层，不直接代表已成交记录。</p><div class="table-wrap account-table"><table><thead><tr><th>账单日期</th><th>总资产</th><th>股票资产</th><th>现金资产</th><th>执行价口径</th><th>成交金额</th><th>成交股数</th><th>收益额</th><th>说明</th></tr></thead><tbody><tr><td>2026-06-02</td><td>1,003,587.26</td><td>158,524.00</td><td>845,063.26</td><td>执行日开盘价</td><td>154,518.00</td><td>11,500</td><td>3,587.26</td><td>当前观察池尚未确认成交，显示最近已确认账单 2026-06-02</td></tr></tbody></table></div></section>
+<div class="table-wrap"><table><thead><tr><th title="连续模拟账户口径：根据上一期模拟持仓与本期目标持仓计算今天的调仓行为。">交易动作</th><th title="本次模型信号口径：表示策略模型根据最新信号给出的目标状态变化，不等同于最终交易指令。">策略信号动作</th><th title="">股票代码</th><th title="">股票名称</th><th title="">收盘价</th><th title="">当前权重</th><th title="">目标权重</th><th title="">权重变化</th><th title="">动量分数</th><th title="">当日排名</th><th title="">持有天数</th><th title="执行假设使用的成交价格口径：执行日收盘价、执行日开盘价或执行日开盘保守价。">成交价口径</th><th title="流动性约束：单只股票交易量最多参与市场成交量的比例。">最大成交参与率</th><th title="根据价格、成交量、成交额和涨跌停状态提示次日可能的成交障碍。">执行风险提示</th><th title="解释本次动作如何从上一期模拟持仓滚动到本期目标持仓。">连续模拟说明</th><th title="说明股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。">观察理由</th></tr></thead><tbody><tr class="buy"><td>关注买入</td><td>继续持有</td><td>SH.600183</td><td>生益科技</td><td>141.07</td><td>0.00%</td><td>5.11%</td><td>5.11%</td><td>0.1006</td><td>10</td><td>3</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓0.00%调整到5.11%</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr class="buy"><td>关注买入</td><td>继续持有</td><td>SH.600584</td><td>长电科技</td><td>75.35</td><td>0.00%</td><td>4.66%</td><td>4.66%</td><td>-0.1456</td><td>112</td><td>8</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓0.00%调整到4.66%</td><td>未触发交易，仅保留观察</td></tr>
+<tr class="buy"><td>关注买入</td><td>继续持有</td><td>SH.603256</td><td>宏和科技</td><td>198.80</td><td>0.00%</td><td>4.28%</td><td>4.28%</td><td>0.0810</td><td>12</td><td>3</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓0.00%调整到4.28%</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr class="buy"><td>关注买入</td><td>继续持有</td><td>SH.688183</td><td>生益电子</td><td>131.55</td><td>0.00%</td><td>3.70%</td><td>3.70%</td><td>-0.0042</td><td>41</td><td>3</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓0.00%调整到3.70%</td><td>未触发交易，仅保留观察</td></tr>
+<tr class="buy"><td>关注买入</td><td>继续持有</td><td>SH.688347</td><td>华虹公司</td><td>226.50</td><td>0.00%</td><td>2.88%</td><td>2.88%</td><td>0.0183</td><td>34</td><td>3</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓0.00%调整到2.88%</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr class="sell"><td>关注卖出</td><td>候选观察</td><td>SZ.000725</td><td>京东方Ａ</td><td>5.47</td><td>5.98%</td><td>0.00%</td><td>-5.98%</td><td>-0.0520</td><td>77</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓5.98%调整到0.00%</td><td title="动量分数跌破持有阈值；排名跌出持有前10；已持有0个交易日">动量转弱；排名跌出持有前10；已持有0个交易日</td></tr>
+<tr class="sell"><td>关注卖出</td><td>候选观察</td><td>SH.688012</td><td>DR中微公</td><td>282.80</td><td>4.98%</td><td>0.00%</td><td>-4.98%</td><td>-0.3899</td><td>120</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓4.98%调整到0.00%</td><td title="动量分数跌破持有阈值；排名跌出持有前10；已持有0个交易日">动量转弱；排名跌出持有前10；已持有0个交易日</td></tr>
+<tr class="sell"><td>关注卖出</td><td>候选观察</td><td>SH.603986</td><td>兆易创新</td><td>474.69</td><td>4.80%</td><td>0.00%</td><td>-4.80%</td><td>-0.0979</td><td>98</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓4.80%调整到0.00%</td><td title="动量分数跌破持有阈值；排名跌出持有前10；已持有0个交易日">动量转弱；排名跌出持有前10；已持有0个交易日</td></tr>
+<tr class="sell"><td>关注卖出</td><td>候选观察</td><td>SZ.002281</td><td>光迅科技</td><td>215.11</td><td>4.01%</td><td>0.00%</td><td>-4.01%</td><td>0.0406</td><td>23</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓4.01%调整到0.00%</td><td>排名跌出持有前10；已持有0个交易日</td></tr>
+<tr class="sell"><td>关注卖出</td><td>候选观察</td><td>SH.688072</td><td>拓荆科技</td><td>596.00</td><td>3.51%</td><td>0.00%</td><td>-3.51%</td><td>-0.2053</td><td>118</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>连续模拟从2026-06-02持仓3.51%调整到0.00%</td><td title="动量分数跌破持有阈值；排名跌出持有前10；已持有0个交易日">动量转弱；排名跌出持有前10；已持有0个交易日</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.601991</td><td>大唐发电</td><td>9.18</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.2821</td><td>1</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="排名进入买入前5；动量分数超过买入阈值">排名进入买入前5；强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300620</td><td>光库科技</td><td>320.02</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.2650</td><td>2</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="排名进入买入前5；动量分数超过买入阈值">排名进入买入前5；强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.600487</td><td>亨通光电</td><td>83.12</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1975</td><td>3</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="排名进入买入前5；动量分数超过买入阈值">排名进入买入前5；强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.688498</td><td>源杰科技</td><td>1206.91</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1593</td><td>4</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="排名进入买入前5；动量分数超过买入阈值">排名进入买入前5；强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300408</td><td>三环集团</td><td>134.46</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1499</td><td>5</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="排名进入买入前5；动量分数超过买入阈值">排名进入买入前5；强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.601138</td><td>工业富联</td><td>80.01</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1433</td><td>6</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300394</td><td>天孚通信</td><td>457.00</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1235</td><td>7</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.601869</td><td>长飞光纤</td><td>408.74</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1231</td><td>8</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.002353</td><td>杰瑞股份</td><td>148.09</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.1047</td><td>9</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300757</td><td>罗博特科</td><td>650.59</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0898</td><td>11</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300308</td><td>中际旭创</td><td>1191.81</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0805</td><td>13</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300750</td><td>宁德时代</td><td>433.89</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0780</td><td>14</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.601088</td><td>中国神华</td><td>48.24</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0768</td><td>15</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.600105</td><td>永鼎股份</td><td>49.62</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0722</td><td>16</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300433</td><td>蓝思科技</td><td>41.23</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0715</td><td>17</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.300502</td><td>新易盛</td><td>747.00</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0671</td><td>18</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SZ.002028</td><td>思源电气</td><td>206.27</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0627</td><td>19</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr>
+<tr><td>候选观察</td><td>候选观察</td><td>SH.600522</td><td>中天科技</td><td>42.89</td><td>0.00%</td><td>0.00%</td><td>0.00%</td><td>0.0595</td><td>20</td><td>0</td><td>执行日开盘价</td><td>5.00%</td><td>未发现明显执行阻碍，仍需开盘确认价格和成交量</td><td>未进入连续模拟持仓，仅保留观察</td><td title="动量分数超过买入阈值">强势达标</td></tr></tbody></table></div>
+<section class="terms" id="terms"><h2>术语说明：</h2><p><span class="term">交易动作</span> 是连续模拟账户口径，表示模拟账户从上一期持仓滚动到本期目标持仓时今天需要发生的调仓行为。</p><p><span class="term">策略信号动作</span> 是本次模型信号口径，表示策略模型根据最新数据给出的目标状态变化，它是模型信号，不等同于最终交易指令。</p><p><span class="term">成交价口径</span> 描述执行假设采用的价格。“执行日收盘价”指观察池对应执行日 15:00 附近的收盘价；“执行日开盘价”指观察池对应执行日 09:30 附近的开盘价；“执行日开盘保守价”指在执行日开盘价基础上叠加保守缓冲后的估算价格。</p><p><span class="term">最大成交参与率</span> 是流动性约束，限制单只股票交易量最多参与市场成交量的比例。</p><p><span class="term">执行风险提示</span> 用于提示停牌、流动性、涨跌停等可能影响成交的因素。</p><p><span class="term">连续模拟说明</span> 解释本次动作如何承接上一期模拟持仓。</p><p><span class="term">观察理由</span> 概括该股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。表格中“强势达标”是“动量分数超过买入阈值”的简写，表示模型强度达到入选条件，不等同于技术分析里常说的“超买”。</p></section>
+<div class="notice" id="disclaimer"><strong>风险提示与免责声明：</strong>本页面仅基于项目内已入库历史数据、当前策略参数和连续模拟账户状态生成，用于研究复盘、盘前观察和策略验证；相关信号、权重、观察理由和执行风险提示均不构成投资建议、收益承诺或自动交易指令。实际交易需结合实时行情、账户约束、流动性、政策风险和个人风险承受能力独立判断。</div>
+</div>
+</body>
+</html>

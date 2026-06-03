@@ -132,6 +132,13 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
         "",
         f"Generated at: {datetime.now().isoformat(timespec='seconds')}",
         "",
+        "## Universe Guard",
+        "",
+        (
+            "Historical walk-forward uses a fold-local point-in-time universe when "
+            "`universe_mode=point_in_time`; live watchlist and simulated account reports keep using the current daily universe."
+        ),
+        "",
         "## Summary",
         "",
         _md_table(["metric", "value"], summary_table_rows),
@@ -191,23 +198,54 @@ def write_walk_forward_report(path: Path, summary: dict[str, Any], folds_df: pd.
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def write_effectiveness_gate_report(path: Path, wf_summary: dict[str, Any]) -> None:
+def write_effectiveness_gate_report(path: Path, wf_summary: dict[str, Any], gate_cfg: dict[str, Any] | None = None) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    gate_cfg = gate_cfg or {}
     sharpe = float(wf_summary.get("sharpe_mean", 0.0))
     mdd = float(wf_summary.get("max_drawdown_mean", 0.0))
     win = float(wf_summary.get("win_rate_mean", 0.0))
     decay = float(wf_summary.get("oos_return_decay_ratio", 0.0))
     ann = float(wf_summary.get("annualized_return_mean", 0.0))
     governance_ok = bool(wf_summary.get("selected_candidate_eligible", True))
+    oos_fold_count = int(wf_summary.get("oos_fold_count", 0))
+    oos_ann = float(wf_summary.get("oos_annualized_return_mean", 0.0))
+    oos_sharpe = float(wf_summary.get("oos_sharpe_mean", 0.0))
+    positive_fold_ratio = float(wf_summary.get("positive_fold_ratio", 0.0))
+    negative_fold_count = int(wf_summary.get("negative_fold_count", 0))
+    min_fold_ann = float(wf_summary.get("min_fold_annualized_return", 0.0))
+    oos_positive_fold_ratio = float(wf_summary.get("oos_positive_fold_ratio", 0.0))
 
-    gates = [
+    annualized_return_min = float(gate_cfg.get("annualized_return_min", 0.0))
+    sharpe_min = float(gate_cfg.get("sharpe_min", 0.5))
+    max_drawdown_min = float(gate_cfg.get("max_drawdown_min", -0.25))
+    win_rate_min = float(gate_cfg.get("win_rate_min", 0.45))
+    oos_return_decay_ratio_max = float(gate_cfg.get("oos_return_decay_ratio_max", 0.30))
+    min_oos_fold_count = int(gate_cfg.get("min_oos_fold_count", 1))
+    oos_annualized_return_min = float(gate_cfg.get("oos_annualized_return_min", 0.0))
+    oos_sharpe_min = float(gate_cfg.get("oos_sharpe_min", 0.5))
+    min_positive_fold_ratio = float(gate_cfg.get("min_positive_fold_ratio", 0.0))
+    max_negative_fold_count = int(gate_cfg.get("max_negative_fold_count", 10**9))
+    min_fold_annualized_return_min = float(gate_cfg.get("min_fold_annualized_return_min", -1.0))
+    min_oos_positive_fold_ratio = float(gate_cfg.get("min_oos_positive_fold_ratio", 0.0))
+
+    base_gates = [
         ("selected_candidate_eligible == True", governance_ok),
-        ("annualized_return_mean > 0", ann > 0),
-        ("sharpe_mean > 0.5", sharpe > 0.5),
-        ("max_drawdown_mean > -0.25", mdd > -0.25),
-        ("win_rate_mean > 0.45", win > 0.45),
-        ("oos_return_decay_ratio < 0.30", decay < 0.30),
+        (f"annualized_return_mean > {annualized_return_min:.2f}", ann > annualized_return_min),
+        (f"sharpe_mean > {sharpe_min:.2f}", sharpe > sharpe_min),
+        (f"max_drawdown_mean > {max_drawdown_min:.2f}", mdd > max_drawdown_min),
+        (f"win_rate_mean > {win_rate_min:.2f}", win > win_rate_min),
+        (f"oos_return_decay_ratio < {oos_return_decay_ratio_max:.2f}", decay < oos_return_decay_ratio_max),
     ]
+    robustness_gates = [
+        (f"oos_fold_count >= {min_oos_fold_count}", oos_fold_count >= min_oos_fold_count),
+        (f"oos_annualized_return_mean > {oos_annualized_return_min:.2f}", oos_ann > oos_annualized_return_min),
+        (f"oos_sharpe_mean > {oos_sharpe_min:.2f}", oos_sharpe > oos_sharpe_min),
+        (f"positive_fold_ratio >= {min_positive_fold_ratio:.2f}", positive_fold_ratio >= min_positive_fold_ratio),
+        (f"negative_fold_count <= {max_negative_fold_count}", negative_fold_count <= max_negative_fold_count),
+        (f"min_fold_annualized_return > {min_fold_annualized_return_min:.2f}", min_fold_ann > min_fold_annualized_return_min),
+        (f"oos_positive_fold_ratio >= {min_oos_positive_fold_ratio:.2f}", oos_positive_fold_ratio >= min_oos_positive_fold_ratio),
+    ]
+    gates = base_gates + robustness_gates
     passed = all(ok for _, ok in gates)
 
     lines = [
@@ -217,7 +255,13 @@ def write_effectiveness_gate_report(path: Path, wf_summary: dict[str, Any]) -> N
         "",
         f"Overall verdict: {'PASS' if passed else 'FAIL'}",
         "",
-        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in gates]),
+        "## Base Gate",
+        "",
+        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in base_gates]),
+        "",
+        "## Robustness Gate",
+        "",
+        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in robustness_gates]),
         "",
         "## Snapshot",
         "",

@@ -271,6 +271,180 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
     return out
 
 
+def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 90) -> pd.DataFrame:
+    """Build a point-in-time A-share snapshot from local history without writing state."""
+    if not (_settings.enabled and _settings.use_for_universe_fallback and _settings.path.exists()):
+        return pd.DataFrame()
+
+    as_of = _parse_iso_date(as_of_date)
+    if as_of is None:
+        return pd.DataFrame()
+
+    daily_table = _safe_identifier(_settings.daily_table)
+    meta_table = _safe_identifier(_settings.meta_table)
+    financial_table = _safe_identifier(_settings.financial_table)
+    has_adjust = _table_has_column(_settings.path, daily_table, "adjust_type")
+    has_financial = _table_exists(_settings.path, financial_table)
+    adjust_filter = "AND adjust_type = ?" if has_adjust else ""
+    latest_trade_date = _latest_daily_date_on_or_before(daily_table, has_adjust, as_of)
+    if latest_trade_date is None:
+        return pd.DataFrame()
+
+    coverage = _latest_daily_coverage(daily_table, has_adjust, latest_trade_date)
+    start_date = (latest_trade_date - timedelta(days=int(days))).isoformat()
+    min_trading_days = max(20, int(days) // 3)
+    attrs = {
+        "as_of_date": as_of.isoformat(),
+        "latest_trade_date": latest_trade_date.isoformat(),
+        "expected_trade_date": latest_trade_date.isoformat(),
+        "staleness_days": _trade_day_lag(latest_trade_date, as_of),
+        "latest_coverage": coverage,
+        "point_in_time": True,
+    }
+
+    bars_query = f"""
+        WITH recent AS (
+            SELECT symbol, date, close, amount, volume, turnover_rate
+            FROM {daily_table}
+            WHERE market = ?
+              {adjust_filter}
+              AND date >= ?
+              AND date <= ?
+        ),
+        agg AS (
+            SELECT
+                symbol,
+                MAX(date) AS latest_date,
+                AVG(amount) AS amount,
+                AVG(volume) AS volume,
+                COUNT(*) AS trading_days
+            FROM recent
+            GROUP BY symbol
+            HAVING COUNT(*) >= ?
+        )
+        SELECT
+            agg.symbol,
+            agg.latest_date,
+            agg.amount,
+            agg.volume,
+            agg.trading_days,
+            recent.close AS latest_price,
+            recent.turnover_rate
+        FROM agg
+        JOIN recent
+          ON recent.symbol = agg.symbol
+         AND recent.date = agg.latest_date
+    """
+    meta_query = f"""
+        SELECT symbol, name, industry, list_date, delist_date
+        FROM {meta_table}
+        WHERE market = ?
+    """
+    financial_query = f"""
+        SELECT
+            f.symbol,
+            f.report_date AS financial_report_date,
+            f.announce_date AS financial_announce_date,
+            f.roe,
+            f.revenue_growth,
+            f.profit_growth,
+            f.operating_cash_flow_to_net_profit AS cash_flow_quality,
+            f.debt_to_asset
+        FROM {financial_table} f
+        JOIN (
+            SELECT market, symbol, MAX(report_date) AS report_date
+            FROM {financial_table}
+            WHERE market = ?
+              AND announce_date IS NOT NULL
+              AND announce_date != ''
+              AND announce_date <= ?
+            GROUP BY market, symbol
+        ) latest
+          ON f.market = latest.market
+         AND f.symbol = latest.symbol
+         AND f.report_date = latest.report_date
+        WHERE f.market = ?
+          AND f.announce_date <= ?
+    """
+    try:
+        with sqlite3.connect(_settings.path) as conn:
+            params: tuple[Any, ...] = (_settings.market,)
+            if has_adjust:
+                params = (*params, _settings.adjust_type)
+            params = (*params, start_date, latest_trade_date.isoformat(), min_trading_days)
+            df = pd.read_sql_query(bars_query, conn, params=params)
+            meta = pd.read_sql_query(meta_query, conn, params=(_settings.market,))
+            financial = (
+                pd.read_sql_query(
+                    financial_query,
+                    conn,
+                    params=(
+                        _settings.market,
+                        latest_trade_date.isoformat(),
+                        _settings.market,
+                        latest_trade_date.isoformat(),
+                    ),
+                )
+                if has_financial
+                else pd.DataFrame()
+            )
+    except (sqlite3.Error, ValueError):
+        return pd.DataFrame()
+    if df.empty:
+        df.attrs.update(attrs)
+        return df
+
+    df["symbol"] = df["symbol"].map(normalize_cn_symbol)
+    if not meta.empty:
+        meta["symbol"] = meta["symbol"].map(normalize_cn_symbol)
+        df = df.merge(meta, on="symbol", how="left")
+        list_dates = pd.to_datetime(df.get("list_date", ""), errors="coerce")
+        delist_dates = pd.to_datetime(df.get("delist_date", ""), errors="coerce")
+        as_of_ts = pd.Timestamp(latest_trade_date)
+        listed = list_dates.isna() | (list_dates <= as_of_ts)
+        not_delisted = delist_dates.isna() | (delist_dates > as_of_ts)
+        df = df[listed & not_delisted].copy()
+    if not financial.empty:
+        financial["symbol"] = financial["symbol"].map(normalize_cn_symbol)
+        df = df.merge(financial, on="symbol", how="left")
+
+    out = pd.DataFrame(
+        {
+            "symbol": df["symbol"],
+            "name": "",
+            "industry": "",
+            "latest_price": pd.to_numeric(df["latest_price"], errors="coerce"),
+            "pct_change": np.nan,
+            "amount": pd.to_numeric(df["amount"], errors="coerce"),
+            "volume": pd.to_numeric(df["volume"], errors="coerce"),
+            "turnover_rate": pd.to_numeric(df.get("turnover_rate", np.nan), errors="coerce"),
+            "total_mv": np.nan,
+            "circ_mv": np.nan,
+            "pe_ttm": np.nan,
+            "pb": np.nan,
+            "roe": pd.to_numeric(df.get("roe", np.nan), errors="coerce"),
+            "revenue_growth": pd.to_numeric(df.get("revenue_growth", np.nan), errors="coerce"),
+            "profit_growth": pd.to_numeric(df.get("profit_growth", np.nan), errors="coerce"),
+            "cash_flow_quality": pd.to_numeric(df.get("cash_flow_quality", np.nan), errors="coerce"),
+            "debt_to_asset": pd.to_numeric(df.get("debt_to_asset", np.nan), errors="coerce"),
+            "financial_report_date": df.get("financial_report_date", ""),
+            "financial_announce_date": df.get("financial_announce_date", ""),
+            "source": "local_history_sqlite_as_of",
+            "as_of_date": latest_trade_date.isoformat(),
+            "expected_trade_date": latest_trade_date.isoformat(),
+            "staleness_days": 0,
+            "latest_coverage": coverage,
+            "trading_days": pd.to_numeric(df.get("trading_days", np.nan), errors="coerce"),
+        }
+    )
+    out.attrs.update(attrs)
+    out.attrs["note"] = (
+        "point-in-time universe uses historical OHLCV and announced financial factors; "
+        "current market cap, valuation, name, and industry are intentionally excluded from selection."
+    )
+    return out
+
+
 def load_index_daily_from_local_history(symbol: str, start: date, end: date) -> pd.DataFrame:
     if not (_settings.enabled and _settings.path.exists()):
         return pd.DataFrame()
@@ -299,6 +473,57 @@ def load_index_daily_from_local_history(symbol: str, start: date, end: date) -> 
     return df
 
 
+def load_trading_dates_from_local_history(start: date | str, end: date | str) -> list[date]:
+    if not (_settings.enabled and _settings.path.exists()):
+        return []
+    parsed_start = _parse_iso_date(start)
+    parsed_end = _parse_iso_date(end)
+    if parsed_start is None or parsed_end is None:
+        return []
+
+    calendar_table = _safe_identifier(_settings.calendar_table)
+    if _table_exists(_settings.path, calendar_table):
+        query = f"""
+            SELECT date
+            FROM {calendar_table}
+            WHERE is_open = 1
+              AND date >= ?
+              AND date <= ?
+            ORDER BY date
+        """
+        try:
+            with sqlite3.connect(_settings.path) as conn:
+                df = pd.read_sql_query(query, conn, params=(parsed_start.isoformat(), parsed_end.isoformat()))
+            dates = [_parse_iso_date(value) for value in df["date"].tolist()]
+            return [value for value in dates if value is not None]
+        except (sqlite3.Error, ValueError, IndexError):
+            pass
+
+    daily_table = _safe_identifier(_settings.daily_table)
+    has_adjust = _table_has_column(_settings.path, daily_table, "adjust_type")
+    adjust_filter = "AND adjust_type = ?" if has_adjust else ""
+    query = f"""
+        SELECT DISTINCT date
+        FROM {daily_table}
+        WHERE market = ?
+          {adjust_filter}
+          AND date >= ?
+          AND date <= ?
+        ORDER BY date
+    """
+    try:
+        with sqlite3.connect(_settings.path) as conn:
+            params: tuple[Any, ...] = (_settings.market,)
+            if has_adjust:
+                params = (*params, _settings.adjust_type)
+            params = (*params, parsed_start.isoformat(), parsed_end.isoformat())
+            df = pd.read_sql_query(query, conn, params=params)
+    except (sqlite3.Error, ValueError, IndexError):
+        return []
+    dates = [_parse_iso_date(value) for value in df["date"].tolist()]
+    return [value for value in dates if value is not None]
+
+
 def count_local_history_symbols() -> int:
     if not local_history_available():
         return 0
@@ -319,6 +544,27 @@ def _latest_daily_date(table: str, has_adjust: bool) -> date | None:
             params: tuple[Any, ...] = (_settings.market,)
             if has_adjust:
                 params = (*params, _settings.adjust_type)
+            value = pd.read_sql_query(query, conn, params=params)["latest_date"].iloc[0]
+    except (sqlite3.Error, ValueError, IndexError):
+        return None
+    return _parse_iso_date(value)
+
+
+def _latest_daily_date_on_or_before(table: str, has_adjust: bool, as_of_date: date) -> date | None:
+    adjust_filter = "AND adjust_type = ?" if has_adjust else ""
+    query = f"""
+        SELECT MAX(date) AS latest_date
+        FROM {table}
+        WHERE market = ?
+          {adjust_filter}
+          AND date <= ?
+    """
+    try:
+        with sqlite3.connect(_settings.path) as conn:
+            params: tuple[Any, ...] = (_settings.market,)
+            if has_adjust:
+                params = (*params, _settings.adjust_type)
+            params = (*params, as_of_date.isoformat())
             value = pd.read_sql_query(query, conn, params=params)["latest_date"].iloc[0]
     except (sqlite3.Error, ValueError, IndexError):
         return None

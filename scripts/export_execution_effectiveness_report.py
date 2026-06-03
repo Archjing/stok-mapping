@@ -178,7 +178,13 @@ def _fold_metrics(daily: pd.DataFrame, bill: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def _summary_from_folds(folds: pd.DataFrame, governance_cfg: dict[str, Any]) -> dict[str, Any]:
+def _summary_from_folds(
+    folds: pd.DataFrame,
+    governance_cfg: dict[str, Any],
+    *,
+    bill: pd.DataFrame | None = None,
+    daily: pd.DataFrame | None = None,
+) -> dict[str, Any]:
     fold_count = int(len(folds))
     min_portfolio_fold_count = int(governance_cfg.get("min_portfolio_fold_count", 4))
     selected_candidate_eligible = fold_count >= min_portfolio_fold_count
@@ -194,6 +200,11 @@ def _summary_from_folds(folds: pd.DataFrame, governance_cfg: dict[str, Any]) -> 
         "max_drawdown_mean": float(folds["max_drawdown"].mean()) if fold_count else 0.0,
         "win_rate_mean": float(folds["win_rate"].mean()) if fold_count else 0.0,
         "turnover_annual_mean": float(folds["turnover_annual"].mean()) if fold_count else 0.0,
+        "positive_fold_count": int((folds["annualized_return"] > 0).sum()) if fold_count else 0,
+        "negative_fold_count": int((folds["annualized_return"] < 0).sum()) if fold_count else 0,
+        "positive_fold_ratio": float((folds["annualized_return"] > 0).mean()) if fold_count else 0.0,
+        "min_fold_annualized_return": float(folds["annualized_return"].min()) if fold_count else 0.0,
+        "min_fold_sharpe": float(folds["sharpe"].min()) if fold_count else 0.0,
     }
     if fold_count:
         cutoff = max(1, int(fold_count * 0.2))
@@ -203,6 +214,9 @@ def _summary_from_folds(folds: pd.DataFrame, governance_cfg: dict[str, Any]) -> 
         summary["oos_fold_count"] = int(len(oos))
         summary["oos_annualized_return_mean"] = float(oos["annualized_return"].mean())
         summary["oos_sharpe_mean"] = float(oos["sharpe"].mean())
+        summary["oos_positive_fold_count"] = int((oos["annualized_return"] > 0).sum())
+        summary["oos_positive_fold_ratio"] = float((oos["annualized_return"] > 0).mean()) if len(oos) else 0.0
+        summary["oos_min_fold_annualized_return"] = float(oos["annualized_return"].min()) if len(oos) else 0.0
         if len(train_like):
             base = float(train_like["annualized_return"].mean())
             oos_value = float(oos["annualized_return"].mean())
@@ -213,19 +227,91 @@ def _summary_from_folds(folds: pd.DataFrame, governance_cfg: dict[str, Any]) -> 
         summary["oos_fold_count"] = 0
         summary["oos_annualized_return_mean"] = 0.0
         summary["oos_sharpe_mean"] = 0.0
+        summary["oos_positive_fold_count"] = 0
+        summary["oos_positive_fold_ratio"] = 0.0
+        summary["oos_min_fold_annualized_return"] = 0.0
         summary["oos_return_decay_ratio"] = 0.0
+    bill = bill if bill is not None else pd.DataFrame()
+    daily = daily if daily is not None else pd.DataFrame()
+    executable_order_count = int(len(bill)) if not bill.empty else 0
+    if executable_order_count and "交易状态" in bill.columns:
+        statuses = bill["交易状态"].fillna("")
+        unfilled_or_partial = statuses.isin(["未成交", "部分成交"])
+        partial = statuses.eq("部分成交")
+        summary["executable_order_count"] = executable_order_count
+        summary["unfilled_or_partial_order_count"] = int(unfilled_or_partial.sum())
+        summary["unfilled_or_partial_order_ratio"] = float(unfilled_or_partial.mean())
+        summary["partial_fill_order_count"] = int(partial.sum())
+        summary["partial_fill_order_ratio"] = float(partial.mean())
+    else:
+        summary["executable_order_count"] = executable_order_count
+        summary["unfilled_or_partial_order_count"] = 0
+        summary["unfilled_or_partial_order_ratio"] = 0.0
+        summary["partial_fill_order_count"] = 0
+        summary["partial_fill_order_ratio"] = 0.0
+    summary["stale_valuation_positions_total"] = (
+        int(pd.to_numeric(daily.get("stale_valuation_positions", 0), errors="coerce").fillna(0).sum())
+        if not daily.empty
+        else 0
+    )
     return summary
 
 
-def _gate_rows(summary: dict[str, Any]) -> list[tuple[str, bool]]:
-    return [
-        ("selected_candidate_eligible == True", bool(summary.get("selected_candidate_eligible", True))),
-        ("annualized_return_mean > 0", float(summary.get("annualized_return_mean", 0.0)) > 0),
-        ("sharpe_mean > 0.5", float(summary.get("sharpe_mean", 0.0)) > 0.5),
-        ("max_drawdown_mean > -0.25", float(summary.get("max_drawdown_mean", 0.0)) > -0.25),
-        ("win_rate_mean > 0.45", float(summary.get("win_rate_mean", 0.0)) > 0.45),
-        ("oos_return_decay_ratio < 0.30", float(summary.get("oos_return_decay_ratio", 0.0)) < 0.30),
-    ]
+def _gate_groups(summary: dict[str, Any], gate_cfg: dict[str, Any] | None = None) -> dict[str, list[tuple[str, bool]]]:
+    gate_cfg = gate_cfg or {}
+    annualized_return_min = float(gate_cfg.get("annualized_return_min", 0.0))
+    sharpe_min = float(gate_cfg.get("sharpe_min", 0.5))
+    max_drawdown_min = float(gate_cfg.get("max_drawdown_min", -0.25))
+    win_rate_min = float(gate_cfg.get("win_rate_min", 0.45))
+    oos_return_decay_ratio_max = float(gate_cfg.get("oos_return_decay_ratio_max", 0.30))
+    min_oos_fold_count = int(gate_cfg.get("min_oos_fold_count", 1))
+    oos_annualized_return_min = float(gate_cfg.get("oos_annualized_return_min", 0.0))
+    oos_sharpe_min = float(gate_cfg.get("oos_sharpe_min", 0.5))
+    min_positive_fold_ratio = float(gate_cfg.get("min_positive_fold_ratio", 0.0))
+    max_negative_fold_count = int(gate_cfg.get("max_negative_fold_count", 10**9))
+    min_fold_annualized_return_min = float(gate_cfg.get("min_fold_annualized_return_min", -1.0))
+    min_oos_positive_fold_ratio = float(gate_cfg.get("min_oos_positive_fold_ratio", 0.0))
+    max_unfilled_or_partial_order_ratio = float(gate_cfg.get("max_unfilled_or_partial_order_ratio", 1.0))
+    max_partial_fill_order_ratio = float(gate_cfg.get("max_partial_fill_order_ratio", 1.0))
+    max_stale_valuation_positions_total = int(gate_cfg.get("max_stale_valuation_positions_total", 10**9))
+    return {
+        "base": [
+            ("selected_candidate_eligible == True", bool(summary.get("selected_candidate_eligible", True))),
+            (f"annualized_return_mean > {annualized_return_min:.2f}", float(summary.get("annualized_return_mean", 0.0)) > annualized_return_min),
+            (f"sharpe_mean > {sharpe_min:.2f}", float(summary.get("sharpe_mean", 0.0)) > sharpe_min),
+            (f"max_drawdown_mean > {max_drawdown_min:.2f}", float(summary.get("max_drawdown_mean", 0.0)) > max_drawdown_min),
+            (f"win_rate_mean > {win_rate_min:.2f}", float(summary.get("win_rate_mean", 0.0)) > win_rate_min),
+            (f"oos_return_decay_ratio < {oos_return_decay_ratio_max:.2f}", float(summary.get("oos_return_decay_ratio", 0.0)) < oos_return_decay_ratio_max),
+        ],
+        "robustness": [
+            (f"oos_fold_count >= {min_oos_fold_count}", int(summary.get("oos_fold_count", 0)) >= min_oos_fold_count),
+            (f"oos_annualized_return_mean > {oos_annualized_return_min:.2f}", float(summary.get("oos_annualized_return_mean", 0.0)) > oos_annualized_return_min),
+            (f"oos_sharpe_mean > {oos_sharpe_min:.2f}", float(summary.get("oos_sharpe_mean", 0.0)) > oos_sharpe_min),
+            (f"positive_fold_ratio >= {min_positive_fold_ratio:.2f}", float(summary.get("positive_fold_ratio", 0.0)) >= min_positive_fold_ratio),
+            (f"negative_fold_count <= {max_negative_fold_count}", int(summary.get("negative_fold_count", 0)) <= max_negative_fold_count),
+            (f"min_fold_annualized_return > {min_fold_annualized_return_min:.2f}", float(summary.get("min_fold_annualized_return", 0.0)) > min_fold_annualized_return_min),
+            (f"oos_positive_fold_ratio >= {min_oos_positive_fold_ratio:.2f}", float(summary.get("oos_positive_fold_ratio", 0.0)) >= min_oos_positive_fold_ratio),
+        ],
+        "execution_quality": [
+            (
+                f"unfilled_or_partial_order_ratio <= {max_unfilled_or_partial_order_ratio:.2f}",
+                float(summary.get("unfilled_or_partial_order_ratio", 0.0)) <= max_unfilled_or_partial_order_ratio,
+            ),
+            (
+                f"partial_fill_order_ratio <= {max_partial_fill_order_ratio:.2f}",
+                float(summary.get("partial_fill_order_ratio", 0.0)) <= max_partial_fill_order_ratio,
+            ),
+            (
+                f"stale_valuation_positions_total <= {max_stale_valuation_positions_total}",
+                int(summary.get("stale_valuation_positions_total", 0)) <= max_stale_valuation_positions_total,
+            ),
+        ],
+    }
+
+
+def _gate_rows(summary: dict[str, Any], gate_cfg: dict[str, Any] | None = None) -> list[tuple[str, bool]]:
+    groups = _gate_groups(summary, gate_cfg)
+    return [row for rows in groups.values() for row in rows]
 
 
 def _write_report(
@@ -237,13 +323,17 @@ def _write_report(
     daily: pd.DataFrame,
     execution_cfg: dict[str, Any],
     live_cfg: dict[str, Any],
+    gate_cfg: dict[str, Any] | None = None,
 ) -> None:
-    gates = _gate_rows(summary)
+    gate_groups = _gate_groups(summary, gate_cfg)
+    gates = [row for rows in gate_groups.values() for row in rows]
     passed = all(ok for _, ok in gates)
     status_counts = bill["交易状态"].value_counts(dropna=False).to_dict() if not bill.empty and "交易状态" in bill.columns else {}
     min_cash = float(daily["cash_assets"].min()) if not daily.empty and "cash_assets" in daily.columns else 0.0
     execution_rows = [
         ["profile", str(live_cfg.get("profile", ""))],
+        ["universe_mode", str(live_cfg.get("universe_mode", ""))],
+        ["universe_audit_rows", str(live_cfg.get("universe_audit_rows", ""))],
         ["slippage", str(live_cfg.get("slippage", ""))],
         ["commission", str(live_cfg.get("commission", ""))],
         ["stamp_duty_sell", str(live_cfg.get("stamp_duty_sell", ""))],
@@ -264,9 +354,17 @@ def _write_report(
         "",
         f"Overall verdict: {'PASS' if passed else 'FAIL'}",
         "",
-        "## Gate",
+        "## Base Gate",
         "",
-        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in gates]),
+        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in gate_groups["base"]]),
+        "",
+        "## Robustness Gate",
+        "",
+        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in gate_groups["robustness"]]),
+        "",
+        "## Execution Quality Gate",
+        "",
+        _md_table(["gate", "status"], [[name, "PASS" if ok else "FAIL"] for name, ok in gate_groups["execution_quality"]]),
         "",
         "## Execution Config",
         "",
@@ -389,11 +487,19 @@ def export_execution_effectiveness_report(
         walk_forward_overrides=bill_walk_forward_overrides,
         execution_overrides=effective_config.get("execution", {}),
     )
+    live_cfg["universe_mode"] = bill_result.get("universe_mode", "")
+    live_cfg["universe_audit_rows"] = bill_result.get("universe_audit_rows", "")
     bill = pd.read_csv(bill_result["bill"])
     daily = pd.read_csv(bill_result["daily"])
     daily["date"] = pd.to_datetime(daily["date"])
     folds = _fold_metrics(daily, bill)
-    summary = _summary_from_folds(folds, effective_config.get("walk_forward", {}).get("strategy_v2", {}).get("candidate_governance", {}))
+    gate_cfg = effective_config.get("live_execution_backtest", {}).get("gate", {})
+    summary = _summary_from_folds(
+        folds,
+        effective_config.get("walk_forward", {}).get("strategy_v2", {}).get("candidate_governance", {}),
+        bill=bill,
+        daily=daily,
+    )
     execution_cfg = _execution_settings(effective_config)
     live_cfg["slippage"] = effective_config.get("walk_forward", {}).get("slippage", "")
     live_cfg["commission"] = effective_config.get("walk_forward", {}).get("commission", "")
@@ -405,11 +511,20 @@ def export_execution_effectiveness_report(
     report_path = report_path if report_path.is_absolute() else root / report_path
     fold_path.parent.mkdir(parents=True, exist_ok=True)
     folds.to_csv(fold_path, index=False, encoding="utf-8-sig")
-    _write_report(report_path, summary=summary, folds=folds, bill=bill, daily=daily, execution_cfg=execution_cfg, live_cfg=live_cfg)
+    _write_report(
+        report_path,
+        summary=summary,
+        folds=folds,
+        bill=bill,
+        daily=daily,
+        execution_cfg=execution_cfg,
+        live_cfg=live_cfg,
+        gate_cfg=gate_cfg,
+    )
     return {
         "folds": fold_path,
         "report": report_path,
-        "verdict": "PASS" if all(ok for _, ok in _gate_rows(summary)) else "FAIL",
+        "verdict": "PASS" if all(ok for _, ok in _gate_rows(summary, gate_cfg)) else "FAIL",
         "summary": summary,
         "bill": bill_result["bill"],
         "daily": bill_result["daily"],

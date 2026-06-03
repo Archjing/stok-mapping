@@ -13,6 +13,7 @@ import requests
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = PROJECT_ROOT / ".codex" / "claude_agent_config.json"
 LOCAL_CONFIG = PROJECT_ROOT / ".codex" / "claude_agent.local.json"
+DEFAULT_CLAUDE_SETTINGS = Path.home() / ".claude" / "settings.json"
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -35,6 +36,16 @@ def load_dotenv(path: Path) -> None:
             os.environ[key] = value
 
 
+def load_claude_settings_env(path: Path = DEFAULT_CLAUDE_SETTINGS) -> None:
+    settings = load_json(path)
+    env = settings.get("env", {})
+    if not isinstance(env, dict):
+        return
+    for key, value in env.items():
+        if key and value and key not in os.environ:
+            os.environ[str(key)] = str(value)
+
+
 def merged_config(config_path: Path) -> dict[str, Any]:
     config = load_json(config_path)
     local = load_json(LOCAL_CONFIG)
@@ -43,6 +54,15 @@ def merged_config(config_path: Path) -> dict[str, Any]:
             os.environ[str(key)] = str(value)
     config.update(local.get("overrides", {}))
     return config
+
+
+def resolve_model(config: dict[str, Any]) -> str:
+    model_env = str(config.get("model_env", "")).strip()
+    if model_env:
+        model = os.environ.get(model_env, "").strip()
+        if model:
+            return model
+    return str(config["model"])
 
 
 def read_project_file(relative_path: str, max_chars: int) -> str:
@@ -63,16 +83,22 @@ def read_project_file(relative_path: str, max_chars: int) -> str:
 def build_prompt(config: dict[str, Any], task: str, include_files: list[str]) -> str:
     max_per_file = int(config.get("max_input_chars_per_file", 12000))
     remaining = int(config.get("max_total_input_chars", 36000))
+    constraints = config.get(
+        "prompt_constraints",
+        [
+            "输出语言：中文。",
+            "只做研究辅助、风险提示、验证建议和待办整理。",
+            "不输出买入、卖出、清仓、满仓等交易指令。",
+            "不擅自改变策略逻辑或策略参数。",
+            "若引用结论，注明来自哪个本地文件。",
+        ],
+    )
     sections = [
         "# Task",
         task.strip(),
         "",
         "# Constraints",
-        "- 输出语言：中文。",
-        "- 只做研究辅助、风险提示、验证建议和待办整理。",
-        "- 不输出买入、卖出、清仓、满仓等交易指令。",
-        "- 不擅自改变策略逻辑或策略参数。",
-        "- 若引用结论，注明来自哪个本地文件。",
+        *[f"- {item}" for item in constraints],
         "",
         "# Project Context",
     ]
@@ -86,25 +112,49 @@ def build_prompt(config: dict[str, Any], task: str, include_files: list[str]) ->
     return "\n".join(sections)
 
 
-def call_anthropic(config: dict[str, Any], prompt: str) -> str:
+def resolve_api_url(config: dict[str, Any]) -> str:
+    base_url = os.environ.get("ANTHROPIC_BASE_URL", "").strip()
+    if base_url:
+        normalized = base_url.rstrip("/")
+        if normalized.endswith("/v1/messages"):
+            return normalized
+        if normalized.endswith("/v1"):
+            return f"{normalized}/messages"
+        return f"{normalized}/v1/messages"
+    return str(config.get("api_url", "https://api.anthropic.com/v1/messages"))
+
+
+def resolve_auth_headers(config: dict[str, Any]) -> dict[str, str]:
+    auth_token = os.environ.get("ANTHROPIC_AUTH_TOKEN", "").strip()
+    if auth_token:
+        return {"Authorization": f"Bearer {auth_token}"}
+
     api_key_env = str(config.get("api_key_env", "ANTHROPIC_API_KEY"))
     api_key = os.environ.get(api_key_env, "").strip()
     if not api_key:
-        raise RuntimeError(f"{api_key_env} is not set; set it in .env or .codex/claude_agent.local.json")
+        raise RuntimeError(
+            "ANTHROPIC_AUTH_TOKEN is not set; set it as a system variable or in .env. "
+            f"Fallback {api_key_env} is also not set."
+        )
+    return {"x-api-key": api_key}
+
+
+def call_anthropic(config: dict[str, Any], prompt: str) -> str:
     payload = {
-        "model": config["model"],
+        "model": resolve_model(config),
         "max_tokens": int(config.get("max_tokens", 1600)),
         "temperature": float(config.get("temperature", 0.2)),
         "system": config.get("system_prompt", ""),
         "messages": [{"role": "user", "content": prompt}],
     }
+    headers = {
+        **resolve_auth_headers(config),
+        "anthropic-version": str(config.get("anthropic_version", "2023-06-01")),
+        "content-type": "application/json",
+    }
     response = requests.post(
-        str(config.get("api_url", "https://api.anthropic.com/v1/messages")),
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": str(config.get("anthropic_version", "2023-06-01")),
-            "content-type": "application/json",
-        },
+        resolve_api_url(config),
+        headers=headers,
         data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
         timeout=int(config.get("timeout_seconds", 60)),
     )
@@ -130,11 +180,11 @@ def write_output(path: Path, *, model: str, dry_run: bool, body: str) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Claude as a bounded stok-mapping research agent")
+    parser = argparse.ArgumentParser(description="Run Claude as a bounded stok-mapping agent")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="Path to .codex Claude provider config")
     parser.add_argument(
         "--task",
-        default="基于当前 Phase 0 报告生成研究摘要、风险提示、失效条件和下一步验证建议。",
+        default=None,
         help="Task instruction sent to Claude",
     )
     parser.add_argument("--include", action="append", default=None, help="Project-relative context file")
@@ -143,21 +193,25 @@ def main() -> int:
     args = parser.parse_args()
 
     load_dotenv(PROJECT_ROOT / ".env")
+    load_claude_settings_env()
     config = merged_config(Path(args.config).resolve())
+    task = args.task or str(
+        config.get("default_task", "基于当前上下文生成摘要、风险提示、失效条件和下一步验证建议。")
+    )
     include_files = args.include or list(config.get("include_files", []))
-    prompt = build_prompt(config, args.task, include_files)
+    prompt = build_prompt(config, task, include_files)
     output_raw = args.output or config.get("output_path", "reports/claude_agent_latest.md")
     output_path = Path(output_raw)
     if not output_path.is_absolute():
         output_path = PROJECT_ROOT / output_path
 
     if args.dry_run:
-        write_output(output_path, model=str(config["model"]), dry_run=True, body="## Prompt Preview\n\n" + prompt)
+        write_output(output_path, model=resolve_model(config), dry_run=True, body="## Prompt Preview\n\n" + prompt)
         print(f"dry_run_output={output_path}")
         return 0
 
     response_text = call_anthropic(config, prompt)
-    write_output(output_path, model=str(config["model"]), dry_run=False, body=response_text)
+    write_output(output_path, model=resolve_model(config), dry_run=False, body=response_text)
     print(f"agent_output={output_path}")
     return 0
 

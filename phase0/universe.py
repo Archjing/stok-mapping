@@ -11,7 +11,12 @@ import numpy as np
 import pandas as pd
 
 from phase0.env import prepare_imports
-from phase0.local_history import configure_local_history, load_snapshot_from_local_history, normalize_cn_symbol
+from phase0.local_history import (
+    configure_local_history,
+    load_snapshot_from_local_history,
+    load_snapshot_from_local_history_as_of,
+    normalize_cn_symbol,
+)
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 
 prepare_imports()
@@ -30,6 +35,19 @@ class UniverseBuildResult:
     output_path: Path
     snapshot_path: Path
     report_path: Path
+    warnings: list[str]
+
+
+@dataclass
+class PointInTimeUniverseResult:
+    universe: pd.DataFrame
+    snapshot: pd.DataFrame
+    symbols: list[str]
+    source: str
+    as_of_date: str
+    target_size: int
+    selected_count: int
+    snapshot_count: int
     warnings: list[str]
 
 
@@ -272,6 +290,70 @@ def load_universe_symbols(cfg: dict[str, Any], root: Path) -> list[str]:
         return []
     limit = int(universe_cfg.get("walk_forward_limit", universe_cfg.get("target_size", 500)))
     return [str(sym) for sym in df["symbol"].dropna().head(limit).tolist()]
+
+
+def load_point_in_time_universe(cfg: dict[str, Any], root: Path, as_of_date: date | str) -> PointInTimeUniverseResult:
+    """Build a fold-local universe as of a historical date without writing project data."""
+    configure_local_history(cfg.get("local_history", {}), root)
+    universe_cfg = cfg.get("universe", {})
+    target_size = int(universe_cfg.get("target_size", 500))
+    limit = int(universe_cfg.get("walk_forward_limit", target_size))
+    warnings: list[str] = []
+
+    snapshot = load_snapshot_from_local_history_as_of(
+        as_of_date,
+        days=int(universe_cfg.get("fallback_days", 90)),
+    )
+    warning = snapshot.attrs.get("warning") if hasattr(snapshot, "attrs") else None
+    if warning:
+        warnings.append(str(warning))
+    if snapshot.empty:
+        warnings.append(f"point-in-time local history snapshot is empty: as_of_date={as_of_date}")
+        return PointInTimeUniverseResult(
+            universe=pd.DataFrame(),
+            snapshot=snapshot,
+            symbols=[],
+            source="local_history_sqlite_as_of",
+            as_of_date=str(as_of_date),
+            target_size=target_size,
+            selected_count=0,
+            snapshot_count=0,
+            warnings=warnings,
+        )
+
+    filtered = _filter_snapshot(snapshot, cfg)
+    scored = _score_snapshot(filtered) if not filtered.empty else filtered
+    universe = _select_balanced_universe(scored, cfg)
+    universe["universe_rank"] = np.arange(1, len(universe) + 1)
+    if limit > 0:
+        universe = universe.head(limit).copy()
+    symbols = [str(sym) for sym in universe["symbol"].dropna().tolist()] if "symbol" in universe.columns else []
+    min_usable = int(universe_cfg.get("min_usable_size", min(100, target_size)))
+    if len(symbols) < min_usable:
+        warnings.append(
+            f"point-in-time universe below min_usable_size: as_of_date={as_of_date}, "
+            f"selected={len(symbols)}, min_usable={min_usable}"
+        )
+
+    snapshot_as_of = str(snapshot.attrs.get("latest_trade_date") or snapshot.attrs.get("as_of_date") or as_of_date)
+    return PointInTimeUniverseResult(
+        universe=universe.reset_index(drop=True),
+        snapshot=snapshot,
+        symbols=symbols,
+        source="local_history_sqlite_as_of",
+        as_of_date=snapshot_as_of,
+        target_size=target_size,
+        selected_count=len(symbols),
+        snapshot_count=len(snapshot),
+        warnings=warnings,
+    )
+
+
+def load_point_in_time_universe_symbols(cfg: dict[str, Any], root: Path, as_of_date: date | str) -> list[str]:
+    result = load_point_in_time_universe(cfg, root, as_of_date)
+    universe_cfg = cfg.get("universe", {})
+    min_usable = int(universe_cfg.get("min_usable_size", min(100, universe_cfg.get("target_size", 500))))
+    return result.symbols if len(result.symbols) >= min_usable else []
 
 
 def _write_universe_report(

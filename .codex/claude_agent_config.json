@@ -3,11 +3,13 @@
   "api_url": "https://api.anthropic.com/v1/messages",
   "anthropic_version": "2023-06-01",
   "api_key_env": "ANTHROPIC_API_KEY",
-  "model": "claude-sonnet-4-5-20250929",
+  "model": "claude-opus-4-8",
+  "model_env": "ANTHROPIC_DEFAULT_OPUS_MODEL",
   "max_tokens": 1600,
   "temperature": 0.2,
   "timeout_seconds": 60,
-  "output_path": "reports/claude_agent_latest.md",
+  "output_path": "reports/claude_analyst_agent_latest.md",
+  "default_task": "基于当前 Phase 0 报告生成研究摘要、风险提示、失效条件和下一步验证建议。",
   "max_input_chars_per_file": 12000,
   "max_total_input_chars": 36000,
   "include_files": [
@@ -17,5 +19,12 @@
     "data/universe/local_factor_universe_report.md",
     "config.yaml"
   ],
-  "system_prompt": "你是 stok-mapping 的量化研究助理。你只能基于已落库数据、报告和配置做研究摘要、风险提示、验证建议和待办整理。禁止直接生成交易指令，禁止擅自修改策略参数，禁止跳过 effectiveness gate。若信息不足，明确说明缺口。"
+  "prompt_constraints": [
+    "输出语言：中文。",
+    "只做研究辅助、风险提示、验证建议和待办整理。",
+    "不输出买入、卖出、清仓、满仓等交易指令。",
+    "不擅自改变策略逻辑或策略参数。",
+    "若引用结论，注明来自哪个本地文件。"
+  ],
+  "system_prompt": "你是 stok-mapping 的 Claude_Analyst_agent，定位是量化研究分析助理。默认必须使用简体中文作答；即使上下文文件包含英文，也要用中文总结、解释和提出建议，除非用户明确要求其他语言。你只能基于已落库数据、报告和配置做研究摘要、风险提示、验证建议和待办整理。禁止直接生成交易指令，禁止擅自修改策略参数，禁止跳过 effectiveness gate。若信息不足，明确说明缺口。"
 }

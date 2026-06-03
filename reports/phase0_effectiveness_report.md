@@ -1,17 +1,31 @@
 # Phase 0 Strategy Effectiveness Gate
 
-Generated at: 2026-06-02T02:10:40
+Generated at: 2026-06-03T17:41:07
 
-Overall verdict: PASS
+Overall verdict: FAIL
+
+## Base Gate
 
 | gate | status |
 | --- | --- |
 | selected_candidate_eligible == True | PASS |
-| annualized_return_mean > 0 | PASS |
-| sharpe_mean > 0.5 | PASS |
+| annualized_return_mean > 0.00 | PASS |
+| sharpe_mean > 0.50 | PASS |
 | max_drawdown_mean > -0.25 | PASS |
 | win_rate_mean > 0.45 | PASS |
 | oos_return_decay_ratio < 0.30 | PASS |
+
+## Robustness Gate
+
+| gate | status |
+| --- | --- |
+| oos_fold_count >= 2 | FAIL |
+| oos_annualized_return_mean > 0.00 | PASS |
+| oos_sharpe_mean > 0.50 | PASS |
+| positive_fold_ratio >= 0.75 | PASS |
+| negative_fold_count <= 1 | PASS |
+| min_fold_annualized_return > -0.10 | FAIL |
+| oos_positive_fold_ratio >= 1.00 | PASS |
 
 ## Snapshot
 
@@ -20,17 +34,25 @@ Overall verdict: PASS
 | status | ok |
 | fold_count | 4 |
 | symbol_count | 1 |
-| annualized_return_mean | 0.13312709618858617 |
-| sharpe_mean | 1.008292015623601 |
-| max_drawdown_mean | -0.10417008645710835 |
-| win_rate_mean | 0.5109561752988048 |
-| turnover_annual_mean | 1.5023090842074356 |
+| annualized_return_mean | 0.11212763383832514 |
+| sharpe_mean | 0.82036890964417 |
+| max_drawdown_mean | -0.11099878689840137 |
+| win_rate_mean | 0.5 |
+| turnover_annual_mean | 1.4864332695558795 |
+| positive_fold_count | 3 |
+| negative_fold_count | 1 |
+| positive_fold_ratio | 0.75 |
+| min_fold_annualized_return | -0.11172374473701674 |
+| min_fold_sharpe | -0.9761356411380427 |
 | selected_candidate | legacy_momentum_low_turnover_v1 |
 | selected_candidate_eligible | True |
 | selected_candidate_governance_reason | eligible |
-| candidate_comparison | legacy_momentum: score=-0.6398, selection_score=-0.6398, eligible=True, ann=-0.0439, sharpe=-0.5082, mdd=-0.2193; legacy_momentum_low_turnover_v1: score=1.0228, selection_score=1.0228, eligible=True, ann=0.1331, sharpe=1.0083, mdd=-0.1042; ma_kline_baseline_v1: score=-4.0468, selection_score=-4.0468, eligible=True, ann=-0.4253, sharpe=-3.6044, mdd=-0.4596; residual_momentum_reversal_v1: score=-2.7442, selection_score=-2.7442, eligible=True, ann=-0.2525, sharpe=-2.4770, mdd=-0.2818; residual_momentum_reversal_v2: score=-3.2179, selection_score=-3.2179, eligible=True, ann=-0.3433, sharpe=-2.8521, mdd=-0.3883; quality_growth_price_v1: score=-1.5837, selection_score=-1.5837, eligible=True, ann=-0.1095, sharpe=-1.4224, mdd=-0.2130; multifactor_volume_price_filter_v1: score=-1.9371, selection_score=-1.9371, eligible=True, ann=-0.2059, sharpe=-1.7095, mdd=-0.2493 |
-| candidate_summary_rows | [{'candidate': 'legacy_momentum_low_turnover_v1', 'score': 1.0227705204893398, 'selection_score': 1.0227705204893398, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': 0.13312709618858617, 'sharpe_mean': 1.008292015623601, 'max_drawdown_mean': -0.10417008645710835, 'win_rate_mean': 0.5109561752988048, 'turnover_annual_mean': 1.5023090842074356}, {'candidate': 'legacy_momentum', 'score': -0.639800813999546, 'selection_score': -0.639800813999546, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.04388803620203885, 'sharpe_mean': -0.5081821109556561, 'max_drawdown_mean': -0.2193493698857409, 'win_rate_mean': 0.44862948207171316, 'turnover_annual_mean': 13.475825891070368}, {'candidate': 'quality_growth_price_v1', 'score': -1.5836605095470437, 'selection_score': -1.5836605095470437, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.1095160268299259, 'sharpe_mean': -1.4223777987880144, 'max_drawdown_mean': -0.21304939468813267, 'win_rate_mean': 0.43814122213446804, 'turnover_annual_mean': 24.79228539531689}, {'candidate': 'multifactor_volume_price_filter_v1', 'score': -1.9370563211386487, 'selection_score': -1.9370563211386487, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.20587823633882896, 'sharpe_mean': -1.709464368408745, 'max_drawdown_mean': -0.2493056691209785, 'win_rate_mean': 0.37991624655979533, 'turnover_annual_mean': 44.58351893621584}, {'candidate': 'residual_momentum_reversal_v1', 'score': -2.7441629714093954, 'selection_score': -2.7441629714093954, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.2524717285496828, 'sharpe_mean': -2.477032353795738, 'max_drawdown_mean': -0.2817895066776318, 'win_rate_mean': 0.4057084052839571, 'turnover_annual_mean': 30.00128633987981}, {'candidate': 'residual_momentum_reversal_v2', 'score': -3.2179198095012453, 'selection_score': -3.2179198095012453, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.3432955886465955, 'sharpe_mean': -2.8521194297467463, 'max_drawdown_mean': -0.3883051708624021, 'win_rate_mean': 0.3634294149866897, 'turnover_annual_mean': 63.41078969952978}, {'candidate': 'ma_kline_baseline_v1', 'score': -4.046846342750388, 'selection_score': -4.046846342750388, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.42528995437531203, 'sharpe_mean': -3.604413988437761, 'max_drawdown_mean': -0.4595747542499415, 'win_rate_mean': 0.35129223470358484, 'turnover_annual_mean': 40.34468929876793}] |
+| candidate_comparison | legacy_momentum: score=-0.6982, selection_score=-0.6982, eligible=True, ann=-0.0536, sharpe=-0.5634, mdd=-0.2160; legacy_momentum_low_turnover_v1: score=0.8209, selection_score=0.8209, eligible=True, ann=0.1121, sharpe=0.8204, mdd=-0.1110; ma_kline_baseline_v1: score=-3.9748, selection_score=-3.9748, eligible=True, ann=-0.4203, sharpe=-3.5391, mdd=-0.4512; residual_momentum_reversal_v1: score=-2.7499, selection_score=-2.7499, eligible=True, ann=-0.2593, sharpe=-2.4780, mdd=-0.2845; residual_momentum_reversal_v2: score=-3.5346, selection_score=-3.5346, eligible=True, ann=-0.3676, sharpe=-3.1566, mdd=-0.3884; quality_growth_price_v1: score=-1.6060, selection_score=-1.6060, eligible=True, ann=-0.1173, sharpe=-1.4395, mdd=-0.2158; multifactor_volume_price_filter_v1: score=-2.3810, selection_score=-2.3810, eligible=True, ann=-0.2528, sharpe=-2.1113, mdd=-0.2866 |
+| candidate_summary_rows | [{'candidate': 'legacy_momentum_low_turnover_v1', 'score': 0.8209333331141317, 'selection_score': 0.8209333331141317, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': 0.11212763383832514, 'sharpe_mean': 0.82036890964417, 'max_drawdown_mean': -0.11099878689840137, 'win_rate_mean': 0.5, 'turnover_annual_mean': 1.4864332695558795}, {'candidate': 'legacy_momentum', 'score': -0.698212792870187, 'selection_score': -0.698212792870187, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.05364503246099306, 'sharpe_mean': -0.563384634756551, 'max_drawdown_mean': -0.21601128376627918, 'win_rate_mean': 0.4456414342629482, 'turnover_annual_mean': 13.330491943793891}, {'candidate': 'quality_growth_price_v1', 'score': -1.6060274807827206, 'selection_score': -1.6060274807827206, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.11733829958624692, 'sharpe_mean': -1.439470208594304, 'max_drawdown_mean': -0.21577624479058616, 'win_rate_mean': 0.4368095728752457, 'turnover_annual_mean': 24.889889382742616}, {'candidate': 'multifactor_volume_price_filter_v1', 'score': -2.381035007013952, 'selection_score': -2.381035007013952, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.25282610917176457, 'sharpe_mean': -2.1113161616125318, 'max_drawdown_mean': -0.28661158163107536, 'win_rate_mean': 0.3661421552879421, 'turnover_annual_mean': 49.40227651427101}, {'candidate': 'residual_momentum_reversal_v1', 'score': -2.7499319165190093, 'selection_score': -2.7499319165190093, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.25928417928709685, 'sharpe_mean': -2.478017936544697, 'max_drawdown_mean': -0.28454378066152786, 'win_rate_mean': 0.4038791691404132, 'turnover_annual_mean': 29.223392209388788}, {'candidate': 'residual_momentum_reversal_v2', 'score': -3.5346068523979555, 'selection_score': -3.5346068523979555, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.3676420457837456, 'sharpe_mean': -3.156599293178434, 'max_drawdown_mean': -0.3883730726552978, 'win_rate_mean': 0.3672483479406185, 'turnover_annual_mean': 65.22436687171049}, {'candidate': 'ma_kline_baseline_v1', 'score': -3.9748156488447477, 'selection_score': -3.9748156488447477, 'eligible_for_selection': True, 'governance_reason': 'eligible', 'fold_count': 4, 'symbol_count': 1, 'panel_scope': 'portfolio', 'annualized_return_mean': -0.42027169949276166, 'sharpe_mean': -3.5390618422554643, 'max_drawdown_mean': -0.4512359136858049, 'win_rate_mean': 0.3483543825791566, 'turnover_annual_mean': 40.4374587328078}] |
 | oos_fold_count | 1 |
-| oos_annualized_return_mean | 0.28334493863104626 |
-| oos_sharpe_mean | 2.0430343095309547 |
-| oos_return_decay_ratio | -2.411555062023421 |
+| oos_annualized_return_mean | 0.2921301628510151 |
+| oos_sharpe_mean | 2.103897672084983 |
+| oos_positive_fold_count | 1 |
+| oos_positive_fold_ratio | 1.0 |
+| oos_min_fold_annualized_return | 0.2921301628510151 |
+| oos_return_decay_ratio | -4.60422305260999 |

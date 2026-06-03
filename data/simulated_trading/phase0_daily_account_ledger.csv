@@ -1,0 +1,2 @@
+﻿account_id,account_name,brief_date,start_date,total_asset,stock_asset,cash_asset,daily_pnl,daily_return,target_exposure,estimated_trade_amount,estimated_volume,execution_price_mode,max_participation_rate,confirmed
+default,默认模拟账户,2026-06-02,2026-06-02,1003587.25622,158524.0,845063.25622,3587.256219999981,0.003587256219999981,0.1579573664546906,154518.0,11500.0,next_open,0.05,1

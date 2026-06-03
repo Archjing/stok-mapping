@@ -21,13 +21,14 @@ from phase0.external_market_history import (
 from phase0.local_history import (
     configure_local_history,
     load_daily_from_local_history,
+    load_trading_dates_from_local_history,
     local_history_path,
     local_history_prefer_daily_for_backtest,
 )
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
 from phase0.throttle import configure_akshare_throttle
-from phase0.universe import load_universe_symbols
+from phase0.universe import load_point_in_time_universe, load_universe_symbols
 
 
 MARKET_TICKERS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
@@ -1404,7 +1405,205 @@ def _normalize_strategy_output(
         signal_frame=signal_frame,
         metadata=strategy.build_metadata(params),
     )
+def _date_window_slices(
+    dates: list[Any],
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+) -> list[tuple[int, set[pd.Timestamp], set[pd.Timestamp]]]:
+    normalized = sorted(pd.to_datetime(pd.Series(dates).dropna()).dt.normalize().unique())
+    fold_days_train = train_years * 252
+    fold_days_valid = validate_years * 252
+    rows: list[tuple[int, set[pd.Timestamp], set[pd.Timestamp]]] = []
+    start = 0
+    fold_idx = 0
+    while True:
+        train_end = start + fold_days_train
+        valid_end = train_end + fold_days_valid
+        if valid_end > len(normalized):
+            break
+        train_dates = {pd.Timestamp(value).normalize() for value in normalized[start:train_end]}
+        valid_dates = {pd.Timestamp(value).normalize() for value in normalized[train_end:valid_end]}
+        if len(train_dates) < min_samples or len(valid_dates) < min_samples // 2:
+            break
+        fold_idx += 1
+        rows.append((fold_idx, train_dates, valid_dates))
+        start += fold_days_valid
+    return rows
 
+
+def _empty_pit_fold_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        columns=[
+            "fold",
+            "universe_as_of_date",
+            "universe_symbol_count",
+            "universe_snapshot_count",
+            "universe_source",
+            "train_start",
+            "train_end",
+            "valid_start",
+            "valid_end",
+            "warning",
+        ]
+    )
+
+
+def iter_point_in_time_universe_folds(
+    config: dict[str, Any],
+    *,
+    years: int,
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+    strategy_cfg: dict[str, Any],
+    xfeatures: pd.DataFrame | None = None,
+) -> tuple[list[dict[str, Any]], pd.DataFrame]:
+    """Build read-only, fold-local panels from historical point-in-time universes."""
+    end = date.today()
+    start = end - timedelta(days=365 * int(years) + 30)
+    trading_dates = load_trading_dates_from_local_history(start, end)
+    fold_windows = _date_window_slices(
+        trading_dates,
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+    )
+    if not fold_windows:
+        return [], _empty_pit_fold_frame()
+
+    root = Path.cwd()
+    contexts: list[dict[str, Any]] = []
+    audit_rows: list[dict[str, Any]] = []
+    universe_cfg = config.get("universe", {})
+    min_usable = int(universe_cfg.get("min_usable_size", min(100, universe_cfg.get("target_size", 500))))
+
+    for fold_idx, train_dates, valid_dates in fold_windows:
+        train_end_date = pd.Timestamp(max(train_dates)).date()
+        train_start_date = pd.Timestamp(min(train_dates)).date()
+        valid_start_date = pd.Timestamp(min(valid_dates)).date()
+        valid_end_date = pd.Timestamp(max(valid_dates)).date()
+        universe = load_point_in_time_universe(config, root, train_end_date)
+        warnings = list(universe.warnings)
+        audit = {
+            "fold": fold_idx,
+            "universe_as_of_date": universe.as_of_date,
+            "universe_symbol_count": universe.selected_count,
+            "universe_snapshot_count": universe.snapshot_count,
+            "universe_source": universe.source,
+            "train_start": train_start_date.isoformat(),
+            "train_end": train_end_date.isoformat(),
+            "valid_start": valid_start_date.isoformat(),
+            "valid_end": valid_end_date.isoformat(),
+            "warning": "; ".join(warnings),
+        }
+        if len(universe.symbols) < min_usable:
+            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: universe below min_usable_size"])})
+            continue
+
+        panel = _align_symbol_map(_load_symbol_map(universe.symbols, years=years))
+        if panel.empty:
+            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: empty price panel"])})
+            continue
+        panel["date"] = pd.to_datetime(panel["date"]).dt.normalize()
+        panel = panel[panel["date"].isin(train_dates | valid_dates)].copy()
+        if panel.empty:
+            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: panel has no fold dates"])})
+            continue
+        panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
+        train = panel[panel["date"].isin(train_dates)].copy()
+        valid = panel[panel["date"].isin(valid_dates)].copy()
+        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
+            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: insufficient train/valid samples"])})
+            continue
+
+        audit_rows.append(audit)
+        contexts.append(
+            {
+                "fold": fold_idx,
+                "train": train,
+                "valid": valid,
+                "symbols": universe.symbols,
+                "universe": universe,
+                "audit": audit,
+            }
+        )
+
+    return contexts, pd.DataFrame(audit_rows)
+
+
+def _run_strategy_on_explicit_fold(
+    strategy_name: str,
+    *,
+    fold: int,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+    extra: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    strategy = get_strategy(strategy_name)
+    if not strategy.is_enabled(strategy_cfg):
+        return []
+    if train.empty or valid.empty:
+        return []
+
+    prepared = strategy.prepare_panel(pd.concat([train, valid], ignore_index=True), strategy_cfg)
+    if prepared.empty:
+        return []
+    prepared["date"] = pd.to_datetime(prepared["date"]).dt.normalize()
+    train_dates = set(pd.to_datetime(train["date"]).dt.normalize().unique())
+    valid_dates = set(pd.to_datetime(valid["date"]).dt.normalize().unique())
+    fold_train = prepared[prepared["date"].isin(train_dates)].copy()
+    fold_valid = prepared[prepared["date"].isin(valid_dates)].copy()
+    if fold_train.empty or fold_valid.empty:
+        return []
+
+    params = strategy.select_params(
+        fold_train,
+        strategy_cfg,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+    )
+    result = strategy.apply(
+        fold_valid,
+        params,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+    )
+    output = _normalize_strategy_output(result, fold_valid, strategy_name, params)
+    metric = _calc_metrics(output.returns, output.exposure)
+    meta = output.metadata or strategy.build_metadata(params)
+    row = {
+        "symbol": str(fold_valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
+        "fold": fold,
+        "train_start": str(pd.Timestamp(fold_train["date"].min()).date()),
+        "train_end": str(pd.Timestamp(fold_train["date"].max()).date()),
+        "valid_start": str(pd.Timestamp(fold_valid["date"].min()).date()),
+        "valid_end": str(pd.Timestamp(fold_valid["date"].max()).date()),
+        "annualized_return": metric["annualized_return"],
+        "sharpe": metric["sharpe"],
+        "max_drawdown": metric["max_drawdown"],
+        "win_rate": metric["win_rate"],
+        "turnover_annual": metric["turnover_annual"],
+        "trades": metric["trades"],
+        "passed_min_samples": True,
+        "selected_params": meta.get("formatted_params", strategy.format_params(params)),
+        "candidate": strategy.candidate_name,
+        "strategy_id": meta.get("strategy_id", strategy.name),
+        "strategy_display_name": meta.get("display_name", strategy.name),
+        "strategy_category": meta.get("category", "generic"),
+        "panel_scope": meta.get("panel_scope", strategy.panel_scope),
+        "supports_brief": meta.get("supports_brief", True),
+        "supports_paper_trade": meta.get("supports_paper_trade", True),
+    }
+    if extra:
+        row.update(extra)
+    return [row]
 
 
 def _run_strategy_on_symbol_panel(
@@ -1608,6 +1807,178 @@ def _run_compare(
     return selected, all_candidate_rows, candidate_summary_rows
 
 
+def _run_compare_point_in_time(
+    config: dict[str, Any],
+    *,
+    years: int,
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
+    candidates: dict[str, list[dict[str, Any]]] = {}
+    xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
+    fold_contexts, universe_audit = iter_point_in_time_universe_folds(
+        config,
+        years=years,
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        strategy_cfg=strategy_cfg,
+        xfeatures=xfeatures,
+    )
+    compare_strategies = _resolve_compare_strategies(strategy_cfg)
+
+    for strategy_name in compare_strategies:
+        if strategy_name not in available_strategies():
+            continue
+        strategy = get_strategy(strategy_name)
+        strategy_rows: list[dict[str, Any]] = []
+        for ctx in fold_contexts:
+            extra = {
+                "universe_mode": "point_in_time",
+                "universe_as_of_date": ctx["audit"].get("universe_as_of_date", ""),
+                "universe_symbol_count": ctx["audit"].get("universe_symbol_count", 0),
+                "universe_snapshot_count": ctx["audit"].get("universe_snapshot_count", 0),
+                "universe_source": ctx["audit"].get("universe_source", ""),
+            }
+            if strategy.panel_scope == "symbol":
+                for sym in ctx["symbols"]:
+                    train = ctx["train"][ctx["train"]["symbol"] == sym].copy()
+                    valid = ctx["valid"][ctx["valid"]["symbol"] == sym].copy()
+                    strategy_rows.extend(
+                        _run_strategy_on_explicit_fold(
+                            strategy_name,
+                            fold=int(ctx["fold"]),
+                            train=train,
+                            valid=valid,
+                            slippage=slippage,
+                            commission=commission,
+                            stamp_duty_sell=stamp_duty_sell,
+                            strategy_cfg=strategy_cfg,
+                            extra=extra,
+                        )
+                    )
+            else:
+                strategy_rows.extend(
+                    _run_strategy_on_explicit_fold(
+                        strategy_name,
+                        fold=int(ctx["fold"]),
+                        train=ctx["train"],
+                        valid=ctx["valid"],
+                        slippage=slippage,
+                        commission=commission,
+                        stamp_duty_sell=stamp_duty_sell,
+                        strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                        extra=extra,
+                    )
+                )
+        candidates[strategy.candidate_name] = strategy_rows
+
+    candidates = {name: rows for name, rows in candidates.items() if rows}
+    if not candidates:
+        return [], [], [], universe_audit
+
+    summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
+    governance_cfg = strategy_cfg.get("candidate_governance", {})
+    eligible_names = [name for name, summary in summaries.items() if _candidate_governance(summary, governance_cfg)[0]]
+    if eligible_names:
+        best_name = max(eligible_names, key=lambda name: _candidate_selection_score(summaries[name], governance_cfg))
+    else:
+        best_name = max(candidates, key=lambda name: _candidate_raw_score(summaries[name]))
+    comparison = "; ".join(
+        (
+            f"{name}: score={_candidate_raw_score(summary):.4f}, "
+            f"selection_score={_candidate_selection_score(summary, governance_cfg):.4f}, "
+            f"eligible={_candidate_governance(summary, governance_cfg)[0]}, "
+            f"ann={summary.get('annualized_return_mean', 0.0):.4f}, "
+            f"sharpe={summary.get('sharpe_mean', 0.0):.4f}, "
+            f"mdd={summary.get('max_drawdown_mean', 0.0):.4f}"
+        )
+        for name, summary in summaries.items()
+    )
+    candidate_summary_rows = _candidate_summary_rows(summaries, governance_cfg)
+    selected = candidates[best_name]
+    selected_eligible, selected_reason = _candidate_governance(summaries[best_name], governance_cfg)
+    for row in selected:
+        row["candidate_summary"] = comparison
+        row["selected_candidate"] = best_name
+        row["selected_candidate_eligible"] = selected_eligible
+        row["selected_candidate_governance_reason"] = selected_reason
+
+    all_candidate_rows: list[dict[str, Any]] = []
+    for name, rows in candidates.items():
+        candidate_eligible, candidate_reason = _candidate_governance(summaries[name], governance_cfg)
+        for row in rows:
+            enriched = dict(row)
+            enriched["candidate_summary"] = comparison
+            enriched["selected_candidate"] = best_name
+            enriched["is_selected_candidate"] = name == best_name
+            enriched["candidate_eligible_for_selection"] = candidate_eligible
+            enriched["candidate_governance_reason"] = candidate_reason
+            all_candidate_rows.append(enriched)
+    return selected, all_candidate_rows, candidate_summary_rows, universe_audit
+
+
+def _run_portfolio_on_explicit_fold(
+    *,
+    fold: int,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+    extra: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    if train.empty or valid.empty:
+        return []
+    params = _select_portfolio_params(
+        train,
+        strategy_cfg,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+    )
+    returns, exposure = _apply_portfolio_strategy(
+        valid,
+        mom_window=int(params["mom_window"]),
+        mom_threshold=float(params["mom_threshold"]),
+        trend_window=int(params["trend_window"]),
+        vol_threshold=float(params["vol_threshold"]),
+        target_vol=float(params["target_vol"]),
+        top_n=int(params.get("top_n", strategy_cfg.get("top_n", 2))),
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+        xmarket_threshold=float(params.get("xmarket_threshold", -1.0)),
+    )
+    metric = _calc_metrics(returns, exposure)
+    row = {
+        "symbol": "PORTFOLIO",
+        "fold": fold,
+        "train_start": str(pd.Timestamp(train["date"].min()).date()),
+        "train_end": str(pd.Timestamp(train["date"].max()).date()),
+        "valid_start": str(pd.Timestamp(valid["date"].min()).date()),
+        "valid_end": str(pd.Timestamp(valid["date"].max()).date()),
+        "annualized_return": metric["annualized_return"],
+        "sharpe": metric["sharpe"],
+        "max_drawdown": metric["max_drawdown"],
+        "win_rate": metric["win_rate"],
+        "turnover_annual": metric["turnover_annual"],
+        "trades": metric["trades"],
+        "passed_min_samples": True,
+        "selected_params": _format_portfolio_params(params),
+        "candidate": "xmarket_portfolio_v2" if _xmarket_enabled(strategy_cfg) else "portfolio_v2",
+    }
+    if extra:
+        row.update(extra)
+    return [row]
+
+
 def _run_single_symbol(
     symbol: str,
     years: int,
@@ -1692,8 +2063,16 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     configure_local_history(config.get("local_history", {}), Path.cwd())
     configure_us_market_history(config.get("us_market_history", {}), Path.cwd())
     symbols = config["symbols"]
-    # 若启用 universe，就用股票池构建结果替换手工 symbols，模拟先筛可交易市场再跑策略。
-    universe_symbols = load_universe_symbols(config, Path.cwd()) if config.get("universe", {}).get("enabled", False) else []
+    universe_cfg = config.get("universe", {})
+    use_point_in_time_universe = bool(
+        universe_cfg.get("enabled", False)
+        and universe_cfg.get("point_in_time_for_backtest", True)
+        and config.get("local_history", {}).get("enabled", True)
+    )
+    universe_symbols: list[str] = []
+    if universe_cfg.get("enabled", False) and not use_point_in_time_universe:
+        # Legacy fallback only: historical research should normally use fold-local PIT universes.
+        universe_symbols = load_universe_symbols(config, Path.cwd())
     if universe_symbols:
         symbols = universe_symbols
     strategy_cfg = wcfg.get("strategy_v2", {})
@@ -1702,31 +2081,78 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
 
     candidate_rows: list[dict[str, Any]] = []
     candidate_summary_rows: list[dict[str, Any]] = []
+    universe_audit_df = pd.DataFrame()
     # compare 用于 Phase 0 候选策略选拔；portfolio 和单票分支保留给独立组合/单标的回测。
     if strategy_cfg.get("mode") == "compare":
-        all_rows, candidate_rows, candidate_summary_rows = _run_compare(
-            symbols=symbols,
-            years=years,
-            train_years=int(wcfg["train_years"]),
-            validate_years=int(wcfg["validate_years"]),
-            min_samples=int(wcfg["min_samples"]),
-            slippage=float(wcfg["slippage"]),
-            commission=float(wcfg["commission"]),
-            stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
-            strategy_cfg=strategy_cfg,
-        )
+        if use_point_in_time_universe:
+            all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_point_in_time(
+                config,
+                years=years,
+                train_years=int(wcfg["train_years"]),
+                validate_years=int(wcfg["validate_years"]),
+                min_samples=int(wcfg["min_samples"]),
+                slippage=float(wcfg["slippage"]),
+                commission=float(wcfg["commission"]),
+                stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+                strategy_cfg=strategy_cfg,
+            )
+        else:
+            all_rows, candidate_rows, candidate_summary_rows = _run_compare(
+                symbols=symbols,
+                years=years,
+                train_years=int(wcfg["train_years"]),
+                validate_years=int(wcfg["validate_years"]),
+                min_samples=int(wcfg["min_samples"]),
+                slippage=float(wcfg["slippage"]),
+                commission=float(wcfg["commission"]),
+                stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+                strategy_cfg=strategy_cfg,
+            )
     elif strategy_cfg.get("mode") == "portfolio":
-        all_rows = _run_portfolio(
-            symbols=symbols,
-            years=years,
-            train_years=int(wcfg["train_years"]),
-            validate_years=int(wcfg["validate_years"]),
-            min_samples=int(wcfg["min_samples"]),
-            slippage=float(wcfg["slippage"]),
-            commission=float(wcfg["commission"]),
-            stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
-            strategy_cfg=strategy_cfg,
-        )
+        if use_point_in_time_universe:
+            fold_contexts, universe_audit_df = iter_point_in_time_universe_folds(
+                config,
+                years=years,
+                train_years=int(wcfg["train_years"]),
+                validate_years=int(wcfg["validate_years"]),
+                min_samples=int(wcfg["min_samples"]),
+                strategy_cfg=strategy_cfg,
+                xfeatures=_load_cross_market_features(years, strategy_cfg.get("cross_market", {}))
+                if _xmarket_enabled(strategy_cfg)
+                else None,
+            )
+            all_rows = []
+            for ctx in fold_contexts:
+                all_rows.extend(
+                    _run_portfolio_on_explicit_fold(
+                        fold=int(ctx["fold"]),
+                        train=ctx["train"],
+                        valid=ctx["valid"],
+                        slippage=float(wcfg["slippage"]),
+                        commission=float(wcfg["commission"]),
+                        stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+                        strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                        extra={
+                            "universe_mode": "point_in_time",
+                            "universe_as_of_date": ctx["audit"].get("universe_as_of_date", ""),
+                            "universe_symbol_count": ctx["audit"].get("universe_symbol_count", 0),
+                            "universe_snapshot_count": ctx["audit"].get("universe_snapshot_count", 0),
+                            "universe_source": ctx["audit"].get("universe_source", ""),
+                        },
+                    )
+                )
+        else:
+            all_rows = _run_portfolio(
+                symbols=symbols,
+                years=years,
+                train_years=int(wcfg["train_years"]),
+                validate_years=int(wcfg["validate_years"]),
+                min_samples=int(wcfg["min_samples"]),
+                slippage=float(wcfg["slippage"]),
+                commission=float(wcfg["commission"]),
+                stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+                strategy_cfg=strategy_cfg,
+            )
     else:
         all_rows: list[dict[str, Any]] = []
         xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
@@ -1770,11 +2196,19 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         return {
             "folds": folds_df,
             "candidate_folds": candidate_folds_df,
-            "summary": {"status": "failed", "reason": "no valid folds"},
+            "universe_audit": universe_audit_df,
+            "summary": {
+                "status": "failed",
+                "reason": "no valid folds",
+                "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
+                "universe_lookahead_guard": bool(use_point_in_time_universe),
+            },
         }
 
     summary = {
         "status": "ok",
+        "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
+        "universe_lookahead_guard": bool(use_point_in_time_universe),
         "fold_count": int(len(folds_df)),
         "symbol_count": int(folds_df["symbol"].nunique()),
         "annualized_return_mean": float(folds_df["annualized_return"].mean()),
@@ -1782,6 +2216,11 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         "max_drawdown_mean": float(folds_df["max_drawdown"].mean()),
         "win_rate_mean": float(folds_df["win_rate"].mean()),
         "turnover_annual_mean": float(folds_df["turnover_annual"].mean()),
+        "positive_fold_count": int((folds_df["annualized_return"] > 0).sum()),
+        "negative_fold_count": int((folds_df["annualized_return"] < 0).sum()),
+        "positive_fold_ratio": float((folds_df["annualized_return"] > 0).mean()),
+        "min_fold_annualized_return": float(folds_df["annualized_return"].min()),
+        "min_fold_sharpe": float(folds_df["sharpe"].min()),
     }
     if "candidate" in folds_df.columns:
         summary["selected_candidate"] = str(folds_df["candidate"].iloc[0])
@@ -1793,6 +2232,11 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         summary["candidate_comparison"] = str(folds_df["candidate_summary"].iloc[0])
     if candidate_summary_rows:
         summary["candidate_summary_rows"] = candidate_summary_rows
+    if not universe_audit_df.empty:
+        summary["universe_fold_count"] = int(len(universe_audit_df))
+        summary["universe_symbol_count_mean"] = float(universe_audit_df["universe_symbol_count"].mean())
+        summary["universe_symbol_count_min"] = int(universe_audit_df["universe_symbol_count"].min())
+        summary["universe_source"] = str(universe_audit_df["universe_source"].dropna().iloc[0])
 
     # 用最后 20% 折作为最近样本的近似留出段，检查策略在较新行情里的衰减。
     cutoff = max(1, int(len(folds_df) * 0.2))
@@ -1801,6 +2245,9 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     summary["oos_fold_count"] = int(len(oos))
     summary["oos_annualized_return_mean"] = float(oos["annualized_return"].mean())
     summary["oos_sharpe_mean"] = float(oos["sharpe"].mean())
+    summary["oos_positive_fold_count"] = int((oos["annualized_return"] > 0).sum())
+    summary["oos_positive_fold_ratio"] = float((oos["annualized_return"] > 0).mean()) if len(oos) else 0.0
+    summary["oos_min_fold_annualized_return"] = float(oos["annualized_return"].min()) if len(oos) else 0.0
     if len(train_like) > 0 and np.isfinite(train_like["annualized_return"].mean()):
         base = float(train_like["annualized_return"].mean())
         oosv = float(oos["annualized_return"].mean())
@@ -1811,7 +2258,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     else:
         summary["oos_return_decay_ratio"] = 0.0
 
-    return {"folds": folds_df, "candidate_folds": candidate_folds_df, "summary": summary}
+    return {"folds": folds_df, "candidate_folds": candidate_folds_df, "universe_audit": universe_audit_df, "summary": summary}
 
 
 def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:

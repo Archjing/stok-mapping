@@ -23,6 +23,7 @@ from phase0.walk_forward import (
     _calc_metrics,
     _load_symbol_cached,
     _load_symbol_map,
+    iter_point_in_time_universe_folds,
 )
 
 
@@ -368,6 +369,53 @@ def _fold_windows(panel: pd.DataFrame, train_years: int, validate_years: int, mi
         folds.append((fold_idx, train, valid))
         start += fold_days_valid
     return folds
+
+
+def _build_low_turnover_fold_bill(
+    *,
+    strategy: Any,
+    train: pd.DataFrame,
+    valid: pd.DataFrame,
+    fold: int,
+    strategy_cfg: dict[str, Any],
+    wcfg: dict[str, Any],
+    names: dict[str, str],
+    execution_cfg: dict[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    params = strategy.select_params(
+        train,
+        strategy_cfg,
+        slippage=float(wcfg["slippage"]),
+        commission=float(wcfg["commission"]),
+        stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+    )
+    strategy_output = strategy.apply(
+        valid,
+        params,
+        slippage=float(wcfg["slippage"]),
+        commission=float(wcfg["commission"]),
+        stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+    )
+    params_text = strategy.format_params(params)
+    bill, daily = _ledger_for_fold(
+        strategy_output.signal_frame,
+        price_frame=valid,
+        params=params,
+        fold=fold,
+        initial_cash=float(wcfg.get("initial_cash", 1_000_000)),
+        names=names,
+        slippage=float(wcfg["slippage"]),
+        commission=float(wcfg["commission"]),
+        stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+        params_text=params_text,
+        execution_cfg=execution_cfg,
+    )
+    metric = _calc_metrics(strategy_output.returns, strategy_output.exposure)
+    bill["折年化收益"] = metric["annualized_return"]
+    bill["折Sharpe"] = metric["sharpe"]
+    daily["fold"] = fold
+    daily["selected_params"] = params_text
+    return bill, daily
 
 
 def _execution_settings(config: dict[str, Any]) -> dict[str, Any]:
@@ -1004,74 +1052,97 @@ def export_low_turnover_bill(
     wcfg = config["walk_forward"]
     execution_cfg = _execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
-    symbols = _parse_symbol_list(config, root)
     strategy = get_strategy("legacy_momentum_low_turnover_v1")
     history_years = int(years or config["years"])
-    cache_path = _resolve_path(root, panel_cache)
-    panel = _load_or_build_panel(
-        cache_path=cache_path,
-        refresh_cache=bool(refresh_cache),
-        no_panel_cache=bool(no_panel_cache),
-        cache_key=_panel_cache_key(
-            config_path=config_path,
-            config=config,
-            root=root,
-            symbols=symbols,
-            history_years=history_years,
-            strategy_cfg=strategy_cfg,
-        ),
-        symbols=symbols,
-        history_years=history_years,
-        strategy_cfg=strategy_cfg,
-    )
-    names = _load_names(
-        _resolve_path(root, config.get("local_history", {}).get("path", "")),
-        panel["symbol"].astype(str).unique().tolist(),
+    use_point_in_time_universe = bool(
+        config.get("universe", {}).get("enabled", False)
+        and config.get("universe", {}).get("point_in_time_for_backtest", True)
+        and config.get("local_history", {}).get("enabled", True)
     )
 
     all_bills = []
     all_daily = []
-    for fold, train, valid in _fold_windows(
-        panel,
-        train_years=int(wcfg["train_years"]),
-        validate_years=int(wcfg["validate_years"]),
-        min_samples=int(wcfg["min_samples"]),
-    ):
-        params = strategy.select_params(
-            train,
-            strategy_cfg,
-            slippage=float(wcfg["slippage"]),
-            commission=float(wcfg["commission"]),
-            stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+    names: dict[str, str] = {}
+    universe_audit = pd.DataFrame()
+    if use_point_in_time_universe:
+        fold_contexts, universe_audit = iter_point_in_time_universe_folds(
+            config,
+            years=history_years,
+            train_years=int(wcfg["train_years"]),
+            validate_years=int(wcfg["validate_years"]),
+            min_samples=int(wcfg["min_samples"]),
+            strategy_cfg=strategy_cfg,
         )
-        strategy_output = strategy.apply(
-            valid,
-            params,
-            slippage=float(wcfg["slippage"]),
-            commission=float(wcfg["commission"]),
-            stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+        all_symbols = sorted({symbol for ctx in fold_contexts for symbol in ctx.get("symbols", [])})
+        names = _load_names(_resolve_path(root, config.get("local_history", {}).get("path", "")), all_symbols)
+        for ctx in fold_contexts:
+            prepared = strategy.prepare_panel(pd.concat([ctx["train"], ctx["valid"]], ignore_index=True), strategy_cfg)
+            prepared["date"] = pd.to_datetime(prepared["date"]).dt.normalize()
+            train_dates = set(pd.to_datetime(ctx["train"]["date"]).dt.normalize().unique())
+            valid_dates = set(pd.to_datetime(ctx["valid"]["date"]).dt.normalize().unique())
+            train = prepared[prepared["date"].isin(train_dates)].copy()
+            valid = prepared[prepared["date"].isin(valid_dates)].copy()
+            bill, daily = _build_low_turnover_fold_bill(
+                strategy=strategy,
+                train=train,
+                valid=valid,
+                fold=int(ctx["fold"]),
+                strategy_cfg=strategy_cfg,
+                wcfg=wcfg,
+                names=names,
+                execution_cfg=execution_cfg,
+            )
+            if not bill.empty:
+                bill["股票池模式"] = "point_in_time"
+                bill["股票池时点"] = ctx["audit"].get("universe_as_of_date", "")
+                bill["股票池数量"] = ctx["audit"].get("universe_symbol_count", 0)
+            if not daily.empty:
+                daily["universe_mode"] = "point_in_time"
+                daily["universe_as_of_date"] = ctx["audit"].get("universe_as_of_date", "")
+                daily["universe_symbol_count"] = ctx["audit"].get("universe_symbol_count", 0)
+            all_bills.append(bill)
+            all_daily.append(daily)
+    else:
+        symbols = _parse_symbol_list(config, root)
+        cache_path = _resolve_path(root, panel_cache)
+        panel = _load_or_build_panel(
+            cache_path=cache_path,
+            refresh_cache=bool(refresh_cache),
+            no_panel_cache=bool(no_panel_cache),
+            cache_key=_panel_cache_key(
+                config_path=config_path,
+                config=config,
+                root=root,
+                symbols=symbols,
+                history_years=history_years,
+                strategy_cfg=strategy_cfg,
+            ),
+            symbols=symbols,
+            history_years=history_years,
+            strategy_cfg=strategy_cfg,
         )
-        params_text = strategy.format_params(params)
-        bill, daily = _ledger_for_fold(
-            strategy_output.signal_frame,
-            price_frame=valid,
-            params=params,
-            fold=fold,
-            initial_cash=float(wcfg.get("initial_cash", 1_000_000)),
-            names=names,
-            slippage=float(wcfg["slippage"]),
-            commission=float(wcfg["commission"]),
-            stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
-            params_text=params_text,
-            execution_cfg=execution_cfg,
+        names = _load_names(
+            _resolve_path(root, config.get("local_history", {}).get("path", "")),
+            panel["symbol"].astype(str).unique().tolist(),
         )
-        metric = _calc_metrics(strategy_output.returns, strategy_output.exposure)
-        bill["折年化收益"] = metric["annualized_return"]
-        bill["折Sharpe"] = metric["sharpe"]
-        daily["fold"] = fold
-        daily["selected_params"] = params_text
-        all_bills.append(bill)
-        all_daily.append(daily)
+        for fold, train, valid in _fold_windows(
+            panel,
+            train_years=int(wcfg["train_years"]),
+            validate_years=int(wcfg["validate_years"]),
+            min_samples=int(wcfg["min_samples"]),
+        ):
+            bill, daily = _build_low_turnover_fold_bill(
+                strategy=strategy,
+                train=train,
+                valid=valid,
+                fold=fold,
+                strategy_cfg=strategy_cfg,
+                wcfg=wcfg,
+                names=names,
+                execution_cfg=execution_cfg,
+            )
+            all_bills.append(bill)
+            all_daily.append(daily)
 
     bill_df = pd.concat(all_bills, ignore_index=True) if all_bills else pd.DataFrame()
     daily_df = pd.concat(all_daily, ignore_index=True) if all_daily else pd.DataFrame()
@@ -1105,6 +1176,8 @@ def export_low_turnover_bill(
         "preview": preview_path,
         "rows": len(bill_df),
         "daily_rows": len(daily_df),
+        "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
+        "universe_audit_rows": len(universe_audit),
     }
 
 

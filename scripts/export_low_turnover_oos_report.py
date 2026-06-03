@@ -91,6 +91,23 @@ def _load_assets(path: Path) -> pd.DataFrame:
     return df
 
 
+def _requires_point_in_time_universe(config: dict[str, Any]) -> bool:
+    return bool(
+        config.get("universe", {}).get("enabled", False)
+        and config.get("universe", {}).get("point_in_time_for_backtest", True)
+        and config.get("local_history", {}).get("enabled", True)
+    )
+
+
+def _asset_file_matches_universe_mode(daily_assets: pd.DataFrame, config: dict[str, Any]) -> bool:
+    if not _requires_point_in_time_universe(config):
+        return True
+    if "universe_mode" not in daily_assets.columns:
+        return False
+    modes = set(daily_assets["universe_mode"].dropna().astype(str))
+    return bool(modes) and modes <= {"point_in_time"}
+
+
 def _build_stitched_curve(daily_assets: pd.DataFrame, initial_cash: float) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
     for fold, fold_df in daily_assets.groupby("fold", sort=True):
@@ -488,6 +505,11 @@ def export_low_turnover_oos_report(
 
     if daily_assets_path.exists() and daily_assets_path.name != "oos_daily_assets.csv":
         daily_assets = _load_assets(daily_assets_path)
+        if not _asset_file_matches_universe_mode(daily_assets, effective_config):
+            raise SystemExit(
+                "daily assets file does not match point-in-time universe mode; "
+                "rerun without --daily-assets-path or provide a PIT-generated file"
+            )
     else:
         bill_path = output_root / "oos_bill.csv"
         preview_path = output_root / "oos_bill_preview.html"

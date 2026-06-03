@@ -27,6 +27,8 @@ phase0:
     - "SH.600030"
   universe:
     enabled: true
+    point_in_time_for_backtest: true
+    allow_static_universe_for_backtest: false
     target_size: 500
     min_usable_size: 100
     walk_forward_limit: 120
@@ -242,6 +244,19 @@ phase0:
     commission: 0.00025
     stamp_duty_sell: 0.0005
     slippage: 0.00246
+    gate:
+      annualized_return_min: 0.0
+      sharpe_min: 0.5
+      max_drawdown_min: -0.25
+      win_rate_min: 0.45
+      oos_return_decay_ratio_max: 0.30
+      oos_annualized_return_min: 0.0
+      oos_sharpe_min: 0.5
+      min_oos_fold_count: 2
+      min_positive_fold_ratio: 0.75
+      max_negative_fold_count: 1
+      min_fold_annualized_return_min: -0.10
+      min_oos_positive_fold_ratio: 1.0
     strategy_v2:
       mode: "compare"
       compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
@@ -388,6 +403,22 @@ phase0:
     name: "实盘仿真回测"
     default_profile: "live"
     gate_source: "account_daily_assets"
+    gate:
+      annualized_return_min: 0.0
+      sharpe_min: 0.5
+      max_drawdown_min: -0.25
+      win_rate_min: 0.45
+      oos_return_decay_ratio_max: 0.30
+      oos_annualized_return_min: 0.0
+      oos_sharpe_min: 0.5
+      min_oos_fold_count: 2
+      min_positive_fold_ratio: 0.75
+      max_negative_fold_count: 1
+      min_fold_annualized_return_min: -0.10
+      min_oos_positive_fold_ratio: 1.0
+      max_unfilled_or_partial_order_ratio: 0.60
+      max_partial_fill_order_ratio: 0.05
+      max_stale_valuation_positions_total: 0
     output_dir: "reports/live_execution_backtest"
     bill_output: "reports/live_execution_backtest/live_execution_bill.csv"
     daily_output: "reports/live_execution_backtest/live_execution_daily_assets.csv"

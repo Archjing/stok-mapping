@@ -17,6 +17,7 @@
 
 - Phase 0 基础设施已验证可用
 - 本地历史库、股票池、walk-forward、候选比较链路已落地
+- 历史回测已默认启用 point-in-time 股票池：每折按训练窗口结束日只读生成股票池，避免当前股票池污染过去样本
 - 策略层已拆为 `phase0/strategies/` 注册表结构
 - 候选样本治理已固化，当前 compare 已统一为 portfolio 口径
 - 当前 selected candidate 已切换为 `legacy_momentum_low_turnover_v1`
@@ -26,7 +27,7 @@
 - 账单导出已接入正式 CLI / report 链路，`phase0 run` 会同步生成账单、日资产表和 HTML 预览
 - 账户级账单已补齐 A 股 `100` 股整手成交、现金约束、卖出回款和交易成本字段
 - 账户级仿真 v2 已补齐 `execution.price_mode`、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留
-- `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值
+- `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值；profile 控制执行假设，股票池时点边界由 `universe.point_in_time_for_backtest` 单独控制
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
@@ -1024,6 +1025,7 @@ stok-mapping/
 - [x] 强化 `07:30` 阶段试用观察池自动生成链路，形成“每日产出 + 可复盘归档”的最小闭环
 - [x] 完成 `brief` 命令路由整理：`brief daily` / `brief watchlist` / `brief premarket` / `brief account-bill`
 - [x] 接入模拟账户 SQLite 主账本与最近确认账单快照展示
+- [x] 修复历史回测股票池未来函数风险：walk-forward 与历史账单导出默认使用每折 point-in-time 股票池
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化

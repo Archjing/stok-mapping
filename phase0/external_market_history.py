@@ -233,17 +233,17 @@ def _normalize_frame(symbol: str, df: pd.DataFrame, settings: MarketHistorySetti
     out["date"] = pd.to_datetime(out["date"], errors="coerce").dt.strftime("%Y-%m-%d")
     out["symbol"] = symbol
     out["market"] = _market_for_symbol(symbol, settings)
-    out["hk"] = "HK" if out["market"].eq("HK").any() else pd.NA
+    out["hk"] = "HK" if out["market"].eq("HK").any() else None
     out["source"] = settings.provider
     out["fetched_at"] = datetime.now().isoformat(timespec="seconds")
     for col in ["open", "high", "low", "close", "adjusted_close", "volume"]:
         if col in out.columns:
             out[col] = pd.to_numeric(out[col], errors="coerce")
         else:
-            out[col] = pd.NA
+            out[col] = None
     out = out.dropna(subset=["date", "open", "high", "low", "close"])
     keep = ["market", "hk", "symbol", "date", "open", "high", "low", "close", "adjusted_close", "volume", "source", "fetched_at"]
-    return out[keep].drop_duplicates(["symbol", "date"])
+    return out[keep].drop_duplicates(["symbol", "date"]).astype(object).where(pd.notna(out[keep]), None)
 
 
 def _fetch_market_daily(symbol: str, settings: MarketHistorySettings) -> pd.DataFrame:

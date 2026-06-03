@@ -1,0 +1,23 @@
+[2026-06-03 17:10:01 +0800] start us_market_history
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/zj/workspace/stok-mapping/phase0/cli.py", line 958, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/home/zj/workspace/stok-mapping/phase0/cli.py", line 874, in main
+    result = update_us_market_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+  File "/home/zj/workspace/stok-mapping/phase0/external_market_history.py", line 388, in update_us_market_history_from_config
+    return _update_market_history(_us_settings, check_only=check_only)
+  File "/home/zj/workspace/stok-mapping/phase0/external_market_history.py", line 318, in _update_market_history
+    conn.execute(
+    ~~~~~~~~~~~~^
+        f"""
+        ^^^^
+    ...<18 lines>...
+        ),
+        ^^
+    )
+    ^
+sqlite3.ProgrammingError: Error binding parameter 12: type 'NAType' is not supported
+[2026-06-03 17:10:05 +0800] fail us_market_history

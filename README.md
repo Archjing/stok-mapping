@@ -62,6 +62,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已增加开发期统一调度器：交易日 `07:20` 生成阶段试用观察池，`16:20` 更新港股库，`16:30` 更新 A 股库，`17:10` 更新 US market 库，每周一 `03:30` 更新财务因子。
 - 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，账单导出和策略解释性输出已补齐基础版本。
 - 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
+- 历史 walk-forward / execution-gate 已默认使用 point-in-time 股票池：每一折按训练窗口结束日从本地历史库只读生成股票池，避免用当前股票池回测过去；日报 / watchlist / 模拟账户仍使用当前每日更新股票池。
 - 当前主阻塞点不是数据管线或 Sharpe 门槛，而是更长期稳定性验证、数据源升级和日常研判自动化。
 
 最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum_low_turnover_v1`，总体 verdict 为 `PASS`：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`。主测试成本口径为 `slippage = 0.00246`。
@@ -269,6 +270,8 @@ uv sync
 
 `execution-gate` 是独立于默认 `phase0_effectiveness_report.md` 的“实盘仿真回测”管线。默认读取 `config.yaml` 中的 `live_execution_backtest.default_profile`，再按名称加载 `live_execution_backtest.profiles.<profile>` 的完整参数组合，不在脚本里硬编码 profile 参数。
 
+`research` / `live` profile 只控制执行假设和交易摩擦，例如滑点、佣金、成交价口径、涨跌停 / 停牌检查、整手约束和最大成交参与率；它不选择股票池。历史回测的股票池边界由 `universe.point_in_time_for_backtest` 控制，默认开启：每折按训练窗口结束日只读生成 point-in-time 股票池。当前日报、watchlist 和模拟账户继续使用 `data/universe/local_factor_universe.csv` 这类当前股票池产物。
+
 当前内置两套 profile：
 
 - `research`：策略研究回测，当前使用 `slippage: 0.001`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: close`，并关闭涨跌停 / 停牌检查和流动性参与率限制。
@@ -473,20 +476,28 @@ reports/phase0_strategy_change_log.md
 
 ## Agent 与 MCP
 
-Agent 只做研究辅助，不进入主信号链路。
+Agent 只做研究辅助与代码审查辅助，不进入主信号链路。
 
 Codex 侧 Claude provider 配置放在 `.codex/`，不写入 `.claude/`，避免影响其他以 Claude 为主控模型的 agent 工具。
 
-只生成 prompt 预览：
+`Claude_Analyst_agent` 用于量化研究分析、风险提示和样本外稳健性评估：
 
 ```bash
-bash .codex/run_claude_agent.sh --dry-run
+bash .codex/run_claude_analyst_agent.sh --dry-run
+bash .codex/run_claude_analyst_agent.sh
 ```
 
-调用 Claude API 生成研究摘要：
+旧命令仍可用，等同于调用 `Claude_Analyst_agent`：
 
 ```bash
 bash .codex/run_claude_agent.sh
+```
+
+`Claude_Code_Reviewer_agent` 用于代码质量审查：
+
+```bash
+bash .codex/run_claude_code_reviewer_agent.sh --dry-run
+bash .codex/run_claude_code_reviewer_agent.sh
 ```
 
 配置说明：
@@ -552,6 +563,7 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - `reports/phase0_walk_forward_report.md`
 - `reports/phase0_walk_forward_folds.csv`
 - `reports/phase0_walk_forward_candidates.csv`
+- `reports/phase0_walk_forward_universe_audit.csv`
 - `reports/phase0_cost_sensitivity_report.md`
 - `reports/phase0_cost_sensitivity.csv`
 - `reports/phase0_effectiveness_report.md`
