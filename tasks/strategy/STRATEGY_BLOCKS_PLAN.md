@@ -3,12 +3,12 @@
 > 目标：把当前“**配置参数 + 代码里写死的候选实现**”升级为“**可插拔策略模块**”，让不同策略能够像积木一样快速接入、统一测试、自动输出报告，并支持用户后续选择策略进入研判简报乃至模拟交易。
 >
 > 本文档是对以下现有规划的迭代补充：
-> - `DEVELOPMENT_PLAN.md`
+> - `docs/DEVELOPMENT_PLAN.md`
 > - `tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 >
 > 定位：**主线计划内的工程化增强项**，服务于“更快形成可应用产品”，不是纯平台化重写。
 >
-> 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+> 父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 > 任务索引：[`tasks/README.md`](../README.md)
 
 ---

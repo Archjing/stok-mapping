@@ -546,7 +546,7 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 
 ## 计划文档
 
-- 主计划：`DEVELOPMENT_PLAN.md`
+- 主计划：`docs/DEVELOPMENT_PLAN.md`
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 策略开发标准：`docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
 - 当前统一周执行附件：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`

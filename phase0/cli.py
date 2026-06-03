@@ -10,6 +10,7 @@ from rich.console import Console
 
 from phase0.config import load_config
 from phase0.accounts import export_account_bill_html, load_simulated_accounts
+from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.external_market_history import (
     load_us_daily_from_history,
@@ -121,6 +122,16 @@ def _export_phase0_financial_pti(config_path: Path) -> dict:
         summary_output=Path("reports/phase0_financial_pti_summary.csv"),
         sample_output=Path("reports/phase0_financial_pti_problem_samples.csv"),
         html_output=Path("reports/phase0_financial_pti_report.html"),
+    )
+
+
+def _export_phase0_universe_pit(config_path: Path, *, as_of_date: str) -> dict:
+    from scripts.audit_universe_pit import audit_universe_pit
+
+    return audit_universe_pit(
+        config_path=config_path,
+        as_of_date=as_of_date,
+        report_output=Path(f"reports/phase0_universe_pit_audit_{as_of_date}.html"),
     )
 
 
@@ -564,6 +575,9 @@ def main() -> int:
     oos_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     financial_pti_parser = sub.add_parser("financial-pti", help="Audit financial factor point-in-time validity")
     financial_pti_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    universe_pti_parser = sub.add_parser("universe-pti", help="Audit point-in-time universe listing and industry boundaries")
+    universe_pti_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    universe_pti_parser.add_argument("--date", required=True, help="As-of date in YYYY-MM-DD")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -634,6 +648,11 @@ def main() -> int:
         action="store_true",
         help="Do not rebuild local factor universe after a successful update",
     )
+    daily_basic_backfill_parser = sub.add_parser("backfill-daily-basic", help="Backfill historical A-share daily_basic valuation rows")
+    daily_basic_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    daily_basic_backfill_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
+    daily_basic_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    daily_basic_backfill_parser.add_argument("--limit-dates", type=int, default=None, help="Optional cap for number of open dates to fetch")
     us_history_parser = sub.add_parser("update-us-market-history", help="Incrementally update US market history database")
     us_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     us_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
@@ -711,6 +730,17 @@ def main() -> int:
         console.print(f"Summary: {result['summary']}")
         console.print(f"Samples: {result['samples']}")
         console.print(f"HTML: {result['html']}")
+        return 0
+    if args.cmd == "universe-pti":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Phase 0 universe PTI audit started[/bold]")
+        result = _export_phase0_universe_pit(config_path, as_of_date=str(args.date))
+        console.print("[green]Universe PTI audit complete[/green]")
+        console.print(f"Report: {result['report']}")
+        console.print(f"Selected count: {result['selected_count']}")
+        console.print(f"Boundary violations: {result['boundary_violations']}")
+        console.print(f"Historical industry constraint effective: {result['industry_effective']}")
         return 0
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
@@ -874,6 +904,29 @@ def main() -> int:
             if universe_result.warnings:
                 for warning in universe_result.warnings:
                     console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0
+    if args.cmd == "backfill-daily-basic":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]A-share daily_basic backfill started[/bold]")
+        result = backfill_daily_basic_from_config(
+            config_path,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            limit_dates=args.limit_dates,
+        )
+        console.print("[green]A-share daily_basic backfill complete[/green]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Table: {result.table_name}")
+        console.print(f"Status: {result.status}")
+        console.print(f"Target dates: {result.target_dates}")
+        console.print(f"Fetched dates: {result.fetched_dates}")
+        console.print(f"Inserted rows: {result.inserted_rows}")
+        console.print(f"Skipped existing dates: {result.skipped_existing_dates}")
+        if result.warnings:
+            console.print("Warnings:")
+            for item in result.warnings[:20]:
+                console.print(f"- {item}")
         return 0
     if args.cmd == "update-us-market-history":
         config_path = Path(args.config).resolve()

@@ -2,7 +2,7 @@
 
 > 定位：在策略进入盘前观察池、账户级仿真或长期试用前，增加一层专门的“过拟合风险诊断”。
 >
-> 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+> 父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 > 任务索引：[`tasks/README.md`](../README.md)  
 > 参考链接：[`JoinQuant 社区讨论`](https://www.joinquant.com/view/community/detail/3cf8435f4a772fc2f702589704db44db)
 

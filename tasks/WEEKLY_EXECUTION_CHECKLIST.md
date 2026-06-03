@@ -1,8 +1,8 @@
 # T0｜周执行计划总清单（开发计划书附件）
 
-> 本文件是 `DEVELOPMENT_PLAN.md` 的统一周执行附件。  
+> 本文件是 `docs/DEVELOPMENT_PLAN.md` 的统一周执行附件。  
 > 后续每一周的任务清单都追加在同一个文件中，避免多个附件分散。  
-> 主计划中的长期路线、阶段划分和项目定位以 `DEVELOPMENT_PLAN.md` 为准；本文件只管理**当前周目标、执行节奏、检查点与归档要求**。
+> 主计划中的长期路线、阶段划分和项目定位以 `docs/DEVELOPMENT_PLAN.md` 为准；本文件只管理**当前周目标、执行节奏、检查点与归档要求**。
 > 任务拆解总索引见：[`tasks/README.md`](./README.md)。
 
 ---
@@ -607,3 +607,121 @@
 - [ ] 当前 `brief daily` 仍复用 `brief watchlist` 阶段试用观察池代码。
 - [ ] 后续需要独立重写正式 daily brief 产物生成代码。
 - [ ] 正式 daily brief 应在观察池之外增加市场状态、账户变动、风险解释、候选变化和外部事件摘要。
+
+---
+
+## W2.13 策略过拟合诊断工具 MVP（T2.4）
+
+参考专项任务：[`tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md)
+
+### W2.13.0 立项定位
+
+> `T2.4` 不再只是附属文档。它是策略治理主线的一部分，用来补齐 effectiveness gate 无法覆盖的过拟合风险、参数脆弱性、收益集中度和成本敏感性判断。
+
+### W2.13.1 本周目标
+
+- [ ] 冻结过拟合诊断报告 schema
+- [ ] 实现只读现有产物的 MVP，不触发重新回测
+- [ ] 新增 `phase0.cli overfit-diagnostic`
+- [ ] 输出 CSV / Markdown 诊断报告
+- [ ] 至少覆盖当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- [ ] 报告结论能解释风险来源，而不是只给分数
+- [ ] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
+
+### W2.13.2 输入产物
+
+- [ ] `reports/phase0_walk_forward_candidates.csv`
+- [ ] `reports/phase0_walk_forward_folds.csv`
+- [ ] `reports/phase0_effectiveness_report.md`
+- [ ] `reports/phase0_cost_sensitivity.csv`，若存在则读取
+- [ ] `config.yaml`
+
+### W2.13.3 输出产物
+
+- [ ] `reports/overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [ ] `reports/overfit_diagnostic/strategy_overfit_diagnostic.md`
+- [ ] 后续增强：`reports/overfit_diagnostic/strategy_overfit_diagnostic.html`
+
+### W2.13.4 MVP 诊断维度
+
+#### W2.13.4.1 OOS / fold 稳定性
+
+- [ ] 读取每个候选的 fold 级年化、Sharpe、最大回撤、胜率、换手
+- [ ] 计算正收益折占比
+- [ ] 计算最差 fold 表现
+- [ ] 标记“只靠最后一折拉高”的风险
+- [ ] 标记 OOS 折数不足的证据风险
+
+#### W2.13.4.2 成本敏感性
+
+- [ ] 若成本敏感性 CSV 存在，读取不同 scenario 的结果
+- [ ] 检查 research / live / stress 口径下是否仍为正收益
+- [ ] 检查滑点升高后 Sharpe 和年化是否快速坍塌
+- [ ] 对高换手候选上调风险分
+
+#### W2.13.4.3 参数稳定性占位
+
+- [ ] 第一版先从 `selected_params` 解析参数变化
+- [ ] 记录各 fold 选中参数是否高度集中或频繁切换
+- [ ] 标记“尚未执行参数邻域扰动”的待验证风险
+- [ ] 后续再增加 `--run-param-perturbation`
+
+#### W2.13.4.4 收益集中度占位
+
+- [ ] 第一版先标记为 `not_available`
+- [ ] 明确后续需要账户账单 / 单票收益贡献输入
+- [ ] 不用空字段伪装已完成诊断
+
+### W2.13.5 评分与等级
+
+- [ ] 使用 `0-100` overfit score，分数越高风险越高
+- [ ] 等级：`low / medium / high / critical`
+- [ ] 初始权重：
+  - [ ] OOS / fold 稳定性：`35`
+  - [ ] 成本敏感性：`25`
+  - [ ] 参数稳定性：`20`
+  - [ ] 收益集中度：`10`
+  - [ ] 数据挖掘 / 候选数量风险：`10`
+- [ ] 输出 `recommended_action`：`keep / observe / retest / reject`
+
+### W2.13.6 代码拆分
+
+- [ ] 新增 `phase0/overfit.py`
+- [ ] 在 `phase0/cli.py` 增加 `overfit-diagnostic` 子命令
+- [ ] 在 `phase0/reporting.py` 增加 Markdown 报告输出函数，或在 `phase0/overfit.py` 内保持 MVP 输出
+- [ ] 避免循环导入，不复用私有回测函数触发新回测
+- [ ] 保持输出路径可通过 CLI 覆盖
+
+### W2.13.7 CLI 设计
+
+```bash
+python -m phase0.cli overfit-diagnostic --config config.yaml
+```
+
+可选：
+
+```bash
+python -m phase0.cli overfit-diagnostic \
+  --config config.yaml \
+  --candidates reports/phase0_walk_forward_candidates.csv \
+  --folds reports/phase0_walk_forward_folds.csv \
+  --output-dir reports/overfit_diagnostic
+```
+
+### W2.13.8 验收标准
+
+- [ ] 命令可运行并生成 CSV / Markdown
+- [ ] 当前 selected candidate 出现在报告中
+- [ ] 所有 compare 候选都有风险等级
+- [ ] 报告展示每个候选的主要风险原因
+- [ ] 对 OOS 折数不足、负收益折、最差 fold 超阈值、高换手、高成本敏感性给出明确标记
+- [ ] 不破坏 `phase0 run`
+- [ ] 不改变 selected candidate
+- [ ] 不把过拟合分数当成交易信号
+
+### W2.13.9 后续集成规则
+
+- [ ] `execution-gate` 后续读取 overfit report，作为附加治理结论
+- [ ] `brief watchlist` 后续展示 selected candidate 的 overfit risk 摘要
+- [ ] `overfit_risk_level = high / critical` 时，不允许新策略直接进入观察池长期试用
+- [ ] 新增策略进入 compare 前，必须保存完整候选结果，避免只记录 winner

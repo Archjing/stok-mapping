@@ -51,6 +51,7 @@ phase0:
     adjust_type: "qfq"
     daily_table: "market_daily_bars"
     meta_table: "market_stocks"
+    daily_basic_table: "market_daily_basic"
     financial_table: "market_financial_factors"
     index_table: "market_index_bars"
     index_meta_table: "market_indices"
@@ -259,7 +260,7 @@ phase0:
       min_oos_positive_fold_ratio: 1.0
     strategy_v2:
       mode: "compare"
-      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1"]
+      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1", "core_selection_quality_momentum_v1", "theme_exposure_momentum_v1"]
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -328,6 +329,22 @@ phase0:
         trend_window_pairs: [[20, 60]]
         amount_ratio_mins: [1.0, 1.2]
         upper_shadow_max_values: [1.0, 1.5]
+      core_selection_quality_momentum:
+        enabled: false
+        quality_quantiles: [0.6, 0.7]
+        residual_windows: [10, 20]
+        residual_quantiles: [0.55, 0.6]
+        top_n_values: [8, 12]
+        use_xmarket_overlay: false
+      theme_exposure_momentum:
+        enabled: false
+        mom_windows: [10, 20]
+        mom_quantiles: [0.6, 0.7]
+        top_n_values: [3, 5]
+        amount_ratio_mins: [1.0, 1.2]
+        breakout_required_values: [true]
+        xmarket_thresholds: [0.0, 0.5]
+        use_xmarket_overlay: true
       local_factor:
         enabled: true
         residual_momentum_windows: [10, 20]

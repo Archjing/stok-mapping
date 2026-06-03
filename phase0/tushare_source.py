@@ -160,19 +160,21 @@ def _normalize_daily_basic(raw: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     out = raw.copy()
     out["symbol"] = out["ts_code"].map(normalize_cn_symbol)
+    out["trade_date"] = pd.to_datetime(out["trade_date"], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
     for col in ["total_mv", "circ_mv", "pe_ttm", "pb", "turnover_rate"]:
         out[col] = pd.to_numeric(out.get(col), errors="coerce")
     return pd.DataFrame(
         {
             "market": "CN",
             "symbol": out["symbol"],
+            "date": out["trade_date"],
             "market_cap": out["total_mv"] * 10_000.0,
             "circ_mv": out["circ_mv"] * 10_000.0,
             "pe_ratio": out["pe_ttm"],
             "pb_ratio": out["pb"],
             "turnover_rate": out["turnover_rate"],
         }
-    ).dropna(subset=["symbol"])
+    ).dropna(subset=["symbol", "date"])
 
 
 def fetch_tushare_trade_date(

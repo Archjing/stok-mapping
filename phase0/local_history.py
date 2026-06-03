@@ -44,6 +44,7 @@ class LocalHistorySettings:
     adjust_type: str = "qfq"
     daily_table: str = "market_daily_bars"
     meta_table: str = "market_stocks"
+    daily_basic_table: str = "market_daily_basic"
     financial_table: str = "market_financial_factors"
     index_table: str = "market_index_bars"
     index_meta_table: str = "market_indices"
@@ -73,6 +74,7 @@ def configure_local_history(cfg: dict[str, Any] | None, root: Path | None = None
         adjust_type=str(raw.get("adjust_type", "qfq")),
         daily_table=str(raw.get("daily_table", "market_daily_bars")),
         meta_table=str(raw.get("meta_table", "market_stocks")),
+        daily_basic_table=str(raw.get("daily_basic_table", "market_daily_basic")),
         financial_table=str(raw.get("financial_table", "market_financial_factors")),
         index_table=str(raw.get("index_table", "market_index_bars")),
         index_meta_table=str(raw.get("index_meta_table", "market_indices")),
@@ -142,9 +144,11 @@ def load_snapshot_from_local_history(days: int = 90) -> pd.DataFrame:
         return pd.DataFrame()
     daily_table = _safe_identifier(_settings.daily_table)
     meta_table = _safe_identifier(_settings.meta_table)
+    daily_basic_table = _safe_identifier(_settings.daily_basic_table)
     financial_table = _safe_identifier(_settings.financial_table)
     has_adjust = _table_has_column(_settings.path, daily_table, "adjust_type")
     has_financial = _table_exists(_settings.path, financial_table)
+    has_daily_basic = _table_exists(_settings.path, daily_basic_table)
     adjust_filter = "AND adjust_type = ?" if has_adjust else ""
     latest_trade_date = _latest_daily_date(daily_table, has_adjust)
     if latest_trade_date is None:
@@ -282,8 +286,10 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
 
     daily_table = _safe_identifier(_settings.daily_table)
     meta_table = _safe_identifier(_settings.meta_table)
+    daily_basic_table = _safe_identifier(_settings.daily_basic_table)
     financial_table = _safe_identifier(_settings.financial_table)
     has_adjust = _table_has_column(_settings.path, daily_table, "adjust_type")
+    has_daily_basic = _table_exists(_settings.path, daily_basic_table)
     has_financial = _table_exists(_settings.path, financial_table)
     adjust_filter = "AND adjust_type = ?" if has_adjust else ""
     latest_trade_date = _latest_daily_date_on_or_before(daily_table, has_adjust, as_of)
@@ -340,6 +346,28 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
         FROM {meta_table}
         WHERE market = ?
     """
+    daily_basic_query = f"""
+        SELECT
+            b.symbol,
+            b.date,
+            b.market_cap,
+            b.circ_mv,
+            b.pe_ratio,
+            b.pb_ratio,
+            b.turnover_rate
+        FROM {daily_basic_table} b
+        JOIN (
+            SELECT market, symbol, MAX(date) AS date
+            FROM {daily_basic_table}
+            WHERE market = ?
+              AND date <= ?
+            GROUP BY market, symbol
+        ) latest
+          ON b.market = latest.market
+         AND b.symbol = latest.symbol
+         AND b.date = latest.date
+        WHERE b.market = ?
+    """
     financial_query = f"""
         SELECT
             f.symbol,
@@ -374,6 +402,19 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
             params = (*params, start_date, latest_trade_date.isoformat(), min_trading_days)
             df = pd.read_sql_query(bars_query, conn, params=params)
             meta = pd.read_sql_query(meta_query, conn, params=(_settings.market,))
+            daily_basic = (
+                pd.read_sql_query(
+                    daily_basic_query,
+                    conn,
+                    params=(
+                        _settings.market,
+                        latest_trade_date.isoformat(),
+                        _settings.market,
+                    ),
+                )
+                if has_daily_basic
+                else pd.DataFrame()
+            )
             financial = (
                 pd.read_sql_query(
                     financial_query,
@@ -407,6 +448,9 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
     if not financial.empty:
         financial["symbol"] = financial["symbol"].map(normalize_cn_symbol)
         df = df.merge(financial, on="symbol", how="left")
+    if not daily_basic.empty:
+        daily_basic["symbol"] = daily_basic["symbol"].map(normalize_cn_symbol)
+        df = df.merge(daily_basic, on="symbol", how="left", suffixes=("", "_daily_basic"))
 
     out = pd.DataFrame(
         {
@@ -417,11 +461,11 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
             "pct_change": np.nan,
             "amount": pd.to_numeric(df["amount"], errors="coerce"),
             "volume": pd.to_numeric(df["volume"], errors="coerce"),
-            "turnover_rate": pd.to_numeric(df.get("turnover_rate", np.nan), errors="coerce"),
-            "total_mv": np.nan,
-            "circ_mv": np.nan,
-            "pe_ttm": np.nan,
-            "pb": np.nan,
+            "turnover_rate": pd.to_numeric(df.get("turnover_rate_daily_basic", df.get("turnover_rate", np.nan)), errors="coerce"),
+            "total_mv": pd.to_numeric(df.get("market_cap", np.nan), errors="coerce"),
+            "circ_mv": pd.to_numeric(df.get("circ_mv", np.nan), errors="coerce"),
+            "pe_ttm": pd.to_numeric(df.get("pe_ratio", np.nan), errors="coerce"),
+            "pb": pd.to_numeric(df.get("pb_ratio", np.nan), errors="coerce"),
             "roe": pd.to_numeric(df.get("roe", np.nan), errors="coerce"),
             "revenue_growth": pd.to_numeric(df.get("revenue_growth", np.nan), errors="coerce"),
             "profit_growth": pd.to_numeric(df.get("profit_growth", np.nan), errors="coerce"),
@@ -439,8 +483,8 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
     )
     out.attrs.update(attrs)
     out.attrs["note"] = (
-        "point-in-time universe uses historical OHLCV and announced financial factors; "
-        "current market cap, valuation, name, and industry are intentionally excluded from selection."
+        "point-in-time universe uses historical OHLCV, nearest available daily_basic valuation snapshot, "
+        "and announced financial factors as of the historical date."
     )
     return out
 

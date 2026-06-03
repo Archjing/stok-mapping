@@ -3,7 +3,7 @@
 > 状态：候选想法记录，后续补全代码。  
 > 当前阶段：不进入 Phase 0 主线，不影响 `legacy_momentum_low_turnover_v1` 当前 baseline。  
 > 前置条件：先完成港股历史数据源验证、交易日历对齐、复权质量校验和停牌处理。
-> 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+> 父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 > 任务索引：[`tasks/README.md`](../README.md)
 
 ## T3.1.1 数据前置要求

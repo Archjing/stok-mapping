@@ -2,7 +2,7 @@
 
 目标：只列出**适合当前 `stok-mapping` Phase 0 状态**、能和现有数据/回测框架衔接的候选策略。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 任务索引：[`tasks/README.md`](../README.md)
 
 当前事实基线：

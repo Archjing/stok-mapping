@@ -588,6 +588,21 @@ def import_manual_history(
         )
         conn.execute(
             """
+            CREATE TABLE market_daily_basic (
+                market TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                date TEXT NOT NULL,
+                market_cap REAL,
+                circ_mv REAL,
+                pe_ratio REAL,
+                pb_ratio REAL,
+                turnover_rate REAL,
+                PRIMARY KEY (market, symbol, date)
+            )
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE trading_calendar (
                 exchange TEXT,
                 date TEXT,
@@ -660,6 +675,7 @@ def import_manual_history(
         conn.execute("CREATE INDEX idx_daily_symbol_date_adj ON market_daily_bars(symbol, date, adjust_type)")
         conn.execute("CREATE INDEX idx_daily_market_adj ON market_daily_bars(market, adjust_type)")
         conn.execute("CREATE INDEX idx_stocks_symbol ON market_stocks(symbol)")
+        conn.execute("CREATE INDEX idx_daily_basic_symbol_date ON market_daily_basic(symbol, date)")
         conn.execute("CREATE INDEX idx_calendar_exchange_date ON trading_calendar(exchange, date)")
         conn.execute("CREATE INDEX idx_delisted_symbol ON delisted_stocks(symbol)")
         symbols = int(pd.read_sql_query("SELECT COUNT(DISTINCT symbol) AS n FROM market_daily_bars WHERE adjust_type = 'qfq'", conn)["n"].iloc[0])

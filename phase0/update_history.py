@@ -171,6 +171,59 @@ def _metadata_coverage(conn: sqlite3.Connection, *, meta_table: str, market: str
     return out
 
 
+def _ensure_daily_basic_table(conn: sqlite3.Connection, *, table_name: str) -> None:
+    table = _safe_identifier(table_name)
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            market TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            date TEXT NOT NULL,
+            market_cap REAL,
+            circ_mv REAL,
+            pe_ratio REAL,
+            pb_ratio REAL,
+            turnover_rate REAL,
+            PRIMARY KEY (market, symbol, date)
+        )
+        """
+    )
+    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_date ON {table}(date)")
+
+
+def _upsert_daily_basic_rows(conn: sqlite3.Connection, *, table_name: str, rows: pd.DataFrame) -> int:
+    if rows.empty:
+        return 0
+    table = _safe_identifier(table_name)
+    _ensure_daily_basic_table(conn, table_name=table)
+    params = [
+        (
+            str(row.get("market") or "CN"),
+            str(row.get("symbol") or ""),
+            str(row.get("date") or ""),
+            _to_sql_value(row.get("market_cap")),
+            _to_sql_value(row.get("circ_mv")),
+            _to_sql_value(row.get("pe_ratio")),
+            _to_sql_value(row.get("pb_ratio")),
+            _to_sql_value(row.get("turnover_rate")),
+        )
+        for _, row in rows.iterrows()
+        if str(row.get("symbol") or "") and str(row.get("date") or "")
+    ]
+    if not params:
+        return 0
+    cursor = conn.executemany(
+        f"""
+        INSERT OR REPLACE INTO {table} (
+            market, symbol, date, market_cap, circ_mv, pe_ratio, pb_ratio, turnover_rate
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        params,
+    )
+    return int(cursor.rowcount or 0)
+
+
 def _ensure_source_audit_table(conn: sqlite3.Connection, *, table_name: str) -> None:
     table = _safe_identifier(table_name)
     conn.execute(
@@ -720,6 +773,7 @@ def update_manual_history_from_config(
         db_path = root / db_path
     daily_table = str(local_cfg.get("daily_table", "market_daily_bars"))
     meta_table = str(local_cfg.get("meta_table", "market_stocks"))
+    daily_basic_table = str(local_cfg.get("daily_basic_table", "market_daily_basic"))
     calendar_table = str(local_cfg.get("calendar_table", "trading_calendar"))
     market = str(local_cfg.get("market", "CN"))
     adjust_types = [str(item) for item in update_cfg.get("adjust_types", ["qfq"])]
@@ -749,6 +803,7 @@ def update_manual_history_from_config(
     configure_akshare_throttle(data_cfg.get("akshare", {}))
 
     with sqlite3.connect(db_path) as conn:
+        _ensure_daily_basic_table(conn, table_name=daily_basic_table)
         calendar_trade_date, target_trade_date, before_min_run_time = _resolve_trade_dates(
             conn,
             calendar_table=calendar_table,
@@ -876,8 +931,10 @@ def update_manual_history_from_config(
         if source_attempts:
             conn.commit()
         metadata_updated_rows = 0
+        daily_basic_updated_rows = 0
         if refresh_metadata and not meta_rows.empty:
             try:
+                daily_basic_updated_rows = _upsert_daily_basic_rows(conn, table_name=daily_basic_table, rows=meta_rows)
                 metadata_updated_rows = _upsert_stock_metadata(conn, meta_table=meta_table, rows=meta_rows)
                 conn.commit()
             except sqlite3.Error as exc:

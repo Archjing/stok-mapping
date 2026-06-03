@@ -2,7 +2,7 @@
 
 适用场景：为 `stok-mapping` 引入独立新闻源模块，服务盘前研判、跨市场解释层和后续文本摘要因子。该任务不改变当前策略主线，不让新闻或 LLM 直接生成交易信号。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 任务索引：[`tasks/README.md`](../README.md)
 
 ---

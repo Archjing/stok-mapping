@@ -2,7 +2,7 @@
 
 适用场景：把论文思路落到 `stok-mapping` 当前 Phase 0/1 研究流程里。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 任务索引：[`tasks/README.md`](../README.md)
 
 ---

@@ -2,7 +2,7 @@
 
 适用场景：为 `stok-mapping` 引入 Tiingo 作为**美股个股 / ETF / EOD 主源**，并将 `yfinance` 降级为 fallback。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 任务索引：[`tasks/README.md`](../README.md)
 
 ---

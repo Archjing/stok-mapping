@@ -1,0 +1,5 @@
+fold,universe_as_of_date,universe_symbol_count,universe_snapshot_count,universe_source,train_start,train_end,valid_start,valid_end,warning
+1,2021-05-28,120,4296,local_history_sqlite_as_of,2019-05-06,2021-05-28,2021-05-31,2022-06-14,
+2,2022-06-14,120,4790,local_history_sqlite_as_of,2020-05-18,2022-06-14,2022-06-15,2023-06-27,
+3,2023-06-27,120,5156,local_history_sqlite_as_of,2021-05-31,2023-06-27,2023-06-28,2024-07-10,
+4,2024-07-10,120,5342,local_history_sqlite_as_of,2022-06-15,2024-07-10,2024-07-11,2025-07-24,
