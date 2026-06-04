@@ -58,6 +58,47 @@ def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
     console.print(f"Watchlist ECS: {remote}:{remote_dir}")
 
 
+def _format_duration(seconds: float) -> str:
+    seconds = max(0, int(seconds))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+def _print_tushare_financial_progress(console: Console, progress: dict) -> None:
+    target = int(progress.get("target_tasks") or 0)
+    processed = int(progress.get("processed_tasks") or 0)
+    elapsed = float(progress.get("elapsed_seconds") or 0.0)
+    remaining = max(target - processed, 0)
+    percent = (processed / target * 100.0) if target else 100.0
+    rate = (processed / elapsed * 60.0) if elapsed > 0 else 0.0
+    eta = _format_duration(remaining / (processed / elapsed)) if processed > 0 and elapsed > 0 else "unknown"
+    event = str(progress.get("event") or "progress")
+    label = "selected" if event == "start" else "progress"
+    console.print(
+        "[cyan]Tushare financial backfill {label}:[/cyan] "
+        "{processed}/{target} ({percent:.1f}%), "
+        "fetched={fetched}, empty={empty}, failed={failed}, inserted_rows={inserted}, "
+        "rate={rate:.1f}/min, elapsed={elapsed_text}, eta={eta}".format(
+            label=label,
+            processed=processed,
+            target=target,
+            percent=percent,
+            fetched=int(progress.get("fetched_tasks") or 0),
+            empty=int(progress.get("empty_tasks") or 0),
+            failed=int(progress.get("failed_tasks") or 0),
+            inserted=int(progress.get("inserted_rows") or 0),
+            rate=rate,
+            elapsed_text=_format_duration(elapsed),
+            eta=eta,
+        )
+    )
+
+
 def _export_phase0_low_turnover_bill(
     *,
     config_path: Path,
@@ -1126,6 +1167,7 @@ def main() -> int:
             replace_existing=bool(args.replace_existing),
             shard_index=int(args.shard_index),
             shard_count=int(args.shard_count),
+            progress_callback=lambda progress: _print_tushare_financial_progress(console, progress),
         )
         color = "green" if result.status == "ok" else "yellow"
         console.print(f"[{color}]Tushare financial backfill status: {result.status}[/{color}]")

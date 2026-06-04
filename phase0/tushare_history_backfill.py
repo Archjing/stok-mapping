@@ -5,7 +5,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -401,7 +401,7 @@ def _select_financial_backfill_tasks(
     shard_index = max(0, int(shard_index)) % shard_count
     tasks = tasks.reset_index(drop=True)
     tasks = tasks[tasks.index % shard_count == shard_index].copy()
-    if limit_tasks is not None and limit_tasks > 0:
+    if limit_tasks is not None:
         tasks = tasks.head(int(limit_tasks)).copy()
     return tasks
 
@@ -689,6 +689,8 @@ def backfill_tushare_financials_from_config(
     replace_existing: bool = False,
     shard_index: int = 0,
     shard_count: int = 1,
+    progress_callback: Callable[[dict[str, Any]], None] | None = None,
+    progress_interval_seconds: float = 30.0,
 ) -> TushareFinancialBackfillResult:
     root = config_path.parent
     cfg = load_config(config_path)
@@ -739,7 +741,29 @@ def backfill_tushare_financials_from_config(
     inserted_rows = 0
     last_request_at = 0.0
     start_time = time.monotonic()
+    last_progress_at = start_time
     max_runtime_seconds = None if max_runtime_minutes is None or max_runtime_minutes <= 0 else float(max_runtime_minutes) * 60.0
+
+    def emit_progress(event: str, target_tasks: int, *, force: bool = False) -> None:
+        nonlocal last_progress_at
+        if progress_callback is None:
+            return
+        now = time.monotonic()
+        if not force and progress_interval_seconds > 0 and now - last_progress_at < progress_interval_seconds:
+            return
+        progress_callback(
+            {
+                "event": event,
+                "target_tasks": target_tasks,
+                "processed_tasks": processed,
+                "fetched_tasks": fetched,
+                "empty_tasks": empty,
+                "failed_tasks": failed,
+                "inserted_rows": inserted_rows,
+                "elapsed_seconds": now - start_time,
+            }
+        )
+        last_progress_at = now
 
     with sqlite3.connect(db_path) as conn:
         _ensure_financial_backfill_task_table(conn, table_name=task_table)
@@ -765,6 +789,7 @@ def backfill_tushare_financials_from_config(
             limit_tasks=limit_tasks,
         )
         target_tasks = int(len(tasks))
+        emit_progress("start", target_tasks, force=True)
         for task in tasks.itertuples(index=False):
             if max_runtime_seconds is not None and time.monotonic() - start_time >= max_runtime_seconds:
                 warnings.append(f"max runtime reached after {processed} tasks")
@@ -786,12 +811,14 @@ def backfill_tushare_financials_from_config(
                     error=str(exc),
                 )
                 conn.commit()
+                emit_progress("progress", target_tasks, force=processed >= target_tasks)
                 continue
             processed += 1
             if rows.empty or rows.apply(_financial_non_null_count, axis=1).max() == 0:
                 empty += 1
                 _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="empty")
                 conn.commit()
+                emit_progress("progress", target_tasks, force=processed >= target_tasks)
                 continue
             row = rows.iloc[0]
             inserted_rows += _upsert_financial_row_preserving_valid(
@@ -803,6 +830,7 @@ def backfill_tushare_financials_from_config(
             fetched += 1
             _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="fetched")
             conn.commit()
+            emit_progress("progress", target_tasks, force=processed >= target_tasks)
         audit = _financial_backfill_audit(conn, task_table=task_table, financial_table=financial_table, periods=periods)
 
     _write_financial_backfill_audit(audit=audit, output_csv=output_csv, output_md=output_md, warnings=warnings)
