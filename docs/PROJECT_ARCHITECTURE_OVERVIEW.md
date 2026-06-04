@@ -2,7 +2,7 @@
 
 > 面向对象：项目维护者、研究使用者、后续产品实现者  
 > 文档目标：从“最终产品形态”视角说明 `stok-mapping` 是什么、系统如何分层、各模块承担什么职责、当前已经落地到什么程度，以及应如何使用。  
-> 口径来源：`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`，并结合 `phase0/` 当前代码结构整理。
+> 口径来源：`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、`docs/STRATEGY_DEV_CHECKLIST.md`，并结合 `phase0/` 当前代码结构整理。
 
 ---
 

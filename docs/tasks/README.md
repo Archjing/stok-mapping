@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | `T0` | [`WEEKLY_EXECUTION_CHECKLIST.md`](./WEEKLY_EXECUTION_CHECKLIST.md) | 周任务执行总清单，承接总体计划的近期执行节奏 |
 | `T1` | [`data-sources/`](./data-sources/) | 数据源升级任务：FRED、Tiingo、新闻源等 |
-| `T2` | [`strategy/`](./strategy/) | 策略候选、策略开发检查清单、策略积木工程化计划 |
+| `T2` | [`strategy/`](./strategy/) | 策略候选、策略积木工程化计划、过拟合诊断和有效策略研发任务 |
 | `T3` | [`cross-market/`](./cross-market/) | 跨市场映射与港股/A 股候选任务 |
 | `T4` | [`account/`](./account/) | 账户级仿真、真实账户对账和交易计划辅助相关任务 |
 | `T5` | [`research/`](./research/) | 论文、策略摘要和研究支持资料 |
@@ -34,7 +34,6 @@
 | `T1.3` | 新闻源独立模块 | [`data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](./data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md) |
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](./data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) |
 | `T2.1` | Phase 0 候选策略池 | [`strategy/PHASE0_CANDIDATE_STRATEGIES.md`](./strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
-| `T2.2` | 策略开发任务单模板 | [`strategy/STRATEGY_DEV_CHECKLIST.md`](./strategy/STRATEGY_DEV_CHECKLIST.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |
 | `T2.4` | 策略过拟合诊断工具 | [`strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](./strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) |
 | `T2.5-T2.10` | 有效量化策略研发任务清单 | [`strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](./strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md) |

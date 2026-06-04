@@ -552,7 +552,7 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - 当前统一周执行附件：`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 - 策略候选整理：`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - 候选策略解释索引：`docs/strategy_explanations/INDEX.md`
-- 策略开发检查清单：`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
+- 策略开发检查清单：`docs/STRATEGY_DEV_CHECKLIST.md`
 - FRED 接入任务单：`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
 - Tiingo 接入任务单：`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
 - 远期展望：`refdocs/OUTLOOK/`

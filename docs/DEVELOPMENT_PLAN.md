@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-04（同步 qfq_asof 全候选复核与有效策略研发新路线）
+> 最后修订：2026-06-05（同步 Tushare 财务回填可观测性与数据库健康检查模块）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.10 有效策略重建**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -34,6 +34,8 @@
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
 - `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
+- `T1.5` Tushare 财务因子逐股票历史补齐已具备断点任务表、分片运行、限速、进度显示和验收报告；当前重点转为跑完 2016Q1-2018Q1、重试失败任务并复核因子覆盖
+- `T6.2` 数据库健康检查只读 MVP 已落地，新增 `phase0.cli db-health`，可输出 CSV / Markdown 报告并按 `--fail-on` 作为调度或 CI 门禁
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
 - `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
@@ -89,12 +91,12 @@
 2. 维护账单、资产轨迹、买卖原因和策略参数的标准 CLI / report 链路。
 3. 维护账户级仿真 v2，并在后续真实账户复盘时接入本地持仓 / 成交回报 CSV 对账。
 4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
-5. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
-6. 推进 `T1.4` A 股历史 as-of 前复权与复权因子治理，下一步做 `qfq_current` / `qfq_asof` 差异报告与 walk-forward 对照回测。
-7. 基于已通过的财务因子 PTI 校验，谨慎恢复质量成长 / 多因子后续验证。
-8. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
-9. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试和正式 daily brief 独立产物。
-10. 按 Week 2 顺序先推进 FRED 宏观 / 利率 / VIX 数据源，再推进 Tiingo 美股个股 / ETF 主源。
+5. 继续执行 `T1.5` Tushare 财务因子逐股票历史补齐，当前优先目标是清空 2016Q1-2018Q1 的 pending 队列、重试 failed 任务，并重新运行 `financial-pti` / `factor-effectiveness`。
+6. 将 `T6.2` 数据库健康检查接入调度前置门禁，先用只读报告和 `--fail-on` 控制失败退出，不默认写健康状态表。
+7. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
+8. 基于已通过的财务因子 PTI 校验和财务历史回填结果，谨慎恢复质量成长 / 多因子后续验证。
+9. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
+10. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试、`db-health` 前置检查和正式 daily brief 独立产物。
 11. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
 
 当前**不是**优先做的事：
@@ -1023,14 +1025,15 @@ stok-mapping/
 | `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) | **已完成** |
 | `T1.2` | Tiingo 美股个股 / ETF 主源 | [`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
+| `T1.5` | Tushare 财务因子逐股票历史补齐 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W216tushare-财务因子逐股票历史补齐t15) | **断点回填与进度报告已实现，待跑完 2016Q1-2018Q1 并复核** |
 | `T2.1` | Phase 0 候选策略池 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
-| `T2.2` | 策略开发任务单模板 | [`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](tasks/strategy/STRATEGY_DEV_CHECKLIST.md) | 模板文档，不按完成项结算 |
 | `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
 | `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，待 gate / brief 集成** |
 | `T3.1` | 港股映射 A 股候选策略 | [`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`docs/tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
 | `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
+| `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP 已完成，待接入调度前置门禁并补异常样本输出** |
 
 ### 当前最高优先级
 
@@ -1050,13 +1053,18 @@ stok-mapping/
 - [x] 运行最新版本全候选策略池 `qfq_asof` compare，结论：当前无可用于实盘模拟的合格 candidate
 - [x] 制定 `T2.5-T2.10` 有效量化策略研发实施方案与开发任务清单
 - [x] 实现 `T2.5` 因子有效性诊断报告，先验证低波、低换手、质量、动量、反转和估值因子
+- [x] 实现 Tushare 财务回填进度显示：任务选择、处理进度、完成率、速率、耗时和 ETA 可见
+- [x] 将 `tushare_financial_backfill_audit.md` 覆盖率展示改为百分数，CSV 保持 0-1 机器口径
+- [x] 实现 `T6.2` 数据库健康检查只读 MVP：`phase0.cli db-health` 可输出 summary/findings/report，并支持 `--fail-on`
+- [ ] 执行 Tushare 财务因子逐股票历史补齐至 2016Q1-2018Q1 完成，重试 failed 并复核覆盖率
+- [ ] 将 `db-health --scope scheduler|cn` 接入每日调度前置检查，失败时阻断后续策略产物或至少写入告警
 - [ ] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
 - [ ] 实现 `T2.7` `quality_low_turnover_monthly_v1`
 - [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断和过拟合诊断
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环；当前日级 `daily_basic` / `adj_factor` 已补齐并有验收报告，财务因子 2016Q1-2018Q1 仍需单独批次补齐
-- [ ] 实现并执行 Tushare 财务因子逐 `ts_code` 历史补齐任务：覆盖 2016Q1-2018Q1，使用断点进度表、分片运行、限速和验收报告，避免 20 万级请求中途失败后不可恢复
+- [ ] 继续执行 Tushare 财务因子逐 `ts_code` 历史补齐任务：代码与验收报告已具备，当前剩余重点是跑完 pending、重试 failed、复核 `financial-pti` 与 `factor-effectiveness`
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
 - [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
 - [ ] 将 full daily brief 从当前 watchlist 兼容产物中独立出来，形成正式日报产物生成代码
@@ -1110,6 +1118,8 @@ updated_at
 - 支持断点续跑、重试 failed、分片运行和运行时长上限
 - 默认跳过已有有效记录，只有显式传 `--replace-existing` 时才覆盖
 - 不允许用空行覆盖已有有效财务记录
+- CLI 已增加进度显示：目标任务数、已处理数、完成率、fetched/empty/failed、inserted_rows、rate、elapsed、eta
+- 验收 Markdown 报告中的覆盖率按百分数展示，CSV 保持 0-1 机器可读口径
 
 CLI 设计：
 
@@ -1129,10 +1139,12 @@ python -m phase0.cli backfill-tushare-financials \
 ```text
 --period YYYY-MM-DD
 --limit-symbols N
+--limit-tasks N
 --retry-failed
 --replace-existing
 --shard-index N
 --shard-count N
+--max-runtime-minutes N
 ```
 
 验收报告：
@@ -1165,8 +1177,45 @@ announce_date_coverage
 - `failed_symbols` 经重试后低于 1%
 - 所有有效记录保留 `announce_date`
 - 重新运行 `financial-pti` 后仍为 PASS
+- 重新运行 `factor-effectiveness`，确认质量类因子历史覆盖改善后再进入策略重建
 
-当前进度（2026-06-04）：已完成单只、50 只和 200 任务小批量验证；任务表已覆盖 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个任务，其中 `250` 个已 `fetched`、`26,236` 个仍为 `pending`，暂无失败任务。
+当前进度（2026-06-05）：已完成单只、50 只和 200 任务小批量验证；任务表已覆盖 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个任务，其中 `9,292` 个已 `fetched`、`4` 个为 `empty`、`7` 个为 `failed`、`17,183` 个仍为 `pending`。下一步优先继续长任务回填，并对 `failed` 任务执行 `--retry-failed`。
+
+### T6.2｜数据库健康检查与数据质量门禁
+
+**目标**：把分散的数据质量检查统一为可调度、可审计、可作为门禁的只读健康检查入口，避免脏数据、缺失数据、future leakage 和调度失败静默进入回测或日报链路。
+
+已完成 MVP：
+
+- 新增 `phase0/db_health.py`
+- 新增 CLI：`python -m phase0.cli db-health --config config.yaml`
+- 支持 `--scope all|cn|financial|cross_market|scheduler`
+- 支持 `--as-of YYYY-MM-DD`
+- 支持 `--output-dir`
+- 支持 `--fail-on error|warning|never`
+- 输出 `database_health_summary.csv`、`database_health_findings.csv`、`database_health_report.md`
+- 默认只读数据库，不写健康表
+
+当前检查范围：
+
+- A 股本地库：表结构、最新交易日、覆盖率、滞后、OHLC、非正价格、负成交量/成交额、daily_basic 覆盖、复权因子
+- 财务因子：表结构、`announce_date` 覆盖、不可能时间线、核心因子覆盖、Tushare backfill task 状态
+- 跨市场：US/HK 数据库、配置标的 freshness、OHLC、source audit
+- 调度状态：`logs/scheduler/*.last` 与 source audit 最新运行记录
+
+当前验收（2026-06-05）：
+
+- `scheduler` 范围：PASS
+- `cn` 范围：PASS
+- `all` 范围：WARNING，`errors=0`、`warnings=6`
+- `--fail-on warning` 已验证返回退出码 `2`
+
+下一步：
+
+- 将 `db-health --scope scheduler` 接入调度器前置检查
+- 将 `db-health --scope cn --fail-on error` 接入回测 / 因子诊断前置检查
+- 为 OHLC 异常补 sample rows 输出
+- 对 `daily_basic.pe_ratio` 覆盖不足建立口径判断，区分数据缺失与亏损公司自然为空
 
 ### 条件满足后再推进
 
@@ -1174,6 +1223,7 @@ announce_date_coverage
 - [x] 新增 `us_market_history.sqlite`，让当前跨市场 overlay 从落库数据读取
 - [x] 预留 `hk_market_history.sqlite`，但在港股数据源生产化前不挂应用
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
+- [ ] 将 `db-health` 接入调度器和关键研究命令前置门禁
 - [ ] 执行统一周执行附件中的数据源升级计划
 - [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
 - [x] 再引入 Tiingo 作为美股个股 / ETF 主源（最小实现与连通性验收已完成）

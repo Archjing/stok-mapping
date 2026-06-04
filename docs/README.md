@@ -11,6 +11,7 @@
 ## 策略研发
 
 - [策略开发 Guideline](./STRATEGY_DEVELOPMENT_GUIDELINES.md)
+- [策略开发任务单 Checklist](./STRATEGY_DEV_CHECKLIST.md)
 - [候选策略解释索引](./strategy_explanations/INDEX.md)
 - [当前策略池评估与下一步研发迭代建议](./STRATEGY_POOL_REVIEW_2026-06-03.md)
 - [有效量化策略研发实施方案](./EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md)

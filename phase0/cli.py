@@ -14,6 +14,7 @@ from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
+from phase0.db_health import run_database_health_check
 from phase0.external_market_history import (
     load_us_daily_from_history,
     update_hk_market_history_from_config,
@@ -636,6 +637,22 @@ def main() -> int:
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
+    db_health_parser = sub.add_parser("db-health", help="Run read-only SQLite database health checks")
+    db_health_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    db_health_parser.add_argument(
+        "--scope",
+        choices=["all", "cn", "financial", "cross_market", "scheduler"],
+        default="all",
+        help="Health-check scope. Default: all",
+    )
+    db_health_parser.add_argument("--as-of", default=None, help="As-of date in YYYY-MM-DD. Defaults to today.")
+    db_health_parser.add_argument("--output-dir", default=None, help="Output directory for health-check artifacts")
+    db_health_parser.add_argument(
+        "--fail-on",
+        choices=["error", "warning", "never"],
+        default="never",
+        help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
+    )
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -906,6 +923,32 @@ def main() -> int:
         console.print(f"Correlation: {result.correlation_csv}")
         for warning in result.warnings[:10]:
             console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0
+    if args.cmd == "db-health":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]Database health check started[/bold]")
+        result = run_database_health_check(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            scope=str(args.scope),
+            as_of_date=str(args.as_of) if args.as_of else None,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+        )
+        color = "green" if result.status == "pass" else ("yellow" if result.status == "warning" else "red")
+        console.print(f"[{color}]Database health status: {result.status}[/{color}]")
+        console.print(f"Summary rows: {result.summary_rows}")
+        console.print(
+            f"Findings: errors={result.error_count}, warnings={result.warning_count}, info={result.info_count}"
+        )
+        console.print(f"Summary CSV: {result.summary_csv}")
+        console.print(f"Findings CSV: {result.findings_csv}")
+        console.print(f"Markdown: {result.summary_md}")
+        if args.fail_on == "error" and result.error_count > 0:
+            return 2
+        if args.fail_on == "warning" and (result.error_count > 0 or result.warning_count > 0):
+            return 2
         return 0
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:

@@ -921,6 +921,8 @@ python -m phase0.cli adjustment-audit \
 - [x] 支持 `max-runtime-minutes` 到时自动退出
 - [x] 支持 `shard-index / shard-count` 分片运行
 - [x] 支持 `limit-symbols` 小批量验证
+- [x] 支持 `limit-tasks` 小批量验证，且 `0` 明确表示选择 0 个任务
+- [x] 执行过程中输出进度：目标任务数、已处理数、完成率、fetched/empty/failed、inserted_rows、rate、elapsed、eta
 
 ## W2.16.5 CLI 设计
 
@@ -939,10 +941,12 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] `--period YYYY-MM-DD`
 - [x] `--limit-symbols N`
+- [x] `--limit-tasks N`
 - [x] `--retry-failed`
 - [x] `--replace-existing`
 - [x] `--shard-index N`
 - [x] `--shard-count N`
+- [x] `--max-runtime-minutes N`
 
 ## W2.16.6 验收报告
 
@@ -964,6 +968,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] `cash_flow_quality_coverage`
 - [x] `debt_to_asset_coverage`
 - [x] `announce_date_coverage`
+- [x] Markdown 报告中的覆盖率按百分数展示，CSV 保持 0-1 机器可读口径
 
 ## W2.16.7 执行顺序
 
@@ -977,7 +982,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 重跑 `financial-pti`
 - [ ] 重跑 `factor-effectiveness`，观察 `cash_flow_quality` 历史覆盖变化
 
-当前进度（2026-06-04）：任务表已扩展到 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个 `period + symbol` 任务；其中 `250` 个已 `fetched`，`26,236` 个仍为 `pending`，暂无 `failed` 或 `empty`。`2016-03-31` 已完成 `250 / 2613`。
+当前进度（2026-06-05）：任务表已扩展到 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个 `period + symbol` 任务；其中 `9,292` 个已 `fetched`，`4` 个为 `empty`，`7` 个为 `failed`，`17,183` 个仍为 `pending`。下一步优先继续长任务回填，并对 `failed` 任务执行 `--retry-failed`。
 
 ## W2.16.8 验收标准
 
@@ -987,3 +992,101 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 所有有效记录保留 `announce_date`
 - [ ] `financial-pti` 仍为 PASS
 - [ ] 不因补历史财务字段改变已存在的有效日线、复权和 daily_basic 数据
+
+---
+
+# W2.17｜数据库健康检查与数据质量门禁（T6.2）
+
+## W2.17.1 立项定位
+
+基于 `refdocs/dirty_data_avoidance_for_quant_2026-06-03.md` 的数据治理原则，项目需要一个统一的、只读的数据库健康检查入口，在回测、日报和调度任务前识别数据缺失、异常价格、PIT 财务风险、跨市场 freshness 和调度状态问题。
+
+第一版不写数据库健康状态表，只生成 CSV / Markdown 报告和退出码，避免检查模块自身引入新的状态污染。
+
+## W2.17.2 已有能力盘点
+
+- [x] `phase0/quality.py` 已有简单 `QualityResult` / `audit_quality` / `aggregate_quality`
+- [x] 已有 `financial-pti`、`universe-pti`、`adjustment-audit` 等专项审计命令
+- [x] 已有 `scripts/check_local_history_consistency.py`，但不是统一 CLI 健康检查入口
+- [x] 结论：项目已有分散质量检查能力，但缺少统一、可调度、可作为门禁的数据库健康检查模块
+
+## W2.17.3 MVP 实现范围
+
+- [x] 新增 `phase0/db_health.py`
+- [x] 新增 CLI：`python -m phase0.cli db-health --config config.yaml`
+- [x] 支持 `--scope all|cn|financial|cross_market|scheduler`
+- [x] 支持 `--as-of YYYY-MM-DD`
+- [x] 支持 `--output-dir`
+- [x] 支持 `--fail-on error|warning|never`
+- [x] 输出 `database_health_summary.csv`
+- [x] 输出 `database_health_findings.csv`
+- [x] 输出 `database_health_report.md`
+
+## W2.17.4 检查维度
+
+### W2.17.4.1 A 股本地库
+
+- [x] 检查本地 SQLite 数据库存在性
+- [x] 检查 `market_daily_bars` 表结构
+- [x] 检查最新交易日、覆盖率和滞后
+- [x] 检查最近窗口 OHLC 逻辑
+- [x] 检查非正价格
+- [x] 检查负成交量 / 成交额
+- [x] 检查 `market_daily_basic` 最新字段覆盖率
+- [x] 检查 `market_adj_factors` 非正复权因子
+- [x] 检查 `trading_calendar` 基本结构
+
+### W2.17.4.2 财务因子
+
+- [x] 检查 `market_financial_factors` 表结构
+- [x] 检查 `announce_date` 覆盖率
+- [x] 检查 `announce_date < report_date` 的不可能时间线
+- [x] 检查最新财务因子覆盖率
+- [x] 检查 `tushare_financial_backfill_tasks` 的 pending / failed 状态
+
+### W2.17.4.3 跨市场数据
+
+- [x] 检查 US / HK 数据库存在性
+- [x] 检查配置标的 freshness 覆盖率
+- [x] 检查最近窗口 OHLC 逻辑
+- [x] 检查 source audit 最新运行记录
+
+### W2.17.4.4 调度状态
+
+- [x] 检查 `logs/scheduler/*.last`
+- [x] 检查 A 股 source audit 最新运行记录
+- [ ] 后续接入调度器前置门禁：先跑 `db-health --scope scheduler`，再跑数据更新与日报任务
+
+## W2.17.5 验收结果
+
+- [x] `./.venv/bin/python -m compileall phase0/db_health.py phase0/cli.py`
+- [x] `./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope scheduler --output-dir /tmp/stok-db-health-scheduler --fail-on never`
+- [x] `./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope cn --output-dir /tmp/stok-db-health-cn --fail-on never`
+- [x] `./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope financial --output-dir /tmp/stok-db-health-financial --fail-on never`
+- [x] `./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope all --output-dir /tmp/stok-db-health-final --fail-on never`
+- [x] `./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope all --output-dir /tmp/stok-db-health-final-fail --fail-on warning`
+
+当前验收结论（2026-06-05）：
+
+- [x] `scheduler` 范围：PASS
+- [x] `cn` 范围：PASS
+- [x] `all` 范围：WARNING，`errors=0`、`warnings=6`
+- [x] `--fail-on warning` 正确返回退出码 `2`
+- [x] 全量检查约 15 秒，适合手工检查和低频调度；高频前置门禁建议先用 `scheduler` 或 `cn` 范围
+
+## W2.17.6 当前发现
+
+- [ ] `cn.daily_basic.pe_ratio` 最新覆盖率约 `71.98%`，低于 `80%` 阈值
+- [ ] Tushare 财务回填任务仍有 `failed=7`
+- [ ] Tushare 财务回填任务仍有 `pending=17183`
+- [ ] US 行情 recent OHLC 违规 `3` 行，需要后续输出 sample rows 定位
+- [ ] HK 配置标的 freshness 覆盖 `28/30`，缺 `HK.03690`、`HK.00981`
+- [ ] HK 行情 recent OHLC 违规 `1` 行，需要后续输出 sample rows 定位
+
+## W2.17.7 后续任务
+
+- [ ] 将 `db-health --scope scheduler --fail-on warning` 接入调度器前置检查
+- [ ] 将 `db-health --scope cn --fail-on error` 接入回测 / 因子诊断前置检查
+- [ ] 为 OHLC 异常增加 sample rows 输出，包含 `symbol/date/open/high/low/close/source`
+- [ ] 为 `daily_basic.pe_ratio` 覆盖不足建立口径判断：数据缺失、亏损导致为空、还是字段不适合作为硬门槛
+- [ ] 评估是否需要可选落库 `database_health_runs` / `database_health_findings`，默认仍保持只读

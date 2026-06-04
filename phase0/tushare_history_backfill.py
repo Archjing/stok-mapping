@@ -637,6 +637,14 @@ def _write_financial_backfill_audit(
 ) -> None:
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     audit.to_csv(output_csv, index=False)
+    coverage_columns = {
+        "announce_date_coverage",
+        "roe_coverage",
+        "revenue_growth_coverage",
+        "profit_growth_coverage",
+        "cash_flow_quality_coverage",
+        "debt_to_asset_coverage",
+    }
     columns = [
         "period",
         "target_symbols",
@@ -662,7 +670,9 @@ def _write_financial_backfill_audit(
         values = []
         for col in columns:
             value = row.get(col)
-            if isinstance(value, float):
+            if col in coverage_columns and pd.notna(value):
+                values.append(f"{float(value) * 100:.2f}%")
+            elif isinstance(value, float):
                 values.append(f"{value:.4f}")
             else:
                 values.append(str(value if pd.notna(value) else ""))
