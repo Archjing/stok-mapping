@@ -2,8 +2,8 @@
 
 本文件定义账户级仿真 v2 之后预留的本地对账输入格式。当前模块只用于研究复盘和模拟对账，不接券商 API，不自动下单，不生成任何实盘交易指令。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-任务索引：[`tasks/README.md`](../README.md)
+父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+任务索引：[`docs/tasks/README.md`](../README.md)
 
 ## T4.1.1 真实持仓 CSV
 

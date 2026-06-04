@@ -2,8 +2,8 @@
 
 适用场景：为 `stok-mapping` 补齐 A 股历史价格复权的 point-in-time 治理，避免“全历史前复权”把未来分红送转信息折回过去，污染动量、均线、波动率、突破等价格特征。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-任务索引：[`tasks/README.md`](../README.md)
+父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+任务索引：[`docs/tasks/README.md`](../README.md)
 
 ---
 

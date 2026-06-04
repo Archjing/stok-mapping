@@ -1,6 +1,6 @@
 # 策略过拟合诊断报告
 
-Generated at: 2026-06-03T23:37:50
+Generated at: 2026-06-04T20:29:44
 
 - Candidates: `/home/zj/workspace/stok-mapping/reports/phase0_walk_forward_candidates.csv`
 - Folds: `/home/zj/workspace/stok-mapping/reports/phase0_walk_forward_folds.csv`

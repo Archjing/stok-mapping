@@ -1,6 +1,6 @@
 # 项目拆解任务清单
 
-> 父级总体计划：[`DEVELOPMENT_PLAN.md`](../docs/DEVELOPMENT_PLAN.md)  
+> 父级总体计划：[`DEVELOPMENT_PLAN.md`](../DEVELOPMENT_PLAN.md)  
 > 本目录只管理拆分后的任务清单、执行附件、专项任务单和研究支持清单。项目定位、阶段边界和优先级以父级总体计划为准。
 
 ## T0.1 任务目录结构

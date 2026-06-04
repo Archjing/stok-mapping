@@ -17,5 +17,5 @@
 
 ## 相关入口
 
-- [任务清单索引](../tasks/README.md)
+- [任务清单索引](tasks/README.md)
 - [参考资料索引](../refdocs/README.md)

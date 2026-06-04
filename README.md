@@ -121,8 +121,8 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 当前 `Tiingo` 和 `FRED` 已完成最小接入，正式入口均在 `phase0/data_sources.py`：
 
 ```text
-tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md
-tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md
+docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md
+docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md
 ```
 
 Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` 和独立探测脚本 `scripts/tiingo_news_probe.py`，用于验证 `ticker 列表 + 主题标签 + 时间窗口` 三类过滤条件及 token 权限状态。当前实测结论是：项目所用 token 可访问 Tiingo 日线接口，但访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻能力暂不可用。
@@ -549,12 +549,12 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - 主计划：`docs/DEVELOPMENT_PLAN.md`
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 策略开发标准：`docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
-- 当前统一周执行附件：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
-- 策略候选整理：`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
+- 当前统一周执行附件：`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
+- 策略候选整理：`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - 候选策略解释索引：`docs/strategy_explanations/INDEX.md`
-- 策略开发检查清单：`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
-- FRED 接入任务单：`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
-- Tiingo 接入任务单：`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
+- 策略开发检查清单：`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
+- FRED 接入任务单：`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
+- Tiingo 接入任务单：`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
 - 远期展望：`refdocs/OUTLOOK/`
 
 ## 输出文件

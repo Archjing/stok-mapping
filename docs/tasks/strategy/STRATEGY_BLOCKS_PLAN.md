@@ -4,12 +4,12 @@
 >
 > 本文档是对以下现有规划的迭代补充：
 > - `docs/DEVELOPMENT_PLAN.md`
-> - `tasks/WEEKLY_EXECUTION_CHECKLIST.md`
+> - `docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 >
 > 定位：**主线计划内的工程化增强项**，服务于“更快形成可应用产品”，不是纯平台化重写。
 >
-> 父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-> 任务索引：[`tasks/README.md`](../README.md)
+> 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+> 任务索引：[`docs/tasks/README.md`](../README.md)
 
 ---
 
@@ -406,7 +406,7 @@ phase0:
 因此它应该被纳入：
 
 - `DEVELOPMENT_PLAN.md` 的当前产品主线语境
-- `tasks/WEEKLY_EXECUTION_CHECKLIST.md` 的近期执行任务
+- `docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md` 的近期执行任务
 
 而不是放到 `refdocs/OUTLOOK/` 中等待远期处理。
 

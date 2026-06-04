@@ -2,8 +2,8 @@
 
 适用场景：为 `stok-mapping` 正式引入 FRED 作为**宏观 / 利率 / VIX 主源**，替代当前这部分对 `yfinance` 的依赖。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-任务索引：[`tasks/README.md`](../README.md)
+父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+任务索引：[`docs/tasks/README.md`](../README.md)
 
 ---
 

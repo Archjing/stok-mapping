@@ -2,8 +2,8 @@
 
 只保留**最值得复现**和**最能直接映射到策略实现**的信息。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-任务索引：[`tasks/README.md`](../README.md)
+父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+任务索引：[`docs/tasks/README.md`](../README.md)
 
 ## T5.1.1 最值得优先看的 5 篇
 

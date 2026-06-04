@@ -2,8 +2,8 @@
 
 > 定位：在策略进入盘前观察池、账户级仿真或长期试用前，增加一层专门的“过拟合风险诊断”。
 >
-> 父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
-> 任务索引：[`tasks/README.md`](../README.md)  
+> 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+> 任务索引：[`docs/tasks/README.md`](../README.md)  
 > 参考链接：[`JoinQuant 社区讨论`](https://www.joinquant.com/view/community/detail/3cf8435f4a772fc2f702589704db44db)
 
 ---
@@ -333,18 +333,18 @@ reports/
 ### T2.4.9.1 P0：立项与接口冻结
 
 - [x] 新增本任务文档
-- [ ] 确认第一版输入输出文件名
-- [ ] 确认评分权重和风险等级
-- [ ] 确认是否纳入 `phase0 run` 默认产物
+- [x] 确认第一版输入输出文件名
+- [x] 确认评分权重和风险等级
+- [x] 确认是否纳入 `phase0 run` 默认产物：MVP 不纳入默认产物，保持独立 CLI
 
 ### T2.4.9.2 P1：离线诊断 MVP
 
-- [ ] 新增 `phase0/overfit.py`
-- [ ] 从现有 walk-forward candidates 产物读取策略折级指标
-- [ ] 实现 OOS 衰减诊断
-- [ ] 实现 fold 稳定性诊断
-- [ ] 实现成本敏感性诊断的占位读取
-- [ ] 输出 CSV / Markdown 报告
+- [x] 新增 `phase0/overfit.py`
+- [x] 从现有 walk-forward candidates 产物读取策略折级指标
+- [x] 实现 OOS 衰减诊断
+- [x] 实现 fold 稳定性诊断
+- [x] 实现成本敏感性诊断的占位读取
+- [x] 输出 CSV / Markdown 报告
 
 ### T2.4.9.3 P2：增强诊断
 
@@ -367,16 +367,16 @@ reports/
 
 第一版验收：
 
-- [ ] CLI 可生成 `strategy_overfit_diagnostic.csv`
-- [ ] CLI 可生成 `strategy_overfit_diagnostic.md`
-- [ ] 报告能覆盖当前 selected candidate
-- [ ] 报告能解释主要风险来源，而不是只给分数
-- [ ] 当 OOS 失败、fold 不稳定或成本敏感时，风险等级会自动上调
-- [ ] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
+- [x] CLI 可生成 `strategy_overfit_diagnostic.csv`
+- [x] CLI 可生成 `strategy_overfit_diagnostic.md`
+- [x] 报告能覆盖当前 selected candidate
+- [x] 报告能解释主要风险来源，而不是只给分数
+- [x] 当 OOS 失败、fold 不稳定或成本敏感时，风险等级会自动上调
+- [x] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
 
 长期验收：
 
-- [ ] 每个候选策略都有过拟合风险记录
+- [x] 每个候选策略都有过拟合风险记录
 - [ ] selected candidate 进入观察池前必须有诊断报告
 - [ ] 失败实验和参数搜索过程可追踪
 - [ ] 能识别“回测漂亮但样本外/成本/参数扰动脆弱”的策略

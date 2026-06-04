@@ -3,7 +3,7 @@
 > 本文件是 `docs/DEVELOPMENT_PLAN.md` 的统一周执行附件。  
 > 后续每一周的任务清单都追加在同一个文件中，避免多个附件分散。  
 > 主计划中的长期路线、阶段划分和项目定位以 `docs/DEVELOPMENT_PLAN.md` 为准；本文件只管理**当前周目标、执行节奏、检查点与归档要求**。
-> 任务拆解总索引见：[`tasks/README.md`](./README.md)。
+> 任务拆解总索引见：[`docs/tasks/README.md`](./README.md)。
 
 ---
 
@@ -75,7 +75,7 @@
 
 > 目的：把当前“配置参数 + 代码里写死的候选实现”升级为“可插拔策略模块”，从而让新策略更快接入、更快测试、更快输出统一报告，并为后续策略选定后的研判简报与模拟交易预留统一接口。
 
-参考文档：`tasks/strategy/STRATEGY_BLOCKS_PLAN.md`
+参考文档：`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`
 
 - [x] 设计最小策略契约：策略元信息、输入声明、参数选择/拟合、信号/排序输出、说明文本
 - [x] 建立 `phase0/strategies/` 目录与 `base.py` / `registry.py` 雏形
@@ -342,8 +342,8 @@
 - [x] 涨停买不进、跌停卖不出
 - [x] 停牌或无有效成交数据时不生成成交
 - [x] 成交量不足导致部分成交或不成交
-- [x] 真实账户持仓 CSV 输入格式预留：`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
-- [x] 券商成交回报 CSV 输入格式预留：`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
+- [x] 真实账户持仓 CSV 输入格式预留：`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
+- [x] 券商成交回报 CSV 输入格式预留：`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`
 
 ## W1.7.3 开发模块拆分
 
@@ -558,7 +558,7 @@
 - [x] 下一周进入 **FRED 实现周**
 - [x] FRED 稳定后再进入 **Tiingo 接入周**
 - [x] 港股映射 A 股候选策略后续补代码，先完成 `hk_market_history.sqlite` 数据质量验证；2026-06-02 已确认 Tiingo 不适合作为港股正式源，港股链路继续保持预留状态
-- [x] 港股映射策略记录见：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
+- [x] 港股映射策略记录见：`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
 - [x] 港股库完成 30 标的批量落库与验收报告：`reports/hk_market_history_batch_load_report.md`（coverage `30/30`，latest `2026-06-01`）
 
 ### W2.10.2 如果本周方案不充分
@@ -574,7 +574,7 @@
 
 ## W2.12 统一调度器后续待解决事项
 
-参考专项任务：[`tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](ops/SCHEDULER_PIPELINE_TASKS.md)
+参考专项任务：[`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](ops/SCHEDULER_PIPELINE_TASKS.md)
 
 ### W2.12.0 已完成基线
 
@@ -612,7 +612,7 @@
 
 ## W2.13 策略过拟合诊断工具 MVP（T2.4）
 
-参考专项任务：[`tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md)
+参考专项任务：[`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md)
 
 ### W2.13.0 立项定位
 
@@ -728,7 +728,7 @@ python -m phase0.cli overfit-diagnostic \
 
 ## W2.14 A 股历史 as-of 前复权与复权因子治理（T1.4）
 
-参考专项任务：[`tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md)
+参考专项任务：[`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md)
 
 ### W2.14.0 立项定位
 
@@ -830,7 +830,7 @@ python -m phase0.cli adjustment-audit \
 
 # W2.15｜有效量化策略重建：因子诊断与低频低换手候选
 
-参考专项任务：[`tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
+参考专项任务：[`docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
 
 ## W2.15.1 当前结论
 

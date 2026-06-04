@@ -162,7 +162,7 @@
 
 - `refdocs/papers/cn/cn_INDEX.md` 索引的中文 A 股论文资料
 - `refdocs/papers/en/INDEX.md` 索引的英文/国际论文资料
-- `tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
+- `docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - `reports/phase0_strategy_change_log.md`
 - `reports/phase0_walk_forward_report.md`
 - `reports/phase0_effectiveness_report.md`
@@ -271,7 +271,7 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 - 当前跨市场 overlay 已先落库到 `data/us_market_history.sqlite`，策略运行读取本地 `us_daily_bars`，不再运行时临时抓取 yfinance。
 - US market 当前 provider 仍为 `yfinance`，但定位是过渡数据源；Tiingo 已完成美股个股 / ETF EOD 最小接入和连通性检查，后续再评估是否接管 `us_market_history` 对应标的；FRED 已完成宏观 / 利率 / VIX 最小接入。
 - 港股库 `data/hk_market_history.sqlite` 仅保留结构和 CLI，当前 `enabled: false`，等港股数据源接入并通过覆盖率/新鲜度验证后再挂到应用。
-- 港股映射 A 股候选策略已记录到 `tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`，后续补全代码；当前先做数据层验证，不并入 Phase 0 主线。
+- 港股映射 A 股候选策略已记录到 `docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`，后续补全代码；当前先做数据层验证，不并入 Phase 0 主线。
 
 ### 引擎 #2：本土主因子选股
 
@@ -536,13 +536,13 @@ LLM 不直接生成评分与交易信号。
 - Tiingo 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_tiingo_daily`，`check_connectivity` 已覆盖 `NVDA`、`AAPL`、`TSLA`、`KWEB`。
 - 当前跨市场标的已先由 `yfinance` 增量写入 US market 本地 SQLite，策略读取落库数据，避免每次评估时临时在线抓取。
 - Tiingo 暂不承接新闻源；新闻源独立任务见 `T1.3`。
-- 接入任务单见：`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
+- 接入任务单见：`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
 
 ### 5.3 港股
 
 - **当前状态**：`data/hk_market_history.sqlite` 已启用并完成 30 标的初始观察池批量落库（provider: `yfinance`）
 - **应用挂载状态**：数据层已可用，策略主链路仍未挂载（保持独立验证阶段）
-- **候选策略记录**：`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
+- **候选策略记录**：`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`
 
 当前说明：
 
@@ -562,7 +562,7 @@ LLM 不直接生成评分与交易信号。
 - FRED 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_fred_series`，`check_connectivity` 已纳入 `fred` 源检查。
 - `config.yaml` 已新增 `data_sources.fred.enabled / api_key_env / series` 配置项。
 - 已在非受限网络环境完成首批 5 个序列连通性验收，并写入 `reports/phase0_data_source_report.md`。
-- 接入任务单见：`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
+- 接入任务单见：`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
 
 ### 5.5 yfinance 的定位
 
@@ -585,7 +585,7 @@ LLM 不直接生成评分与交易信号。
 - Alpha Vantage 只作为低成本可用性验证源，不直接承诺为长期主源。
 - Alpha Vantage 多 ticker / 多 topic 过滤不按项目组合 OR 语义假设；组合观察池必须逐 ticker 拉取后聚合去重。
 - 新闻源只服务盘前解释、风险提示和后续文本摘要因子，不进入首批交易建议主线。
-- 接入任务单见：`tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
+- 接入任务单见：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
 
 ### 5.7 当前意义
 
@@ -856,12 +856,14 @@ stok-mapping/
 ├── refdocs/
 │   ├── papers/
 │   └── OUTLOOK/
-├── tasks/
-│   ├── data-sources/
-│   ├── strategy/
-│   ├── cross-market/
-│   ├── account/
-│   └── research/
+├── docs/
+│   ├── tasks/
+│   │   ├── data-sources/
+│   │   ├── strategy/
+│   │   ├── cross-market/
+│   │   ├── account/
+│   │   ├── research/
+│   │   └── ops/
 ├── data/
 ├── scripts/
 ├── .codex/
@@ -913,7 +915,7 @@ stok-mapping/
 
 ## 十四、当前一周执行摘要
 
-> 当前统一周执行附件见：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
+> 当前统一周执行附件见：`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 
 ### 本周目标
 
@@ -951,7 +953,7 @@ stok-mapping/
 - `hk_market_history.sqlite` 已启用并完成 30 标的初始港股观察池批量落库，覆盖率 `30/30`，最新交易日 `2026-06-01`，累计 `37044` 行。
 - 已生成港股批量落库报告：`reports/hk_market_history_batch_load_report.md`，包含 30 标的覆盖、审计记录、样本行和中文名称 `name_zh`。
 - 已新增 `phase0.cli` 当前使用说明：`refdocs/PHASE0_CLI_USER_GUIDE.md`。
-- 已同步 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
+- 已同步 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
 - 已整理当前 `phase0.cli` 命令路由：推荐主入口收敛为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`，旧 `daily-brief` / `premarket` 保留兼容。
 - 已将 `07:20` 调度任务切换为 `brief watchlist`，阶段试用观察池固定输出到 `reports/watchlist_today/index.html`，并由程序内置 rsync 同步到 ECS `/brief/`。
 - 已接入模拟账户 SQLite 主账本：自动创建 `simulated_accounts`、`account_daily_assets`、`account_trades`、`account_positions`，并在 watchlist 页面展示最近已确认账单日账户快照。
@@ -1011,24 +1013,24 @@ stok-mapping/
 
 ### 任务拆解管理
 
-本文件是项目父级总体计划。所有拆分后的任务清单统一放在 [`tasks/`](../tasks/README.md)，父级计划只维护阶段、优先级、主线边界和子任务引用。
+本文件是项目父级总体计划。所有拆分后的任务清单统一放在 [`docs/tasks/`](tasks/README.md)，父级计划只维护阶段、优先级、主线边界和子任务引用。
 
 当前任务层级：
 
 | 层级编号 | 任务域 | 子任务文档 | 当前状态 |
 | --- | --- | --- | --- |
-| `T0` | 周任务执行总清单 | [`tasks/WEEKLY_EXECUTION_CHECKLIST.md`](../tasks/WEEKLY_EXECUTION_CHECKLIST.md) | 持续执行，仍有未完成项 |
-| `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](../tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) | **已完成** |
-| `T1.2` | Tiingo 美股个股 / ETF 主源 | [`tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](../tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
-| `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](../tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
-| `T2.1` | Phase 0 候选策略池 | [`tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](../tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
-| `T2.2` | 策略开发任务单模板 | [`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](../tasks/strategy/STRATEGY_DEV_CHECKLIST.md) | 模板文档，不按完成项结算 |
-| `T2.3` | 策略积木工程化计划 | [`tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](../tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
-| `T2.4` | 策略过拟合诊断工具 | [`tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](../tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，待 gate / brief 集成** |
-| `T3.1` | 港股映射 A 股候选策略 | [`tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](../tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
-| `T4.1` | 真实账户对账 CSV 预留格式 | [`tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](../tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
-| `T5.1` | 中文 A 股量化策略论文提炼 | [`tasks/research/STRATEGY_SUMMARY.md`](../tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
-| `T6.1` | 统一调度器与后台 Pipeline | [`tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](../tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
+| `T0` | 周任务执行总清单 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md) | 持续执行，仍有未完成项 |
+| `T1.1` | FRED 宏观 / 利率 / VIX 数据源 | [`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`](tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md) | **已完成** |
+| `T1.2` | Tiingo 美股个股 / ETF 主源 | [`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
+| `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
+| `T2.1` | Phase 0 候选策略池 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
+| `T2.2` | 策略开发任务单模板 | [`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`](tasks/strategy/STRATEGY_DEV_CHECKLIST.md) | 模板文档，不按完成项结算 |
+| `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
+| `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，待 gate / brief 集成** |
+| `T3.1` | 港股映射 A 股候选策略 | [`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
+| `T4.1` | 真实账户对账 CSV 预留格式 | [`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
+| `T5.1` | 中文 A 股量化策略论文提炼 | [`docs/tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
+| `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
 
 ### 当前最高优先级
 

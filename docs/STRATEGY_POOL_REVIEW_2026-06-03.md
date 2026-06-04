@@ -5,7 +5,7 @@
 
 - `refdocs/papers/cn/A股有效量化策略报告.md`
 - `refdocs/papers/cn/cn_INDEX.md`
-- `tasks/research/STRATEGY_SUMMARY.md`
+- `docs/tasks/research/STRATEGY_SUMMARY.md`
 - `docs/strategy_explanations/*.md`
 - `reports/phase0_walk_forward_report.md`
 - `reports/phase0_walk_forward_candidates.csv`

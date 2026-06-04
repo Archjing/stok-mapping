@@ -263,8 +263,8 @@ walk-forward 分折账本不等于连续复利资金曲线。
 
 ## 6. 配套文件
 
-- 策略开发检查清单：`tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
-- 周任务清单：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
+- 策略开发检查清单：`docs/tasks/strategy/STRATEGY_DEV_CHECKLIST.md`
+- 周任务清单：`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 - 主计划：`docs/DEVELOPMENT_PLAN.md`
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 文档索引：`docs/README.md`

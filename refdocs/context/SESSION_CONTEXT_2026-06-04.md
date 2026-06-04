@@ -69,10 +69,10 @@ qfq_asof + point-in-time universe + 成本后验证
 相关任务文件：
 
 ```text
-tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md
+docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md
 ```
 
-注意：该文件不在根目录，而在 `tasks/data-sources/` 下。
+注意：该文件不在根目录，而在 `docs/tasks/data-sources/` 下。
 
 ## 策略对照结论
 
@@ -128,7 +128,7 @@ docs/EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md
 已新增任务清单：
 
 ```text
-tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md
+docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md
 ```
 
 拆分任务包括：
@@ -276,7 +276,7 @@ docs/DEVELOPMENT_PLAN.md
 周任务清单：
 
 ```text
-tasks/WEEKLY_EXECUTION_CHECKLIST.md
+docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md
 ```
 
 CLI：
@@ -438,8 +438,8 @@ refdocs/context/SESSION_CONTEXT_2026-06-04.md
   - `factor_ic_by_year.csv`
   - `factor_correlation.csv`
 - 更新了 T2.5/W2.15 计划清单：
-  - [tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md](../../tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
-  - [tasks/WEEKLY_EXECUTION_CHECKLIST.md](../../tasks/WEEKLY_EXECUTION_CHECKLIST.md)
+  - [docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md](../../docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
+  - [docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md](../../docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md)
   - [docs/DEVELOPMENT_PLAN.md](../../docs/DEVELOPMENT_PLAN.md)
 
 验证：

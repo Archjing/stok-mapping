@@ -4,7 +4,7 @@
 
 ## 当前操作参考
 
-- [Phase0 CLI 使用说明](./PHASE0_CLI_USER_GUIDE.md)
+- [Phase0 CLI 使用说明](../docs/PHASE0_CLI_USER_GUIDE.md)
 - [Tushare MCP 查询工作流](./TUSHARE_MCP_WORKFLOW.md)
 - [最终运行形态流程图](./PROJECT_FINAL_RUNTIME_FLOW.md)
 - [运行形态图样式版本](./runtime-flow-variants/README.md)
@@ -29,5 +29,5 @@
 
 ## 迁移说明
 
-- 计划与任务类文档已迁移到 [`tasks/`](../tasks/)，旧入口说明见 [`todo/README.md`](./todo/README.md)。
+- 计划与任务类文档已迁移到 [`docs/tasks/`](../docs/tasks/)，旧入口说明见 [`todo/README.md`](./todo/README.md)。
 - 已删除旧备份和 `Zone.Identifier` 系统标记文件；PDF、HTML、JPEG、CSV、JSON 等实际资料或生成物保留。
