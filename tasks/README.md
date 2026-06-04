@@ -37,6 +37,7 @@
 | `T2.2` | 策略开发任务单模板 | [`strategy/STRATEGY_DEV_CHECKLIST.md`](./strategy/STRATEGY_DEV_CHECKLIST.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |
 | `T2.4` | 策略过拟合诊断工具 | [`strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](./strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) |
+| `T2.5-T2.10` | 有效量化策略研发任务清单 | [`strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](./strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md) |
 | `T3.1` | 港股映射 A 股候选策略 | [`cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](./cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](./account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`research/STRATEGY_SUMMARY.md`](./research/STRATEGY_SUMMARY.md) |

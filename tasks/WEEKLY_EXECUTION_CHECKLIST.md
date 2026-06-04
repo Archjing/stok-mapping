@@ -741,14 +741,14 @@ python -m phase0.cli overfit-diagnostic \
 - [x] 冻结 `market_adj_factors` 表结构和导入规则
 - [x] 设计并实现 `qfq_asof` 最小 loader，先不静默改变现有默认回测行为
 - [x] 新增 `adjustment-audit` 报告，标记当前策略结果是否存在复权未来函数风险
-- [ ] 输出 `qfq_current` / `qfq_asof` 差异样例，覆盖除权除息样本股和普通样本股
+- [x] 输出 `qfq_current` / `qfq_asof` 差异样例，覆盖除权除息样本股和普通样本股
 
 ### W2.14.2 输入产物
 
 - [x] 本地历史库中的 A 股日线 OHLCV 表
 - [x] 当前 `phase0/local_history.py` 行情加载逻辑
 - [x] 当前 `phase0/walk_forward.py` 特征生成和训练窗口边界
-- [ ] Tushare 或其他数据源可提供的未复权日线与复权因子字段
+- [x] Tushare 或其他数据源可提供的未复权日线与复权因子字段
 - [x] `config.yaml`
 
 ### W2.14.3 输出产物
@@ -776,6 +776,11 @@ python -m phase0.cli overfit-diagnostic \
 - [x] 对同一 `market / symbol / date / source` 建唯一约束
 - [x] 导入链路支持幂等更新
 - [x] 不用字符串拼接推导复权因子，必须来自结构化字段或可信数据源
+- [x] 2026-06-04 执行 Tushare 历史补全：`backfill-tushare-history --start-date 2016-01-01 --end-date 2026-06-04 --no-financial --max-requests-per-minute 180`
+- [x] `market_adj_factors` 验收：2016-01-04 到 2026-06-04，交易日覆盖完整，`adj_factor` 非空率 100%
+- [x] `market_daily_basic` 验收：2016-01-04 到 2026-06-03，`pb_ratio` 覆盖率约 99.37%，`pe_ratio` 覆盖率约 81.47%，`turnover_rate` 覆盖率 100%
+- [x] 输出 Tushare 补全验收报告：`reports/tushare_history_backfill_audit.md` / `reports/tushare_history_backfill_audit.csv`
+- [ ] 后续单独批次补齐 Tushare 财务因子 2016Q1-2018Q1；当前 `market_financial_factors` 仍为 2018-06-30 到 2026-03-31
 
 ### W2.14.6 P2 `qfq_asof` loader MVP
 
@@ -789,10 +794,11 @@ python -m phase0.cli overfit-diagnostic \
 ### W2.14.7 P3 walk-forward 接入计划
 
 - [x] 在历史行情加载函数中增加显式 `price_adjustment` 参数
-- [ ] 当 `price_adjustment = qfq_asof` 时，必须传入当前训练折的 `as_of_date`
-- [ ] walk-forward 每折使用训练窗口结束日作为 `as_of_date`
+- [x] 当 `price_adjustment = qfq_asof` 时，必须传入当前训练折的 `as_of_date`
+- [x] walk-forward 每折使用训练窗口结束日作为 `as_of_date`
+- [ ] 后续增强：验证期逐日滚动 `as_of_date`，默认不启用，避免把验证期价格构造成本放大约一个交易年倍数
 - [x] 保留 `qfq_current` 兼容口径，但报告中必须标记为非严格 point-in-time
-- [ ] 对 `legacy_momentum_low_turnover_v1` 跑一次 `qfq_current` / `qfq_asof` 对照
+- [x] 对 `legacy_momentum_low_turnover_v1` 跑一次 `qfq_current` / `qfq_asof` 对照
 
 ### W2.14.8 CLI 设计
 
@@ -818,3 +824,166 @@ python -m phase0.cli adjustment-audit \
 - [x] 现有 `phase0 run` 默认行为不被静默改变
 - [x] 执行成交、涨跌停、停牌判断继续基于真实未复权价格
 - [x] 报告给出当前主策略价格口径 future leakage 风险结论
+- [x] 报告列出 `qfq_current` 与 `qfq_asof` 的价格和核心特征差异样例
+
+---
+
+# W2.15｜有效量化策略重建：因子诊断与低频低换手候选
+
+参考专项任务：[`tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
+
+## W2.15.1 当前结论
+
+- [x] 最新版本全候选策略池 `qfq_asof` compare 已完成
+- [x] 当前无可用于实盘模拟的合格 candidate
+- [x] `legacy_momentum_low_turnover_v1` 降级为兼容基线和动量 sleeve 研究样本
+- [x] 下一步研发主线从“调动量候选”切换为“因子有效性诊断 -> 低频低换手多因子策略”
+
+## W2.15.2 本周目标
+
+- [x] 实现 `T2.5` 因子有效性诊断报告 MVP
+- [x] 用 `qfq_asof` / PIT 股票池跑第一批低波、低换手、质量、动量、反转因子诊断
+- [ ] 基于诊断结果确认 `low_vol_low_turnover_quality_v1` 的首版因子权重
+- [ ] 建立 `strategy-admission` 报告设计稿，明确实盘模拟准入规则
+
+## W2.15.3 第一优先级任务
+
+- [x] 新增 `phase0/factor_effectiveness.py`
+- [x] 新增 CLI：`python -m phase0.cli factor-effectiveness --config config.yaml`
+- [x] 输出 `reports/factor_effectiveness/factor_effectiveness.csv`
+- [x] 输出 `reports/factor_effectiveness/factor_effectiveness.md`
+- [x] 输出 `reports/factor_effectiveness/factor_group_returns.csv`
+- [x] 输出 `reports/factor_effectiveness/factor_ic_by_year.csv`
+- [x] 输出 `reports/factor_effectiveness/factor_correlation.csv`
+
+## W2.15.4 第二优先级任务
+
+- [ ] 新增 `low_vol_low_turnover_quality_v1` 策略说明文档
+- [ ] 新增 `quality_low_turnover_monthly_v1` 策略说明文档
+- [ ] 设计两者在 `phase0/strategies/` 中的实现接口
+- [ ] 明确调仓周期、top_n、换手上限、行业约束、单票权重上限
+
+## W2.15.5 验收标准
+
+- [x] 因子诊断必须使用 `qfq_asof` 价格特征
+- [x] 因子诊断必须使用 point-in-time 股票池
+- [x] 财务因子必须保留公告日 point-in-time 说明
+- [x] 报告必须能区分“因子无效”“数据覆盖不足”“组合构造失败”
+- [x] 在 T2.5 完成前，不新增复杂 ML 主策略
+
+---
+
+# W2.16｜Tushare 财务因子逐股票历史补齐（T1.5）
+
+## W2.16.1 立项定位
+
+`market_financial_factors` 当前覆盖 2018-06-30 到 2026-03-31。为了让质量类因子在更长历史窗口中可用，需要补齐 2016Q1-2018Q1。Tushare 财务接口当前需要按 `ts_code + period` 拉取，属于 20 万级请求长任务，必须先做断点任务表、分片运行和验收报告。
+
+## W2.16.2 目标季度
+
+- [ ] `2016-03-31`
+- [ ] `2016-06-30`
+- [ ] `2016-09-30`
+- [ ] `2016-12-31`
+- [ ] `2017-03-31`
+- [ ] `2017-06-30`
+- [ ] `2017-09-30`
+- [ ] `2017-12-31`
+- [ ] `2018-03-31`
+
+## W2.16.3 目标字段
+
+- [ ] `announce_date`
+- [ ] `roe`
+- [ ] `revenue`
+- [ ] `revenue_growth`
+- [ ] `net_profit`
+- [ ] `profit_growth`
+- [ ] `operating_cash_flow`
+- [ ] `operating_cash_flow_to_net_profit`
+- [ ] `debt_to_asset`
+- [ ] `total_assets`
+- [ ] `total_liabilities`
+- [ ] `total_equity`
+- [ ] `source`
+- [ ] `updated_at`
+
+## W2.16.4 代码任务
+
+- [x] 新增财务回填专用进度表：`tushare_financial_backfill_tasks`
+- [x] 任务粒度固定为 `period + symbol`
+- [x] 状态枚举：`pending / fetched / empty / failed`
+- [x] 记录 `request_count`、`last_error`、`updated_at`
+- [x] 从 `market_stocks` 生成目标 symbol：`list_date <= period`，且 `delist_date` 为空或 `delist_date >= period`
+- [x] 跳过已有有效记录，避免重复请求
+- [x] 不允许空行覆盖已有有效财务记录
+- [x] 支持 `retry-failed`
+- [x] 支持 `max-runtime-minutes` 到时自动退出
+- [x] 支持 `shard-index / shard-count` 分片运行
+- [x] 支持 `limit-symbols` 小批量验证
+
+## W2.16.5 CLI 设计
+
+```bash
+python -m phase0.cli backfill-tushare-financials \
+  --config config.yaml \
+  --start-period 2016-03-31 \
+  --end-period 2018-03-31 \
+  --max-requests-per-minute 120 \
+  --max-runtime-minutes 180 \
+  --shard-index 0 \
+  --shard-count 1
+```
+
+可选参数：
+
+- [x] `--period YYYY-MM-DD`
+- [x] `--limit-symbols N`
+- [x] `--retry-failed`
+- [x] `--replace-existing`
+- [x] `--shard-index N`
+- [x] `--shard-count N`
+
+## W2.16.6 验收报告
+
+输出：
+
+- [x] `reports/tushare_financial_backfill_audit.csv`
+- [x] `reports/tushare_financial_backfill_audit.md`
+
+验收维度：
+
+- [x] `period`
+- [x] `target_symbols`
+- [x] `fetched_symbols`
+- [x] `empty_symbols`
+- [x] `failed_symbols`
+- [x] `roe_coverage`
+- [x] `revenue_growth_coverage`
+- [x] `profit_growth_coverage`
+- [x] `cash_flow_quality_coverage`
+- [x] `debt_to_asset_coverage`
+- [x] `announce_date_coverage`
+
+## W2.16.7 执行顺序
+
+- [x] 单只股票单季度验证：`--period 2016-03-31 --limit-symbols 1`
+- [x] 50 只股票单季度验证：`--period 2016-03-31 --limit-symbols 50`
+- [x] 默认覆盖行为修正为“跳过已有有效记录”，显式传 `--replace-existing` 时才覆盖
+- [x] 200 个任务小批量验证：`--start-period 2016-03-31 --end-period 2018-03-31 --limit-tasks 200 --max-runtime-minutes 10`
+- [ ] 单季度全市场分批验证
+- [ ] 跑完 2016Q1-2018Q1 全部季度
+- [ ] 重试 failed，直到 failed ratio 低于 1%
+- [ ] 重跑 `financial-pti`
+- [ ] 重跑 `factor-effectiveness`，观察 `cash_flow_quality` 历史覆盖变化
+
+当前进度（2026-06-04）：任务表已扩展到 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个 `period + symbol` 任务；其中 `250` 个已 `fetched`，`26,236` 个仍为 `pending`，暂无 `failed` 或 `empty`。`2016-03-31` 已完成 `250 / 2613`。
+
+## W2.16.8 验收标准
+
+- [ ] 2016Q1-2018Q1 每个季度均有任务覆盖
+- [ ] 每季度 `fetched + empty + failed = target_symbols`
+- [ ] `failed_symbols` 经重试后低于 1%
+- [ ] 所有有效记录保留 `announce_date`
+- [ ] `financial-pti` 仍为 PASS
+- [ ] 不因补历史财务字段改变已存在的有效日线、复权和 daily_basic 数据

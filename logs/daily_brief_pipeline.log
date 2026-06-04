@@ -39,3 +39,49 @@ Rows: 28
 Signal date: 2026-06-02
 Check time: 2026-06-03 07:30
 [2026-06-03 07:20:34 +0800] finish daily_brief
+[2026-06-04 07:20:01 +0800] start daily_brief
+Phase 0 watchlist pipeline started
+1) Updating A-share history...
+Manual history update status: up_to_date
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Calendar latest trade date: 2026-06-04
+Target trade date: 2026-06-03
+Before latest: 2026-06-03 coverage=0.9566
+After latest: 2026-06-03 coverage=0.9566
+Fetched rows: 0
+Inserted rows: 0
+Metadata updated rows: 0
+Primary source: N/A
+Metadata coverage: market_cap=1.0000, pe=1.0000, pb=1.0000, turnover=1.0000
+2) Generating premarket watchlist...
+sending incremental file list
+index.html
+
+sent 2,689 bytes  received 209 bytes  1,932.00 bytes/sec
+total size is 17,008  speedup is 5.87
+panel_cache=stale path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+panel_cache=miss path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+panel_cache=saved path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+Watchlist ECS: root@39.105.102.5:/brief/
+Watchlist pipeline complete
+Watchlist: 
+/home/zj/workspace/stok-mapping/reports/2026-06-04/phase0_premarket_watchlist_20
+26-06-04.csv
+Report: 
+/home/zj/workspace/stok-mapping/reports/2026-06-04/phase0_watchlist_report_2026-
+06-04.html
+Watchlist today: 
+/home/zj/workspace/stok-mapping/reports/watchlist_today/index.html
+Watchlist today: /mnt/d/ZJ/Dev/brief_today/index.html
+Simulation ledger: 
+/home/zj/workspace/stok-mapping/data/simulated_trading/phase0_daily_brief_ledger
+.csv
+Account ledger: 
+/home/zj/workspace/stok-mapping/data/simulated_trading/phase0_daily_account_ledg
+er.csv
+Account bill: .
+Rows: 23
+Signal date: 2026-06-03
+Check time: 2026-06-04 07:30
+[2026-06-04 07:20:45 +0800] finish daily_brief

@@ -1,0 +1,5 @@
+fold,universe_as_of_date,universe_symbol_count,universe_snapshot_count,universe_source,train_start,train_end,valid_start,valid_end,warning,price_adjustment_for_backtest,train_price_as_of_date,valid_price_as_of_date,price_adjustment_mode
+1,2021-05-31,120,4300,local_history_sqlite_as_of,2019-05-07,2021-05-31,2021-06-01,2022-06-15,,qfq_asof,2021-05-31,2022-06-15,qfq_asof
+2,2022-06-15,120,4793,local_history_sqlite_as_of,2020-05-19,2022-06-15,2022-06-16,2023-06-28,,qfq_asof,2022-06-15,2023-06-28,qfq_asof
+3,2023-06-28,120,5158,local_history_sqlite_as_of,2021-06-01,2023-06-28,2023-06-29,2024-07-11,,qfq_asof,2023-06-28,2024-07-11,qfq_asof
+4,2024-07-11,120,5343,local_history_sqlite_as_of,2022-06-16,2024-07-11,2024-07-12,2025-07-25,,qfq_asof,2024-07-11,2025-07-25,qfq_asof

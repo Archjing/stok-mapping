@@ -53,3 +53,41 @@ Warning: yfinance HK.00941 returned empty data.
 Warning: yfinance HK.02020 returned empty data.
 Warning: yfinance HK.02269 returned empty data.
 [2026-06-03 16:21:00 +0800] finish hk_market_history
+[2026-06-04 16:20:01 +0800] start hk_market_history
+
+1 Failed download:
+['3690.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['0981.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['0388.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['3988.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['2899.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['9633.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['6160.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+HK market history update status: updated
+Database: /home/zj/workspace/stok-mapping/data/hk_market_history.sqlite
+Latest date: 2026-06-03
+Coverage: 1.0000 (30/30)
+Fetched rows: 28403
+Inserted rows: 32
+Updated rows: 28371
+Source: yfinance
+Warning: yfinance HK.03690 returned empty data.
+Warning: yfinance HK.00981 returned empty data.
+Warning: yfinance HK.00388 returned empty data.
+Warning: yfinance HK.03988 returned empty data.
+Warning: yfinance HK.02899 returned empty data.
+Warning: yfinance HK.09633 returned empty data.
+Warning: yfinance HK.06160 returned empty data.
+[2026-06-04 16:20:50 +0800] finish hk_market_history

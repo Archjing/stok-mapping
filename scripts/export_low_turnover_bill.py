@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.external_market_history import configure_us_market_history
-from phase0.local_history import configure_local_history
+from phase0.local_history import configure_local_history, load_daily_from_local_history
 from phase0.strategies import get_strategy
 from phase0.walk_forward import (
     _add_cross_market_to_panel,
@@ -371,6 +371,38 @@ def _fold_windows(panel: pd.DataFrame, train_years: int, validate_years: int, mi
     return folds
 
 
+def _load_bfq_execution_price_frame(price_frame: pd.DataFrame) -> pd.DataFrame:
+    if price_frame.empty or "date" not in price_frame.columns or "symbol" not in price_frame.columns:
+        return price_frame.copy()
+    frame = price_frame.copy()
+    frame["date"] = pd.to_datetime(frame["date"]).dt.normalize()
+    symbols = sorted(frame["symbol"].dropna().astype(str).unique())
+    if not symbols:
+        return frame
+    start = pd.Timestamp(frame["date"].min()).date()
+    end = pd.Timestamp(frame["date"].max()).date()
+    rows: list[pd.DataFrame] = []
+    for symbol in symbols:
+        bfq = load_daily_from_local_history(symbol, start, end, price_adjustment="bfq_raw")
+        if bfq.empty:
+            continue
+        keep = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount"] if col in bfq.columns]
+        one = bfq[keep].copy()
+        one["date"] = pd.to_datetime(one["date"]).dt.normalize()
+        one["symbol"] = one["symbol"].astype(str)
+        rows.append(one)
+    if not rows:
+        return frame
+    bfq_prices = pd.concat(rows, ignore_index=True).drop_duplicates(["date", "symbol"])
+    out = frame.drop(columns=[col for col in ["open", "high", "low", "close", "volume", "amount"] if col in frame.columns]).merge(
+        bfq_prices,
+        on=["date", "symbol"],
+        how="left",
+    )
+    out["execution_adjust_type"] = "bfq_raw"
+    return out
+
+
 def _build_low_turnover_fold_bill(
     *,
     strategy: Any,
@@ -396,10 +428,11 @@ def _build_low_turnover_fold_bill(
         commission=float(wcfg["commission"]),
         stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
     )
+    execution_prices = _load_bfq_execution_price_frame(valid)
     params_text = strategy.format_params(params)
     bill, daily = _ledger_for_fold(
         strategy_output.signal_frame,
-        price_frame=valid,
+        price_frame=execution_prices,
         params=params,
         fold=fold,
         initial_cash=float(wcfg.get("initial_cash", 1_000_000)),
@@ -461,10 +494,12 @@ def _prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFra
     sf["date"] = pd.to_datetime(sf["date"])
     sf["symbol"] = sf["symbol"].astype(str)
 
-    cols = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount"] if col in price_frame.columns]
+    cols = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount", "execution_adjust_type"] if col in price_frame.columns]
     prices = price_frame[cols].copy()
     prices["date"] = pd.to_datetime(prices["date"])
     prices["symbol"] = prices["symbol"].astype(str)
+    if "execution_adjust_type" not in prices.columns:
+        prices["execution_adjust_type"] = "unknown"
     for col in ["open", "high", "low", "close", "volume", "amount"]:
         if col not in prices.columns:
             prices[col] = np.nan
@@ -490,7 +525,7 @@ def _prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFra
     sf["valuation_price"] = sf["close"]
     sf = sf.sort_values(["symbol", "date"]).reset_index(drop=True)
     sf["previous_close"] = sf.groupby("symbol")["close"].shift(1)
-    sf["price_mode"] = price_mode
+    sf["price_mode"] = sf["execution_adjust_type"].astype(str).fillna("unknown") + ":" + price_mode
     return sf.sort_values(["date", "symbol"]).reset_index(drop=True)
 
 

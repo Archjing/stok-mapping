@@ -267,6 +267,7 @@ walk-forward 分折账本不等于连续复利资金曲线。
 - 周任务清单：`tasks/WEEKLY_EXECUTION_CHECKLIST.md`
 - 主计划：`docs/DEVELOPMENT_PLAN.md`
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
+- 文档索引：`docs/README.md`
 - 变更日志：`reports/phase0_strategy_change_log.md`
 - 数据一致性旁路校验脚本：`scripts/check_local_history_consistency.py`
 

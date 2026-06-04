@@ -11,10 +11,11 @@ from typing import Any
 import pandas as pd
 import requests
 
+from phase0.adjustment import upsert_adj_factors
 from phase0.env import prepare_imports
 from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
-from phase0.tushare_source import fetch_tushare_trade_date, tushare_available, tushare_config
+from phase0.tushare_source import fetch_tushare_adj_factor_trade_date, fetch_tushare_trade_date, tushare_available, tushare_config
 
 prepare_imports()
 
@@ -532,12 +533,13 @@ def _fetch_incremental_rows(
     data_cfg: dict[str, Any],
     warnings: list[str],
     allow_spot_fallback: bool = True,
-) -> tuple[pd.DataFrame, pd.DataFrame, int, str, list[SourceAttempt]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, int, str, list[SourceAttempt]]:
     attempts: list[SourceAttempt] = []
     tcfg = tushare_config(data_cfg.get("tushare", {}))
     if tushare_available(tcfg):
         try:
             rows, meta = fetch_tushare_trade_date(trade_date, adjust_types=adjust_types, cfg=tcfg)
+            factors = fetch_tushare_adj_factor_trade_date(trade_date, cfg=tcfg)
             if markets and not rows.empty:
                 rows = rows[rows["symbol"].astype(str).str.split(".").str[0].isin(markets)].copy()
             if markets and not meta.empty:
@@ -553,7 +555,7 @@ def _fetch_incremental_rows(
                 primary_rows = rows[rows["adjust_type"] == primary_adjust] if primary_adjust else rows
                 coverage = primary_rows["symbol"].nunique() / total_symbols if total_symbols else 0.0
                 if coverage >= min_coverage:
-                    return rows, meta, fetched_rows, source, attempts
+                    return rows, meta, factors, fetched_rows, source, attempts
                 message = f"coverage={coverage:.4f}, threshold={min_coverage:.4f}"
                 warnings.append(f"tushare returned undercovered rows: {message}")
                 attempts.append(SourceAttempt(source=source, fetched_rows=fetched_rows, coverage=coverage, status="undercovered", message=message))
@@ -577,7 +579,7 @@ def _fetch_incremental_rows(
 
     if not allow_spot_fallback:
         warnings.append("Skipped live spot fallback for a closed-date backfill before configured min_run_time.")
-        return pd.DataFrame(), pd.DataFrame(), 0, "tushare.daily+daily_basic+adj_factor", attempts
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), 0, "tushare.daily+daily_basic+adj_factor", attempts
 
     raw = _fetch_spot_snapshot(warnings)
     fetched_rows = len(raw) if raw is not None else 0
@@ -590,7 +592,7 @@ def _fetch_incremental_rows(
     )
     meta = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols) if raw is not None and not raw.empty else pd.DataFrame()
     source = str(raw.attrs.get("source", "akshare_or_sina_snapshot")) if raw is not None else "akshare_or_sina_snapshot"
-    return rows, meta, fetched_rows, source, attempts
+    return rows, meta, pd.DataFrame(), fetched_rows, source, attempts
 
 
 def _to_sql_value(value: Any) -> Any:
@@ -774,6 +776,7 @@ def update_manual_history_from_config(
     daily_table = str(local_cfg.get("daily_table", "market_daily_bars"))
     meta_table = str(local_cfg.get("meta_table", "market_stocks"))
     daily_basic_table = str(local_cfg.get("daily_basic_table", "market_daily_basic"))
+    adj_factor_table = str(local_cfg.get("adj_factor_table", "market_adj_factors"))
     calendar_table = str(local_cfg.get("calendar_table", "trading_calendar"))
     market = str(local_cfg.get("market", "CN"))
     adjust_types = [str(item) for item in update_cfg.get("adjust_types", ["qfq"])]
@@ -905,7 +908,7 @@ def update_manual_history_from_config(
             market=market,
             adjust_type=primary_adjust,
         )
-        rows, meta_rows, fetched_rows, primary_source, source_attempts = _fetch_incremental_rows(
+        rows, meta_rows, adj_factor_rows, fetched_rows, primary_source, source_attempts = _fetch_incremental_rows(
             trade_date=target_trade_date,
             adjust_types=adjust_types,
             markets=markets,
@@ -932,6 +935,18 @@ def update_manual_history_from_config(
             conn.commit()
         metadata_updated_rows = 0
         daily_basic_updated_rows = 0
+        adj_factor_updated_rows = 0
+        if not adj_factor_rows.empty:
+            try:
+                adj_factor_updated_rows = upsert_adj_factors(
+                    conn,
+                    adj_factor_rows,
+                    table=adj_factor_table,
+                    source="tushare.adj_factor",
+                )
+                conn.commit()
+            except sqlite3.Error as exc:
+                warnings.append(f"Adjustment factor update failed: {exc}")
         if refresh_metadata and not meta_rows.empty:
             try:
                 daily_basic_updated_rows = _upsert_daily_basic_rows(conn, table_name=daily_basic_table, rows=meta_rows)
@@ -940,6 +955,8 @@ def update_manual_history_from_config(
             except sqlite3.Error as exc:
                 warnings.append(f"Stock metadata update failed: {exc}")
         metadata_updated_rows += local_turnover_updated_rows
+        if adj_factor_updated_rows == 0 and primary_source.startswith("tushare"):
+            warnings.append("Tushare update wrote no adjustment factor rows.")
         metadata_after = _metadata_coverage(conn, meta_table=meta_table, market=market)
 
         if block_live_spot_write and target_is_covered and freshness_ok:

@@ -509,7 +509,7 @@ bash .codex/run_claude_code_reviewer_agent.sh
 项目内还提供 DeepSeek MCP 辅助工具，用于报告总结、第二意见和策略审查：
 
 ```text
-refdocs/DEEPSEEK_AGENT_MCP.md
+refdocs/AGENT_AND_LOCAL_LLM_WORKFLOW.md
 scripts/deepseek_agent_mcp.py
 ```
 
@@ -523,7 +523,7 @@ scripts/deepseek_agent_mcp.py
 Cloe 可作为外部 agent / 调度入口，但只用于研究摘要、消息通道和跨工具编排。当前技术底座是 OpenClaw Gateway：
 
 ```text
-refdocs/OPENCLAW_GATEWAY_AGENT.md
+refdocs/AGENT_AND_LOCAL_LLM_WORKFLOW.md
 ```
 
 当前 Codex 内推荐通过 `acpx` 调用 Cloe，固定使用 `cloe-bridge` 会话：

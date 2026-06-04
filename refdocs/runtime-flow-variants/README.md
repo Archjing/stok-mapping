@@ -1,10 +1,8 @@
 # 项目最终运行形态图 · 样式版本
 
-保留根目录现有版本：
+上级说明：
 
-- `refdocs/PROJECT_FINAL_RUNTIME_FLOW.svg`
-- `refdocs/PROJECT_FINAL_RUNTIME_FLOW.md`
-- `refdocs/PROJECT_FINAL_RUNTIME_FLOW.jpg`
+- [`refdocs/PROJECT_FINAL_RUNTIME_FLOW.md`](../PROJECT_FINAL_RUNTIME_FLOW.md)
 
 本目录新增三种参考样式版本：
 

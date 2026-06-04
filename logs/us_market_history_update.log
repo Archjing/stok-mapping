@@ -21,3 +21,22 @@ Traceback (most recent call last):
     ^
 sqlite3.ProgrammingError: Error binding parameter 12: type 'NAType' is not supported
 [2026-06-03 17:10:05 +0800] fail us_market_history
+[2026-06-04 17:10:01 +0800] start us_market_history
+$NVDA: possibly delisted; no price data found  (1d 2021-05-16 -> 2026-06-04)
+
+1 Failed download:
+['NVDA']: possibly delisted; no price data found  (1d 2021-05-16 -> 2026-06-04)
+
+1 Failed download:
+['^VIX']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+US market history update status: updated
+Database: /home/zj/workspace/stok-mapping/data/us_market_history.sqlite
+Latest date: 2026-06-03
+Coverage: 1.0000 (6/6)
+Fetched rows: 5117
+Inserted rows: 4
+Updated rows: 5113
+Source: yfinance
+Warning: yfinance NVDA returned empty data.
+Warning: yfinance ^VIX returned empty data.
+[2026-06-04 17:10:15 +0800] finish us_market_history

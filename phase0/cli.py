@@ -8,6 +8,7 @@ from pathlib import Path
 
 from rich.console import Console
 
+from phase0.adjustment_backfill import backfill_adjustment_factors_from_config
 from phase0.config import load_config
 from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
@@ -18,6 +19,7 @@ from phase0.external_market_history import (
     update_hk_market_history_from_config,
     update_us_market_history_from_config,
 )
+from phase0.factor_effectiveness import run_factor_effectiveness_report
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.local_history import configure_local_history
@@ -30,6 +32,7 @@ from phase0.reporting import (
     write_walk_forward_report,
 )
 from phase0.throttle import configure_akshare_throttle
+from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
@@ -589,6 +592,9 @@ def main() -> int:
     overfit_parser.add_argument("--candidates", default=None, help="Path to walk-forward candidates CSV")
     overfit_parser.add_argument("--folds", default=None, help="Path to walk-forward folds CSV")
     overfit_parser.add_argument("--output-dir", default=None, help="Output directory for diagnostic reports")
+    factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
+    factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -664,6 +670,54 @@ def main() -> int:
     daily_basic_backfill_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
     daily_basic_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
     daily_basic_backfill_parser.add_argument("--limit-dates", type=int, default=None, help="Optional cap for number of open dates to fetch")
+    adjustment_backfill_parser = sub.add_parser("backfill-adjustment-factors", help="Backfill A-share Tushare adj_factor and dividend tables")
+    adjustment_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    adjustment_backfill_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
+    adjustment_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    adjustment_backfill_parser.add_argument("--limit-dates", type=int, default=None, help="Optional cap for number of open dates to fetch")
+    adjustment_backfill_parser.add_argument("--no-skip-existing", action="store_true", help="Refetch dates already present in market_adj_factors")
+    adjustment_backfill_parser.add_argument("--no-dividends", action="store_true", help="Only fetch adj_factor; skip dividend table")
+    adjustment_backfill_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=180,
+        help="Client-side Tushare request throttle. Default 180 is below the 2000-point 200/minute tier.",
+    )
+    tushare_backfill_parser = sub.add_parser("backfill-tushare-history", help="Backfill Tushare historical A-share fields and audit coverage")
+    tushare_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    tushare_backfill_parser.add_argument("--start-date", default="2016-01-01", help="Start date in YYYY-MM-DD")
+    tushare_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    tushare_backfill_parser.add_argument("--limit-dates", type=int, default=None, help="Optional cap for daily open dates to fetch")
+    tushare_backfill_parser.add_argument("--limit-periods", type=int, default=None, help="Optional cap for financial periods to fetch")
+    tushare_backfill_parser.add_argument("--no-skip-existing", action="store_true", help="Refetch dates/periods already present locally")
+    tushare_backfill_parser.add_argument("--no-daily-basic", action="store_true", help="Skip Tushare daily_basic backfill")
+    tushare_backfill_parser.add_argument("--no-adj-factor", action="store_true", help="Skip Tushare adj_factor backfill")
+    tushare_backfill_parser.add_argument("--no-dividends", action="store_true", help="Skip Tushare dividend backfill")
+    tushare_backfill_parser.add_argument("--no-financial", action="store_true", help="Skip Tushare financial factor backfill")
+    tushare_backfill_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=180,
+        help="Client-side Tushare request throttle. Default 180 is below the 2000-point 200/minute tier.",
+    )
+    tushare_financial_parser = sub.add_parser("backfill-tushare-financials", help="Backfill Tushare financial factors by ts_code with resumable tasks")
+    tushare_financial_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    tushare_financial_parser.add_argument("--period", default=None, help="Single financial period in YYYY-MM-DD")
+    tushare_financial_parser.add_argument("--start-period", default="2016-03-31", help="Start financial period in YYYY-MM-DD")
+    tushare_financial_parser.add_argument("--end-period", default="2018-03-31", help="End financial period in YYYY-MM-DD")
+    tushare_financial_parser.add_argument("--limit-symbols", type=int, default=None, help="Optional cap for target symbols per period")
+    tushare_financial_parser.add_argument("--limit-tasks", type=int, default=None, help="Optional cap for selected task rows to process")
+    tushare_financial_parser.add_argument("--retry-failed", action="store_true", help="Retry failed tasks in addition to pending tasks")
+    tushare_financial_parser.add_argument("--replace-existing", action="store_true", help="Replace existing valid financial rows")
+    tushare_financial_parser.add_argument("--shard-index", type=int, default=0, help="Shard index for distributed runs")
+    tushare_financial_parser.add_argument("--shard-count", type=int, default=1, help="Total shard count for distributed runs")
+    tushare_financial_parser.add_argument("--max-runtime-minutes", type=int, default=None, help="Stop gracefully after this many minutes")
+    tushare_financial_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=120,
+        help="Client-side Tushare request throttle. Default 120 is conservative for long financial backfills.",
+    )
     us_history_parser = sub.add_parser("update-us-market-history", help="Incrementally update US market history database")
     us_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     us_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
@@ -790,6 +844,27 @@ def main() -> int:
         console.print(f"CSV: {result.csv_path}")
         console.print(f"Markdown: {result.md_path}")
         console.print(f"Rows: {result.rows}")
+        return 0
+    if args.cmd == "factor-effectiveness":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]Factor effectiveness diagnostic started[/bold]")
+        result = run_factor_effectiveness_report(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+        )
+        console.print("[green]Factor effectiveness diagnostic complete[/green]")
+        console.print(f"Factors: {result.factor_count}")
+        console.print(f"Valid folds: {result.fold_count}")
+        console.print(f"Summary CSV: {result.summary_csv}")
+        console.print(f"Markdown: {result.summary_md}")
+        console.print(f"Group returns: {result.group_returns_csv}")
+        console.print(f"Yearly IC: {result.ic_by_year_csv}")
+        console.print(f"Correlation: {result.correlation_csv}")
+        for warning in result.warnings[:10]:
+            console.print(f"[yellow]Warning:[/yellow] {warning}")
         return 0
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
@@ -977,6 +1052,97 @@ def main() -> int:
             for item in result.warnings[:20]:
                 console.print(f"- {item}")
         return 0
+    if args.cmd == "backfill-adjustment-factors":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]A-share adjustment factor backfill started[/bold]")
+        result = backfill_adjustment_factors_from_config(
+            config_path,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            limit_dates=args.limit_dates,
+            skip_existing=not bool(args.no_skip_existing),
+            include_dividends=not bool(args.no_dividends),
+            max_requests_per_minute=int(args.max_requests_per_minute),
+        )
+        color = "green" if result.status in {"ok", "empty"} else "red"
+        console.print(f"[{color}]Adjustment factor backfill status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Target dates: {result.target_dates}")
+        console.print(f"Fetched dates: {result.fetched_dates}")
+        console.print(f"Inserted adj_factor rows: {result.inserted_adj_factor_rows}")
+        console.print(f"Inserted dividend rows: {result.inserted_dividend_rows}")
+        console.print(f"Skipped existing dates: {result.skipped_existing_dates}")
+        if result.warnings:
+            console.print("Warnings:")
+            for item in result.warnings[:20]:
+                console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "backfill-tushare-history":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Tushare historical backfill started[/bold]")
+        result = backfill_tushare_history_from_config(
+            config_path,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            max_requests_per_minute=int(args.max_requests_per_minute),
+            limit_dates=args.limit_dates,
+            limit_periods=args.limit_periods,
+            skip_existing=not bool(args.no_skip_existing),
+            include_daily_basic=not bool(args.no_daily_basic),
+            include_adj_factor=not bool(args.no_adj_factor),
+            include_dividends=not bool(args.no_dividends),
+            include_financial=not bool(args.no_financial),
+        )
+        color = "green" if result.status == "ok" else "yellow"
+        console.print(f"[{color}]Tushare historical backfill status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Daily basic: fetched {result.daily_basic_fetched_dates}/{result.daily_basic_target_dates}, rows {result.daily_basic_inserted_rows}")
+        console.print(f"Adj factor: fetched {result.adj_factor_fetched_dates}/{result.adj_factor_target_dates}, rows {result.adj_factor_inserted_rows}")
+        console.print(f"Dividends rows: {result.dividend_inserted_rows}")
+        console.print(f"Financial: fetched {result.financial_fetched_periods}/{result.financial_target_periods}, rows {result.financial_inserted_rows}")
+        console.print(f"Audit CSV: {result.audit_csv}")
+        console.print(f"Audit Markdown: {result.audit_md}")
+        if result.warnings:
+            console.print("Warnings:")
+            for item in result.warnings[:30]:
+                console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "backfill-tushare-financials":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Tushare financial backfill started[/bold]")
+        result = backfill_tushare_financials_from_config(
+            config_path,
+            start_period=str(args.start_period),
+            end_period=str(args.end_period),
+            period=str(args.period) if args.period else None,
+            max_requests_per_minute=int(args.max_requests_per_minute),
+            max_runtime_minutes=args.max_runtime_minutes,
+            limit_symbols=args.limit_symbols,
+            limit_tasks=args.limit_tasks,
+            retry_failed=bool(args.retry_failed),
+            replace_existing=bool(args.replace_existing),
+            shard_index=int(args.shard_index),
+            shard_count=int(args.shard_count),
+        )
+        color = "green" if result.status == "ok" else "yellow"
+        console.print(f"[{color}]Tushare financial backfill status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Target tasks: {result.target_tasks}")
+        console.print(f"Processed tasks: {result.processed_tasks}")
+        console.print(f"Fetched: {result.fetched_tasks}")
+        console.print(f"Empty: {result.empty_tasks}")
+        console.print(f"Failed: {result.failed_tasks}")
+        console.print(f"Inserted rows: {result.inserted_rows}")
+        console.print(f"Audit CSV: {result.audit_csv}")
+        console.print(f"Audit Markdown: {result.audit_md}")
+        if result.warnings:
+            console.print("Warnings:")
+            for item in result.warnings[:30]:
+                console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
     if args.cmd == "update-us-market-history":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

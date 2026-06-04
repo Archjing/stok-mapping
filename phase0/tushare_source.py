@@ -177,6 +177,19 @@ def _normalize_daily_basic(raw: pd.DataFrame) -> pd.DataFrame:
     ).dropna(subset=["symbol", "date"])
 
 
+def fetch_tushare_daily_basic_trade_date(trade_date: date | str, *, cfg: TushareConfig) -> pd.DataFrame:
+    trade_date_text = _parse_trade_date(trade_date)
+    raw = _call(
+        "daily_basic",
+        params={"trade_date": trade_date_text},
+        fields=["ts_code", "trade_date", "turnover_rate", "pe_ttm", "pb", "total_mv", "circ_mv"],
+        cfg=cfg,
+    )
+    out = _normalize_daily_basic(raw)
+    out.attrs["source"] = "tushare.daily_basic"
+    return out
+
+
 def normalize_adj_factors(raw: pd.DataFrame, *, source: str = "tushare.adj_factor") -> pd.DataFrame:
     if raw.empty:
         return pd.DataFrame(columns=["market", "symbol", "date", "adj_factor", "source"])
@@ -303,6 +316,162 @@ def fetch_tushare_dividend(
         cfg=cfg,
     )
     return normalize_dividend(raw)
+
+
+def normalize_tushare_financial_factors(
+    *,
+    income: pd.DataFrame,
+    cashflow: pd.DataFrame,
+    balancesheet: pd.DataFrame,
+    fina_indicator: pd.DataFrame,
+    source: str = "tushare.income/cashflow/balancesheet/fina_indicator",
+) -> pd.DataFrame:
+    frames: list[pd.DataFrame] = []
+
+    if income is not None and not income.empty:
+        inc = income.copy()
+        inc["symbol"] = inc["ts_code"].map(normalize_cn_symbol)
+        inc["report_date"] = pd.to_datetime(inc.get("end_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        inc["announce_date"] = pd.to_datetime(inc.get("ann_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        for col in ["revenue", "n_income_attr_p"]:
+            inc[col] = pd.to_numeric(inc.get(col), errors="coerce")
+        frames.append(
+            inc[["symbol", "report_date", "announce_date", "revenue", "n_income_attr_p"]].rename(
+                columns={"n_income_attr_p": "net_profit"}
+            )
+        )
+
+    out = frames[0] if frames else pd.DataFrame(columns=["symbol", "report_date"])
+    if cashflow is not None and not cashflow.empty:
+        cf = cashflow.copy()
+        cf["symbol"] = cf["ts_code"].map(normalize_cn_symbol)
+        cf["report_date"] = pd.to_datetime(cf.get("end_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        cf["operating_cash_flow"] = pd.to_numeric(cf.get("n_cashflow_act"), errors="coerce")
+        out = out.merge(cf[["symbol", "report_date", "operating_cash_flow"]], on=["symbol", "report_date"], how="outer")
+
+    if balancesheet is not None and not balancesheet.empty:
+        bs = balancesheet.copy()
+        bs["symbol"] = bs["ts_code"].map(normalize_cn_symbol)
+        bs["report_date"] = pd.to_datetime(bs.get("end_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        for col in ["total_assets", "total_liab", "total_hldr_eqy_exc_min_int"]:
+            bs[col] = pd.to_numeric(bs.get(col), errors="coerce")
+        bs["debt_to_asset"] = bs["total_liab"] / bs["total_assets"].replace(0, pd.NA) * 100.0
+        out = out.merge(
+            bs[["symbol", "report_date", "debt_to_asset", "total_assets", "total_liab", "total_hldr_eqy_exc_min_int"]].rename(
+                columns={"total_liab": "total_liabilities", "total_hldr_eqy_exc_min_int": "total_equity"}
+            ),
+            on=["symbol", "report_date"],
+            how="outer",
+        )
+
+    if fina_indicator is not None and not fina_indicator.empty:
+        fi = fina_indicator.copy()
+        fi["symbol"] = fi["ts_code"].map(normalize_cn_symbol)
+        fi["report_date"] = pd.to_datetime(fi.get("end_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        fi["announce_date_fina"] = pd.to_datetime(fi.get("ann_date"), format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+        for col in ["roe", "tr_yoy", "netprofit_yoy", "debt_to_assets"]:
+            fi[col] = pd.to_numeric(fi.get(col), errors="coerce")
+        out = out.merge(
+            fi[["symbol", "report_date", "announce_date_fina", "roe", "tr_yoy", "netprofit_yoy", "debt_to_assets"]],
+            on=["symbol", "report_date"],
+            how="outer",
+        )
+
+    if out.empty:
+        return pd.DataFrame()
+    out["symbol"] = out["symbol"].map(normalize_cn_symbol)
+    out = out[out["symbol"] != ""].copy()
+    out["market"] = "CN"
+    out["announce_date"] = out.get("announce_date", pd.Series(index=out.index, dtype=object)).combine_first(
+        out.get("announce_date_fina", pd.Series(index=out.index, dtype=object))
+    )
+    out["roe"] = pd.to_numeric(out.get("roe"), errors="coerce")
+    out["revenue_growth"] = pd.to_numeric(out.get("tr_yoy"), errors="coerce")
+    out["profit_growth"] = pd.to_numeric(out.get("netprofit_yoy"), errors="coerce")
+    out["debt_to_asset"] = pd.to_numeric(out.get("debt_to_asset"), errors="coerce").combine_first(
+        pd.to_numeric(out.get("debt_to_assets"), errors="coerce")
+    )
+    net_profit = pd.to_numeric(out.get("net_profit"), errors="coerce")
+    operating_cash_flow = pd.to_numeric(out.get("operating_cash_flow"), errors="coerce")
+    out["operating_cash_flow_to_net_profit"] = operating_cash_flow / net_profit.replace(0, pd.NA)
+    out["fiscal_year"] = pd.to_datetime(out["report_date"], errors="coerce").dt.year
+    out["fiscal_quarter"] = pd.to_datetime(out["report_date"], errors="coerce").dt.quarter
+    out["source"] = source
+    out["updated_at"] = pd.Timestamp.now().isoformat(timespec="seconds")
+    keep = [
+        "market",
+        "symbol",
+        "report_date",
+        "fiscal_year",
+        "fiscal_quarter",
+        "announce_date",
+        "roe",
+        "revenue",
+        "revenue_growth",
+        "net_profit",
+        "profit_growth",
+        "operating_cash_flow",
+        "operating_cash_flow_to_net_profit",
+        "debt_to_asset",
+        "total_assets",
+        "total_liabilities",
+        "total_equity",
+        "source",
+        "updated_at",
+    ]
+    for col in keep:
+        if col not in out.columns:
+            out[col] = pd.NA
+    return out[keep].dropna(subset=["symbol", "report_date"]).drop_duplicates(["market", "symbol", "report_date"])
+
+
+def _to_tushare_code(symbol: str) -> str:
+    code = normalize_cn_symbol(symbol)
+    if not code or "." not in code:
+        return ""
+    market, digits = code.split(".", 1)
+    return f"{digits}.{market}"
+
+
+def fetch_tushare_financial_period(period: date | str, *, cfg: TushareConfig, ts_code: str = "") -> pd.DataFrame:
+    period_text = _parse_trade_date(period)
+    code = _to_tushare_code(ts_code) if ts_code else ""
+    common_params = {"period": period_text}
+    if code:
+        common_params["ts_code"] = code
+    income = _call(
+        "income",
+        params=common_params,
+        fields=["ts_code", "ann_date", "end_date", "revenue", "n_income_attr_p"],
+        cfg=cfg,
+    )
+    time.sleep(max(0.0, cfg.request_delay))
+    cashflow = _call(
+        "cashflow",
+        params=common_params,
+        fields=["ts_code", "ann_date", "end_date", "n_cashflow_act"],
+        cfg=cfg,
+    )
+    time.sleep(max(0.0, cfg.request_delay))
+    balancesheet = _call(
+        "balancesheet",
+        params=common_params,
+        fields=["ts_code", "ann_date", "end_date", "total_assets", "total_liab", "total_hldr_eqy_exc_min_int"],
+        cfg=cfg,
+    )
+    time.sleep(max(0.0, cfg.request_delay))
+    fina_indicator = _call(
+        "fina_indicator",
+        params=common_params,
+        fields=["ts_code", "ann_date", "end_date", "roe", "tr_yoy", "netprofit_yoy", "debt_to_assets"],
+        cfg=cfg,
+    )
+    return normalize_tushare_financial_factors(
+        income=income,
+        cashflow=cashflow,
+        balancesheet=balancesheet,
+        fina_indicator=fina_indicator,
+    )
 
 
 def fetch_tushare_trade_date(

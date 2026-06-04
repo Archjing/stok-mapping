@@ -2,17 +2,17 @@
 
 适用场景：为 `stok-mapping` 补齐 A 股历史价格复权的 point-in-time 治理，避免“全历史前复权”把未来分红送转信息折回过去，污染动量、均线、波动率、突破等价格特征。
 
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../docs/DEVELOPMENT_PLAN.md)  
 任务索引：[`tasks/README.md`](../README.md)
 
 ---
 
 ## T1.4.0 目标
 
-- [ ] 在本地历史库中正式保存每日复权因子
-- [ ] 明确区分不复权真实交易价格、当前全历史前复权价格、历史 as-of 前复权价格
-- [ ] 为 walk-forward 回测提供 `qfq_asof` 价格读取能力
-- [ ] 输出复权未来函数风险审计报告
+- [x] 在本地历史库中正式保存每日复权因子
+- [x] 明确区分不复权真实交易价格、当前全历史前复权价格、历史 as-of 前复权价格
+- [x] 为 walk-forward 回测提供 `qfq_asof` 价格读取能力
+- [x] 输出复权未来函数风险审计报告
 - [ ] 后续将策略研究回测逐步从 `qfq_current` 切到 `qfq_asof`
 
 ---
@@ -37,9 +37,9 @@
 
 后续本地库需要支持三类口径：
 
-- [ ] `bfq_raw`：不复权 OHLCV，真实交易价格，用于执行、涨跌停、成交价和账户仿真
-- [ ] `qfq_current`：当前全历史前复权，仅保留为兼容和审计对照
-- [ ] `qfq_asof`：按历史 `as_of_date` 动态计算的点时前复权价格，用于策略特征
+- [x] `bfq_raw`：不复权 OHLCV，真实交易价格，用于执行、涨跌停、成交价和账户仿真
+- [x] `qfq_current`：当前全历史前复权，仅保留为兼容和审计对照
+- [x] `qfq_asof`：按历史 `as_of_date` 动态计算的点时前复权价格，用于策略特征
 
 ### T1.4.2.2 新增复权因子表
 
@@ -89,11 +89,11 @@ qfq_close_asof(t, as_of) = bfq_close(t) * adj_factor(t) / as_of_factor
 
 ### T1.4.4.1 新增 `phase0/adjustment.py`
 
-- [ ] `ensure_adj_factor_table(conn, table="market_adj_factors")`
-- [ ] `load_bfq_bars(symbol, start, end)`
-- [ ] `load_adj_factors(symbol, start, as_of_date)`
-- [ ] `build_qfq_asof_bars(symbol, start, end, as_of_date)`
-- [ ] `compare_qfq_current_vs_qfq_asof(symbols, start, end, as_of_date)`
+- [x] `ensure_adj_factor_table(conn, table="market_adj_factors")`
+- [x] `load_bfq_bars(symbol, start, end)`
+- [x] `load_adj_factors(symbol, start, as_of_date)`
+- [x] `build_qfq_asof_bars(symbol, start, end, as_of_date)`
+- [x] `compare_qfq_current_vs_qfq_asof(symbols, start, end, as_of_date)`
 
 ### T1.4.4.2 扩展 `phase0/local_history.py`
 
@@ -117,23 +117,23 @@ load_daily_from_local_history(
 
 支持：
 
-- [ ] `price_adjustment="qfq_current"`
-- [ ] `price_adjustment="bfq"`
-- [ ] `price_adjustment="qfq_asof"`
+- [x] `price_adjustment="qfq_current"`
+- [x] `price_adjustment="bfq"`
+- [x] `price_adjustment="qfq_asof"`
 
 ### T1.4.4.3 扩展 Tushare / 导入链路
 
-- [ ] 将 Tushare `adj_factor` 正式落入 `market_adj_factors`
+- [x] 将 Tushare `adj_factor` 正式落入 `market_adj_factors`
 - [ ] 历史 zip 导入后补齐 `bfq` 日线完整性审计
 - [ ] 若只有 `qfq` 而无 `bfq` 或 `adj_factor`，报告必须标记为无法进行 as-of 复权
 
 ### T1.4.4.4 扩展 walk-forward
 
-- [ ] 新增配置 `local_history.price_adjustment_for_backtest`
-- [ ] 默认先保留现状 `qfq_current`
-- [ ] 增加对照模式 `qfq_asof`
-- [ ] 在每个 fold 中将训练窗口 `as_of_date` 设为 `train_end`
-- [ ] 后续增强为验证期按信号日滚动 `as_of_date`
+- [x] 新增配置 `local_history.price_adjustment_for_backtest`
+- [x] 默认先保留现状 `qfq_current`
+- [x] 增加对照模式 `qfq_asof`
+- [x] 在每个 fold 中将训练窗口 `as_of_date` 设为 `train_end`
+- [ ] 后续增强为验证期按信号日滚动 `as_of_date`，默认不启用以避免运行时间大幅增加
 
 ---
 
@@ -169,18 +169,18 @@ python -m phase0.cli adjustment-audit --config config.yaml
 
 输出：
 
-- [ ] `reports/price_adjustment_audit.csv`
-- [ ] `reports/price_adjustment_audit.md`
+- [x] `reports/price_adjustment_audit.csv`
+- [x] `reports/price_adjustment_audit.md`
 - [ ] 后续增强：`reports/price_adjustment_audit.html`
 
 审计内容：
 
-- [ ] 是否存在 `bfq` 日线
-- [ ] 是否存在 `market_adj_factors`
-- [ ] `qfq_current` 与 `qfq_asof` 的价格差异
-- [ ] `mom20`、`ma20`、`vol20`、`breakout20` 差异最大的股票和日期
-- [ ] 当前 `phase0 run` 使用的价格口径
-- [ ] 是否存在无法 as-of 复权的股票
+- [x] 是否存在 `bfq` 日线
+- [x] 是否存在 `market_adj_factors`
+- [x] `qfq_current` 与 `qfq_asof` 的价格差异
+- [x] `mom20`、`ma20`、`vol20`、`breakout20` 差异最大的股票和日期
+- [x] 当前 `phase0 run` 使用的价格口径
+- [x] 是否存在无法 as-of 复权的股票
 
 ---
 
@@ -188,47 +188,48 @@ python -m phase0.cli adjustment-audit --config config.yaml
 
 ### T1.4.7.1 P0：数据可用性审计
 
-- [ ] 检查当前库是否有完整 `bfq` 日线
-- [ ] 检查当前库是否有每日 `adj_factor`
-- [ ] 输出缺口报告
-- [ ] 不改变任何回测结果
+- [x] 检查当前库是否有完整 `bfq` 日线
+- [x] 检查当前库是否有每日 `adj_factor`
+- [x] 输出缺口报告
+- [x] 不改变任何回测结果
 
 ### T1.4.7.2 P1：复权因子落表
 
-- [ ] 新建 `market_adj_factors`
-- [ ] Tushare 增量更新时写入因子表
-- [ ] 历史区间补齐因子表
-- [ ] 记录来源与更新时间
+- [x] 新建 `market_adj_factors`
+- [x] Tushare 增量更新时写入因子表
+- [x] 历史区间补齐因子表
+- [x] 记录来源与更新时间
 
 ### T1.4.7.3 P2：`qfq_asof` loader
 
-- [ ] 实现按 `as_of_date` 动态构造前复权 OHLC
-- [ ] 与当前 `qfq` 输出做对照
+- [x] 实现按 `as_of_date` 动态构造前复权 OHLC
+- [x] 与当前 `qfq` 输出做对照
 - [ ] 覆盖缺因子、停牌日、退市股票等边界
 
 ### T1.4.7.4 P3：审计报告
 
-- [ ] 输出价格差异报告
-- [ ] 输出特征差异报告
+- [x] 输出价格差异报告
+- [x] 输出特征差异报告
 - [ ] 若差异影响策略信号，标记当前回测污染风险
 
 ### T1.4.7.5 P4：walk-forward 对照运行
 
-- [ ] 新增 `qfq_asof` research profile 对照
-- [ ] 与当前 `qfq_current` 结果比较
-- [ ] 若结果差异显著，当前 `qfq_current` 报告降级为兼容口径
+- [x] 新增 `qfq_asof` research profile 对照
+- [x] 与当前 `qfq_current` 结果比较
+- [x] 若结果差异显著，当前 `qfq_current` 报告降级为兼容口径
+- [x] 运行最新版本全候选策略池 `qfq_asof` compare，确认当前无合格 candidate
 
 ---
 
 ## T1.4.8 验收标准
 
-- [ ] 本地库可查询每只股票每日复权因子
-- [ ] `qfq_asof` 计算不读取 `as_of_date` 之后的因子
-- [ ] 交易执行价格仍使用不复权价格
-- [ ] 审计报告能列出当前回测价格口径
-- [ ] 审计报告能列出 `qfq_current` 与 `qfq_asof` 的主要差异
-- [ ] `phase0 run` 默认行为不被静默改变
-- [ ] 切换 `qfq_asof` 必须通过配置显式开启
+- [x] 本地库可查询每只股票每日复权因子
+- [x] `qfq_asof` 计算不读取 `as_of_date` 之后的因子
+- [x] 交易执行价格仍使用不复权价格
+- [x] 审计报告能列出当前回测价格口径
+- [x] 审计报告能列出 `qfq_current` 与 `qfq_asof` 的主要差异
+- [x] `phase0 run` 默认行为不被静默改变
+- [x] 切换 `qfq_asof` 必须通过配置显式开启
 
 ---
 

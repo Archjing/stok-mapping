@@ -123,20 +123,22 @@ def _load_hk_daily(symbol: str, years: int) -> pd.DataFrame:
     return fetch_hk_daily(symbol, years=years, adjust="qfq")
 
 
-def _load_symbol(symbol: str, years: int) -> pd.DataFrame:
-    return _load_symbol_cached(symbol, years).copy()
+def _load_symbol(symbol: str, years: int, as_of_date: date | str | None = None) -> pd.DataFrame:
+    as_of_key = "" if as_of_date is None else pd.Timestamp(as_of_date).date().isoformat()
+    return _load_symbol_cached(symbol, years, as_of_key).copy()
 
 
 def _shadow_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
     return (numerator / denominator.replace(0, np.nan)).replace([np.inf, -np.inf], np.nan).fillna(0.0)
 
 
-@lru_cache(maxsize=256)
-def _load_symbol_cached(symbol: str, years: int) -> pd.DataFrame:
+@lru_cache(maxsize=512)
+def _load_symbol_cached(symbol: str, years: int, as_of_key: str = "") -> pd.DataFrame:
+    as_of_date = pd.Timestamp(as_of_key).date() if as_of_key else None
     if symbol.startswith("HK."):
         df = _load_hk_daily(symbol, years)
     else:
-        df = _load_cn_daily(symbol, years)
+        df = _load_cn_daily(symbol, years, as_of_date=as_of_date)
     if df.empty:
         return df
 
@@ -432,11 +434,11 @@ def _format_params(params: dict[str, Any]) -> str:
     )
 
 
-def _load_symbol_map(symbols: list[str], years: int) -> dict[str, pd.DataFrame]:
+def _load_symbol_map(symbols: list[str], years: int, as_of_date: date | str | None = None) -> dict[str, pd.DataFrame]:
     data: dict[str, pd.DataFrame] = {}
     # 回测前逐只加载股票历史行情，模拟实盘研究阶段先准备可观察股票池的数据。
     for sym in symbols:
-        df = _load_symbol(sym, years=years)
+        df = _load_symbol(sym, years=years, as_of_date=as_of_date)
         if not df.empty:
             data[sym] = df
     return data
@@ -1432,6 +1434,42 @@ def _date_window_slices(
     return rows
 
 
+def _price_adjustment_mode(config: dict[str, Any]) -> str:
+    local_cfg = config.get("local_history", {})
+    adjust_type = str(local_cfg.get("adjust_type", "qfq"))
+    return str(local_cfg.get("price_adjustment_for_backtest", "qfq_current" if adjust_type == "qfq" else adjust_type))
+
+
+def _strict_qfq_asof_enabled(config: dict[str, Any]) -> bool:
+    return _price_adjustment_mode(config) == "qfq_asof"
+
+
+def _build_panel_for_fold_asof(
+    symbols: list[str],
+    *,
+    years: int,
+    train_dates: set[pd.Timestamp],
+    valid_dates: set[pd.Timestamp],
+    train_as_of_date: date,
+    valid_as_of_date: date,
+    strategy_cfg: dict[str, Any],
+    xfeatures: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    train_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=train_as_of_date))
+    valid_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=valid_as_of_date))
+    if train_panel.empty or valid_panel.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    train_panel["date"] = pd.to_datetime(train_panel["date"]).dt.normalize()
+    valid_panel["date"] = pd.to_datetime(valid_panel["date"]).dt.normalize()
+    train_panel = train_panel[train_panel["date"].isin(train_dates)].copy()
+    valid_panel = valid_panel[valid_panel["date"].isin(valid_dates)].copy()
+    if train_panel.empty or valid_panel.empty:
+        return train_panel, valid_panel
+    train_panel = _add_cross_market_to_panel(train_panel, years, strategy_cfg, xfeatures)
+    valid_panel = _add_cross_market_to_panel(valid_panel, years, strategy_cfg, xfeatures)
+    return train_panel, valid_panel
+
+
 def _empty_pit_fold_frame() -> pd.DataFrame:
     return pd.DataFrame(
         columns=[
@@ -1477,6 +1515,7 @@ def iter_point_in_time_universe_folds(
     audit_rows: list[dict[str, Any]] = []
     universe_cfg = config.get("universe", {})
     min_usable = int(universe_cfg.get("min_usable_size", min(100, universe_cfg.get("target_size", 500))))
+    use_strict_asof = _strict_qfq_asof_enabled(config)
 
     for fold_idx, train_dates, valid_dates in fold_windows:
         train_end_date = pd.Timestamp(max(train_dates)).date()
@@ -1501,22 +1540,40 @@ def iter_point_in_time_universe_folds(
             audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: universe below min_usable_size"])})
             continue
 
-        panel = _align_symbol_map(_load_symbol_map(universe.symbols, years=years))
-        if panel.empty:
-            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: empty price panel"])})
+        if use_strict_asof:
+            train, valid = _build_panel_for_fold_asof(
+                universe.symbols,
+                years=years,
+                train_dates=train_dates,
+                valid_dates=valid_dates,
+                train_as_of_date=train_end_date,
+                valid_as_of_date=valid_end_date,
+                strategy_cfg=strategy_cfg,
+                xfeatures=xfeatures,
+            )
+        else:
+            panel = _align_symbol_map(_load_symbol_map(universe.symbols, years=years))
+            if panel.empty:
+                audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: empty price panel"])})
+                continue
+            panel["date"] = pd.to_datetime(panel["date"]).dt.normalize()
+            panel = panel[panel["date"].isin(train_dates | valid_dates)].copy()
+            if panel.empty:
+                audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: panel has no fold dates"])})
+                continue
+            panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
+            train = panel[panel["date"].isin(train_dates)].copy()
+            valid = panel[panel["date"].isin(valid_dates)].copy()
+        if train.empty or valid.empty:
+            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: empty as-of price panel" if use_strict_asof else "fold skipped: empty price panel"])})
             continue
-        panel["date"] = pd.to_datetime(panel["date"]).dt.normalize()
-        panel = panel[panel["date"].isin(train_dates | valid_dates)].copy()
-        if panel.empty:
-            audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: panel has no fold dates"])})
-            continue
-        panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
-        train = panel[panel["date"].isin(train_dates)].copy()
-        valid = panel[panel["date"].isin(valid_dates)].copy()
         if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
             audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: insufficient train/valid samples"])})
             continue
 
+        audit["price_adjustment_for_backtest"] = _price_adjustment_mode(config)
+        audit["train_price_as_of_date"] = train_end_date.isoformat() if use_strict_asof else ""
+        audit["valid_price_as_of_date"] = valid_end_date.isoformat() if use_strict_asof else ""
         audit_rows.append(audit)
         contexts.append(
             {
@@ -1807,6 +1864,161 @@ def _run_compare(
     return selected, all_candidate_rows, candidate_summary_rows
 
 
+def _run_compare_qfq_asof_static(
+    symbols: list[str],
+    *,
+    years: int,
+    train_years: int,
+    validate_years: int,
+    min_samples: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    strategy_cfg: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
+    end = date.today()
+    start = end - timedelta(days=365 * int(years) + 30)
+    trading_dates = load_trading_dates_from_local_history(start, end)
+    fold_windows = _date_window_slices(
+        trading_dates,
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+    )
+    if not fold_windows:
+        return [], [], [], _empty_pit_fold_frame()
+
+    xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
+    compare_strategies = _resolve_compare_strategies(strategy_cfg)
+    candidates: dict[str, list[dict[str, Any]]] = {}
+    audit_rows: list[dict[str, Any]] = []
+
+    for strategy_name in compare_strategies:
+        if strategy_name not in available_strategies():
+            continue
+        strategy = get_strategy(strategy_name)
+        candidates[strategy.candidate_name] = []
+
+    for fold_idx, train_dates, valid_dates in fold_windows:
+        train_end_date = pd.Timestamp(max(train_dates)).date()
+        valid_end_date = pd.Timestamp(max(valid_dates)).date()
+        train_panel, valid_panel = _build_panel_for_fold_asof(
+            symbols,
+            years=years,
+            train_dates=train_dates,
+            valid_dates=valid_dates,
+            train_as_of_date=train_end_date,
+            valid_as_of_date=valid_end_date,
+            strategy_cfg=strategy_cfg,
+            xfeatures=xfeatures,
+        )
+        audit = {
+            "fold": fold_idx,
+            "universe_as_of_date": train_end_date.isoformat(),
+            "universe_symbol_count": len(symbols),
+            "universe_snapshot_count": len(symbols),
+            "universe_source": "static_config",
+            "train_start": pd.Timestamp(min(train_dates)).date().isoformat(),
+            "train_end": train_end_date.isoformat(),
+            "valid_start": pd.Timestamp(min(valid_dates)).date().isoformat(),
+            "valid_end": valid_end_date.isoformat(),
+            "price_adjustment_for_backtest": "qfq_asof",
+            "train_price_as_of_date": train_end_date.isoformat(),
+            "valid_price_as_of_date": valid_end_date.isoformat(),
+            "warning": "",
+        }
+        if train_panel.empty or valid_panel.empty:
+            audit_rows.append({**audit, "warning": "fold skipped: empty as-of price panel"})
+            continue
+        if train_panel["date"].nunique() < min_samples or valid_panel["date"].nunique() < min_samples // 2:
+            audit_rows.append({**audit, "warning": "fold skipped: insufficient train/valid samples"})
+            continue
+        audit_rows.append(audit)
+        for strategy_name in compare_strategies:
+            if strategy_name not in available_strategies():
+                continue
+            strategy = get_strategy(strategy_name)
+            extra = {
+                "price_adjustment_for_backtest": "qfq_asof",
+                "train_price_as_of_date": train_end_date.isoformat(),
+                "valid_price_as_of_date": valid_end_date.isoformat(),
+            }
+            if strategy.panel_scope == "symbol":
+                for sym in symbols:
+                    train = train_panel[train_panel["symbol"] == sym].copy()
+                    valid = valid_panel[valid_panel["symbol"] == sym].copy()
+                    candidates[strategy.candidate_name].extend(
+                        _run_strategy_on_explicit_fold(
+                            strategy_name,
+                            fold=fold_idx,
+                            train=train,
+                            valid=valid,
+                            slippage=slippage,
+                            commission=commission,
+                            stamp_duty_sell=stamp_duty_sell,
+                            strategy_cfg=strategy_cfg,
+                            extra=extra,
+                        )
+                    )
+            else:
+                candidates[strategy.candidate_name].extend(
+                    _run_strategy_on_explicit_fold(
+                        strategy_name,
+                        fold=fold_idx,
+                        train=train_panel,
+                        valid=valid_panel,
+                        slippage=slippage,
+                        commission=commission,
+                        stamp_duty_sell=stamp_duty_sell,
+                        strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                        extra=extra,
+                    )
+                )
+
+    candidates = {name: rows for name, rows in candidates.items() if rows}
+    if not candidates:
+        return [], [], [], pd.DataFrame(audit_rows)
+
+    summaries = {name: _summarize_rows(rows) for name, rows in candidates.items()}
+    governance_cfg = strategy_cfg.get("candidate_governance", {})
+    eligible_names = [name for name, summary in summaries.items() if _candidate_governance(summary, governance_cfg)[0]]
+    if eligible_names:
+        best_name = max(eligible_names, key=lambda name: _candidate_selection_score(summaries[name], governance_cfg))
+    else:
+        best_name = max(candidates, key=lambda name: _candidate_raw_score(summaries[name]))
+    comparison = "; ".join(
+        (
+            f"{name}: score={_candidate_raw_score(summary):.4f}, "
+            f"selection_score={_candidate_selection_score(summary, governance_cfg):.4f}, "
+            f"eligible={_candidate_governance(summary, governance_cfg)[0]}, "
+            f"ann={summary.get('annualized_return_mean', 0.0):.4f}, "
+            f"sharpe={summary.get('sharpe_mean', 0.0):.4f}, "
+            f"mdd={summary.get('max_drawdown_mean', 0.0):.4f}"
+        )
+        for name, summary in summaries.items()
+    )
+    candidate_summary_rows = _candidate_summary_rows(summaries, governance_cfg)
+    selected = candidates[best_name]
+    selected_eligible, selected_reason = _candidate_governance(summaries[best_name], governance_cfg)
+    for row in selected:
+        row["candidate_summary"] = comparison
+        row["selected_candidate"] = best_name
+        row["selected_candidate_eligible"] = selected_eligible
+        row["selected_candidate_governance_reason"] = selected_reason
+    all_candidate_rows: list[dict[str, Any]] = []
+    for name, rows in candidates.items():
+        candidate_eligible, candidate_reason = _candidate_governance(summaries[name], governance_cfg)
+        for row in rows:
+            enriched = dict(row)
+            enriched["candidate_summary"] = comparison
+            enriched["selected_candidate"] = best_name
+            enriched["is_selected_candidate"] = name == best_name
+            enriched["candidate_eligible_for_selection"] = candidate_eligible
+            enriched["candidate_governance_reason"] = candidate_reason
+            all_candidate_rows.append(enriched)
+    return selected, all_candidate_rows, candidate_summary_rows, pd.DataFrame(audit_rows)
+
+
 def _run_compare_point_in_time(
     config: dict[str, Any],
     *,
@@ -2087,6 +2299,18 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
         if use_point_in_time_universe:
             all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_point_in_time(
                 config,
+                years=years,
+                train_years=int(wcfg["train_years"]),
+                validate_years=int(wcfg["validate_years"]),
+                min_samples=int(wcfg["min_samples"]),
+                slippage=float(wcfg["slippage"]),
+                commission=float(wcfg["commission"]),
+                stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
+                strategy_cfg=strategy_cfg,
+            )
+        elif _strict_qfq_asof_enabled(config):
+            all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_qfq_asof_static(
+                symbols=symbols,
                 years=years,
                 train_years=int(wcfg["train_years"]),
                 validate_years=int(wcfg["validate_years"]),

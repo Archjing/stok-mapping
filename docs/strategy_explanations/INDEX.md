@@ -2,6 +2,8 @@
 
 本目录按“一个策略一个文档”整理当前 Phase 0 候选策略说明。所有内容都以当前项目代码实现和最新回测结果为准。
 
+上级入口：[`docs 索引`](../README.md)
+
 - [legacy_momentum（经典动量）](./legacy_momentum.md)
 - [legacy_momentum_low_turnover_v1（低换手经典动量）](./legacy_momentum_low_turnover_v1.md)
 - [ma_kline_baseline_v1（均线K线基线）](./ma_kline_baseline_v1.md)

@@ -4,7 +4,7 @@
 
 查看图：
 
-![stok-mapping 最终运行形态流程图](./PROJECT_FINAL_RUNTIME_FLOW.svg)
+- [项目最终运行形态图样式版本](./runtime-flow-variants/README.md)
 
 ## 图例
 

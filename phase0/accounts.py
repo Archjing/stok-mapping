@@ -164,7 +164,7 @@ def _load_execution_prices(
         return {}
     daily_table = _safe_identifier(str(cfg.get("daily_table", "market_daily_bars")))
     market = str(cfg.get("market", "CN"))
-    adjust_type = str(cfg.get("adjust_type", "qfq"))
+    adjust_type = str(cfg.get("execution_adjust_type", "bfq"))
     placeholders = ",".join("?" for _ in symbols)
     query = f"""
         SELECT b.symbol, b.open, b.high, b.low, b.close, b.volume, b.amount,
