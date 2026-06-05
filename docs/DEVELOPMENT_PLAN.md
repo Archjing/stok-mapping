@@ -1057,6 +1057,7 @@ stok-mapping/
 - [x] 实现 `T2.5` 因子有效性诊断报告，先验证低波、低换手、质量、动量、反转和估值因子
 - [x] 实现 Tushare 财务回填进度显示：任务选择、处理进度、完成率、速率、耗时和 ETA 可见
 - [x] 将 `tushare_financial_backfill_audit.md` 覆盖率展示改为百分数，CSV 保持 0-1 机器口径
+- [x] 统一 `backfill-tushare-history` / `backfill-tushare-financials` audit 输出：当次详细报告按日期目录落地，固定汇总表每次仅追加 1 行关键结论
 - [x] 实现 `T6.2` 数据库健康检查只读 MVP：`phase0.cli db-health` 可输出 summary/findings/report，并支持 `--fail-on`
 - [ ] 执行 Tushare 财务因子逐股票历史补齐至 2016Q1-2018Q1 完成，重试 failed 并复核覆盖率
 - [x] 将 `db-health --scope scheduler --fail-on warning` 接入每日调度前置检查，失败时阻断对应定时任务
@@ -1155,8 +1156,14 @@ python -m phase0.cli backfill-tushare-financials \
 验收报告：
 
 ```text
-reports/tushare_financial_backfill_audit.csv
-reports/tushare_financial_backfill_audit.md
+reports/YYYY-MM-DD/tushare_financial_backfill_audit_YYMMDD_<range>.csv
+reports/YYYY-MM-DD/tushare_financial_backfill_audit_YYMMDD_<range>.md
+reports/tushare_financial_backfill_audit_summary.csv
+reports/tushare_financial_backfill_audit_summary.md
+reports/YYYY-MM-DD/tushare_history_backfill_audit_YYMMDD_<range>.csv
+reports/YYYY-MM-DD/tushare_history_backfill_audit_YYMMDD_<range>.md
+reports/tushare_history_backfill_audit_summary.csv
+reports/tushare_history_backfill_audit_summary.md
 ```
 
 验收维度：
@@ -1183,6 +1190,8 @@ announce_date_coverage
 - 所有有效记录保留 `announce_date`
 - 重新运行 `financial-pti` 后仍为 PASS
 - 重新运行 `factor-effectiveness`，确认质量类因子历史覆盖改善后再进入策略重建
+- 详细报告可按日期目录和文件名区间检索
+- 汇总表每次仅追加 1 行，能追溯历次运行关键结论
 
 当前进度（2026-06-05）：已完成单只、50 只和 200 任务小批量验证；任务表已覆盖 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个任务，其中 `9,292` 个已 `fetched`、`4` 个为 `empty`、`7` 个为 `failed`、`17,183` 个仍为 `pending`。下一步优先继续长任务回填，并对 `failed` 任务执行 `--retry-failed`。
 

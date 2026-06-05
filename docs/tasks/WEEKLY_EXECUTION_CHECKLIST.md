@@ -953,8 +953,12 @@ python -m phase0.cli backfill-tushare-financials \
 
 输出：
 
-- [x] `reports/tushare_financial_backfill_audit.csv`
-- [x] `reports/tushare_financial_backfill_audit.md`
+- [x] 当次详细报告按日期目录输出，文件名带短日期与回填区间
+- [x] 汇总报告固定文件名，按运行历史每次追加 1 行关键结论
+- [x] `reports/tushare_financial_backfill_audit_summary.csv`
+- [x] `reports/tushare_financial_backfill_audit_summary.md`
+- [x] `reports/tushare_history_backfill_audit_summary.csv`
+- [x] `reports/tushare_history_backfill_audit_summary.md`
 
 验收维度：
 
@@ -970,6 +974,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] `debt_to_asset_coverage`
 - [x] `announce_date_coverage`
 - [x] Markdown 报告中的覆盖率按百分数展示，CSV 保持 0-1 机器可读口径
+- [x] 汇总表每次只新增 1 行，包含运行时间、区间、分片、任务量和关键结论
 
 ## W2.16.7 执行顺序
 
