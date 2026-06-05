@@ -516,14 +516,14 @@ LLM 不直接生成评分与交易信号。
 ### 5.1 国内股票
 
 - **主数据源**：Tushare
-- **fallback**：AkShare / 新浪快照 / 本地离线库
+- **fallback**：AkShare / 新浪快照 / 本地 A 股研究主库
 - **本地底座**：`data/manual_history/a_share_history.sqlite`
 
 当前状态：
 
 - Tushare 已作为 A 股主源接入增量更新链路。
 - `phase0 run` 已在启动时执行 `manual_history_update` 预检查：本地库新鲜则直接复用 SQLite，本地库落后时优先 Tushare 补齐。
-- 本地库承担回测和股票池底座，避免 walk-forward 逐只在线抓取导致结果不可复现。
+- 本地研究主库承担回测、股票池、PIT 审计和数据治理底座，避免 walk-forward 逐只在线抓取导致结果不可复现。
 - `reports/phase0_data_source_report.md` 已纳入 Tushare smoke test 和 manual-history pre-run update 状态。
 - AkShare 当前易受远端断连影响，但仍保留为开发/研究辅助源。
 
@@ -1026,6 +1026,7 @@ stok-mapping/
 | `T1.2` | Tiingo 美股个股 / ETF 主源 | [`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md) | 基本完成，剩余少量后续增强项 |
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
 | `T1.5` | Tushare 财务因子逐股票历史补齐 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W216tushare-财务因子逐股票历史补齐t15) | **断点回填与进度报告已实现，待跑完 2016Q1-2018Q1 并复核** |
+| `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`docs/tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) | **已完成：主库定义、维护分工与口径边界已同步到文档** |
 | `T2.1` | Phase 0 候选策略池 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | 已按当前 baseline 刷新，仍有后续研究项 |
 | `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
 | `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，待 gate / brief 集成** |

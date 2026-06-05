@@ -33,6 +33,7 @@
 | `T1.2` | Tiingo 美股个股 / ETF 主源 | [`data-sources/TIINGO_IMPLEMENTATION_TASKS.md`](./data-sources/TIINGO_IMPLEMENTATION_TASKS.md) |
 | `T1.3` | 新闻源独立模块 | [`data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](./data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md) |
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](./data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) |
+| `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](./data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) |
 | `T2.1` | Phase 0 候选策略池 | [`strategy/PHASE0_CANDIDATE_STRATEGIES.md`](./strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |
 | `T2.4` | 策略过拟合诊断工具 | [`strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](./strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) |

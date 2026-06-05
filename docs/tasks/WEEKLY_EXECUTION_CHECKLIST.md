@@ -781,6 +781,7 @@ python -m phase0.cli overfit-diagnostic \
 - [x] `market_daily_basic` 验收：2016-01-04 到 2026-06-03，`pb_ratio` 覆盖率约 99.37%，`pe_ratio` 覆盖率约 81.47%，`turnover_rate` 覆盖率 100%
 - [x] 输出 Tushare 补全验收报告：`reports/tushare_history_backfill_audit.md` / `reports/tushare_history_backfill_audit.csv`
 - [ ] 后续单独批次补齐 Tushare 财务因子 2016Q1-2018Q1；当前 `market_financial_factors` 仍为 2018-06-30 到 2026-03-31
+- [x] 更新 `data/manual_history/README.md`：重定义 `a_share_history.sqlite` 为 A 股研究主库，而不是“离线缓存 / fallback”；明确 `bfq_raw / qfq_current / qfq_asof / market_adj_factors / market_daily_basic / market_financial_factors / source audit` 的职责边界，以及 `import-history`、`update-history`、`backfill-tushare-history`、`backfill-tushare-financials`、`update-financials` 的维护分工
 
 ### W2.14.6 P2 `qfq_asof` loader MVP
 

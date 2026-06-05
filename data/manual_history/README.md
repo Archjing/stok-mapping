@@ -1,6 +1,6 @@
-# 手动预下载历史数据目录
+# A 股研究主库说明
 
-此目录存放本项目的离线 A 股数据缓存，用于在线抓取失败时的回测和股票池 fallback。数据库文件较大，不进入 Git；仓库只保留本说明文件和 `.gitkeep`。
+本目录当前承载项目的 **A 股研究主库**，而不是临时缓存目录。
 
 默认数据库：
 
@@ -8,129 +8,269 @@
 data/manual_history/a_share_history.sqlite
 ```
 
-当前数据库状态：
+这个库是 `stok-mapping` 当前 A 股研究、回测、股票池、数据审计和日报前置检查的本地底座。它可以在在线主源异常时承担 fallback 角色，但 fallback 已经不是它的主定义。
 
-- 文件大小约 `3.8G`。
-- 股票日线：qfq `10,462,485` 行 / `5,760` 只，bfq `10,462,385` 行 / `5,748` 只。
-- 股票元数据：`5,524` 行。
-- 季度财务因子：通过 `update-financials` 写入 `market_financial_factors`。
-- 交易日历：`13,162` 行。
-- 退市股票：`324` 行。
-- 指数元数据：`997` 行。
-- 指数日线：`1,876,918` 行 / `995` 个指数。
-- 日期区间：股票和指数日线均裁剪为 `2016-05-03` 至 `2026-05-28`。
+数据库文件较大，不进入 Git；仓库只保留本说明文件和 `.gitkeep`。
 
-## 数据来源
+## 当前角色
 
-当前导入脚本读取 `~/workspace/tmp/A股数据_zip/` 下的预下载文件，并裁剪最近 10 年数据。10 年裁剪的目的是覆盖当前 5 年 Phase 0 回测、技术指标预热、后续扩展回测，同时避免把 30 年全量日线直接放进项目库。
+`a_share_history.sqlite` 当前承担以下职责：
 
-使用的数据文件：
+- A 股历史研究主库：为 walk-forward、因子诊断、股票池和账户级仿真提供可复现的数据底座。
+- A 股 point-in-time 研究底座：结合 `market_adj_factors`、`trading_calendar` 和 `announce_date` 支撑 `qfq_asof`、财务 PTI 和股票池 PTI 治理。
+- 当前观察池与日报前置数据底座：当本地库足够新鲜且覆盖率达标时，当前股票池、brief/watchlist 和相关报告从本地库读取横截面与历史数据。
+- A 股数据治理主库：增量更新、历史补齐、复权审计、财务 PTI、数据库健康检查都围绕此库进行。
+- 在线源异常时的 fallback：当在线源不稳定时，本地库仍能支撑历史研究、历史区间分析和非当日场景；但“fallback”只是附属能力，不是主角色。
 
-- `daily_qfq.zip`：A 股日线前复权数据，作为回测收益和技术指标的主数据。
-- `daily.zip`：A 股日线不复权数据，作为辅助校验和未来停复牌/异常价格检查数据。
-- `股票列表.csv`：股票基础信息，包含名称、行业、地域、上市状态、上市日期等。
-- `交易日历.csv`：交易所交易日历，用于判断最近应有交易日和防止使用过期本地快照。
-- `退市股票列表.csv`：退市股票清单，用于标记/排除退市标的，降低幸存者偏差。
-- `指数/指数列表.csv`、`指数/中证指数列表.csv`：指数元数据。
-- `指数/指数_日_kline.zip`、`指数/中证指数_日_kline.zip`：指数日线行情，用于本地基准、市场状态和未来本土风险因子。
+一句话理解：
 
-暂不导入周线/月线指数，原因是当前 Phase 0 回测以日线为主，先保持单一频率，避免同一含义的多频数据增加时点对齐复杂度。
+> `data/manual_history/a_share_history.sqlite` 现在是 A 股研究主库，本地优先、可复现、可审计；不是一个“抓数失败时才会用”的缓存文件。
 
-## 表结构与用途
+## 当前库内对象
 
-- `market_daily_bars`：股票日线行情。字段包括 `market`, `symbol`, `date`, `adjust_type`, `open`, `high`, `low`, `close`, `volume`, `amount`, `adjusted_close`, `turnover_rate` 等。`adjust_type=qfq` 是主回测数据，`adjust_type=bfq` 用于辅助校验。
-- `market_stocks`：股票元数据。字段包括 `symbol`, `name`, `exchange`, `board`, `industry`, `area`, `list_status`, `list_date`, `delist_date` 等。当前股票列表不含实时市值/估值，`market_cap`, `pe_ratio`, `pb_ratio` 可后续补充。
-- `market_financial_factors`：季度财务因子。字段包括 `report_date`, `announce_date`, `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`, `total_assets`, `total_liabilities`, `total_equity`。数据源为东方财富数据中心季度财报接口。当前作为最新横截面基本面字段使用；进入历史回测前必须校验公告日，防止把更正后的财报数据提前用于过去日期。
-- `trading_calendar`：交易日历。字段包括 `exchange`, `date`, `is_open`, `previous_trade_date`。本地 fallback 会用它判断“期望最近交易日”。
-- `delisted_stocks`：退市股票清单。用于审查样本是否有幸存者偏差，并防止退市标的进入当前选股池。
-- `market_indices`：指数元数据。字段包括 `symbol`, `name`, `exchange`, `publisher`, `category`, `base_date`, `base_point`, `list_date`。
-- `market_index_bars`：指数日线行情。字段包括 `symbol`, `date`, `frequency`, `open`, `high`, `low`, `close`, `volume`, `amount`, `advances`, `declines`。
+当前库中至少包含以下研究核心表：
 
-## 重建命令
+- `market_daily_bars`
+  - A 股日线主行情表。
+  - 同时承载 `adjust_type=qfq` 与 `adjust_type=bfq`。
+  - `qfq` 保留为兼容/对照口径；`bfq` 是真实交易价格底座。
+- `market_adj_factors`
+  - 复权因子表。
+  - 用于构造 `qfq_asof`，避免全历史前复权把未来分红送转信息折回过去。
+- `market_daily_basic`
+  - 日度估值/市值/换手因子表。
+  - 当前用于横截面筛选、因子诊断和数据健康检查。
+- `market_financial_factors`
+  - 季度财务因子表。
+  - 当前与 `announce_date` 一起使用，服务财务 PTI、因子诊断和后续质量类候选。
+- `market_stocks`
+  - 股票元数据与横截面基础字段。
+  - 包含名称、行业、上市状态、上市日期、退市日期以及部分横截面指标。
+- `trading_calendar`
+  - 交易日历。
+  - 用于时效保护、最近应有交易日判断和增量维护目标日计算。
+- `market_data_source_runs`
+  - A 股增量更新 source audit 表。
+  - 用于记录主源、覆盖率、抓取时间、写入结果和失败信息。
+- `delisted_stocks`
+  - 退市清单，服务样本治理和退市边界控制。
+- `market_indices` / `market_index_bars`
+  - 指数元数据与指数日线。
+  - 服务基准、市场状态和相关研究输出。
 
-完整重建全部离线历史库：
+## 价格口径
+
+本库当前需要明确区分三类价格口径：
+
+- `bfq_raw`
+  - 真实交易价格口径。
+  - 用于执行、涨跌停、停牌、账户级仿真和真实成交语义。
+- `qfq_current`
+  - 当前全历史前复权口径。
+  - 仅保留为兼容、审计对照和旧报告比较使用。
+  - 不应再被解释为严格 point-in-time 历史特征口径。
+- `qfq_asof`
+  - 历史研究主特征口径。
+  - 通过 `bfq_raw + market_adj_factors + as_of_date` 动态构造。
+  - 当前用于更严格的 walk-forward、因子诊断和复权未来函数治理。
+
+当前原则：
+
+- 研究价格、执行价格、估值判断价格必须分离。
+- 历史策略特征优先使用 `qfq_asof`。
+- 交易执行仍使用 `bfq_raw`，不使用复权价成交。
+
+## 财务因子口径
+
+`market_financial_factors` 当前不是“最新财报缓存”，而是财务因子研究表。
+
+使用时必须遵守：
+
+- `report_date` 表示报告期。
+- `announce_date` 表示市场可见时间。
+- 历史回测或因子诊断中，某个 `as_of_date` 只能看到 `announce_date <= as_of_date` 的财务记录。
+- 财务因子长历史补齐由 `backfill-tushare-financials` 负责，低频最近季度更新由 `update-financials` 负责，二者不能混写成同一个维护动作。
+
+## 维护命令分工
+
+### 重建 / 初始化
+
+完整重建 A 股研究主库：
 
 ```bash
 ./.venv/bin/python -m phase0.cli import-history --config config.yaml
 ```
 
-只重建指数元数据和指数日线表：
+职责：
+
+- 从预下载原始包重建股票、指数、交易日历、退市等基础表。
+- 建立本地研究主库的初始结构和历史基线。
+
+只重建指数相关表：
 
 ```bash
 ./.venv/bin/python -m phase0.cli import-index-history --config config.yaml
 ```
 
-更新季度财务因子：
+职责：
 
-```bash
-./.venv/bin/python -m phase0.cli update-financials --config config.yaml
-```
+- 只刷新 `market_indices` / `market_index_bars`。
+- 不改动股票日线、股票元数据、交易日历和退市表。
 
-`import-index-history` 用于修复或刷新 `market_indices` / `market_index_bars`，不会改动股票日线、股票列表、交易日历和退市表。
+### 日常增量维护
 
-## 符号规范
-
-股票符号使用：
-
-```text
-SH.600519
-SZ.000001
-BJ.430047
-```
-
-指数符号使用：
-
-```text
-SH.000001
-SZ.399001
-CSI.000300
-```
-
-`market` 统一使用 `CN`。
-
-指数导入已处理 CSV 代码前导零丢失问题。例如 `指数_日_kline.zip` 中 `000001_日.csv` 的 `代码` 字段可能被 pandas 读取为整数 `1`，导入脚本会使用文件名 fallback，正确归一化为 `SH.000001`。当前已验证 `SH.000001` 可读，区间 `2016-05-03` 至 `2026-05-28`。
-
-## 时间线保护
-
-本地股票池 fallback 不会把旧数据静默当作当天数据使用。系统会比较：
-
-- `latest_trade_date`：本地日线库中最新交易日。
-- `expected_trade_date`：交易日历中不晚于今天的最近开市日。
-- `staleness_days`：两者相差的交易日数；周末和节假日不计入滞后。
-
-默认 `max_snapshot_staleness_days=1`，允许离线包只更新到上一交易日，以支持盘前/盘中分析；超过 1 个交易日时，当前股票池 fallback 会返回空并写出告警，避免把旧快照用于当日交易研判。该限制不等于禁用本地库，历史回测、指定历史区间分析和历史日线 fallback 仍可继续读取。
-
-## 开发期增量更新
-
-开发期间使用以下命令维护本地库新鲜度：
+更新 A 股日线、横截面元数据和相关审计记录：
 
 ```bash
 ./.venv/bin/python -m phase0.cli update-history --config config.yaml
 ```
 
-增量更新先按交易日历判断目标交易日，再检查 `market_daily_bars` 的最新日期和覆盖率。默认阈值来自 `config.yaml`：
+职责：
 
-- `manual_history_update.max_staleness_days=1`：当前研判允许最多滞后 1 天。
-- `manual_history_update.min_latest_coverage=0.80`：最新交易日覆盖率低于 80% 时拒绝写入，避免半截快照污染库。
-- `manual_history_update.refresh_metadata=true`：刷新 `market_stocks` 的 `market_cap`, `pe_ratio`, `pb_ratio`, `turnover_rate`。
-- `manual_history_update.min_metadata_coverage=0.80`：横截面字段最低覆盖率低于 80% 时继续提示元数据覆盖不足。
-- `manual_history_update.min_run_time=16:00`：交易日 16:00 前不把 AkShare 实时快照写成日线收盘数据。
+- 维护当前 A 股日线新鲜度。
+- 刷新 `market_stocks` 中的横截面字段。
+- 写入 `market_data_source_runs` source audit。
+- 受 `manual_history_update.*` 阈值和 `min_run_time` 保护。
 
-每日开发期 cron 可通过以下脚本安装：
+### 历史缺口补齐
+
+补齐历史 `daily_basic / adj_factor / dividend / financial` 缺口：
 
 ```bash
-bash scripts/install_dev_cron.sh
+./.venv/bin/python -m phase0.cli backfill-tushare-history \
+  --config config.yaml \
+  --start-date 2016-01-01 \
+  --end-date YYYY-MM-DD
 ```
 
-默认任务包括：
+职责：
 
-- 交易日 `16:30` 执行 `scripts/update_manual_history_daily.sh`，日志写入 `logs/manual_history_update.log`。
-- 每周一 `03:30` 执行 `scripts/update_financial_factors_weekly.sh`，日志写入 `logs/financial_factors_update.log`。
+- 按日期或按财务期补齐历史缺口。
+- 生成历史补齐验收报告。
+- 服务研究库完整性，而不是日常最新季度维护。
 
-当前增量源使用 AkShare 全市场实时快照补当日 qfq 日线；前复权历史在除权除息后可能整体回调，因此后续仍应周期性用预下载历史包或更稳定的数据源做完整重建校准。
+按 `period + symbol` 长任务补齐历史财务因子：
 
-横截面元数据刷新与日线写入分离：`16:00` 前仍禁止写入当日日线收盘，但允许刷新 `market_stocks` 的市值、估值和换手率字段。这样不会污染日线时间线，同时能让股票池筛选与报告尽早获得 `market_cap / pe / pb / turnover` 字段。当前优先使用 AkShare 东方财富全市场快照；若东方财富远端断开连接，则尝试新浪原始快照备用源，并保留其 `mktcap/per/pb/turnoverratio` 字段用于回填。
+```bash
+./.venv/bin/python -m phase0.cli backfill-tushare-financials \
+  --config config.yaml \
+  --start-period 2016-03-31 \
+  --end-period 2018-03-31
+```
 
-季度财务因子与日线增量更新分离。`update-financials` 默认抓最近 8 个季度，使用东方财富全市场季度接口，不做逐股票三表高频抓取。该设计的依据是财报因子更新频率低，批量按报告期更新更能降低请求次数和反爬风险。
+职责：
 
-每周财务任务安排在周一 `03:30`，原因是它能覆盖上周及周末公告，又避开 `06:00` 美股采集、`07:30` 研报生成和 `16:30` A股日线增量。脚本使用锁文件避免并发运行，通过 `nice`/`ionice` 降低资源优先级，并设置 `120m` 超时保护。
+- 补齐 `market_financial_factors` 的长历史缺口。
+- 使用 `tushare_financial_backfill_tasks` 管理断点、分片、重试和进度。
+- 不替代 `update-financials` 的低频最近季度更新。
+
+### 最近季度财务更新
+
+更新最近季度财务因子：
+
+```bash
+./.venv/bin/python -m phase0.cli update-financials --config config.yaml
+```
+
+职责：
+
+- 低频刷新最近财务因子。
+- 适合日常 / 每周维护。
+- 不负责长历史空白期回填。
+
+## 数据来源与维护方式
+
+当前库的维护已不再是“只依赖手动预下载包”的单一路径，而是多来源协作：
+
+- 预下载原始包
+  - 负责初始导入和必要时的全量重建基线。
+- Tushare
+  - 当前 A 股主源。
+  - 负责 `update-history` 的主链路增量、历史 `daily_basic/adj_factor` 补齐、财务长历史回填等。
+- 东方财富季度接口
+  - 当前 `update-financials` 最近季度更新来源。
+- 本地主库自身
+  - 通过 `trading_calendar`、覆盖率和 source audit 对时效与可用性做自我保护和审计。
+
+因此，当前维护方式应理解为：
+
+> 预下载包负责“建库基线”，Tushare 与低频财务更新负责“日常维护与历史补齐”，本地主库负责“研究可复现与数据治理”。
+
+## 时间线保护与时效保护
+
+当前库既服务历史研究，也服务当前观察池，但两者时效要求不同。
+
+### 历史研究
+
+- 历史回测、历史区间分析和因子诊断可以继续读取本地主库。
+- 即使主库不够“当天新鲜”，也不影响历史区间研究语义。
+
+### 当前股票池 / 当日研判
+
+- 当前股票池、brief/watchlist、盘前观察等场景要求主库足够新鲜。
+- 系统会比较：
+  - `latest_trade_date`
+  - `expected_trade_date`
+  - `staleness_days`
+  - `latest_coverage`
+- 如果本地库明显过期或覆盖率不足，当前股票池 fallback 会返回空并告警，避免把旧快照误当成今日可用数据。
+
+这意味着：
+
+- 主库不会因为“过一天”就失去研究价值。
+- 但它也不会在“明显不新鲜”的情况下静默支撑当日观察池。
+
+## 审计与治理关系
+
+本地主库当前已经进入项目的数据治理主线。
+
+相关审计命令：
+
+- `phase0.cli adjustment-audit`
+  - 检查 `bfq_raw / qfq_current / qfq_asof` 可用性与复权未来函数风险。
+- `phase0.cli financial-pti`
+  - 检查财务公告日 point-in-time 有效性。
+- `phase0.cli universe-pti`
+  - 检查股票池 listing / industry 的 point-in-time 边界。
+- `phase0.cli db-health`
+  - 检查表结构、覆盖率、时效、OHLC 异常、财务覆盖率和 source audit 状态。
+
+`market_data_source_runs` 当前是 A 股主库的 source audit 记录，不是运行产物缓存。
+
+## 当前状态说明
+
+当前数据库文件体积约 `6.8G`。由于后台 Tushare 财务回填可能正在占写锁，README 中不再把易过期的精确行数和区间统计作为主叙述。若需要查看当前实时状态，应直接查询数据库或查看最近验收报告，例如：
+
+- `reports/tushare_history_backfill_audit.md`
+- `reports/tushare_financial_backfill_audit.md`
+- `reports/database_health/database_health_report.md`
+
+当前可以确定的事实包括：
+
+- A 股日线已覆盖 `bfq` 与 `qfq`
+- `market_adj_factors` 已落表
+- `market_daily_basic` 已落表
+- `market_financial_factors` 已落表
+- `market_data_source_runs` 作为 A 股 source audit 已启用
+- 主库已经被 `phase0 run`、`walk_forward`、`factor-effectiveness`、`db-health`、`brief` 等链路当作正式研究底座使用
+
+## 数据目录边界
+
+当前建议按下面理解目录边界：
+
+- `data/manual_history/`
+  - A 股研究主库
+- `data/us_market_history.sqlite`
+  - US/FX/ETF/VIX 跨市场库
+- `data/hk_market_history.sqlite`
+  - HK 跨市场库
+- `data/universe/`
+  - 股票池与横截面研究产物
+- `reports/`
+  - 运行报告、验收报告、HTML 预览、CSV 导出和调度相关输出
+
+不要把 `data/manual_history/` 理解为报告目录，也不要把 `reports/` 理解为研究底库。
+
+## 一句话提醒
+
+> `a_share_history.sqlite` 当前是 A 股研究主库：它既服务回测和股票池，也服务 PIT/复权/财务/健康检查治理；“在线失败时的 fallback”只是它现在众多职责中的一个附属角色。

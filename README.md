@@ -53,7 +53,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 ## 当前状态
 
 - Phase 0 基础设施验证已完成，当前结论为 **PASS**，已确认可进入策略收口与 Phase 1 准备。
-- 已创建本地离线历史库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池 fallback 和数据新鲜度保护。
+- 已创建本地 A 股研究主库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池、数据新鲜度保护和相关数据审计。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
 - 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`，当前本地库覆盖 2018-06-30 至 2026-03-31 共 32 个季度。
 - 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
@@ -96,7 +96,7 @@ docs/strategy_explanations/INDEX.md
 当前确认的数据源层级：
 
 - 国内股票主源：`Tushare`
-- 国内 fallback：`AkShare` / 新浪快照 / 本地 SQLite 历史库
+- 国内 fallback：`AkShare` / 新浪快照 / 本地 A 股研究主库
 - 美股/ETF/VIX/CNH 当前库：`data/us_market_history.sqlite`，现阶段 provider 为 `yfinance`，后续美股个股与 ETF 计划主源升级为 `Tiingo`
 - 港股库：`data/hk_market_history.sqlite` 为预留结构，当前 `enabled: false`，等港股数据源进入可生产状态后再挂到应用链路；截至 2026-06-02，Tiingo 对 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式实测均返回 `404 Ticker not found`，暂不适合作为港股正式源
 - 宏观 / 利率 / VIX 计划主源：`FRED`
@@ -108,7 +108,7 @@ docs/strategy_explanations/INDEX.md
 Tushare daily/daily_basic/adj_factor -> a_share_history.sqlite -> 股票池 / 回测 / 报告
 ```
 
-`phase0 run` 启动时会先执行 `manual_history_update` 预检查：本地库已新鲜则直接复用 SQLite；本地库落后时优先用 Tushare 增量补齐，低覆盖或失败时才进入 fallback。这样做是为了让回测可复现，避免每次 walk-forward 逐只股票在线抓取导致结果漂移。
+`phase0 run` 启动时会先执行 `manual_history_update` 预检查：本地研究主库已新鲜则直接复用 SQLite；本地库落后时优先用 Tushare 增量补齐，低覆盖或失败时才进入 fallback。这样做是为了让回测可复现，避免每次 walk-forward 逐只股票在线抓取导致结果漂移。
 
 跨市场 overlay 当前链路是：
 
@@ -142,7 +142,7 @@ data/us_market_history.sqlite
 data/manual_history/README.md
 ```
 
-`a_share_history.sqlite` 的时效保护只限制“当前股票池 / 当日研判”场景：如果本地最新交易日超过配置允许滞后，系统不会用旧快照生成当前股票池，而是返回空并告警。该限制不等于禁用本地库，历史回测、指定历史区间分析和历史日线 fallback 仍可继续读取。
+`a_share_history.sqlite` 的时效保护只限制“当前股票池 / 当日研判”场景：如果本地最新交易日超过配置允许滞后，系统不会用旧快照生成当前股票池，而是返回空并告警。该限制不等于禁用研究主库，历史回测、指定历史区间分析和历史日线读取仍可继续进行。
 
 当前主要表包括：
 
