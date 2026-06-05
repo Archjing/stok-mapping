@@ -73,6 +73,11 @@ def _format_ratio(value: float) -> str:
     return f"{value:.2%}"
 
 
+def _format_count_ratio(numerator: int, denominator: int) -> str:
+    ratio = numerator / denominator if denominator else 0.0
+    return f"{numerator}/{denominator} ({_format_ratio(ratio)})"
+
+
 def _add_summary(
     rows: list[HealthSummaryRow],
     *,
@@ -149,6 +154,91 @@ def _scalar(conn: sqlite3.Connection, query: str, params: tuple[Any, ...] = ()) 
 
 def _dict_rows(conn: sqlite3.Connection, query: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
     return [dict(row) for row in conn.execute(query, params).fetchall()]
+
+
+def _add_pe_ratio_diagnostics(
+    *,
+    conn: sqlite3.Connection,
+    section: str,
+    daily_basic_table: str,
+    meta_table: str,
+    market: str,
+    latest_basic: str,
+    latest_rows: int,
+    summary: list[HealthSummaryRow],
+) -> None:
+    table = _safe_identifier(daily_basic_table)
+    pe_missing = int(
+        _scalar(
+            conn,
+            f"SELECT COUNT(*) FROM {table} WHERE market = ? AND date = ? AND pe_ratio IS NULL",
+            (market, latest_basic),
+        )
+        or 0
+    )
+    pe_missing_pb_present = int(
+        _scalar(
+            conn,
+            f"""
+            SELECT COUNT(*)
+            FROM {table}
+            WHERE market = ?
+              AND date = ?
+              AND pe_ratio IS NULL
+              AND pb_ratio IS NOT NULL
+            """,
+            (market, latest_basic),
+        )
+        or 0
+    )
+    _add_summary(
+        summary,
+        section=section,
+        check_id="cn.daily_basic.pe_ratio_missing",
+        status="info",
+        metric="missing/rows",
+        value=_format_count_ratio(pe_missing, latest_rows),
+        threshold="diagnostic only",
+    )
+    _add_summary(
+        summary,
+        section=section,
+        check_id="cn.daily_basic.pe_ratio_missing_pb_present",
+        status="info",
+        metric="pb_present_among_pe_missing",
+        value=_format_count_ratio(pe_missing_pb_present, pe_missing),
+        threshold="diagnostic only",
+    )
+
+    if not _table_exists(conn, meta_table):
+        return
+
+    meta = _safe_identifier(meta_table)
+    st_missing = int(
+        _scalar(
+            conn,
+            f"""
+            SELECT COUNT(*)
+            FROM {table} b
+            LEFT JOIN {meta} s ON s.symbol = b.symbol AND s.market = b.market
+            WHERE b.market = ?
+              AND b.date = ?
+              AND b.pe_ratio IS NULL
+              AND s.name LIKE '%ST%'
+            """,
+            (market, latest_basic),
+        )
+        or 0
+    )
+    _add_summary(
+        summary,
+        section=section,
+        check_id="cn.daily_basic.pe_ratio_missing_st",
+        status="info",
+        metric="st_or_star_st_among_pe_missing",
+        value=_format_count_ratio(st_missing, pe_missing),
+        threshold="diagnostic only",
+    )
 
 
 def _check_required_table(
@@ -625,6 +715,7 @@ def _check_cn_market_data(
         )
         _add_summary(summary, section=section, check_id="cn.daily_basic.latest_date", status="pass" if latest_basic else "warning", metric="latest_date", value=latest_basic or "N/A")
         _add_summary(summary, section=section, check_id="cn.daily_basic.latest_rows", status="pass" if latest_rows else "warning", metric="latest_rows", value=latest_rows)
+        hard_coverage_fields = {"market_cap", "pb_ratio", "turnover_rate"}
         for field in ["market_cap", "pe_ratio", "pb_ratio", "turnover_rate"]:
             if field in daily_basic_columns and latest_basic:
                 non_null = int(
@@ -636,16 +727,18 @@ def _check_cn_market_data(
                     or 0
                 )
                 ratio = non_null / latest_rows if latest_rows else 0.0
+                threshold = "80.00%" if field in hard_coverage_fields else "diagnostic only"
+                status = "pass" if field == "pe_ratio" or ratio >= 0.80 else "warning"
                 _add_summary(
                     summary,
                     section=section,
                     check_id=f"cn.daily_basic.{field}",
-                    status="pass" if ratio >= 0.80 else "warning",
+                    status=status,
                     metric="latest_non_null_coverage",
                     value=_format_ratio(ratio),
-                    threshold="80.00%",
+                    threshold=threshold,
                 )
-                if ratio < 0.80:
+                if field in hard_coverage_fields and ratio < 0.80:
                     _add_finding(
                         findings,
                         severity="warning",
@@ -657,6 +750,17 @@ def _check_cn_market_data(
                         sample_value=_format_ratio(ratio),
                         expected_rule="coverage >= 80%",
                     )
+        if "pe_ratio" in daily_basic_columns and latest_basic:
+            _add_pe_ratio_diagnostics(
+                conn=conn,
+                section=section,
+                daily_basic_table=daily_basic_table,
+                meta_table=meta_table,
+                market=market,
+                latest_basic=latest_basic,
+                latest_rows=latest_rows,
+                summary=summary,
+            )
 
     adj_columns = _check_required_table(
         conn,

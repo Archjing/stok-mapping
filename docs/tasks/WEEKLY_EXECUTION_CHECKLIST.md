@@ -1082,7 +1082,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.17.6 当前发现
 
-- [ ] `cn.daily_basic.pe_ratio` 最新覆盖率约 `71.98%`，低于 `80%` 阈值
+- [x] `cn.daily_basic.pe_ratio` 最新覆盖率约 `72%`，已确认不是整行缺失；PE 为空多为亏损 / TTM 盈利不可计算，已改为诊断项而非硬覆盖率 warning
 - [ ] Tushare 财务回填任务仍有 `failed=7`
 - [ ] Tushare 财务回填任务仍有 `pending=17183`
 - [ ] US 行情 recent OHLC 违规 `3` 行，需要后续输出 sample rows 定位
@@ -1097,7 +1097,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 将 `db-health --scope cn --fail-on error` 接入 `run` 前置检查
 - [x] 为 OHLC 异常增加 sample rows 输出，包含 `symbol/date/open/high/low/close/source`
 - [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
-- [ ] 为 `daily_basic.pe_ratio` 覆盖不足建立口径判断：数据缺失、亏损导致为空、还是字段不适合作为硬门槛
+- [x] 为 `daily_basic.pe_ratio` 覆盖不足建立口径判断：PE 为空多为亏损 / TTM 盈利不可计算，不适合作为硬门槛；`db-health` 已保留 PE 覆盖率和缺失分解诊断
 - [ ] 评估是否需要可选落库 `database_health_runs` / `database_health_findings`，默认仍保持只读
 
 # W2.18｜数据治理与维护编排器专项（T6.3）
@@ -1137,3 +1137,28 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
 - [ ] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
 - [ ] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`
+
+# W2.19｜文本事件数据层后续任务（T1.3 / T2.10）
+
+参考专项任务：[`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md)  
+参考调查归档：[`refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md`](../../refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md)
+
+## W2.19.1 背景
+
+前期已明确 Tiingo 不继续承担新闻源角色，并完成 Tushare 聚合新闻看板上游来源调查。后续不应把新闻讨论直接转成交易信号，而应先建设统一文本事件数据层，用于公告、研报、新闻、政策、快讯的采集、去重、as-of 审计和事件时间线。
+
+## W2.19.2 后续任务
+
+- [ ] 设计 `market_text_events` 第一版字段口径，覆盖 `source/provider/published_at/ingested_at/as_of_time/dedupe_key/content_hash`
+- [ ] 对 Tushare `research_report`、`anns_d`、`major_news`、`npr`、`cctv_news` 做权限、字段和延迟 probe
+- [ ] 明确新浪财经、财联社、华尔街见闻、中证网等公开上游只作为替代源候选，并记录授权和维护风险
+- [ ] 生成 `reports/news_source_probe_report.md`
+- [ ] 生成文本事件覆盖率、抓取延迟、重复率和来源失败原因报告
+- [ ] 为关注个股分析工具输出单股事件时间线输入
+- [ ] 为 `T2.10` PEAD / 文本因子研究提供数据层前置验收，不直接进入主 ranker
+
+## W2.19.3 暂不做事项
+
+- [ ] 不把网页抓取结果绕过标准化直接接入策略因子
+- [ ] 不让 LLM 直接对文本事件生成买卖评分
+- [ ] 不在没有 as-of 口径和覆盖率诊断前做文本因子回测

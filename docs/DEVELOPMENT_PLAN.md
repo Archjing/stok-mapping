@@ -99,7 +99,7 @@
 9. 基于已通过的财务因子 PTI 校验和财务历史回填结果，谨慎恢复质量成长 / 多因子后续验证。
 10. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
 11. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试和正式 daily brief 独立产物。
-12. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
+12. 新闻源独立于 Tiingo 日线适配器推进，并演进为统一文本事件数据层；短期先做 provider probe、字段标准化和事件审计，不把新闻直接接入主 ranker。
 
 当前**不是**优先做的事：
 
@@ -131,7 +131,7 @@
 
 - 在上述四步完成前，不把 residual / multifactor 等备选策略重新拉回主线。
 - `FRED` / `Tiingo` 数据源升级继续保留，但优先级低于当前通过策略的收口工作。
-- 新闻源扩展作为 `T1.3` 独立任务，不归入 Tiingo EOD 接入，不直接生成交易信号。
+- 新闻源扩展作为 `T1.3` 独立任务，不归入 Tiingo EOD 接入；后续重点转为公告、研报、新闻、政策和快讯的统一文本事件数据层，不直接生成交易信号。
 
 ---
 
@@ -415,19 +415,22 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 
 ### 4.1.6 新闻 / 文本摘要因子（辅助）
 
-新闻源作为独立数据源模块推进，不归入 Tiingo EOD 日线适配器。当前规划是：
+新闻源作为独立数据源模块推进，不归入 Tiingo EOD 日线适配器。当前规划已从单一新闻 provider 扩展为“文本事件数据层”：统一承接公告、研报、新闻、政策、快讯和后续文本摘要事件，服务盘前解释、关注个股分析工具、PEAD 研究和 `T2.10` 文本因子沙盒。
 
 - `Tiingo` 只保留为美股个股 / ETF / ADR 的 EOD 日线源；当前 token 对 `/tiingo/news` 返回 `403 permission_denied:news_api`，不继续扩展 Tiingo News。
 - `Alpha Vantage` 作为第一轮低成本新闻源 probe provider，验证 `tickers`、`topics`、`time_from/time_to`、`sort/limit` 和字段结构。
 - `Benzinga` 作为后续付费 / 生产级新闻源候选，重点评估 ticker、channel/topic、date range、实时性、成本和授权边界。
 - `Finnhub` 仅作为单票 company news 备选，不作为首批主新闻源。
+- `Tushare` 中文文本源作为后续重点评估方向：`research_report` 和 `anns_d` 优先服务公司级事件，`major_news` 服务结构化主新闻流，`npr` 服务政策文本，`cctv_news` 服务新闻联播类宏观事件。
+- 新浪财经、财联社、华尔街见闻、中证网等公开上游只作为替代源候选，接入前必须评估抓取稳定性、授权边界和维护成本。
 
 组合新闻拉取原则：
 
 - 不假设多 ticker 一次传入时 provider 使用 OR 语义。
 - 观察池新闻按逐 ticker 请求，再按 `url / title / published_at` 聚合去重。
 - 项目内部业务标签需要映射到 provider 固定 topic 枚举。
-- 原始响应进入 `data/raw_data/news/<provider>/`，清洗后的新闻事件表进入 `data/features/news/`，探测报告进入 `reports/`。
+- 原始响应进入 `data/raw_data/news/<provider>/`，清洗后的文本事件表进入 `data/features/news/`，探测报告进入 `reports/`。
+- 文本事件必须保留 `source`、`provider`、`published_at`、`ingested_at`、`as_of_time`、`url`、`dedupe_key` 和 `content_hash`，避免未来函数、重复新闻和来源不可追溯。
 
 LLM 仅负责：
 
@@ -582,13 +585,15 @@ LLM 不直接生成评分与交易信号。
 - **生产级候选**：Benzinga Newsfeed
 - **单票备选**：Finnhub company news
 - **不再扩展**：Tiingo News API
+- **中文文本事件候选**：Tushare `research_report` / `anns_d` / `major_news` / `npr` / `cctv_news`
 
 当前状态：
 
 - 已验证 Tiingo News API 当前 token 权限不足，访问 `/tiingo/news` 返回 `403 permission_denied:news_api`。
 - Alpha Vantage 只作为低成本可用性验证源，不直接承诺为长期主源。
 - Alpha Vantage 多 ticker / 多 topic 过滤不按项目组合 OR 语义假设；组合观察池必须逐 ticker 拉取后聚合去重。
-- 新闻源只服务盘前解释、风险提示和后续文本摘要因子，不进入首批交易建议主线。
+- 后续中文财经新闻看板调查已沉淀到 `refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md`，用于 provider 选择和公开上游风险评估。
+- 新闻源只服务盘前解释、风险提示、关注个股分析、PEAD 研究和后续文本摘要因子，不进入首批交易建议主线。
 - 接入任务单见：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
 
 ### 5.7 当前意义
@@ -1235,7 +1240,7 @@ announce_date_coverage
 - `db-health --scope cn --fail-on error` 已接入 `run` 前置检查
 - OHLC 异常样本输出已补齐，当前样本已能直接定位到 `CNY=X` 与 `HK.09633` 的具体异常行
 - 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
-- 对 `daily_basic.pe_ratio` 覆盖不足建立口径判断，区分数据缺失与亏损公司自然为空
+- `daily_basic.pe_ratio` 覆盖不足已改为诊断项：PE 为空通常代表亏损或 TTM 盈利不可计算，不再作为 daily_basic 硬覆盖率门槛；`market_cap`、`pb_ratio`、`turnover_rate` 仍保留硬覆盖检查
 
 ### T6.3｜数据治理与维护编排器
 
