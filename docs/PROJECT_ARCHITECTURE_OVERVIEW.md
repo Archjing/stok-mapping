@@ -1,1034 +1,665 @@
-# stok-mapping 项目整体架构说明
+# stok-mapping 项目架构说明
 
-> 面向对象：项目维护者、研究使用者、后续产品实现者  
-> 文档目标：从“最终产品形态”视角说明 `stok-mapping` 是什么、系统如何分层、各模块承担什么职责、当前已经落地到什么程度，以及应如何使用。  
-> 口径来源：`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、`docs/STRATEGY_DEV_CHECKLIST.md`，并结合 `phase0/` 当前代码结构整理。
+> 面向对象：项目维护者、策略研究者、后续产品实现者  
+> 最后审视：2026-06-05  
+> 审视角色：软件架构师  
+> 依据：当前 `phase0/` 代码、`config.yaml`、`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、最近一次开发日志与已实现 CLI。  
+> 旧版归档：[`docs/archive/PROJECT_ARCHITECTURE_OVERVIEW_2026-06-05_pre_review.md`](archive/PROJECT_ARCHITECTURE_OVERVIEW_2026-06-05_pre_review.md)
 
 ---
 
-## 1. 项目是什么
+## 1. 架构结论
 
-`stok-mapping` 是一个面向 **A 股量化研究、盘前研判、策略验证和交易计划辅助** 的研究型应用。
+`stok-mapping` 当前已经不是单一回测脚本，而是一个围绕 **A 股本土因子研究、数据治理、策略验证、账户级仿真和盘前研判交付** 构建的本地研究系统。
 
-它必须作为**独立项目**运行：可以吸收、迁移或重写其他项目中的可用代码与实现经验，但运行时不能依赖兄弟仓库、共享源码路径或外部项目专属虚拟环境。
+当前最关键的架构事实是：
 
-它的核心定位不是自动交易，也不是通用量化平台，而是：
+- Phase 0 工程链路已经可运行，但严格 `qfq_asof` 与 point-in-time 股票池复核后，当前没有可直接进入实盘模拟的合格策略。
+- 系统主线已经从“维护一个 selected strategy”转为“先治理数据和因子，再重建有效候选策略”。
+- A 股数据底座已以本地 SQLite 为核心，Tushare 是当前 A 股主源，US/HK 跨市场数据已独立落库。
+- 策略评估不再只看 effectiveness gate，还需要同时考虑 `qfq_asof`、PIT 股票池、财务公告日、过拟合诊断、数据健康检查和账户级执行约束。
+- 新增 `db-health` 后，数据质量已开始从分散脚本审计演进为可调度门禁。
+- 系统仍不是自动交易系统，不输出自动下单指令，也不允许 LLM 直接生成交易决策。
 
-> **以 A 股本土因子为主、以跨市场风险/情绪 overlay 为辅的量化研究、盘前研判与交易计划辅助系统。**
+一句话定位：
 
-这个系统的目标，是把多源市场数据、离线历史库、候选策略回测和研报式输出串起来，形成一条完整闭环：
-
-1. 采集和维护研究所需市场数据；
-2. 构建可用股票池；
-3. 生成本土主因子信号；
-4. 用跨市场信息做风险缩放和情绪解释；
-5. 用 walk-forward 回测验证策略是否有效；
-6. 在账户、风控和可成交性约束下生成可交易信号与调仓建议单；
-7. 输出观察池、风险暴露、信号等级、模拟订单和盘前研判内容。
-
-因此，`stok-mapping` 的最终产品更像一个：
-
-- **研究操作台**
-- **策略实验工厂**
-- **盘前研判引擎**
-- **交易计划生成器**
-- **风险提示与解释层**
-
-而不是下单终端。
+> `stok-mapping` 是一个本地优先、可审计、可复现的 A 股量化研究与盘前研判系统；它以 A 股本土因子为主，以跨市场风险/情绪 overlay 为辅，以数据质量和策略治理门禁控制研究结论进入日常输出。
 
 ---
 
 ## 2. 产品边界
 
-### 2.1 系统明确要做的事
+### 2.1 系统应该做什么
 
-系统最终应输出：
+系统当前和后续应持续输出：
 
-- A 股观察池
-- 可交易信号
-- 调仓建议单
-- 模拟订单和阻断原因
-- 候选策略对比结果
-- 风险暴露说明
-- 盘前情景推演
-- 信号等级
-- 失效条件与风险提示
-- 周期性研究报告
+- A 股研究股票池
+- 因子有效性诊断
+- 候选策略 walk-forward 结果
+- 策略准入与风险诊断报告
+- 盘前观察池
+- 账户级模拟账单和资产轨迹
+- 调仓计划草案、模拟订单和阻断原因
+- 数据源、数据质量、复权、PIT 与调度健康报告
+- 研究过程日志和变更记录
 
-### 2.2 系统明确不做的事
+### 2.2 系统不应该做什么
 
-根据主计划和 README，系统当前明确排除以下能力：
+明确禁止或暂不支持：
 
-- 自动交易
-- 下单执行
-- 绕过策略和风控直接生成交易指令
-- 以 LLM 直接给出买卖建议或调仓建议
-- 对外商业投顾服务
+- 自动下单
+- 券商 API 实盘交易
+- LLM 直接生成交易信号或调仓动作
+- 对外投资建议或荐股服务
+- 绕过数据质量、PIT、过拟合、账户约束直接发布策略结论
+- 把 `qfq_current` 历史结果解释为严格 point-in-time 回测结论
 
-因此，所有输出都应被理解为：
+### 2.3 当前研发重心
 
-- 研究结论
-- 观察池
-- 风险提示
-- 情景分析
-- 策略验证结果
-- 交易计划草案
-- 模拟执行结果
+当前最高优先级不是新增复杂策略，而是：
 
-而不是自动下单指令或对外投资建议。
+1. 跑完 Tushare 财务因子 2016Q1-2018Q1 历史回填。
+2. 用 `db-health` 建立调度和研究任务的前置门禁。
+3. 继续推进因子有效性诊断，基于真实覆盖率重建低频低换手候选。
+4. 将过拟合诊断、因子诊断、`qfq_asof`、账户级执行约束合并为策略准入流程。
 
 ---
 
-## 3. 总体架构概览
+## 3. 系统分层
 
-从最终产品视角，可以把 `stok-mapping` 理解为 6 层架构。
+当前架构可以拆为 8 层。
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ 6. 交付与交互层                                             │
-│ 盘前日报 / 研究报告 / 观察池 / 调仓建议单 / 后续 Web/PWA/Tauri│
-├─────────────────────────────────────────────────────────────┤
-│ 5. 策略评估与治理层                                         │
-│ walk-forward / effectiveness gate / 账户仿真 / change log   │
-├─────────────────────────────────────────────────────────────┤
-│ 4. 策略与信号引擎层                                         │
-│ 本土主因子 / risk overlay / Signal & Rebalance / 解释层     │
-├─────────────────────────────────────────────────────────────┤
-│ 3. 股票池与特征层                                           │
-│ A股股票池 / 流动性筛选 / 行业约束 / 技术因子 / 财务因子      │
-├─────────────────────────────────────────────────────────────┤
-│ 2. 数据管理层                                               │
-│ 本地 SQLite 历史库 / 增量更新 / 数据质量 / 新鲜度保护        │
-├─────────────────────────────────────────────────────────────┤
-│ 1. 数据源接入层                                             │
-│ Tushare / 本地库 / AkShare-Sina fallback / Tiingo-FRED 规划  │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ 8. 交付与运维层                                               │
+│ reports / watchlist HTML / brief / scheduler / logs / ECS sync│
+├──────────────────────────────────────────────────────────────┤
+│ 7. 策略治理层                                                 │
+│ walk-forward / gate / overfit / factor-effectiveness / admission│
+├──────────────────────────────────────────────────────────────┤
+│ 6. 账户与执行仿真层                                           │
+│ accounts / bill / execution profile / constraints / reconciliation│
+├──────────────────────────────────────────────────────────────┤
+│ 5. 策略与信号层                                               │
+│ strategies registry / candidate factory / overlay / rebalance │
+├──────────────────────────────────────────────────────────────┤
+│ 4. 股票池与特征层                                             │
+│ universe / qfq_asof features / daily_basic / financial factors│
+├──────────────────────────────────────────────────────────────┤
+│ 3. 数据质量与审计层                                           │
+│ db-health / financial-pti / universe-pti / adjustment-audit   │
+├──────────────────────────────────────────────────────────────┤
+│ 2. 本地数据资产层                                             │
+│ a_share_history.sqlite / us_market_history.sqlite / hk db     │
+├──────────────────────────────────────────────────────────────┤
+│ 1. 数据源适配层                                               │
+│ Tushare / yfinance / FRED / Tiingo / local raw packages       │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### 一句话理解
+层级原则：
 
-- **底层**负责把数据准备对；
-- **中层**负责把因子、股票池和策略做出来；
-- **上层**负责验证策略、形成报告并提供给人使用。
-
----
-
-## 4. 核心产品逻辑
-
-整个系统围绕一个核心判断展开：
-
-> **A 股本土因子负责“选什么”，跨市场信息负责“何时保守、何时放大、如何解释”。**
-
-这意味着系统不是把美股或宏观因子直接拿来给 A 股个股排名，而是采用“双引擎”结构：
-
-### 4.1 主引擎：A 股本土因子选股
-
-这是当前项目主线，也是最终产品的核心价值来源。
-
-主引擎负责：
-
-- 生成候选池
-- 做横截面排序
-- 给出组合构造基础
-- 决定“哪些标的值得进入观察池”
-
-当前重点因子方向包括：
-
-- 残差动量
-- 短周期反转
-- 低波
-- 趋势确认
-- 量价行为
-- 均线偏离
-- K 线规则
-- 质量/成长/价值基本面因子
-
-### 4.2 辅引擎：跨市场风险/情绪 overlay
-
-跨市场层不做主 ranker，而是做：
-
-- 隔夜情绪解释
-- 开盘风险预警
-- 风险缩放
-- 盘中确认
-
-当前设计中会关注的典型输入包括：
-
-- 纳指
-- SOX
-- VIX
-- KWEB
-- CNH / CNY 代理
-- A50
-
-最终产品中，这一层承担的是“解释和约束”的角色，而不是“主导排序”的角色。
+- 下层不依赖上层。
+- 研究结论必须通过数据质量与策略治理层。
+- 交付层只展示已生成结果，不直接重写策略结论。
+- LLM/Agent 只能作为摘要、解释和审查辅助，不进入主信号路径。
 
 ---
 
-## 5. 端到端工作流
+## 4. 端到端数据流
 
-从产品使用角度，系统的完整工作流如下：
+### 4.1 日常数据更新流
 
 ```text
-市场与宏观数据
+Tushare / yfinance / HK provider
     ↓
-本地历史库/在线源同步
+update-history / update-us-market-history / update-hk-market-history / update-financials
     ↓
-生成最新横截面快照
+SQLite 本地数据资产
     ↓
-构建 A 股可投资股票池
+source audit tables + logs/scheduler/*.last
     ↓
-计算价格行为/财务因子/风险特征
+db-health / 专项审计命令
     ↓
-运行候选策略与 walk-forward 回测
-    ↓
-比较候选结果并通过 effectiveness gate
-    ↓
-生成观察池 / 风险说明 / 盘前研判日报
-    ↓
-研究者阅读、复盘、调整下一轮策略
+股票池、因子诊断、策略验证、日报输出
 ```
 
-这条链路的意义是：
+关键要求：
 
-- 任何策略都不能直接上线；
-- 必须先经过统一数据口径；
-- 再经过统一回测口径；
-- 再通过效果门槛；
-- 最后才能进入研判输出。
+- 数据更新必须有覆盖率和 source audit。
+- 当前股票池和日报不允许静默使用明显过期数据。
+- 跨市场数据应先落库，再被策略或报告读取，避免运行时在线源漂移。
 
----
-
-## 6. 各架构层详细说明
-
-## 6.1 数据源接入层
-
-这一层解决“数据从哪里来”。
-
-### 当前角色
-
-- **Tushare**：A 股盘后主源方向，已用于日线、日度指标、复权因子等核心链路。
-- **本地 SQLite 历史库**：A 股回测、股票池 fallback 和数据新鲜度保护的正式底座。
-- **AkShare / 新浪快照**：国内股票开发/研究辅助源与 fallback，不能作为唯一在线源。
-- **yfinance**：保留为美股、ETF、VIX、CNH 等跨市场数据的 fallback，不再作为长期正式主源。
-- **本地预下载包**：用于构建 A 股离线历史数据库。
-- **东方财富季度接口**：用于财务因子更新。
-
-### 后续角色演进
-
-主计划中已明确的数据源升级方向：
-
-- A 股主链路：`Tushare Pro`
-- 美股个股/ETF：后续逐步迁移至 `Tiingo`
-- 宏观/利率/VIX：后续逐步迁移至 `FRED`
-- `yfinance`：仅保留为 fallback 或临时研究源
-
-### FRED 与 Tiingo 的价值与作用边界
-
-这两个数据源的定位不是替代 A 股主选股逻辑，而是提升跨市场 overlay 与解释层的稳定性、可追溯性和可复现性。
-
-#### FRED（宏观 / 利率 / VIX）
-
-- 主要承接 `GDP`、`CPIAUCSL`、`FEDFUNDS`、`DFF`、`VIXCLS` 等宏观与风险序列。
-- 在产品中的职责是风险解释、盘前研判和风险缩放依据，不进入主 ranker。
-- 价值在于把宏观/利率/VIX 从 `yfinance` 逻辑中拆分，减少口径漂移，并让日报与复盘解释可追溯。
-
-#### Tiingo（美股个股 / ETF）
-
-- 主要承接 `NVDA`、`AAPL`、`TSLA`、`KWEB` 等跨市场映射核心标的。
-- 在产品中的职责是隔夜情绪与行业映射输入，服务 overlay，不直接替代本土主因子选股。
-- 价值在于为跨市场映射提供更稳定的长期主源，降低过渡期在线源波动对结果的一致性影响。
-- 截至 2026-06-02，Tiingo 对项目预留的港股 ticker（如 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK`）实测均返回 `404 Ticker not found`，因此当前只能视为美股 / ETF / ADR 数据源，不适合作为港股正式主源。
-- Tiingo News API 也已做最小探测，但当前项目 token 访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻链路仍停留在“接口已预留、权限未开通”的状态。
-
-#### 与主线的关系
-
-- 主线仍是“本土因子选股 + 跨市场风险/情绪 overlay”。
-- FRED 负责“宏观风险温度计”，Tiingo 负责“跨市场映射信号源”。
-- 两者提升的是数据治理质量和解释可信度，不改变当前“跨市场不做主排序器”的架构边界。
-
-### 这一层在最终产品中的意义
-
-它不是简单“拉数据”，而是为上层提供：
-
-- 主源
-- 备用源
-- 质量审计
-- 覆盖率判断
-- 失败降级策略
-
-也就是说，最终产品必须假设：
-
-> 数据源并不总是稳定，因此必须把“主源 + fallback + 本地库”作为正式架构的一部分。
-
----
-
-## 6.2 数据管理层
-
-这一层解决“数据如何被保存、校验和复用”。
-
-### 当前核心资产
-
-默认数据库：
+### 4.2 策略研究流
 
 ```text
-data/manual_history/a_share_history.sqlite
+SQLite 历史库
+    ↓
+point-in-time universe folds
+    ↓
+qfq_asof 行情与特征
+    ↓
+daily_basic + PIT 财务因子
+    ↓
+strategies registry 候选策略
+    ↓
+walk-forward compare
+    ↓
+effectiveness gate + overfit diagnostic + factor effectiveness
+    ↓
+策略准入判断
 ```
 
-这是当前系统最重要的基础设施之一。它不是缓存，而是一个正式的本地研究数据底座。
+当前架构判断：
 
-### 当前数据库中承载的主要对象
+- `qfq_asof` 与 PIT 股票池是历史回测的默认正确方向。
+- `qfq_current` 只能保留为兼容或对照口径。
+- 财务因子必须保留 `announce_date` 可见性，不允许用未来公告污染历史样本。
+- 当前无合格策略，因此日报/观察池更多是阶段试用与研究输出，不应被解释为实盘推荐。
 
-- 股票日线
-- 股票元数据
-- 交易日历
-- 退市股票列表
-- 指数元数据
-- 指数日线
-- 财务因子表
-
-### 它在产品中的职责
-
-1. **回测底座**：为 walk-forward 提供稳定历史数据；
-2. **在线源 fallback**：在线抓取失败时仍能继续工作；
-3. **当前股票池保护**：避免使用过期快照做当日研判；
-4. **统一口径数据层**：让不同策略共用同一份历史数据基础。
-
-### 关键设计原则
-
-#### 1. 本地库不是可有可无的缓存，而是正式基础层
-
-项目的设计已经明显偏向“本地优先、在线补充”。这是研究系统很重要的架构决策，因为：
-
-- 在线数据易失效；
-- 研究结果必须可复现；
-- 回测必须在统一时间线下运行。
-
-#### 2. 有新鲜度保护
-
-系统不会把旧快照默默当成当天数据来用。
-
-它通过：
-
-- 最新交易日
-- 应有交易日
-- 覆盖率
-- 允许滞后天数
-
-来判断当前快照是否还能用于“当日股票池”和“盘前研判”。
-
-这说明最终产品架构里，**数据时效判断** 是一等公民，而不是附属逻辑。
-
-### 数据目录边界与当前落地状态
-
-当前代码已经部分体现数据目录分层：
-
-- `data/`：长期可复用的数据资产和策略输入。
-- `reports/`：运行报告、验收记录、导出物、归档和报告生成缓存。
-
-已经落地到 `data/` 的正式资产包括：
-
-- `data/manual_history/a_share_history.sqlite`：A 股本地研究数据库。
-- `data/us_market_history.sqlite`：美股 / ETF / VIX / CNH 跨市场 overlay 本地库。
-- `data/universe/`：股票池、横截面快照和同目录说明报告。
-
-已经落地到 `reports/` 的输出包括：
-
-- `phase0_data_source_report.md`
-- `phase0_walk_forward_report.md`
-- `phase0_effectiveness_report.md`
-- `phase0_strategy_change_log.md`
-- 盘前观察池、账单、HTML 预览、成本敏感性报告和历史归档。
-
-但完整的数据放置逻辑还没有全部落地：
-
-- `data/raw_data/` 目前仍为空目录，尚未承接外部源原始数据落盘。
-- `data/features/` 目前仍为空目录，尚未承接可复用特征表。
-- FRED 最小缓存当前位于 `data/cache/fred`，已按数据层边界从报告目录迁出；若后续需要保留完整原始源响应，可进一步迁入或扩展到 `data/raw_data/fred`。
-- `reports/hk_a_mapping_factors` 当前按实验/分析输出处理；若后续成为策略稳定输入，应迁移到 `data/features/cross_market/`。
-
-因此，当前状态应理解为：
-
-> **核心 SQLite 数据资产已经进入 `data/`，报告与验收输出已经进入 `reports/`，但 raw data 与 feature store 仍处于预留阶段。**
-
-### 后续落库原则
-
-后续新增数据写入时应遵循以下原则：
-
-- 原始源响应、未充分加工的批量下载、外部数据快照：优先进入 `data/raw_data/` 或明确命名的源数据缓存目录。
-- 已清洗、对齐、可复用、可被策略或日报直接消费的特征表：进入 `data/features/`。
-- 股票池、样本范围和横截面观察对象：进入 `data/universe/`。
-- 运行结果、研究报告、验收记录、导出账单、HTML 预览和人工阅读材料：进入 `reports/`。
-- 仅服务单次报告生成或导出加速的缓存：可以留在 `reports/cache/`。
-
----
-
-## 6.3 股票池与特征层
-
-这一层解决“研究对象是谁、用什么特征描述它”。
-
-### 股票池的作用
-
-在最终产品里，股票池不是简单的股票列表，而是：
-
-- 研究范围控制器
-- 流动性过滤器
-- 风险暴露整形器
-- 策略计算入口
-
-### 当前股票池构建逻辑
-
-根据 `config.yaml` 与 `phase0/universe.py`，当前股票池主要考虑：
-
-- 市场范围（SH/SZ）
-- ST / 退市名称过滤
-- 成交额下限
-- 总市值下限
-- 行业权重上限
-- 行业分布平衡
-- 最新横截面快照可用性
-
-### 当前输出
+### 4.3 盘前交付流
 
 ```text
-data/universe/local_factor_universe.csv
-data/universe/a_share_snapshot.csv
-data/universe/local_factor_universe_report.md
+最新本地数据与股票池
+    ↓
+brief watchlist / brief daily / premarket
+    ↓
+模拟账户快照 + 候选观察池 + 风险提示
+    ↓
+reports/watchlist_today/index.html
+    ↓
+可选 ECS 同步
 ```
 
-### 特征层职责
+当前限制：
 
-股票池建立以后，系统继续在其上附加特征，主要包括两类：
-
-#### 1. 技术/量价特征
-
-例如：
-
-- 多周期动量
-- 波动率
-- 成交活跃度
-- 均线偏离
-- 突破特征
-- K 线行为特征
-- 残差动量
-- 短期反转
-
-#### 2. 基本面特征
-
-当前已接入：
-
-- `roe`
-- `revenue_growth`
-- `profit_growth`
-- `cash_flow_quality`
-- `debt_to_asset`
-
-但文档和代码都明确强调：
-
-> 这些基本面字段当前适合做最新横截面筛选，不应在未完成公告日 point-in-time 校验前直接用于正式历史回测结论。
-
-这是一条非常重要的架构边界：
-
-- 系统支持财务因子；
-- 但不假装它已经完全历史可用。
-
-这种“先支持、后审慎放行”的策略，是研究系统架构成熟度的重要体现。
+- `brief daily` 仍主要复用 watchlist 路径，正式 daily brief 仍待拆分。
+- watchlist 是观察池和计划层，不是自动交易信号。
+- 账户级账单基于已确认 OHLCV 交易日，不是盘中实时撮合。
 
 ---
 
-## 6.4 策略与信号引擎层
+## 5. 核心模块边界
 
-这一层解决“如何从特征得到可用信号”。
+### 5.1 CLI 控制层
 
-这是产品最核心的业务层。
+主入口：[phase0/cli.py](../phase0/cli.py)
 
-### 当前引擎划分
+职责：
 
-根据开发计划，最终产品中至少有四类引擎：
+- 解析命令行参数。
+- 调用具体应用服务。
+- 输出人可读状态和报告路径。
+- 控制退出码，例如 `db-health --fail-on`。
 
-#### 引擎 A：本土主因子引擎
+主要命令分组：
 
-负责：
+| 分组 | 命令 | 职责 |
+| --- | --- | --- |
+| 数据更新 | `update-history`, `update-us-market-history`, `update-hk-market-history`, `update-financials` | 维护本地数据资产 |
+| 历史导入/回填 | `import-history`, `import-index-history`, `backfill-*` | 初始化或补齐历史数据 |
+| 数据审计 | `db-health`, `financial-pti`, `universe-pti`, `adjustment-audit` | 检查数据质量与 PIT 边界 |
+| 策略研究 | `run`, `factor-effectiveness`, `overfit-diagnostic`, `cost-sensitivity` | 策略验证和诊断 |
+| 账户/执行 | `bill`, `execution-gate`, `oos-report` | 账户级仿真和执行假设验证 |
+| 交付 | `brief daily`, `brief watchlist`, `brief premarket`, `brief account-bill` | 日常观察池和报告输出 |
 
-- 个股评分
-- 候选排序
-- 组合构造
-- 主策略验证
+CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块或 `scripts/*` 的应用脚本中。
 
-这是整个系统最关键的 alpha 生产层。
+---
 
-#### 引擎 B：跨市场 overlay 引擎
+### 5.2 配置层
 
-负责：
+配置入口：`config.yaml` 与 [phase0/config.py](../phase0/config.py)
 
-- 风险缩放
-- 隔夜情绪解释
-- risk-on / risk-off 标注
-- 开盘和盘中情景确认
+职责：
 
-它不是独立选股器，而是主策略的“约束器”和“解释器”。
+- 定义数据源路径、token env、表名、阈值和开关。
+- 定义股票池、执行 profile、回测窗口和策略参数。
+- 保证研究口径和实盘仿真口径可分离。
 
-#### 引擎 C：Signal & Rebalance Engine
+架构要求：
 
-负责把已经通过策略和治理约束的候选，转换成个人自用的交易计划草案。
+- 不在脚本里硬编码 profile 默认值。
+- 数据库表名、路径和阈值应从配置读取。
+- 研究口径与 live/profile 口径必须显式区分。
 
-它接收：
+---
 
-- 当前持仓
-- 当前现金
-- 策略目标权重
-- risk overlay 后的风险缩放
-- 单票 / 单行业 / 总暴露约束
-- A 股整手、停牌、涨跌停、流动性和冲击成本约束
+### 5.3 数据源适配层
 
-它输出：
+核心模块：
 
-- `signal_level`
-- `suggested_action`
-- `current_weight`
-- `target_weight`
-- `weight_delta`
-- `simulated_order_qty`
-- `blocked_reason`
-- `risk_notes`
-- `invalidation_conditions`
+- [phase0/tushare_source.py](../phase0/tushare_source.py)
+- [phase0/data_sources.py](../phase0/data_sources.py)
+- [phase0/throttle.py](../phase0/throttle.py)
+- [phase0/external_market_history.py](../phase0/external_market_history.py)
 
-允许动作包括：
+职责：
 
-- `新增`
-- `加仓`
-- `减仓`
-- `持有`
-- `剔除`
-- `阻断`
+- 统一外部源调用、规范化、节流和错误处理。
+- 将源数据转换成项目内部表结构。
+- 记录 source 和 fetched_at，支持审计。
 
-这层的产品边界非常明确：
+当前源边界：
 
-> 它生成的是“调仓建议单”和“模拟订单”，不是自动下单指令。
+| 数据源 | 当前角色 | 说明 |
+| --- | --- | --- |
+| Tushare | A 股主源 | 日线、daily_basic、adj_factor、财务回填、港股可选源 |
+| yfinance | US/HK 过渡源与 fallback | 当前 US/HK 历史库仍可使用；不作为长期唯一主源 |
+| FRED | 宏观/利率/VIX 最小接入 | 服务风险解释和日报，不进主 ranker |
+| Tiingo | 美股个股/ETF 最小接入 | 服务跨市场 overlay；当前新闻权限不可用 |
+| 本地预下载包 | A 股历史初始化 | 用于重建本地历史库 |
 
-调仓建议单必须可以解释其来源：本土主因子排名、跨市场风险缩放、账户约束、可成交性检查和 effectiveness gate 状态。任何未通过 gate、风险预算或可成交性检查的标的，都只能输出 `阻断` 或降级说明。
+---
 
-#### 引擎 D：解释层 / 研判层
+### 5.4 本地数据资产层
 
-负责：
+核心模块：
 
-- 将信号翻译成“可阅读的研究语言”
-- 输出风险暴露说明
-- 生成观察池说明
-- 解释可交易信号和调仓建议单的依据、风险与失效条件
-- 形成盘前日报内容
+- [phase0/import_history.py](../phase0/import_history.py)
+- [phase0/update_history.py](../phase0/update_history.py)
+- [phase0/local_history.py](../phase0/local_history.py)
+- [phase0/financial_factors.py](../phase0/financial_factors.py)
+- [phase0/tushare_history_backfill.py](../phase0/tushare_history_backfill.py)
 
-LLM/Agent 已经作为研究辅助层接入，主要服务于报告摘要、第二意见、策略审查和调仓建议解释，而不是主信号层或调仓决策层。
+主要数据库：
 
-当前接入：
+| 数据库 | 角色 | 主要表 |
+| --- | --- | --- |
+| `data/manual_history/a_share_history.sqlite` | A 股研究主库 | `market_daily_bars`, `market_stocks`, `market_daily_basic`, `market_financial_factors`, `market_adj_factors`, `trading_calendar`, `market_data_source_runs` |
+| `data/us_market_history.sqlite` | US/FX/ETF/VIX 跨市场库 | `us_daily_bars`, `us_data_source_runs` |
+| `data/hk_market_history.sqlite` | HK 跨市场库 | `hk_daily_bars`, `hk_data_source_runs` |
+| `data/simulated_trading/simulated_accounts.sqlite` | 模拟账户账本 | 账户、资产、成交、持仓相关表 |
 
-- `.codex/` 下 Claude provider 脚本，用于读取报告并生成研究摘要。
-- `scripts/deepseek_agent_mcp.py` 提供 DeepSeek MCP 工具，用于第二意见、报告总结和策略审查。
+关键架构决策：
+
+- SQLite 是当前正式研究数据底座，不是临时缓存。
+- 回测与日报尽量读本地库，不在策略运行时临时在线抓取。
+- 长任务回填必须可恢复、可分片、有限速、有验收报告。
+- 数据库不进入 Git。
+
+Tushare 财务历史回填当前状态：
+
+- 任务表：`tushare_financial_backfill_tasks`
+- 目标：2016Q1-2018Q1
+- 当前能力：断点续跑、`retry-failed`、`limit-tasks`、`max-runtime-minutes`、`shard-index/shard-count`、进度显示、审计报告
+- 当前未完成：pending 队列仍需跑完，failed 任务需重试，完成后需重跑 `financial-pti` 和 `factor-effectiveness`
+
+---
+
+### 5.5 数据质量与审计层
+
+核心模块：
+
+- [phase0/db_health.py](../phase0/db_health.py)
+- [phase0/adjustment.py](../phase0/adjustment.py)
+- [scripts/audit_financial_pti.py](../scripts/audit_financial_pti.py)
+- [scripts/audit_universe_pit.py](../scripts/audit_universe_pit.py)
+- [scripts/check_local_history_consistency.py](../scripts/check_local_history_consistency.py)
+
+当前审计命令：
+
+| 命令 | 目的 | 当前状态 |
+| --- | --- | --- |
+| `db-health` | 统一 SQLite 健康检查，输出 summary/findings/report | MVP 已完成 |
+| `adjustment-audit` | 检查 `bfq_raw/qfq_current/qfq_asof` 可用性和复权未来函数风险 | 已完成 MVP |
+| `financial-pti` | 检查财务因子公告日 point-in-time 有效性 | 已完成 |
+| `universe-pti` | 检查股票池 listing/industry point-in-time 边界 | 已完成 |
+
+`db-health` 当前检查范围：
+
+- A 股库：表结构、最新交易日、覆盖率、滞后、OHLC、非正价格、负成交量/成交额、daily_basic 覆盖、复权因子。
+- 财务因子：表结构、`announce_date` 覆盖、不可能时间线、核心因子覆盖、Tushare backfill task 状态。
+- 跨市场：US/HK 数据库、配置标的 freshness、OHLC、source audit。
+- 调度：`logs/scheduler/*.last` 与 source audit 最新运行记录。
+
+架构建议：
+
+- `db-health` 应成为调度器和关键研究命令的前置门禁。
+- 默认保持只读，不写健康表。
+- 只有当调度监控确实需要趋势分析时，再增加可选 `database_health_runs` / `database_health_findings` 落库。
+- OHLC 异常后续需要 sample rows 输出，便于定位源数据问题。
+
+---
+
+### 5.6 股票池与特征层
+
+核心模块：
+
+- [phase0/universe.py](../phase0/universe.py)
+- [phase0/local_history.py](../phase0/local_history.py)
+- [phase0/adjustment.py](../phase0/adjustment.py)
+- [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
+
+职责：
+
+- 构建当前和历史 point-in-time 股票池。
+- 维护流动性、市值、行业、ST/退市等过滤约束。
+- 构造价格、量能、估值、财务质量和成长因子。
+- 对因子有效性做 IC、分组收益、年度稳定性和相关性诊断。
+
+关键边界：
+
+- 当前股票池用于日报和当前观察池。
+- 历史回测必须使用每折 point-in-time 股票池。
+- 价格特征应优先使用 `qfq_asof`。
+- 交易执行价格、涨跌停和停牌判断应基于未复权或真实交易口径，不应使用复权价成交。
+- 财务因子必须基于 `announce_date` 控制可见性。
+
+当前因子诊断已覆盖：
+
+- 低波：`low_vol20`, `low_vol60`
+- 低换手/低成交额：`low_turnover_rate`, `low_amount_ratio20`
+- 动量与反转：`mom20`, `mom60`, `reversal_mom3`, `reversal_mom5`
+- 质量与成长：`roe`, `cash_flow_quality`, `profit_growth`, `revenue_growth`, `low_debt_to_asset`
+- 估值：`ep`, `low_pb`
+
+---
+
+### 5.7 策略与信号层
+
+核心模块：
+
+- [phase0/walk_forward.py](../phase0/walk_forward.py)
+- [phase0/strategies/base.py](../phase0/strategies/base.py)
+- [phase0/strategies/registry.py](../phase0/strategies/registry.py)
+- `phase0/strategies/*.py`
+
+当前策略层形态：
+
+- 已从单文件硬编码演进为 registry 候选工厂。
+- 多个候选策略可以通过统一接口参与 compare。
+- `legacy_momentum_low_turnover_v1` 当前降级为兼容基线和动量 sleeve 研究样本，不再是实盘模拟合格策略。
+
+当前候选策略目录包括：
+
+- `legacy_momentum`
+- `legacy_momentum_low_turnover_v1`
+- `ma_kline_baseline_v1`
+- `residual_momentum_reversal_v1`
+- `residual_momentum_reversal_v2`
+- `quality_growth_price_v1`
+- `multifactor_volume_price_filter_v1`
+- `theme_exposure_momentum_v1`
+- `core_selection_quality_momentum_v1`
+
+架构风险：
+
+- [phase0/walk_forward.py](../phase0/walk_forward.py) 仍承担较多职责：数据加载、特征构造、组合模拟、候选比较和指标计算都集中在一个大模块内。
+- 短期可接受，因为系统仍处于研究迭代期。
+- 若 T2.6/T2.7 新策略开始稳定，应逐步拆出 `factors/`、`portfolio/`、`evaluation/` 子模块，降低维护成本。
+
+---
+
+### 5.8 策略治理层
+
+核心模块：
+
+- [phase0/walk_forward.py](../phase0/walk_forward.py)
+- [phase0/overfit.py](../phase0/overfit.py)
+- [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
+- [phase0/reporting.py](../phase0/reporting.py)
+
+当前治理能力：
+
+- walk-forward compare
+- effectiveness gate
+- cost sensitivity
+- OOS report
+- market regime report
+- overfit diagnostic
+- factor effectiveness diagnostic
+- qfq adjustment audit
+- financial PTI audit
+
+策略准入应逐步收敛为统一规则：
+
+```text
+data health PASS / acceptable warning
+    + qfq_asof price safety
+    + PIT universe
+    + financial PTI PASS
+    + factor effectiveness evidence
+    + walk-forward gate
+    + overfit risk not high/critical
+    + account execution constraints
+    = 可进入观察池长期试用
+```
+
+当前缺口：
+
+- `overfit-diagnostic` 还未接入 `execution-gate` 和 `brief`。
+- `strategy-admission` 统一报告尚未实现。
+- 成本敏感性、参数邻域扰动、收益集中度仍需进一步量化。
+
+---
+
+### 5.9 账户与执行仿真层
+
+核心模块：
+
+- [phase0/accounts.py](../phase0/accounts.py)
+- [scripts/export_low_turnover_bill.py](../scripts/export_low_turnover_bill.py)
+- [scripts/export_low_turnover_oos_report.py](../scripts/export_low_turnover_oos_report.py)
+- [scripts/export_premarket_watchlist.py](../scripts/export_premarket_watchlist.py)
+
+当前能力：
+
+- 模拟账户 SQLite 主账本。
+- 日资产、成交、持仓记录。
+- A 股 100 股整手、现金约束、卖出回款。
+- 成交价 profile：`research` / `live` 与 `close` / `next_open` / `conservative` 等口径。
+- 涨跌停、停牌、流动性参与率、未成交原因。
+- 真实账户 CSV 对账格式预留。
 
 边界：
 
-- 不直接生成交易指令。
-- 不直接生成可交易信号或调仓动作。
-- 不修改策略参数。
-- 不跳过 effectiveness gate。
-
-### 当前候选策略方向
-
-当前项目已经将候选策略拆分到 `phase0/strategies/` 注册表结构，候选方向收敛到以下几类：
-
-- `legacy_momentum`：当前 baseline，样本覆盖更充分，但 Sharpe 与回撤仍弱。
-- `quality_growth_price_v1`：当前评分暂时领先，但只有少量 fold / 组合对象，不能直接晋级。
-- `residual_momentum_reversal_v1` / `residual_momentum_reversal_v2`：残差动量 + 反转增强候选。
-- `multifactor_volume_price_filter_v1`：多因子 + 量价二次筛选候选。
-- `ma_kline_baseline_v1`：MA / K 线低复杂度基线。
-
-因此从产品架构看，策略层不是“单模型”，而是一个 **候选工厂**：
-
-- 同时容纳多个候选；
-- 用统一框架比较；
-- 选择最优者晋级。
-
-这比“只写一个策略”更接近可持续研究产品的形态。
+- 账户层只做模拟、复盘和计划辅助。
+- 不接券商 API。
+- 不自动下单。
+- 不把未成交/部分成交忽略为已成交。
 
 ---
 
-## 6.5 策略评估与治理层
+### 5.10 交付与运维层
 
-这一层解决“怎么证明策略真的有效”。
+核心入口：
 
-这也是 `stok-mapping` 与普通脚本型量化项目的重要区别。
+- `brief daily`
+- `brief watchlist`
+- `brief premarket`
+- `brief account-bill`
+- `scripts/run_project_scheduler.sh`
+- `logs/scheduler/*.last`
 
-### 当前治理机制
+输出目录：
 
-系统已经形成比较完整的验证闭环：
+| 目录 | 用途 |
+| --- | --- |
+| `reports/` | 研究报告、审计报告、HTML 产物、CSV 导出 |
+| `reports/watchlist_today/` | 当前阶段试用观察池页面 |
+| `logs/` | 调度日志、开发日志、会话记录 |
+| `data/` | 长期可复用数据资产，不进 Git |
+| `docs/` | 当前有效项目文档 |
+| `refdocs/` | 参考资料、论文、背景材料、非当前主线资料 |
 
-- compare mode
-- walk-forward 回测
-- effectiveness gate
-- candidates CSV 输出
-- change log 记录
-- report 汇总
-- 样本覆盖审查（下一步需要固化为正式 gate）
+当前调度：
 
-### 当前核心评估指标
-
-- 年化收益
-- 夏普比率
-- 最大回撤
-- 胜率
-- 年化换手
-- OOS 收益衰减比
-- fold 数
-- symbol 覆盖
-- 组合对象覆盖
-
-### 当前 gate 标准
-
-候选至少需要满足：
-
-- `annualized_return_mean > 0`
-- `sharpe_mean > 0.5`
-- `max_drawdown_mean > -0.25`
-- `win_rate_mean > 0.45`
-- `oos_return_decay_ratio < 0.30`
-
-当前还需要补充治理约束：
-
-- 候选必须满足最低 fold 数。
-- 候选必须满足最低 symbol 或组合对象覆盖。
-- 少量 fold 高分候选不得直接晋级，需要样本支持惩罚或降级。
-
-### 这一层的产品意义
-
-它相当于策略层和输出层之间的“质量闸门”。
-
-也就是说，系统不会因为某个策略“看起来合理”就直接采用，而必须满足统一门槛。
-
-这意味着最终产品具备以下治理能力：
-
-- 抑制拍脑袋改参数
-- 留存每轮实验痕迹
-- 让策略变更可解释、可审计、可复盘
-
-对量化研究系统来说，这一层非常关键，因为它把项目从“脚本集合”提升成了“有治理的研究产品”。
+- 单一 cron 入口应保持为 `scripts/run_project_scheduler.sh`。
+- 已有 `07:20` watchlist、`16:20` HK、`16:30` A 股、`17:10` US、每周财务因子更新等任务。
+- 后续应把 `db-health --scope scheduler` 放入调度前置检查。
+- 交易日历判断和失败重试仍需增强。
 
 ---
 
-## 6.6 交付与交互层
+## 6. 关键数据口径
 
-这一层解决“系统最终以什么形式被使用”。
+### 6.1 价格口径
 
-### 当前已落地的交付方式
+| 口径 | 用途 | 风险 |
+| --- | --- | --- |
+| `bfq_raw` | 真实交易价格、执行、涨跌停、停牌判断 | 不适合直接做长期可比价格特征 |
+| `qfq_current` | 兼容旧回测、对照分析 | 可能把未来复权因子折回过去 |
+| `qfq_asof` | 严格历史特征与 walk-forward | 计算成本更高，但 PIT 风险更低 |
 
-当前主要是文件化输出：
+架构要求：
 
-- 数据源报告
-- walk-forward 报告
-- effectiveness report
-- 候选比较 CSV
-- 股票池 CSV / Markdown 报告
-- 盘前观察池 CSV / HTML 报告
-- 账户级账单、资产轨迹和 HTML 预览
-- 策略变更日志
+- 研究价格、交易执行价格和估值判断价格必须分离。
+- 历史策略特征优先使用 `qfq_asof`。
+- 交易执行和可成交性判断不得使用复权价。
 
-后续应增加的标准交付物：
+### 6.2 财务因子口径
 
-- 可交易信号表
-- 调仓建议单
-- 模拟订单明细
-- 阻断原因与失效条件说明
+财务因子必须满足：
 
-这是典型的研究期产品交互方式：
+- `report_date` 表示报告期。
+- `announce_date` 表示可见日。
+- 回测某个 as-of date 时，只能使用 `announce_date <= as_of_date` 的记录。
+- 历史回填不能用空行覆盖已有有效记录。
 
-- 先让链路跑通；
-- 再通过报告消费结果；
-- 后续再包装成更友好的应用界面。
+当前 Tushare 财务回填仍未完成，因此质量类因子在更长历史窗口的稳定性结论仍需等回填和复核完成后再定。
 
-### 未来产品形态
+### 6.3 股票池口径
 
-根据开发计划，后续可能扩展为：
+- 当前股票池用于当前日报/观察池。
+- 历史回测使用 point-in-time universe folds。
+- 退市、ST、行业、市值、流动性等约束必须按对应 as-of 口径处理。
 
-- Web Dashboard
-- PWA
-- Tauri 桌面端
-- 盘前日报自动投递
-- 调仓建议单复盘看板
+### 6.4 跨市场口径
 
-但这些都属于 **交互层包装**，并不是当前主线。
-
-因此可以这样理解最终产品形态：
-
-- **内核已经是研究引擎**；
-- **前端外壳未来可以替换**；
-- **系统价值主要在中后端逻辑，而不是界面本身。**
+- 跨市场信号是 overlay，不是主 ranker。
+- US/HK 数据应先落本地库，再被策略读取。
+- 时区和交易日差异必须显式处理，不能把未来交易日信息注入 A 股历史样本。
 
 ---
 
-## 7. 当前代码模块与职责映射
+## 7. 失败模式与防护
 
-下面从当前代码结构解释系统模块如何对应架构层。
-
-## 7.1 命令入口
-
-### `phase0/cli.py`
-
-这是当前系统的统一命令入口，相当于应用控制台。
-
-它负责组织如下能力：
-
-- `run`：执行 Phase 0 主流程
-- `import-history`：构建本地历史库
-- `import-index-history`：重建指数历史表
-- `update-history`：增量更新本地历史库
-- `update-financials`：更新财务因子
-- `build-universe`：构建股票池
-
-从产品角度看，它是当前“无界面版本”的主操作入口。
+| 失败模式 | 当前防护 | 仍需增强 |
+| --- | --- | --- |
+| Tushare 请求长任务中断 | 任务表、状态、重试、分片、限速、进度显示 | 自动分片调度和 failed 原因聚合 |
+| A 股日线覆盖不足 | update-history 覆盖率检查、source audit、db-health | 调度前置阻断 |
+| 复权未来函数 | `adjustment-audit`, `qfq_asof` loader | 默认研究链路全面切换后的回归验证 |
+| 财务未来函数 | `financial-pti`, `announce_date` | 回填完成后重新复核 |
+| 股票池未来函数 | PIT universe folds, `universe-pti` | 正式 admission 报告合并 |
+| 跨市场数据陈旧 | US/HK audit, db-health coverage | 交易日历与时区 aware freshness |
+| 策略过拟合 | `overfit-diagnostic` MVP | gate/brief 集成、参数扰动、收益集中度 |
+| 执行不可成交 | 账户级仿真 v2 | 与真实账户 CSV 对账闭环 |
+| 调度静默失败 | logs/scheduler/*.last | 运行窗口、重试次数、db-health 前置检查 |
+| LLM 越权决策 | 文档边界约束 | 输出层模板继续强化“非交易指令” |
 
 ---
 
-## 7.2 配置层
+## 8. 架构债务
 
-### `config.yaml`
-### `phase0/config.py`
+当前最重要的架构债务按优先级排列如下。
 
-配置层定义了：
+### P0
 
-- 股票池规模
-- 本地库路径
-- 数据源参数
-- 更新频率与阈值
-- walk-forward 参数
-- 候选策略参数
-- 跨市场 overlay 参数
+- Tushare 财务历史回填未完成，质量/现金流类因子长期历史诊断仍不完整。
+- `db-health` 还未接入调度器和关键研究命令前置门禁。
+- 统一 `strategy-admission` 报告尚未实现，准入判断仍分散在多个报告中。
 
-这说明项目当前是 **配置驱动型研究系统**。后续无论接 Web、PWA 还是桌面端，底层都可以复用这套参数体系。
+### P1
 
----
+- [phase0/walk_forward.py](../phase0/walk_forward.py) 职责过宽，后续稳定后应拆出因子、组合和评估子模块。
+- `brief daily` 仍复用 watchlist 兼容路径，正式日报产物需要独立建模。
+- `overfit-diagnostic` 未进入 gate / brief / admission 主流程。
+- OHLC 异常检查只有汇总数量，缺 sample rows。
 
-## 7.3 数据导入与本地库构建
+### P2
 
-### `phase0/import_history.py`
-
-负责把预下载的 A 股压缩包导入本地 SQLite 历史库，建立：
-
-- 股票日线表
-- 股票元数据表
-- 交易日历表
-- 退市股票表
-- 指数元数据与日线表
-
-这是本地研究底座的初始化模块。
+- `data/raw_data/` 与 `data/features/` 仍是预留目录，feature store 尚未正式落地。
+- FRED/Tiingo 虽有最小接入，但尚未形成完整宏观/跨市场特征资产。
+- 港股映射策略仍停留在数据前置和研究阶段，未代码化为正式候选。
+- 真实账户 CSV 对账只预留 schema，未形成复盘闭环。
 
 ---
 
-## 7.4 本地库增量维护
+## 9. 推荐演进路线
 
-### `phase0/update_history.py`
+### 阶段 A：数据治理闭环
 
-负责增量更新当日或最近交易日数据，并维护：
+完成标准：
 
-- 最新日线写入
-- 元数据刷新
-- 覆盖率检查
-- 最小运行时间保护
-- 来源审计
-- 不足覆盖时拒绝写入
+- Tushare 财务回填 2016Q1-2018Q1 完成。
+- failed 任务重试到可接受比例。
+- `financial-pti` 重新 PASS。
+- `factor-effectiveness` 重跑并记录质量因子覆盖变化。
+- `db-health --scope scheduler|cn` 接入调度和研究前置检查。
 
-这是数据层里最接近“生产运行”的模块。
+### 阶段 B：策略准入统一
 
-它体现的架构思想是：
+完成标准：
 
-> 数据更新不是简单 append，而是带有时序保护、覆盖率门槛和审计记录的受控流程。
+- 新增 `strategy-admission` 报告。
+- 合并 qfq_asof、PIT universe、financial PTI、factor effectiveness、overfit、execution gate。
+- 明确何种策略能进入长期观察池，何种策略只能作为研究样本。
 
----
+### 阶段 C：低频低换手候选重建
 
-## 7.5 数据源适配与节流
+完成标准：
 
-### `phase0/tushare_source.py`
-### `phase0/data_sources.py`
-### `phase0/throttle.py`
+- 实现 `low_vol_low_turnover_quality_v1`。
+- 实现 `quality_low_turnover_monthly_v1`。
+- 双口径对照：`qfq_current` vs `qfq_asof`。
+- 成本后、账户级执行后仍能通过准入。
 
-这些模块共同承担：
+### 阶段 D：日常研判产品化
 
-- 外部数据源调用
-- 请求重试
-- 节流
-- 覆盖率处理
-- 数据规范化
+完成标准：
 
-可以把它们理解为当前系统的“轻量 data adapter 层”。
+- 正式 daily brief 从 watchlist 兼容路径拆出。
+- 调度具备交易日历、运行窗口、重试和健康检查门禁。
+- 报告能区分研究信号、观察信号、可执行计划和阻断原因。
 
-后续若继续接入 FRED、Tiingo，这一层会进一步显性化，成为更正式的数据接入子系统。
+### 阶段 E：跨市场和文本增强
 
----
+完成标准：
 
-## 7.6 股票池构建
-
-### `phase0/universe.py`
-
-负责：
-
-- 获取全市场快照
-- 做流动性与市值筛选
-- 执行行业分散约束
-- 生成本地 factor universe
-- 输出股票池与说明报告
-
-这是策略计算的前置模块，也是产品从“全市场研究”过渡到“可执行观察池”的关键步骤。
+- FRED/Tiingo/HK 数据形成稳定 feature assets。
+- 跨市场增强只作为风险/情绪 overlay，不变成主 ranker。
+- 文本/新闻只进入解释和事件风险层，未验证前不进入交易主信号。
 
 ---
 
-## 7.7 策略验证引擎
-
-### `phase0/walk_forward.py`
-
-这是当前系统最核心的业务模块之一。
-
-它负责：
-
-- 加载历史数据
-- 构建横截面面板
-- 附加跨市场特征
-- 附加本土技术因子
-- 附加财务因子
-- 调用 `phase0/strategies/` 中注册的多候选策略
-- 进行 walk-forward 验证
-- 比较候选优劣
-- 输出所选 candidate 摘要
-
-从架构角度看，这个文件当前承担了：
-
-- 特征层
-- 组合层
-- 回测层
-- 评估层
-
-策略候选的具体逻辑已经开始从 `walk_forward.py` 拆出到 `phase0/strategies/`。未来如果产品继续演化，仍可进一步拆分成更清晰的 `factors/`、`portfolio/`、`evaluation/` 子模块。
-
----
-
-## 7.8 策略注册表
-
-### `phase0/strategies/`
-
-当前策略层已经从单文件硬编码演进为注册表结构：
-
-- `base.py`：定义 `BaseStrategy` 与 `StrategyOutput`
-- `registry.py`：管理策略注册与获取
-- `legacy_momentum.py`
-- `ma_kline_baseline.py`
-- `residual_momentum_reversal.py`
-- `residual_momentum_reversal_v2.py`
-- `quality_growth_price.py`
-- `multifactor_volume_price_filter.py`
-
-这意味着策略层已经具备“候选工厂”的基本形态。后续新增候选应优先放入该目录，并通过 `config.yaml` 的 `walk_forward.strategy_v2.compare_strategies` 控制是否参与比较。
-
----
-
-## 7.9 报告生成
-
-### `phase0/reporting.py`
-
-负责把运行结果写成 Markdown 报告：
-
-- 数据源报告
-- walk-forward 报告
-- effectiveness gate 报告
-
-这是当前“应用输出层”的核心模块。
-
----
-
-## 8. 当前系统如何使用
-
-## 8.1 典型使用方式
-
-当前项目的使用方式以命令行为主，适合研究者或维护者本地运行。
-
-### 一次完整 Phase 0 验证
+## 10. 当前推荐操作入口
 
 ```bash
-./.venv/bin/python -m phase0.cli run --config config.yaml
-```
+# 数据库健康检查
+./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope all
 
-适用于：
+# Tushare 财务历史回填
+./.venv/bin/python -m phase0.cli backfill-tushare-financials \
+  --config config.yaml \
+  --start-period 2016-03-31 \
+  --end-period 2018-03-31 \
+  --max-requests-per-minute 120 \
+  --max-runtime-minutes 180
 
-- 检查数据源可用性
-- 执行 walk-forward
-- 生成研究报告
+# 因子有效性诊断
+./.venv/bin/python -m phase0.cli factor-effectiveness --config config.yaml
 
-### 首次构建离线历史库
+# 策略过拟合诊断
+./.venv/bin/python -m phase0.cli overfit-diagnostic --config config.yaml
 
-```bash
-./.venv/bin/python -m phase0.cli import-history --config config.yaml
-```
-
-适用于：
-
-- 初始化本地研究数据底座
-- 重建数据库
-
-### 增量更新本地历史库
-
-```bash
+# A 股数据更新
 ./.venv/bin/python -m phase0.cli update-history --config config.yaml
+
+# 阶段试用观察池
+./.venv/bin/python -m phase0.cli brief watchlist --config config.yaml
 ```
-
-适用于：
-
-- 每日收盘后维护本地库
-- 保持股票池与回测数据新鲜
-
-### 构建最新股票池
-
-```bash
-./.venv/bin/python -m phase0.cli build-universe --config config.yaml
-```
-
-适用于：
-
-- 生成观察池底稿
-- 刷新横截面研究对象
-
-### 更新财务因子
-
-```bash
-./.venv/bin/python -m phase0.cli update-financials --config config.yaml
-```
-
-适用于：
-
-- 刷新季度财务因子
-- 为质量/成长/价值相关候选提供输入
 
 ---
 
-## 8.2 定时运行方式
+## 11. 架构治理规则
 
-当前项目已经预留开发期调度方式：
+后续开发默认遵循：
 
-```bash
-bash scripts/install_dev_cron.sh
-```
+- 任何新策略先进入 registry 和 compare，不直接进入日报。
+- 任何新数据源先进入 adapter、落库、source audit，再进入策略或日报。
+- 任何财务/公告/文本类数据必须有 as-of 可见性说明。
+- 任何回测结果必须说明价格口径、股票池口径、成本口径和执行口径。
+- 任何新调度任务必须有日志、锁、last marker、失败行为和健康检查策略。
+- 任何 LLM 输出只能解释和总结，不能绕过策略与风控生成交易动作。
 
-默认包含：
-
-- 一个系统 cron 入口：`* * * * * bash scripts/run_project_scheduler.sh`
-- 每周一 `03:30` 更新 A 股季度财务因子
-- 交易日 `07:20` 生成日常简报 pipeline
-- 交易日 `16:20` 更新港股历史库
-- 交易日 `16:30` 更新 A 股本地历史库
-- 交易日 `17:10` 更新 US market 历史库
-
-项目内调度、锁、每日去重和任务日志由 `scripts/run_project_scheduler.sh` 统一管理。后续新增定时任务时，应优先扩展该脚本，避免在系统 cron 中分散维护多条项目命令。
-
-因此从产品运营角度看，系统已经具备“批处理研究任务”的基础能力。
-
----
-
-## 9. 最终产品的推荐理解方式
-
-如果把 `stok-mapping` 看成一个最终产品，它不是单一程序，而是由五个核心子系统组成：
-
-### 子系统 1：研究数据底座
-
-职责：
-
-- 汇聚 A 股、指数、跨市场、财务等研究数据
-- 提供可复现、可审计、可 fallback 的本地数据层
-
-### 子系统 2：策略实验与验证系统
-
-职责：
-
-- 快速引入候选策略
-- 统一比较
-- 控制参数漂移
-- 用 effectiveness gate 做准入
-
-### 子系统 3：盘前研判引擎
-
-职责：
-
-- 把本土信号与跨市场风险信息合并
-- 输出观察池、风险暴露和情景推演
-
-### 子系统 4：可交易信号与调仓建议引擎
-
-职责：
-
-- 读取当前持仓、现金、目标权重和风险预算
-- 结合 A 股整手、停牌、涨跌停、流动性和冲击成本约束
-- 输出 `新增 / 加仓 / 减仓 / 持有 / 剔除 / 阻断`
-- 生成调仓建议单、模拟订单、阻断原因和失效条件
-
-这套输出是个人自用交易计划草案，不是自动下单，也不是对外投资建议。
-
-### 子系统 5：研究报告与产品交付层
-
-职责：
-
-- 输出 Markdown / CSV / 日报 / 调仓建议单
-- 未来可演化为 Web / PWA / 桌面端
-
-所以，最准确的产品描述可以写成：
-
-> `stok-mapping` 是一个面向 A 股量化研究、盘前研判与个人交易计划辅助的分层式研究应用，底层以本地历史数据库和多源数据接入为基础，中层以股票池、因子工程、候选策略和 walk-forward 验证为核心，上层以观察池、可交易信号、调仓建议单、风险解释、日报和后续应用化交付为输出形态。
-
----
-
-## 10. 当前阶段与最终形态之间的关系
-
-这一点很重要：
-
-### 当前已落地的是
-
-- 数据底座
-- 股票池
-- 增量更新
-- 财务因子接入
-- 策略注册表
-- walk-forward 回测
-- effectiveness gate
-- 报告输出
-- Claude / DeepSeek 研究辅助入口
-
-### 当前尚未完成的是
-
-- 稳定通过 gate 的主策略
-- 候选比较中的样本覆盖 gate
-- 正式盘前日报产品化
-- 前端可视化界面
-- 更成熟的数据源分层替换
-- 完整的解释层自动化
-
-也就是说，项目当前不是“还没开始”，而是：
-
-> **核心研究内核已经形成，但产品外壳和主策略质量还在收敛。**
-
-这是理解项目结构时最重要的判断。
-
----
-
-## 11. 结论
-
-`stok-mapping` 的本质，不是一个零散的量化脚本仓库，而是一个已经具备清晰产品架构的研究型应用原型。
-
-其架构核心可以概括为：
-
-1. **以本地 SQLite 历史库为研究底座**；
-2. **以 Tushare + 本地 SQLite 为 A 股主底座，AkShare/Sina 为 fallback，并以 Tiingo/FRED 作为下一阶段正式外部源**；
-3. **以股票池、技术因子和财务因子构成 A 股本土主信号层**；
-4. **以跨市场映射做风险/情绪 overlay，而非主排序器**；
-5. **以 walk-forward + effectiveness gate 作为策略准入机制**；
-6. **以报告、观察池和盘前研判作为当前交付形式，并为未来 App/Web 化预留空间**。
-
-如果后续需要继续把项目产品化，最合理的方向不是推倒重来，而是沿着现有分层继续演进：
-
-- 先修复候选比较的样本覆盖治理，再把主策略做过门槛；
-- 再把盘前日报稳定化；
-- 再把交互层包装成更易用的 App 形态。
-
-这也是当前项目文档、代码结构和执行计划共同指向的总体架构。
