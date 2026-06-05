@@ -40,3 +40,32 @@ Source: yfinance
 Warning: yfinance NVDA returned empty data.
 Warning: yfinance ^VIX returned empty data.
 [2026-06-04 17:10:15 +0800] finish us_market_history
+[2026-06-05 17:10:01 +0800] start us_market_history health gate (scope=scheduler, fail_on=warning)
+Database health check started
+Database health status: pass
+Summary rows: 5
+Findings: errors=0, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-05 17:10:03 +0800] pass us_market_history health gate
+[2026-06-05 17:10:03 +0800] start us_market_history
+
+1 Failed download:
+['^VIX']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+US market history update status: updated
+Database: /home/zj/workspace/stok-mapping/data/us_market_history.sqlite
+Latest date: 2026-06-04
+Coverage: 1.0000 (6/6)
+Fetched rows: 6389
+Inserted rows: 0
+Updated rows: 6389
+Source: yfinance
+Warning: yfinance ^VIX returned empty data.
+[2026-06-05 17:10:14 +0800] finish us_market_history
