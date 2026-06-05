@@ -1099,3 +1099,41 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - [ ] 为 `daily_basic.pe_ratio` 覆盖不足建立口径判断：数据缺失、亏损导致为空、还是字段不适合作为硬门槛
 - [ ] 评估是否需要可选落库 `database_health_runs` / `database_health_findings`，默认仍保持只读
+
+# W2.18｜数据治理与维护编排器专项（T6.3）
+
+参考专项任务：[`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md)
+
+## W2.18.1 背景
+
+当前项目已经具备统一 cron 入口、`db-health` 门禁、backfill 审计报告和部分断点任务能力，但调度、重试、跳过原因、长任务分片监督和运行状态仍分散在 shell、日志、`.last` 文件和各业务模块里。
+
+下一阶段需要建立本地数据治理控制平面，把维护动作从“脚本按时跑”升级为“任务有状态、失败可解释、长任务可停止和恢复、报告可追溯”。
+
+## W2.18.2 本周目标
+
+- [x] 建立 `T6.3` 专项任务单，明确最终形态架构模式
+- [x] 将 `T6.3` 加入任务索引和主开发计划
+- [x] 在架构文档中明确维护编排器是交付与运维层的目标 control plane
+- [ ] 设计 `maintenance_orchestrator` 第一版最小实现边界
+- [ ] 实现状态库 schema 初始化：`data/maintenance/maintenance.sqlite`
+- [ ] 实现 `maintain tick --dry-run`
+- [ ] 实现 `maintain status`
+- [ ] 将当前 shell 调度任务映射为内置 registry，但不立即替换 cron 行为
+
+## W2.18.3 第一版验收标准
+
+- [ ] `maintain tick --dry-run` 能输出当前时刻每个任务的 `will_run / skipped / blocked` 判断和原因
+- [ ] `maintain status` 能展示最近运行、当前运行、失败次数、最后错误摘要和报告路径
+- [ ] 当前 `scripts/run_project_scheduler.sh` 行为不被破坏
+- [ ] `db-health` 门禁策略仍按任务 scope 控制，不使用全局单一阻断标准
+- [ ] 运行产物继续写入既有 `reports/` 和 `logs/` 路径
+
+## W2.18.4 后续任务
+
+- [ ] 将 `scripts/run_project_scheduler.sh` 降级为 wrapper，正式由 `maintain tick` 接管调度判断
+- [ ] 接入交易日历、运行窗口、重试次数和重试间隔
+- [ ] 为 `backfill-tushare-financials` 增加 3 shard 编排运行模式
+- [ ] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
+- [ ] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
+- [ ] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`

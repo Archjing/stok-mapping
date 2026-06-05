@@ -72,7 +72,7 @@
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │ 8. 交付与运维层                                               │
-│ reports / watchlist HTML / brief / scheduler / logs / ECS sync│
+│ reports / watchlist HTML / desktop UI / scheduler / logs / ECS│
 ├──────────────────────────────────────────────────────────────┤
 │ 7. 策略治理层                                                 │
 │ walk-forward / gate / overfit / factor-effectiveness / admission│
@@ -471,6 +471,9 @@ data health PASS / acceptable warning
 - `brief account-bill`
 - `scripts/run_project_scheduler.sh`
 - `logs/scheduler/*.last`
+- 规划中：`phase0.cli maintain tick/status/run/stop/resume`
+- 规划中：`data/maintenance/maintenance.sqlite`
+- 规划中：本地桌面交互 UI
 
 输出目录：
 
@@ -487,8 +490,88 @@ data health PASS / acceptable warning
 
 - 单一 cron 入口应保持为 `scripts/run_project_scheduler.sh`。
 - 已有 `07:20` watchlist、`16:20` HK、`16:30` A 股、`17:10` US、每周财务因子更新等任务。
-- 后续应把 `db-health --scope scheduler` 放入调度前置检查。
-- 交易日历判断和失败重试仍需增强。
+- `db-health --scope scheduler` 已接入调度前置检查，`cn/error` 门禁已接入关键研究入口。
+- 交易日历判断、失败重试、运行窗口和统一状态库仍需增强。
+
+目标形态：
+
+- `scripts/run_project_scheduler.sh` 逐步降级为 wrapper，只负责加载环境并调用 Python 维护编排器。
+- 数据治理与维护编排器作为 control plane，统一管理任务 registry、状态机、门禁、重试、报告索引和长 backfill 分片监督。
+- 现有 `update-*`、`backfill-*`、`brief`、`db-health` 命令继续作为 data plane，避免一次性重写稳定业务逻辑。
+
+---
+
+### 5.11 本地桌面交互 UI 预留
+
+可行性结论：
+
+- 建议预留并分阶段建设现代本地桌面 UI；方向可对标 Notion / Obsidian 的信息组织体验，但不应直接复制其视觉或交互细节。
+- UI 的正确定位是“本地研究工作台”和“运维控制台”，不是交易终端。
+- 当前阶段可做架构预留和只读原型，不应优先于 Tushare 财务回填、`T6.3` 维护编排器、策略准入报告和正式 daily brief。
+- 最合适的触发点是 `T6.3` 第一版完成后：任务状态、报告路径、健康门禁和长任务运行账本都已有统一 API 或状态库，UI 才有稳定数据模型可读。
+
+推荐产品形态：
+
+- 左侧 workspace navigation：数据治理、维护任务、策略研究、观察池、模拟账户、报告库。
+- 中心文档/看板区：Markdown 报告、表格、图表、任务详情、策略准入卡片。
+- 右侧 inspector：数据口径、最近运行、风险提示、相关报告、命令复现。
+- 全局 command palette：执行只读检查、打开报告、触发维护任务、复制 CLI 命令。
+- Local-first：默认读取本机 SQLite、`reports/` 和 `logs/`，离线可用。
+
+推荐技术路线：
+
+- 首选：Tauri + Web 前端。
+- 备选：Electron + Web 前端。
+- 不建议第一版直接做传统 Qt/PySide 桌面端，原因是现有报告和未来交互都更适合 Web 技术栈，且后续可复用到浏览器/PWA。
+
+Tauri 更符合当前项目的原因：
+
+- 本项目偏本地优先、长时间运行、文件/SQLite/报告交互密集，Tauri 的本地 WebView + Rust shell 模式更轻量。
+- UI 可以用 TypeScript/React/Vue/Svelte 构建，后端继续通过本地 Python CLI / API / 状态库完成实际工作。
+- 权限面可以收窄到项目目录、报告目录和少量命令调用，适合个人本地研究系统。
+
+Electron 适合作为备选的原因：
+
+- 如果未来需要更强 Chromium 一致性、复杂图表、Node 生态集成或更快前端开发便利性，Electron 会更省心。
+- 代价是安装包和运行资源更重，安全边界也需要更严格治理。
+
+推荐架构：
+
+```text
+Desktop UI
+    ↓
+Local UI Backend / Command Broker
+    ↓
+maintenance_orchestrator + phase0 CLI
+    ↓
+SQLite / reports / logs / source audit
+```
+
+边界要求：
+
+- UI 不直接写策略结论，不直接改交易信号。
+- UI 不直连券商 API，不提供自动下单入口。
+- UI 默认只读展示数据、报告、状态和风险；写操作必须走维护编排器或明确 CLI。
+- 涉及 `TUSHARE_TOKEN`、远端同步密钥和账户 CSV 的路径不得在 UI 日志中明文暴露。
+- UI 中所有回测、观察池和模拟账户结论都必须展示数据日期、价格口径、策略版本和门禁状态。
+
+分阶段实现：
+
+| 阶段 | 目标 | 完成标准 |
+| --- | --- | --- |
+| `UI-0` | 设计系统与静态原型 | 明确信息架构、字体/颜色/密度、Notion/Obsidian 风格参考边界 |
+| `UI-1` | 只读报告库 | 能浏览 `reports/` Markdown/HTML/CSV，支持日期、任务、策略筛选 |
+| `UI-2` | 数据治理控制台 | 展示 `db-health`、source audit、维护任务状态和 backfill summary |
+| `UI-3` | 维护任务操作台 | 通过 `maintain run/stop/resume/status` 控制本地任务，保留命令复现 |
+| `UI-4` | 策略研究工作台 | 展示 strategy admission、factor effectiveness、overfit、walk-forward 对比 |
+| `UI-5` | 模拟账户与观察池 | 展示观察池、持仓、模拟成交、阻断原因和账户风险，不接自动交易 |
+
+设计原则：
+
+- 类 Notion：清晰层级、块状信息组织、轻量命令面板、低干扰阅读体验。
+- 类 Obsidian：本地文件优先、报告之间可交叉引用、研究过程可追溯。
+- 量化研究适配：高信息密度、表格可排序过滤、日期和口径始终可见、异常状态比装饰更突出。
+- 桌面 UI 是现有 CLI / report / SQLite 体系的可视化入口，不是新的业务事实来源。
 
 ---
 
@@ -545,7 +628,7 @@ data health PASS / acceptable warning
 | 跨市场数据陈旧 | US/HK audit, db-health coverage | 交易日历与时区 aware freshness |
 | 策略过拟合 | `overfit-diagnostic` MVP | gate/brief 集成、参数扰动、收益集中度 |
 | 执行不可成交 | 账户级仿真 v2 | 与真实账户 CSV 对账闭环 |
-| 调度静默失败 | logs/scheduler/*.last | 运行窗口、重试次数、db-health 前置检查 |
+| 调度静默失败 | logs/scheduler/*.last、db-health 前置检查 | 维护编排器、运行窗口、重试次数、统一状态库 |
 | LLM 越权决策 | 文档边界约束 | 输出层模板继续强化“非交易指令” |
 
 ---
@@ -557,7 +640,7 @@ data health PASS / acceptable warning
 ### P0
 
 - Tushare 财务历史回填未完成，质量/现金流类因子长期历史诊断仍不完整。
-- `db-health` 还未接入调度器和关键研究命令前置门禁。
+- 调度仍由 shell 脚本承担主要状态判断，缺少统一维护编排器、运行账本和长任务监督。
 - 统一 `strategy-admission` 报告尚未实现，准入判断仍分散在多个报告中。
 
 ### P1
@@ -565,7 +648,7 @@ data health PASS / acceptable warning
 - [phase0/walk_forward.py](../phase0/walk_forward.py) 职责过宽，后续稳定后应拆出因子、组合和评估子模块。
 - `brief daily` 仍复用 watchlist 兼容路径，正式日报产物需要独立建模。
 - `overfit-diagnostic` 未进入 gate / brief / admission 主流程。
-- OHLC 异常检查只有汇总数量，缺 sample rows。
+- `daily_basic.pe_ratio` 覆盖不足仍需建立口径判断，区分数据缺失和亏损公司自然为空。
 
 ### P2
 
@@ -587,6 +670,7 @@ data health PASS / acceptable warning
 - `financial-pti` 重新 PASS。
 - `factor-effectiveness` 重跑并记录质量因子覆盖变化。
 - `db-health --scope scheduler|cn` 接入调度和研究前置检查。
+- 建立 `T6.3` 数据治理与维护编排器专项，先实现状态库、dry-run tick 和维护状态查询。
 
 ### 阶段 B：策略准入统一
 
@@ -610,8 +694,10 @@ data health PASS / acceptable warning
 完成标准：
 
 - 正式 daily brief 从 watchlist 兼容路径拆出。
-- 调度具备交易日历、运行窗口、重试和健康检查门禁。
+- 调度具备交易日历、运行窗口、重试、健康检查门禁和统一维护状态库。
+- 长 backfill 能通过维护编排器统一启动、停止、恢复和查看 shard 状态。
 - 报告能区分研究信号、观察信号、可执行计划和阻断原因。
+- 本地桌面 UI 进入只读原型阶段，优先作为报告库和数据治理控制台。
 
 ### 阶段 E：跨市场和文本增强
 
@@ -620,6 +706,7 @@ data health PASS / acceptable warning
 - FRED/Tiingo/HK 数据形成稳定 feature assets。
 - 跨市场增强只作为风险/情绪 overlay，不变成主 ranker。
 - 文本/新闻只进入解释和事件风险层，未验证前不进入交易主信号。
+- 桌面 UI 扩展到策略研究工作台、观察池和模拟账户视图，但仍不提供自动交易入口。
 
 ---
 
@@ -662,4 +749,3 @@ data health PASS / acceptable warning
 - 任何回测结果必须说明价格口径、股票池口径、成本口径和执行口径。
 - 任何新调度任务必须有日志、锁、last marker、失败行为和健康检查策略。
 - 任何 LLM 输出只能解释和总结，不能绕过策略与风控生成交易动作。
-

@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-05（同步 Tushare 财务回填可观测性与数据库健康检查模块）
+> 最后修订：2026-06-05（同步 Tushare 财务回填可观测性、数据库健康检查和数据治理维护编排器专项）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.10 有效策略重建**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -36,6 +36,7 @@
 - `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
 - `T1.5` Tushare 财务因子逐股票历史补齐已具备断点任务表、分片运行、限速、进度显示和验收报告；当前重点转为跑完 2016Q1-2018Q1、重试失败任务并复核因子覆盖
 - `T6.2` 数据库健康检查只读 MVP 已落地，新增 `phase0.cli db-health`，可输出 CSV / Markdown 报告并按 `--fail-on` 作为调度或 CI 门禁
+- `T6.3` 数据治理与维护编排器专项计划已建立，目标是把当前 shell 调度器、`db-health` 门禁、backfill 分片监督、运行状态和审计账本演进为统一的本地控制平面
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
 - `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
@@ -93,11 +94,12 @@
 4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
 5. 继续执行 `T1.5` Tushare 财务因子逐股票历史补齐，当前优先目标是清空 2016Q1-2018Q1 的 pending 队列、重试 failed 任务，并重新运行 `financial-pti` / `factor-effectiveness`。
 6. 将 `T6.2` 数据库健康检查接入调度前置门禁，先用只读报告和 `--fail-on` 控制失败退出，不默认写健康状态表。
-7. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
-8. 基于已通过的财务因子 PTI 校验和财务历史回填结果，谨慎恢复质量成长 / 多因子后续验证。
-9. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
-10. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试、`db-health` 前置检查和正式 daily brief 独立产物。
-11. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
+7. 推进 `T6.3` 数据治理与维护编排器专项：先做状态库、dry-run tick 和 `maintain status`，再替换 shell 内部调度逻辑，最后接入长 backfill 分片监督。
+8. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
+9. 基于已通过的财务因子 PTI 校验和财务历史回填结果，谨慎恢复质量成长 / 多因子后续验证。
+10. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
+11. 维护已接入调度器的阶段试用观察池日报链路，并继续补齐交易日历、失败重试和正式 daily brief 独立产物。
+12. 新闻源独立于 Tiingo 日线适配器推进；Alpha Vantage 先做 probe，Benzinga 作为生产级候选，不把新闻直接接入主 ranker。
 
 当前**不是**优先做的事：
 
@@ -1034,7 +1036,8 @@ stok-mapping/
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`docs/tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
 | `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
-| `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP 已完成，待接入调度前置门禁并补异常样本输出** |
+| `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP、调度/研究前置门禁与 OHLC sample rows 已完成，后续补覆盖率口径判断** |
+| `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **专项计划已建立，待实现状态库、dry-run tick、维护状态查询和长任务分片监督** |
 
 ### 当前最高优先级
 
@@ -1073,6 +1076,7 @@ stok-mapping/
 - [ ] 继续执行 Tushare 财务因子逐 `ts_code` 历史补齐任务：代码与验收报告已具备，当前剩余重点是跑完 pending、重试 failed、复核 `financial-pti` 与 `factor-effectiveness`
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
 - [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
+- [ ] 启动 `T6.3` 数据治理与维护编排器：以 Python control plane 统一管理任务 registry、状态机、门禁、重试、审计和长 backfill 分片监督
 - [ ] 将 full daily brief 从当前 watchlist 兼容产物中独立出来，形成正式日报产物生成代码
 - [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 
@@ -1232,6 +1236,37 @@ announce_date_coverage
 - OHLC 异常样本输出已补齐，当前样本已能直接定位到 `CNY=X` 与 `HK.09633` 的具体异常行
 - 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - 对 `daily_basic.pe_ratio` 覆盖不足建立口径判断，区分数据缺失与亏损公司自然为空
+
+### T6.3｜数据治理与维护编排器
+
+**目标**：把当前 shell 调度器、`db-health` 门禁、任务重试、运行状态、backfill 分片监督和审计报告索引，演进为统一的本地数据治理控制平面。
+
+专项任务单：
+
+- [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md)
+
+推荐架构模式：
+
+- `Control Plane / Data Plane`：编排器只做调度、门禁、状态和监督，现有 CLI 继续负责真实数据生产。
+- `Command Registry`：统一声明任务命令、时间窗口、交易日历、依赖、健康门禁、重试和产物规则。
+- `State Machine`：任务状态统一为 `pending / running / succeeded / failed / skipped / blocked / cancelled`。
+- `Policy Gate`：统一执行交易日历、锁、依赖、失败次数和 `db-health` 检查。
+- `Supervisor`：管理长 backfill 子进程、分片、停止和恢复。
+- `Append-only Audit Ledger`：运行事件与关键结论只追加，详细报告仍按日期目录输出。
+
+第一阶段交付：
+
+- 新增 `phase0/maintenance_orchestrator.py`
+- 新增 `phase0.cli maintain tick/status/run/stop/resume`
+- 新增 `data/maintenance/maintenance.sqlite`
+- 先实现 `maintain tick --dry-run` 与 `maintain status`
+- 保持 cron 单入口，但逐步把 shell 内部调度逻辑迁移到 Python 编排器
+
+边界：
+
+- 第一版不引入 Airflow、Celery、Redis、systemd service 或 Kubernetes。
+- 第一版先通过现有 CLI 命令数组适配旧任务，不直接重构业务模块。
+- backfill 详细报告和 summary audit 继续由现有 backfill 模块生成，编排器只登记路径、状态和关键结论。
 
 ### 条件满足后再推进
 
