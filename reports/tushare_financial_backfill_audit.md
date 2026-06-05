@@ -1,8 +1,11 @@
 # Tushare 财务因子逐股票回填验收报告
 
-| period | target_symbols | fetched_symbols | empty_symbols | failed_symbols | pending_symbols | factor_rows | announce_date_coverage | roe_coverage | revenue_growth_coverage | profit_growth_coverage | cash_flow_quality_coverage | debt_to_asset_coverage |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2017-09-01 | 3127 | 0 | 1919 | 298 | 910 | 0 | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
+## 历次运行记录
+
+| run_started_at | run_finished_at | status | start_period | end_period | single_period | shard_index | shard_count | retry_failed | replace_existing | limit_symbols | limit_tasks | max_runtime_minutes | max_requests_per_minute | target_tasks | processed_tasks | fetched_tasks | empty_tasks | failed_tasks | inserted_rows | warning_count | period | target_symbols | fetched_symbols | empty_symbols | failed_symbols | pending_symbols | factor_rows | announce_date_coverage | roe_coverage | revenue_growth_coverage | profit_growth_coverage | cash_flow_quality_coverage | debt_to_asset_coverage |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+|  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 2017-09-30 | 3160 | 2531 | 1 | 0 | 628 | 2531 | 100.00% | 99.64% | 100.00% | 100.00% | 100.00% | 100.00% |
+| 2026-06-05T14:58:27 | 2026-06-05T14:58:30 | ok | 2016-03-31 | 2018-03-31 | 2017-09-30 | 0 | 1 | False | False |  | 0 | 1 | 120 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2017-09-30 | 3160 | 2585 | 1 | 0 | 574 | 2585 | 100.00% | 99.65% | 100.00% | 100.00% | 100.00% | 100.00% |
 
 ## Warnings
 

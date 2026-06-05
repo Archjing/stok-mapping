@@ -91,3 +91,64 @@ Warning: yfinance HK.02899 returned empty data.
 Warning: yfinance HK.09633 returned empty data.
 Warning: yfinance HK.06160 returned empty data.
 [2026-06-04 16:20:50 +0800] finish hk_market_history
+[2026-06-05 16:20:01 +0800] start hk_market_history health gate (scope=scheduler, fail_on=warning)
+Database health check started
+Database health status: pass
+Summary rows: 5
+Findings: errors=0, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-05 16:20:02 +0800] pass hk_market_history health gate
+[2026-06-05 16:20:02 +0800] start hk_market_history
+
+1 Failed download:
+['0981.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['9618.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['9868.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['0992.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['0388.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['2318.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['2899.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['9633.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+
+1 Failed download:
+['6160.HK']: YFRateLimitError('Too Many Requests. Rate limited. Try after a while.')
+HK market history update status: stale
+Database: /home/zj/workspace/stok-mapping/data/hk_market_history.sqlite
+Latest date: 2026-06-04
+Coverage: 0.9667 (29/30)
+Fetched rows: 25980
+Inserted rows: 24
+Updated rows: 25956
+Source: yfinance
+Warning: yfinance HK.00981 returned empty data.
+Warning: yfinance HK.09618 returned empty data.
+Warning: yfinance HK.09868 returned empty data.
+Warning: yfinance HK.00992 returned empty data.
+Warning: yfinance HK.00388 returned empty data.
+Warning: yfinance HK.02318 returned empty data.
+Warning: yfinance HK.02899 returned empty data.
+Warning: yfinance HK.09633 returned empty data.
+Warning: yfinance HK.06160 returned empty data.
+[2026-06-05 16:20:51 +0800] fail hk_market_history

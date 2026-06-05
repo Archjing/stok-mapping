@@ -1,0 +1,15 @@
+# Tushare 财务因子逐股票回填汇总报告
+
+## 历次运行汇总
+
+| run_started_at | run_finished_at | status | start_period | end_period | single_period | shard_index | shard_count | retry_failed | replace_existing | limit_symbols | limit_tasks | max_runtime_minutes | max_requests_per_minute | target_tasks | processed_tasks | fetched_tasks | empty_tasks | failed_tasks | inserted_rows | warning_count | detail_report_csv | detail_report_md | key_conclusion |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 2026-06-05T15:32:12 | 2026-06-05T15:32:13 | ok | 2016-03-31 | 2018-03-31 | 2017-09-30 | 0 | 1 | False | False | nan | 0.0000 | 1.0000 | 120 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20170930.csv | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20170930.md | 2017-09-30 shard 0/1, processed=0, fetched=0, failed=0, inserted_rows=0, warnings=0 |
+| 2026-06-05T15:34:37 | 2026-06-05T15:44:59 | ok | 2017-09-16 | 2017-09-30 | nan | 0 | 1 | False | False | nan | nan | nan | 67 | 294 | 294 | 294 | 0 | 0 | 294 | 0 | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20170916_20170930.csv | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20170916_20170930.md | 2017-09-16..2017-09-30 shard 0/1, processed=294, fetched=294, failed=0, inserted_rows=294, warnings=0 |
+| 2026-06-05T15:48:53 | 2026-06-05T16:19:35 | ok | 2017-10-01 | 2017-10-31 | nan | 2 | 3 | False | False | nan | nan | nan | 67 | 1047 | 1047 | 0 | 1047 | 0 | 0 | 0 | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.csv | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.md | 2017-10-01..2017-10-31 shard 2/3, processed=1047, fetched=0, failed=0, inserted_rows=0, warnings=0 |
+| 2026-06-05T15:48:33 | 2026-06-05T16:25:16 | ok | 2017-10-01 | 2017-10-31 | nan | 1 | 3 | False | False | nan | nan | nan | 67 | 1052 | 1052 | 0 | 1052 | 0 | 0 | 0 | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.csv | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.md | 2017-10-01..2017-10-31 shard 1/3, processed=1052, fetched=0, failed=0, inserted_rows=0, warnings=0 |
+| 2026-06-05T15:48:23 | 2026-06-05T16:25:36 | ok | 2017-10-01 | 2017-10-31 |  | 0 | 3 | False | False |  |  |  | 67 | 1054 | 1054 | 0 | 1054 | 0 | 0 | 0 | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.csv | /home/zj/workspace/stok-mapping/reports/2026-06-05/tushare_financial_backfill_audit_260605_20171001_20171031.md | 2017-10-01..2017-10-31 shard 0/3, processed=1054, fetched=0, failed=0, inserted_rows=0, warnings=0 |
+
+## Latest Warnings
+
+- 无。

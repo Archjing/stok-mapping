@@ -1,0 +1,13 @@
+table,field,start_date,end_date,rows,non_null_ratio
+market_daily_bars,bfq.ohlcv,,,0,0.0
+market_daily_bars,qfq.ohlcv,,,0,0.0
+market_daily_basic,pe_ratio,2016-01-04,2016-01-05,5102,0.8392787142297138
+market_daily_basic,pb_ratio,2016-01-04,2016-01-05,5102,0.9956879655037241
+market_daily_basic,turnover_rate,2016-01-04,2016-01-05,5102,1.0
+market_adj_factors,adj_factor,2016-01-04,2016-01-05,5768,1.0
+market_financial_factors,roe,,,0,0.0
+market_financial_factors,revenue_growth,,,0,0.0
+market_financial_factors,profit_growth,,,0,0.0
+market_financial_factors,operating_cash_flow_to_net_profit,,,0,0.0
+market_financial_factors,debt_to_asset,,,0,0.0
+market_dividends,dividend_events,2016-01-05,2016-04-16,1,1.0

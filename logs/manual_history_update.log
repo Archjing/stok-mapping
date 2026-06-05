@@ -64,3 +64,39 @@ RemoteDisconnected('Remote end closed connection without response'))
 Warning: AkShare all-A snapshot was empty; used configured local history 
 fallback.
 [2026-06-04 16:30:56 +0800] finish a_share_history
+[2026-06-05 16:30:01 +0800] start a_share_history health gate (scope=scheduler, fail_on=warning)
+Database health check started
+Database health status: pass
+Summary rows: 5
+Findings: errors=0, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-05 16:30:03 +0800] pass a_share_history health gate
+[2026-06-05 16:30:03 +0800] start a_share_history
+Manual history update status: updated
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Calendar latest trade date: 2026-06-05
+Target trade date: 2026-06-05
+Before latest: 2026-06-04 coverage=0.9566
+After latest: 2026-06-05 coverage=0.9570
+Fetched rows: 5514
+Inserted rows: 5514
+Metadata updated rows: 5514
+Primary source: tushare.daily+daily_basic+adj_factor
+Metadata coverage: market_cap=1.0000, pe=1.0000, pb=1.0000, turnover=1.0000
+Universe rebuild complete
+Source: local_history_sqlite
+Selected: 500/500
+Warning: AkShare all-A snapshot failed: ('Connection aborted.', 
+RemoteDisconnected('Remote end closed connection without response'))
+Warning: AkShare all-A snapshot was empty; used configured local history 
+fallback.
+[2026-06-05 16:31:04 +0800] finish a_share_history
