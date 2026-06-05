@@ -1055,7 +1055,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] 检查 `logs/scheduler/*.last`
 - [x] 检查 A 股 source audit 最新运行记录
-- [ ] 后续接入调度器前置门禁：先跑 `db-health --scope scheduler`，再跑数据更新与日报任务
+- [x] 已接入调度器前置门禁：任务实际执行前先跑 `db-health --scope scheduler`
 
 ## W2.17.5 验收结果
 
@@ -1085,8 +1085,11 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.17.7 后续任务
 
-- [ ] 将 `db-health --scope scheduler --fail-on warning` 接入调度器前置检查
-- [ ] 将 `db-health --scope cn --fail-on error` 接入回测 / 因子诊断前置检查
-- [ ] 为 OHLC 异常增加 sample rows 输出，包含 `symbol/date/open/high/low/close/source`
+- [x] 将 `db-health --scope scheduler --fail-on warning` 接入调度器前置检查
+- [x] 调度器支持环境变量开关和按任务 scope 配置：`SCHEDULER_HEALTH_ENABLED`、`SCHEDULER_HEALTH_FAIL_ON`、`*_HEALTH_SCOPE`
+- [x] 将 `db-health --scope cn --fail-on error` 接入 `factor-effectiveness` 前置检查
+- [x] 将 `db-health --scope cn --fail-on error` 接入 `run` 前置检查
+- [x] 为 OHLC 异常增加 sample rows 输出，包含 `symbol/date/open/high/low/close/source`
+- [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - [ ] 为 `daily_basic.pe_ratio` 覆盖不足建立口径判断：数据缺失、亏损导致为空、还是字段不适合作为硬门槛
 - [ ] 评估是否需要可选落库 `database_health_runs` / `database_health_findings`，默认仍保持只读

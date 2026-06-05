@@ -100,6 +100,35 @@ def _print_tushare_financial_progress(console: Console, progress: dict) -> None:
     )
 
 
+def _run_db_health_gate(
+    *,
+    console: Console,
+    config: dict,
+    root: Path,
+    scope: str,
+    fail_on: str,
+    label: str,
+) -> int:
+    console.print(f"[bold]{label} data health check started[/bold]")
+    result = run_database_health_check(
+        config=config,
+        root=root,
+        scope=scope,
+        output_dir=None,
+    )
+    color = "green" if result.status == "pass" else ("yellow" if result.status == "warning" else "red")
+    console.print(
+        f"[{color}]{label} data health status: {result.status}[/{color}] "
+        f"(errors={result.error_count}, warnings={result.warning_count}, info={result.info_count})"
+    )
+    console.print(f"Health report: {result.summary_md}")
+    if fail_on == "error" and result.error_count > 0:
+        return 2
+    if fail_on == "warning" and (result.error_count > 0 or result.warning_count > 0):
+        return 2
+    return 0
+
+
 def _export_phase0_low_turnover_bill(
     *,
     config_path: Path,
@@ -907,6 +936,16 @@ def main() -> int:
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
         console = Console()
+        gate_exit = _run_db_health_gate(
+            console=console,
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            scope="cn",
+            fail_on="error",
+            label="Factor effectiveness",
+        )
+        if gate_exit != 0:
+            return gate_exit
         console.print("[bold]Factor effectiveness diagnostic started[/bold]")
         result = run_factor_effectiveness_report(
             config=cfg.get("phase0", cfg),
@@ -1311,6 +1350,18 @@ def main() -> int:
         return 1
 
     config_path = Path(args.config).resolve()
+    cfg = load_config(config_path)
+    console = Console()
+    gate_exit = _run_db_health_gate(
+        console=console,
+        config=cfg.get("phase0", cfg),
+        root=config_path.parent,
+        scope="cn",
+        fail_on="error",
+        label="Phase 0 run",
+    )
+    if gate_exit != 0:
+        return gate_exit
     return run_phase0(config_path)
 
 

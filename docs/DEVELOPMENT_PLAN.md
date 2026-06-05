@@ -1057,7 +1057,10 @@ stok-mapping/
 - [x] 将 `tushare_financial_backfill_audit.md` 覆盖率展示改为百分数，CSV 保持 0-1 机器口径
 - [x] 实现 `T6.2` 数据库健康检查只读 MVP：`phase0.cli db-health` 可输出 summary/findings/report，并支持 `--fail-on`
 - [ ] 执行 Tushare 财务因子逐股票历史补齐至 2016Q1-2018Q1 完成，重试 failed 并复核覆盖率
-- [ ] 将 `db-health --scope scheduler|cn` 接入每日调度前置检查，失败时阻断后续策略产物或至少写入告警
+- [x] 将 `db-health --scope scheduler --fail-on warning` 接入每日调度前置检查，失败时阻断对应定时任务
+- [x] 将 `db-health --scope cn --fail-on error` 接入 `factor-effectiveness` 前置检查
+- [x] 将 `db-health --scope cn --fail-on error` 接入 `run` 前置检查
+- [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - [ ] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
 - [ ] 实现 `T2.7` `quality_low_turnover_monthly_v1`
 - [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断和过拟合诊断
@@ -1212,9 +1215,11 @@ announce_date_coverage
 
 下一步：
 
-- 将 `db-health --scope scheduler` 接入调度器前置检查
-- 将 `db-health --scope cn --fail-on error` 接入回测 / 因子诊断前置检查
-- 为 OHLC 异常补 sample rows 输出
+- `db-health --scope scheduler --fail-on warning` 已接入调度器前置检查
+- `db-health --scope cn --fail-on error` 已接入 `factor-effectiveness` 前置检查
+- `db-health --scope cn --fail-on error` 已接入 `run` 前置检查
+- OHLC 异常样本输出已补齐，当前样本已能直接定位到 `CNY=X` 与 `HK.09633` 的具体异常行
+- 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - 对 `daily_basic.pe_ratio` 覆盖不足建立口径判断，区分数据缺失与亏损公司自然为空
 
 ### 条件满足后再推进
@@ -1223,7 +1228,7 @@ announce_date_coverage
 - [x] 新增 `us_market_history.sqlite`，让当前跨市场 overlay 从落库数据读取
 - [x] 预留 `hk_market_history.sqlite`，但在港股数据源生产化前不挂应用
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环
-- [ ] 将 `db-health` 接入调度器和关键研究命令前置门禁
+- [ ] 将 `db-health` 继续接入其他适合的关键研究命令前置门禁，并明确哪些命令不应阻断
 - [ ] 执行统一周执行附件中的数据源升级计划
 - [x] 优先引入 FRED 作为宏观 / 利率 / VIX 主源（最小实现与连通性验收已完成）
 - [x] 再引入 Tiingo 作为美股个股 / ETF 主源（最小实现与连通性验收已完成）

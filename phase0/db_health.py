@@ -11,6 +11,7 @@ from typing import Any
 
 VALID_SCOPES = {"all", "cn", "financial", "cross_market", "scheduler"}
 SEVERITY_ORDER = {"info": 0, "warning": 1, "error": 2}
+MAX_OHLC_SAMPLES = 5
 
 
 @dataclass
@@ -307,6 +308,33 @@ def _recent_violation_counts(
     return {name: int(row[name] or 0) for name in checks}
 
 
+def _recent_violation_samples(
+    conn: sqlite3.Connection,
+    *,
+    table: str,
+    where_sql: str,
+    params: tuple[Any, ...],
+    recent_start: str,
+    violation_sql: str,
+    columns: list[str],
+    limit: int = MAX_OHLC_SAMPLES,
+) -> list[dict[str, Any]]:
+    if not recent_start or limit <= 0:
+        return []
+    table = _safe_identifier(table)
+    select_columns = ", ".join(_safe_identifier(column) for column in columns)
+    query = f"""
+        SELECT {select_columns}
+        FROM {table}
+        WHERE {where_sql}
+          AND date >= ?
+          AND ({violation_sql})
+        ORDER BY date DESC, symbol ASC
+        LIMIT ?
+    """
+    return _dict_rows(conn, query, (*params, recent_start, int(limit)))
+
+
 def _check_count_metric(
     *,
     count: int,
@@ -336,6 +364,35 @@ def _check_count_metric(
             table_name=table,
             message=f"{metric} found {count} violating rows",
             sample_value=count,
+            expected_rule=expected_rule,
+        )
+
+
+def _add_violation_sample_findings(
+    *,
+    findings: list[HealthFinding],
+    severity: str,
+    check_id: str,
+    table: str,
+    field: str,
+    samples: list[dict[str, Any]],
+    expected_rule: str,
+) -> None:
+    for sample in samples:
+        sample_parts = []
+        for key in ["open", "high", "low", "close", "volume", "amount", "source"]:
+            if key in sample:
+                sample_parts.append(f"{key}={sample.get(key)}")
+        _add_finding(
+            findings,
+            severity=severity,
+            check_id=f"{check_id}.sample",
+            table_name=table,
+            symbol=str(sample.get("symbol") or ""),
+            date_value=str(sample.get("date") or ""),
+            field=field,
+            message="sample violating row",
+            sample_value=", ".join(sample_parts),
             expected_rule=expected_rule,
         )
 
@@ -454,6 +511,24 @@ def _check_cn_market_data(
             summary=summary,
             expected_rule="high >= low/open/close and low <= open/close",
         )
+        if daily_violation_counts["ohlc"] > 0:
+            _add_violation_sample_findings(
+                findings=findings,
+                severity="error",
+                check_id="cn.daily.ohlc",
+                table=daily_table,
+                field="open,high,low,close",
+                samples=_recent_violation_samples(
+                    conn,
+                    table=daily_table,
+                    where_sql=where_sql,
+                    params=params,
+                    recent_start=recent_start,
+                    violation_sql="high < low OR high < open OR high < close OR low > open OR low > close",
+                    columns=["symbol", "date", "open", "high", "low", "close", "volume", "amount"],
+                ),
+                expected_rule="high >= low/open/close and low <= open/close",
+            )
         _check_count_metric(
             count=daily_violation_counts["positive_prices"],
             section=section,
@@ -955,15 +1030,16 @@ def _check_cross_market_one(
         where_sql = "date <= ?"
         params = (as_of.isoformat(),)
         recent_start, _ = _recent_date_bounds(conn, table=daily_table, where_sql=where_sql, params=params)
+        ohlc_count = _count_recent_violations(
+            conn,
+            table=daily_table,
+            where_sql=where_sql,
+            params=params,
+            recent_start=recent_start,
+            violation_sql="high < low OR high < open OR high < close OR low > open OR low > close",
+        )
         _check_count_metric(
-            count=_count_recent_violations(
-                conn,
-                table=daily_table,
-                where_sql=where_sql,
-                params=params,
-                recent_start=recent_start,
-                violation_sql="high < low OR high < open OR high < close OR low > open OR low > close",
-            ),
+            count=ohlc_count,
             section=section,
             check_id=f"{section}.ohlc",
             metric="recent_ohlc_violations",
@@ -973,6 +1049,24 @@ def _check_cross_market_one(
             severity="warning",
             expected_rule="high >= low/open/close and low <= open/close",
         )
+        if ohlc_count > 0:
+            _add_violation_sample_findings(
+                findings=findings,
+                severity="warning",
+                check_id=f"{section}.ohlc",
+                table=daily_table,
+                field="open,high,low,close",
+                samples=_recent_violation_samples(
+                    conn,
+                    table=daily_table,
+                    where_sql=where_sql,
+                    params=params,
+                    recent_start=recent_start,
+                    violation_sql="high < low OR high < open OR high < close OR low > open OR low > close",
+                    columns=["symbol", "date", "open", "high", "low", "close", "volume", "source"],
+                ),
+                expected_rule="high >= low/open/close and low <= open/close",
+            )
         _check_audit_table(
             conn=conn,
             table=audit_table,
