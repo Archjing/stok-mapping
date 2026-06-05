@@ -1,0 +1,2 @@
+severity,check_id,table_name,symbol,date,field,message,sample_value,expected_rule
+warning,cn.daily_basic.pe_ratio,market_daily_basic,,2026-06-04,pe_ratio,latest daily_basic field coverage is below threshold,71.98%,coverage >= 80%
