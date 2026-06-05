@@ -27,7 +27,53 @@
 - 手动中断后如何只恢复未完成 shard？
 - 哪些报告是本次运行产物，哪些是历史汇总账本？
 
-### T6.3.1.2 架构边界
+### T6.3.1.2 与 System Orchestrator 的关系
+
+维护编排器不应演进成单体超级编排器。项目长期应采用：
+
+```text
+System Orchestrator（总体编排器）
+    ├── Maintenance Orchestrator（数据治理与维护）
+    ├── Research Orchestrator（策略研究与实验）
+    ├── Delivery Orchestrator（日报 / 报告 / 观察池交付）
+    ├── Account Orchestrator（模拟账户与复盘）
+    └── Focus Orchestrator（关注个股分析）
+```
+
+总体编排器只做统一入口和跨域协调：
+
+- [ ] 统一任务注册和 workflow registry。
+- [ ] 统一 run id、状态查询、日志和报告索引。
+- [ ] 统一 TUI / 桌面 UI 后端接口。
+- [ ] 统一危险操作边界，例如停止长任务、覆盖数据、触发远端同步。
+- [ ] 汇总“今天系统状态如何”，但不承载具体业务规则。
+
+领域子编排器负责各自状态机：
+
+| 编排器 | 职责 | 典型命令 |
+| --- | --- | --- |
+| `Maintenance` | 数据更新、backfill、`db-health`、source audit、调度 | `maintain tick/status/run/stop/resume` |
+| `Research` | 因子诊断、回测、策略准入、过拟合诊断 | `research run/status/compare/admission` |
+| `Delivery` | daily brief、watchlist、报告归档、ECS 同步 | `deliver daily/watchlist/status` |
+| `Account` | 模拟账单、持仓、成交、真实账户 CSV 对账 | `account sync/report/reconcile` |
+| `Focus` | 关注个股分析、单股报告、单股可视化看板 | `focus add/refresh/report/dashboard/tui` |
+
+推荐总体入口：
+
+```bash
+./.venv/bin/python -m phase0.cli system status --config config.yaml
+./.venv/bin/python -m phase0.cli system run --config config.yaml --workflow daily
+./.venv/bin/python -m phase0.cli system tui --config config.yaml
+```
+
+演进原则：
+
+- [ ] `System Orchestrator = thin shell + registry + shared state`。
+- [ ] 各领域子编排器拥有自己的业务状态机，不把所有逻辑塞进一个模块。
+- [ ] 第一阶段先实现 `Maintenance Orchestrator`，再补 `system status` 汇总入口。
+- [ ] TUI / 桌面 UI 连接总体编排器，不直接散连每个业务模块。
+
+### T6.3.1.3 架构边界
 
 - [ ] 编排器只做调度、门禁、状态、重试、监督和审计，不重写业务数据生产逻辑。
 - [ ] 现有 `update-history`、`update-financials`、`backfill-*`、`brief`、`db-health` 继续作为 data plane。

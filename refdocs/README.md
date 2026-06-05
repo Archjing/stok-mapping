@@ -19,12 +19,15 @@
 ## Agent、MCP 与本地模型
 
 - [Agent、MCP 与本地 LLM 工作流汇编](./AGENT_AND_LOCAL_LLM_WORKFLOW.md)
+- [本项目 AI 能力探索与规划评估](./ai_capability_exploration_assessment_2026-06-05.md)
 
 ## 研究资料与归档
 
 - [中文 A 股量化投资策略参考文献](./papers/cn/cn_INDEX.md)
 - [英文量化投资策略参考文献](./papers/en/INDEX.md)
+- [机器学习、深度学习在本项目应用可行性评估](./ml_dl_feasibility_assessment_2026-06-05.md)
 - [目标产品展望汇编](./OUTLOOK/TARGET_PRODUCT_OUTLOOK.md)
+- [近游戏体验研究工作台 UI 主题研究 Note](./near_game_research_workbench_ui_note_2026-06-05.md)
 - [2026-06-04 Session 上下文与原文归档](./context/SESSION_CONTEXT_2026-06-04.md)
 
 ## 迁移说明

@@ -38,6 +38,7 @@
 - 候选策略 walk-forward 结果
 - 策略准入与风险诊断报告
 - 盘前观察池
+- 关注个股分析工具、可视化看板与单股评估报告
 - 账户级模拟账单和资产轨迹
 - 调仓计划草案、模拟订单和阻断原因
 - 数据源、数据质量、复权、PIT 与调度健康报告
@@ -81,7 +82,7 @@
 │ accounts / bill / execution profile / constraints / reconciliation│
 ├──────────────────────────────────────────────────────────────┤
 │ 5. 策略与信号层                                               │
-│ strategies registry / candidate factory / overlay / rebalance │
+│ strategies registry / stock focus / overlay / rebalance       │
 ├──────────────────────────────────────────────────────────────┤
 │ 4. 股票池与特征层                                             │
 │ universe / qfq_asof features / daily_basic / financial factors│
@@ -175,6 +176,7 @@ reports/watchlist_today/index.html
 
 - `brief daily` 仍主要复用 watchlist 路径，正式 daily brief 仍待拆分。
 - watchlist 是观察池和计划层，不是自动交易信号。
+- 关注个股分析工具是独立的数据分析与可视化工具，不等同于每日 watchlist 输出；它面向用户手动关注股票生成交互式分析看板和单股评估报告。
 - 账户级账单基于已确认 OHLCV 交易日，不是盘中实时撮合。
 
 ---
@@ -391,6 +393,98 @@ Tushare 财务历史回填当前状态：
 
 ---
 
+### 5.7.1 关注个股分析工具（规划）
+
+当前状态：
+
+- 项目已有 `brief watchlist`、`brief premarket` 和阶段试用盘前观察池。
+- 这些产物是策略驱动的每日观察池和计划层页面，不是用户主动使用的个股分析工具。
+- 当前缺少独立工具支持用户添加关注股票、系统持续查询数据、跟踪变化、生成交互式可视化和单股评估报告。
+
+模块定位：
+
+- 关注个股分析工具是面向用户主动关注标的的数据分析可视化工具。
+- 用户可以手动添加、分组、备注和归档关注股票。
+- 系统定期为关注股票拉取和汇总行情、估值、财务、公告、新闻、行业、资金行为 proxy、策略信号和账户相关信息。
+- 工具提供单股交互式看板和可复现评估报告，说明基本面、估值、技术状态、事件风险、数据质量、策略相关性和后续观察点。
+- 它不直接生成买卖指令，不覆盖策略信号，不替代股票池，也不把用户关注等同于策略推荐。
+
+核心输入：
+
+- 用户手动加入的关注股票、分组、备注、关注原因和复核周期。
+- 行情、估值、财务因子、公告、新闻、行业、指数和跨市场数据。
+- 策略候选、每日观察池、模拟账户持仓和交易计划。
+- 因子诊断、策略准入、过拟合诊断、回测报告和数据健康检查。
+- 市场行为 proxy，例如换手异常、成交额放大、小单/大单资金流估算、龙虎榜、融资融券变化。
+
+核心输出：
+
+- 用户关注股票列表和分组。
+- 单股分析看板。
+- 单股评估报告。
+- 关注理由、用户备注和系统自动生成的研究摘要。
+- 基本面、估值、趋势、波动、流动性、拥挤度和事件风险标签。
+- 数据质量与可见性说明，例如最新行情日、财务公告日、字段覆盖和异常数据。
+- 与当前策略、观察池、模拟账户持仓和历史报告的关联。
+- 下一次复核日期、需要继续观察的问题和失效条件。
+
+建议可视化能力：
+
+- 价格与成交：K 线、成交量、换手率、成交额、涨跌停和停牌标记。
+- 估值：PE/PB/EP 历史分位、行业相对估值、亏损导致估值缺失提示。
+- 财务：收入、利润、ROE、现金流质量、负债率、成长率趋势和公告日标记。
+- 因子：当前因子分位、历史因子轨迹、同业对比、策略相关因子雷达。
+- 事件：公告、财报、龙虎榜、融资融券、新闻和重大波动时间线。
+- 市场行为 proxy：换手异常、成交额放大、小单/大单资金流估算、拥挤度和情绪标签。
+- 数据质量：最新数据日、字段覆盖、异常样本、PIT 可见性和 source audit 状态。
+
+建议最小字段：
+
+```text
+symbol
+name
+market
+user_group
+user_note
+focus_reason
+focus_level
+review_cycle
+risk_flags
+invalid_condition
+last_review_date
+next_review_date
+status
+latest_data_date
+latest_dashboard_path
+latest_report_path
+linked_reports
+linked_strategy
+linked_account
+created_at
+updated_at
+```
+
+关键边界：
+
+- 股票池回答“哪些股票有资格被研究或交易”。
+- 策略信号回答“规则当前如何排序或给权重”。
+- 观察池回答“今天盘前需要看哪些计划项”。
+- 关注个股分析工具回答“用户关心的这只股票当前发生了什么、质量如何、风险在哪里、数据是否可信、后续该观察什么”。
+- 用户添加关注只表示研究兴趣，不表示策略选中，不表示持仓，也不表示交易建议。
+- 市场行为 proxy 只能作为风险标签或情绪说明，不能被表述为真实个人账户交易行为。
+- 个股分析看板和评估报告必须展示数据日期、价格口径、财务公告日和生成时间，避免把过期数据解释为当前事实。
+
+推荐落地方式：
+
+- 第一版可使用本地 SQLite，例如 `data/stock_focus/stock_focus.sqlite`，保存用户关注列表、备注、分组、复核周期和报告索引。
+- 后续提供 CLI：`focus add/list/update/archive/refresh/report/dashboard`。
+- `focus refresh` 只更新关注股票相关数据、分析缓存、看板和评估报告，不改变策略股票池或调仓计划。
+- 单股报告建议输出到 `reports/stock_focus/YYYY-MM-DD/<symbol>_focus_report.md/html`。
+- 单股可视化看板建议输出到 `reports/stock_focus/YYYY-MM-DD/<symbol>_focus_dashboard.html`。
+- 桌面 UI 阶段可把它作为左侧 workspace 的一级入口，与报告库、数据治理和模拟账户并列。
+
+---
+
 ### 5.8 策略治理层
 
 核心模块：
@@ -472,6 +566,7 @@ data health PASS / acceptable warning
 - `scripts/run_project_scheduler.sh`
 - `logs/scheduler/*.last`
 - 规划中：`phase0.cli maintain tick/status/run/stop/resume`
+- 规划中：`phase0.cli system status/run/tui`
 - 规划中：`data/maintenance/maintenance.sqlite`
 - 规划中：本地桌面交互 UI
 
@@ -498,6 +593,24 @@ data health PASS / acceptable warning
 - `scripts/run_project_scheduler.sh` 逐步降级为 wrapper，只负责加载环境并调用 Python 维护编排器。
 - 数据治理与维护编排器作为 control plane，统一管理任务 registry、状态机、门禁、重试、报告索引和长 backfill 分片监督。
 - 现有 `update-*`、`backfill-*`、`brief`、`db-health` 命令继续作为 data plane，避免一次性重写稳定业务逻辑。
+- 长期应在维护编排器之上增加轻量 `System Orchestrator`，作为 TUI / 桌面 UI 的统一入口。
+
+总体编排器分层：
+
+```text
+System Orchestrator
+    ├── Maintenance Orchestrator
+    ├── Research Orchestrator
+    ├── Delivery Orchestrator
+    ├── Account Orchestrator
+    └── Focus Orchestrator
+```
+
+原则：
+
+- `System Orchestrator` 只做统一入口、任务注册、状态汇总、报告索引和权限边界。
+- 具体业务状态机留在领域子编排器中，避免形成不可维护的单体超级编排器。
+- 第一阶段优先落地 `Maintenance Orchestrator`，随后增加 `system status` 和系统级 TUI overview。
 
 ---
 

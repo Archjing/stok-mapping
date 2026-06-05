@@ -1261,12 +1261,14 @@ announce_date_coverage
 - 新增 `data/maintenance/maintenance.sqlite`
 - 先实现 `maintain tick --dry-run` 与 `maintain status`
 - 保持 cron 单入口，但逐步把 shell 内部调度逻辑迁移到 Python 编排器
+- 后续在维护编排器之上增加轻量 `System Orchestrator`：提供 `system status/run/tui`，统一汇总维护、研究、交付、账户和关注个股分析状态
 
 边界：
 
 - 第一版不引入 Airflow、Celery、Redis、systemd service 或 Kubernetes。
 - 第一版先通过现有 CLI 命令数组适配旧任务，不直接重构业务模块。
 - backfill 详细报告和 summary audit 继续由现有 backfill 模块生成，编排器只登记路径、状态和关键结论。
+- `System Orchestrator` 只做统一入口、registry、状态汇总和 UI 后端接口，不承载所有业务规则。
 
 ### 条件满足后再推进
 
