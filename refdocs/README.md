@@ -25,6 +25,7 @@
 
 - [中文 A 股量化投资策略参考文献](./papers/cn/cn_INDEX.md)
 - [英文量化投资策略参考文献](./papers/en/INDEX.md)
+- [Berkshire Hathaway 年会字幕经济知识提炼与当下宏观理解](./berkshire_hathaway_economic_knowledge_note_2026-06-05.md)
 - [机器学习、深度学习在本项目应用可行性评估](./ml_dl_feasibility_assessment_2026-06-05.md)
 - [目标产品展望汇编](./OUTLOOK/TARGET_PRODUCT_OUTLOOK.md)
 - [近游戏体验研究工作台 UI 主题研究 Note](./near_game_research_workbench_ui_note_2026-06-05.md)
