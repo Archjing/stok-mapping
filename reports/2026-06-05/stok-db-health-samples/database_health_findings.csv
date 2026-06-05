@@ -1,0 +1,11 @@
+severity,check_id,table_name,symbol,date,field,message,sample_value,expected_rule
+warning,cn.daily_basic.pe_ratio,market_daily_basic,,2026-06-04,pe_ratio,latest daily_basic field coverage is below threshold,71.98%,coverage >= 80%
+warning,financial.backfill_tasks.failed,tushare_financial_backfill_tasks,,,,Tushare financial backfill still has failed tasks,1360,long-running backfill task queue should eventually drain
+warning,financial.backfill_tasks.pending,tushare_financial_backfill_tasks,,,,Tushare financial backfill still has pending tasks,12397,long-running backfill task queue should eventually drain
+warning,cross_market.us.ohlc,us_daily_bars,,,,recent_ohlc_violations found 3 violating rows,3,high >= low/open/close and low <= open/close
+warning,cross_market.us.ohlc.sample,us_daily_bars,CNY=X,2026-02-05,"open,high,low,close",sample violating row,"open=6.941500186920166, high=6.941500186920166, low=6.941500186920166, close=6.937699794769287, volume=0.0, source=yfinance",high >= low/open/close and low <= open/close
+warning,cross_market.us.ohlc.sample,us_daily_bars,CNY=X,2025-11-04,"open,high,low,close",sample violating row,"open=7.171800136566162, high=7.120100021362305, low=7.120100021362305, close=7.171800136566162, volume=0.0, source=yfinance",high >= low/open/close and low <= open/close
+warning,cross_market.us.ohlc.sample,us_daily_bars,CNY=X,2025-10-29,"open,high,low,close",sample violating row,"open=7.098800182342529, high=7.098999977111816, low=7.098899841308594, close=7.098800182342529, volume=0.0, source=yfinance",high >= low/open/close and low <= open/close
+warning,cross_market.hk.coverage,hk_daily_bars,"HK.03690,HK.00981",,,cross-market symbol freshness coverage is below threshold,93.33%,coverage >= 100.00%
+warning,cross_market.hk.ohlc,hk_daily_bars,,,,recent_ohlc_violations found 1 violating rows,1,high >= low/open/close and low <= open/close
+warning,cross_market.hk.ohlc.sample,hk_daily_bars,HK.09633,2025-12-17,"open,high,low,close",sample violating row,"open=44.900001525878906, high=46.040000915527344, low=45.08000183105469, close=45.84000015258789, volume=5549245.0, source=yfinance",high >= low/open/close and low <= open/close
