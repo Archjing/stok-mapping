@@ -1119,27 +1119,29 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 建立 `T6.3` 专项任务单，明确最终形态架构模式
 - [x] 将 `T6.3` 加入任务索引和主开发计划
 - [x] 在架构文档中明确维护编排器是交付与运维层的目标 control plane
-- [ ] 设计 `maintenance_orchestrator` 第一版最小实现边界
-- [ ] 实现状态库 schema 初始化：`data/maintenance/maintenance.sqlite`
-- [ ] 实现 `maintain tick --dry-run`
-- [ ] 实现 `maintain status`
-- [ ] 将当前 shell 调度任务映射为内置 registry，但不立即替换 cron 行为
+- [x] 设计 `maintenance_orchestrator` 第一版最小实现边界
+- [x] 实现状态库 schema 初始化：`data/maintenance/maintenance.sqlite`
+- [x] 实现 `maintain tick --dry-run`
+- [x] 实现 `maintain status`
+- [x] 将当前 shell 调度任务映射为内置 registry，但不立即替换 cron 行为
 
 ## W2.18.3 第一版验收标准
 
-- [ ] `maintain tick --dry-run` 能输出当前时刻每个任务的 `will_run / skipped / blocked` 判断和原因
-- [ ] `maintain status` 能展示最近运行、当前运行、失败次数、最后错误摘要和报告路径
-- [ ] 当前 `scripts/run_project_scheduler.sh` 行为不被破坏
-- [ ] `db-health` 门禁策略仍按任务 scope 控制，不使用全局单一阻断标准
-- [ ] 运行产物继续写入既有 `reports/` 和 `logs/` 路径
+- [x] `maintain tick --dry-run` 能输出当前时刻每个任务的 `will_run / skipped / blocked` 判断和原因
+- [x] `maintain status` 能展示最近运行、当前运行、失败次数、最后错误摘要和报告路径
+- [x] 当前 `scripts/run_project_scheduler.sh` 行为不被破坏
+- [x] `db-health` 门禁策略仍按任务 scope 控制，不使用全局单一阻断标准
+- [x] 运行产物继续写入既有 `reports/` 和 `logs/` 路径
 
 ## W2.18.4 后续任务
 
-- [ ] 将 `scripts/run_project_scheduler.sh` 降级为 wrapper，正式由 `maintain tick` 接管调度判断
-- [ ] 接入交易日历、运行窗口、重试次数和重试间隔
-- [ ] 为 `backfill-tushare-financials` 增加 3 shard 编排运行模式
-- [ ] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
-- [ ] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
+- [x] 将 `scripts/run_project_scheduler.sh` 降级为 wrapper，正式由 `maintain tick` 接管调度判断
+- [x] 接入最小重试次数、重试间隔和 `.state` 状态文件
+- [ ] 接入交易日历和更细的运行窗口口径
+- [x] 为 `backfill-tushare-financials` 增加 3 shard 编排运行模式
+- [x] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
+- [x] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
+- [ ] 补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败
 - [ ] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`
 
 # W2.19｜文本事件数据层后续任务（T1.3 / T2.10）

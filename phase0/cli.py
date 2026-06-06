@@ -25,6 +25,7 @@ from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.intelligence import collect_intelligence, import_local_intelligence, validate_intelligence_ledger
 from phase0.local_history import configure_local_history
+from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_tick
 from phase0.overfit import run_overfit_diagnostic
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
@@ -700,6 +701,35 @@ def main() -> int:
     intelligence_validate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     intelligence_validate_parser.add_argument("--ledger", default=None, help="Ledger CSV path. Defaults to config intelligence.ledger")
     intelligence_validate_parser.add_argument("--output-report", default=None, help="Optional Markdown validation report output path")
+    maintain_parser = sub.add_parser("maintain", help="Maintenance orchestrator commands")
+    maintain_sub = maintain_parser.add_subparsers(dest="maintain_cmd")
+    maintain_tick_parser = maintain_sub.add_parser("tick", help="Evaluate scheduled maintenance tasks")
+    maintain_tick_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_tick_parser.add_argument("--dry-run", action="store_true", help="Only evaluate scheduling decisions, do not start tasks")
+    maintain_tick_parser.add_argument("--as-of", default=None, help="Optional local time in YYYY-MM-DD HH:MM")
+    maintain_status_parser = maintain_sub.add_parser("status", help="Show maintenance orchestrator task status")
+    maintain_status_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_run_parser = maintain_sub.add_parser("run", help="Start an orchestrated maintenance task")
+    maintain_run_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_run_parser.add_argument("--task", required=True, choices=["tushare_financial_backfill"], help="Task name")
+    maintain_run_parser.add_argument("--start-period", default="2018-06-30", help="Financial start period in YYYY-MM-DD")
+    maintain_run_parser.add_argument("--end-period", default="2026-03-31", help="Financial end period in YYYY-MM-DD")
+    maintain_run_parser.add_argument("--shard-count", type=int, default=3, help="Number of shards. Default: 3")
+    maintain_run_parser.add_argument("--max-requests-per-minute", type=int, default=67, help="Per-shard request throttle. Default: 67")
+    maintain_run_parser.add_argument("--retry-failed", action=argparse.BooleanOptionalAction, default=True, help="Retry failed backfill tasks")
+    maintain_run_parser.add_argument("--missing-fields-only", action="store_true", help="Only patch rows that have missing fields")
+    maintain_run_parser.add_argument("--limit-tasks", type=int, default=None, help="Optional per-shard task limit")
+    maintain_run_parser.add_argument("--dry-run", action="store_true", help="Register shard commands without starting processes")
+    maintain_stop_parser = maintain_sub.add_parser("stop", help="Stop an orchestrated long-running task")
+    maintain_stop_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_stop_parser.add_argument("--task", choices=["tushare_financial_backfill"], default="tushare_financial_backfill", help="Task name")
+    maintain_stop_parser.add_argument("--run-id", type=int, default=None, help="Optional run id")
+    maintain_stop_parser.add_argument("--dry-run", action="store_true", help="Show matched shards without stopping them")
+    maintain_resume_parser = maintain_sub.add_parser("resume", help="Resume non-running, non-succeeded shards")
+    maintain_resume_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_resume_parser.add_argument("--task", choices=["tushare_financial_backfill"], default="tushare_financial_backfill", help="Task name")
+    maintain_resume_parser.add_argument("--run-id", type=int, default=None, help="Optional run id")
+    maintain_resume_parser.add_argument("--dry-run", action="store_true", help="Show matched shards without restarting them")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -1074,6 +1104,111 @@ def main() -> int:
                 console.print(f"[yellow]Warning:[/yellow] {warning}")
             return 2 if result.error_count > 0 else 0
         parser.error("intelligence requires a subcommand: collect, import-local, or validate")
+    if args.cmd == "maintain":
+        console = Console()
+        if args.maintain_cmd == "tick":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]Maintenance tick started[/bold]")
+            result = maintenance_tick(
+                config_path,
+                as_of=args.as_of,
+                dry_run=bool(args.dry_run),
+            )
+            console.print("[green]Maintenance tick complete[/green]")
+            console.print(f"State DB: {result.state_db}")
+            console.print(f"As of: {result.as_of}")
+            console.print(f"Dry run: {result.dry_run}")
+            console.print(f"Executed runs: {result.executed_runs}")
+            for item in result.decisions:
+                color = "green" if item.decision == "will_run" else ("yellow" if item.decision == "skipped" else "red")
+                console.print(
+                    f"[{color}]{item.task_name}[/{color}] "
+                    f"{item.decision} at {item.scheduled_time} | {item.reason}"
+                )
+            return 0
+        if args.maintain_cmd == "status":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]Maintenance status started[/bold]")
+            result = maintenance_status(config_path)
+            console.print("[green]Maintenance status complete[/green]")
+            console.print(f"State DB: {result.state_db}")
+            console.print(f"Generated at: {result.generated_at}")
+            for row in result.rows:
+                console.print(
+                    f"{row.task_name}: enabled={row.enabled}, schedule={row.schedule_value}, "
+                    f"last_decision={row.last_decision}, last_reason={row.last_reason}, "
+                    f"last_run={row.last_run_status}, log={row.log_path}"
+                )
+            if result.shards:
+                console.print("[bold]Maintenance shards[/bold]")
+                for shard in result.shards[:20]:
+                    console.print(
+                        f"run={shard.run_id} task={shard.task_name} shard={shard.shard_index}/{shard.shard_count} "
+                        f"status={shard.status} pid={shard.pid} log={shard.log_path}"
+                    )
+            return 0
+        if args.maintain_cmd == "run":
+            config_path = Path(args.config).resolve()
+            result = maintenance_run_long_task(
+                config_path,
+                task_name=args.task,
+                start_period=args.start_period,
+                end_period=args.end_period,
+                shard_count=args.shard_count,
+                max_requests_per_minute=args.max_requests_per_minute,
+                retry_failed=bool(args.retry_failed),
+                missing_fields_only=bool(args.missing_fields_only),
+                limit_tasks=args.limit_tasks,
+                dry_run=bool(args.dry_run),
+            )
+            console.print(f"Maintenance run status: {result.status}")
+            console.print(f"State DB: {result.state_db}")
+            console.print(f"Run ID: {result.run_id}")
+            if result.message:
+                console.print(f"Message: {result.message}")
+            for shard in result.shard_rows:
+                console.print(
+                    f"shard={shard.shard_index}/{shard.shard_count} status={shard.status} "
+                    f"pid={shard.pid} log={shard.log_path}"
+                )
+            return 0 if result.status not in {"blocked"} else 2
+        if args.maintain_cmd == "stop":
+            config_path = Path(args.config).resolve()
+            result = maintenance_stop(
+                config_path,
+                task_name=args.task,
+                run_id=args.run_id,
+                dry_run=bool(args.dry_run),
+            )
+            console.print(f"Maintenance stop status: {result.status}")
+            console.print(f"State DB: {result.state_db}")
+            if result.message:
+                console.print(f"Message: {result.message}")
+            for shard in result.shard_rows[:20]:
+                console.print(
+                    f"run={shard.run_id} shard={shard.shard_index}/{shard.shard_count} "
+                    f"status={shard.status} pid={shard.pid} log={shard.log_path}"
+                )
+            return 0
+        if args.maintain_cmd == "resume":
+            config_path = Path(args.config).resolve()
+            result = maintenance_resume(
+                config_path,
+                task_name=args.task,
+                run_id=args.run_id,
+                dry_run=bool(args.dry_run),
+            )
+            console.print(f"Maintenance resume status: {result.status}")
+            console.print(f"State DB: {result.state_db}")
+            if result.message:
+                console.print(f"Message: {result.message}")
+            for shard in result.shard_rows[:20]:
+                console.print(
+                    f"run={shard.run_id} shard={shard.shard_index}/{shard.shard_count} "
+                    f"status={shard.status} pid={shard.pid} log={shard.log_path}"
+                )
+            return 0
+        parser.error("maintain requires a subcommand: tick, status, run, stop, or resume")
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
             return run_daily_brief_pipeline(

@@ -270,6 +270,15 @@ phase0:
         type: "rss"
         enabled: false
         url: ""
+  maintenance_orchestrator:
+    enabled: true
+    state_db: "data/maintenance/maintenance.sqlite"
+    default_timezone: "Asia/Shanghai"
+    tushare_financial_backfill:
+      shard_count: 3
+      max_requests_per_minute_per_shard: 67
+      default_start_period: "2018-06-30"
+      default_end_period: "2026-03-31"
   walk_forward:
     train_years: 2
     validate_years: 1

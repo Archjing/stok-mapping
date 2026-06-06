@@ -298,18 +298,19 @@ maintenance_orchestrator:
 
 ### T6.3.5.4 P3：长 backfill 分片监督
 
-- [ ] 为 `backfill-tushare-financials` 定义 orchestrated run spec。
-- [ ] 支持 3 shard 自动启动，默认每 shard `66-67` requests/min。
-- [ ] 支持 `stop` 中断所有 shard。
-- [ ] 支持 `resume` 只重启未完成、失败或中断 shard。
-- [ ] 将每个 shard 的 pid、exit code、报告路径和关键结论写入 `maintenance_shards`。
+- [x] 为 `backfill-tushare-financials` 定义 orchestrated run spec。
+- [x] 支持 3 shard 自动启动，默认每 shard `66-67` requests/min。
+- [x] 支持 `stop` 中断所有 shard。
+- [x] 支持 `resume` 只重启未完成、失败或中断 shard。
+- [x] 将每个 shard 的 pid、命令、日志路径和状态写入 `maintenance_shards`。
+- [ ] 补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败。
 
 验收标准：
 
-- [ ] `maintain run --task tushare_financial_backfill` 能启动 3 个独立子进程。
-- [ ] `maintain stop --task tushare_financial_backfill` 能停止全部 shard。
-- [ ] 某个 shard 失败后，`maintain resume` 只重启该 shard。
-- [ ] 汇总状态能同时展示总 run 和每个 shard。
+- [x] `maintain run --task tushare_financial_backfill` 能启动 3 个独立子进程。
+- [x] `maintain stop --task tushare_financial_backfill` 能停止全部 shard。
+- [x] 某个 shard 失败后，`maintain resume` 只重启该 shard。
+- [x] 汇总状态能同时展示总 run 和每个 shard。
 
 ### T6.3.5.5 P4：治理报告与观察面板
 
