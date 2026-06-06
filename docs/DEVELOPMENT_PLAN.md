@@ -1049,6 +1049,11 @@ stok-mapping/
 
 ### 当前最高优先级
 
+- [ ] `T6.3` 当前优先 1：补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败
+- [ ] `T6.3` 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，汇总每日维护状态、失败原因、跳过原因、shard 状态和报告路径
+- [ ] `T6.3` 当前优先 3：接入交易日历和更细的运行窗口，降低节假日和非交易日误触发
+- [ ] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
+
 - [x] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
 - [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
 - [x] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）

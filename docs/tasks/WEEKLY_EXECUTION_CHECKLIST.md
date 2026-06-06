@@ -1137,12 +1137,13 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] 将 `scripts/run_project_scheduler.sh` 降级为 wrapper，正式由 `maintain tick` 接管调度判断
 - [x] 接入最小重试次数、重试间隔和 `.state` 状态文件
-- [ ] 接入交易日历和更细的运行窗口口径
 - [x] 为 `backfill-tushare-financials` 增加 3 shard 编排运行模式
 - [x] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
 - [x] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
-- [ ] 补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败
-- [ ] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`
+- [ ] 当前优先 1：补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败
+- [ ] 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`
+- [ ] 当前优先 3：接入交易日历和更细的运行窗口口径
+- [ ] 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 
 # W2.19｜文本事件数据层后续任务（T1.3 / T2.10）
 

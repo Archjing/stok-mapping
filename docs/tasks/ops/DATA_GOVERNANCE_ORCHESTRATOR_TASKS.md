@@ -2,7 +2,7 @@
 
 > 父级任务域：`T6` 运维调度与后台任务。  
 > 目标形态：把当前 shell 调度器演进为本地优先、可审计、可恢复的数据治理控制平面。  
-> 当前状态：专项计划已建立，尚未开始代码实现。  
+> 当前状态：P3 基础版已完成；短任务调度、状态库、3 shard backfill run/stop/resume 已落地。
 > 推荐架构模式：`Control Plane + Command Registry + State Machine + Policy Gate + Supervisor`。
 
 ---
@@ -42,8 +42,8 @@ System Orchestrator（总体编排器）
 
 总体编排器只做统一入口和跨域协调：
 
-- [ ] 统一任务注册和 workflow registry。
-- [ ] 统一 run id、状态查询、日志和报告索引。
+- [x] 统一维护任务 registry。
+- [x] 统一维护 run id、状态查询、日志和报告索引基础能力。
 - [ ] 统一 TUI / 桌面 UI 后端接口。
 - [ ] 统一危险操作边界，例如停止长任务、覆盖数据、触发远端同步。
 - [ ] 汇总“今天系统状态如何”，但不承载具体业务规则。
@@ -68,18 +68,18 @@ System Orchestrator（总体编排器）
 
 演进原则：
 
-- [ ] `System Orchestrator = thin shell + registry + shared state`。
-- [ ] 各领域子编排器拥有自己的业务状态机，不把所有逻辑塞进一个模块。
-- [ ] 第一阶段先实现 `Maintenance Orchestrator`，再补 `system status` 汇总入口。
+- [x] `System Orchestrator = thin shell + registry + shared state` 的 Maintenance 子域已先行落地。
+- [x] 各领域子编排器拥有自己的业务状态机，不把所有逻辑塞进一个模块。
+- [x] 第一阶段先实现 `Maintenance Orchestrator`，再补 `system status` 汇总入口。
 - [ ] TUI / 桌面 UI 连接总体编排器，不直接散连每个业务模块。
 
 ### T6.3.1.3 架构边界
 
-- [ ] 编排器只做调度、门禁、状态、重试、监督和审计，不重写业务数据生产逻辑。
-- [ ] 现有 `update-history`、`update-financials`、`backfill-*`、`brief`、`db-health` 继续作为 data plane。
-- [ ] 第一版不引入 Airflow、Celery、Redis、systemd service、Kubernetes 或外部队列。
-- [ ] 第一版继续使用本机 cron 作为 tick 触发器，但 cron 只调用 Python 编排器。
-- [ ] 状态落到本地 SQLite，便于审计、恢复和后续报告。
+- [x] 编排器只做调度、门禁、状态、重试、监督和审计，不重写业务数据生产逻辑。
+- [x] 现有 `update-history`、`update-financials`、`backfill-*`、`brief`、`db-health` 继续作为 data plane。
+- [x] 第一版不引入 Airflow、Celery、Redis、systemd service、Kubernetes 或外部队列。
+- [x] 第一版继续使用本机 cron 作为 tick 触发器，但 cron 只调用 Python 编排器。
+- [x] 状态落到本地 SQLite，便于审计、恢复和后续报告。
 
 ---
 
@@ -87,20 +87,20 @@ System Orchestrator（总体编排器）
 
 ### T6.3.2.1 Control Plane / Data Plane
 
-- [ ] Control Plane：新增维护编排器，负责决策和状态。
-- [ ] Data Plane：保留现有 CLI 与业务模块，负责真实数据读取、写入、报告生成。
-- [ ] 编排器通过命令适配器调用现有 CLI，避免第一阶段大范围重构。
+- [x] Control Plane：新增维护编排器，负责决策和状态。
+- [x] Data Plane：保留现有 CLI 与业务模块，负责真实数据读取、写入、报告生成。
+- [x] 编排器通过命令适配器调用现有 CLI，避免第一阶段大范围重构。
 
 ### T6.3.2.2 Command Registry
 
-- [ ] 每个维护任务定义为一个 command spec。
+- [x] 每个维护任务定义为一个 command spec。
 - [ ] command spec 至少包含任务名、命令、时间窗口、交易日历、依赖、前置健康检查、后置健康检查、重试策略、超时和产物规则。
-- [ ] 首批任务映射当前统一调度器已有任务：
-  - [ ] `daily_brief`
-  - [ ] `a_share_history`
-  - [ ] `hk_market_history`
-  - [ ] `us_market_history`
-  - [ ] `financial_factors`
+- [x] 首批任务映射当前统一调度器已有任务：
+  - [x] `daily_brief`
+  - [x] `a_share_history`
+  - [x] `hk_market_history`
+  - [x] `us_market_history`
+  - [x] `financial_factors`
 
 ### T6.3.2.3 State Machine
 
@@ -117,31 +117,32 @@ blocked -> pending
 cancelled -> pending
 ```
 
-- [ ] `skipped` 必须记录跳过原因，例如未到窗口、非交易日、依赖未满足、当天已完成。
-- [ ] `blocked` 表示门禁或依赖不允许继续运行，例如 `db-health` error。
-- [ ] `failed` 表示任务实际启动后退出失败。
-- [ ] `cancelled` 表示用户或编排器主动中断。
+- [x] `skipped` 必须记录跳过原因，例如未到窗口、非交易日、依赖未满足、当天已完成。
+- [x] `blocked` 表示门禁或依赖不允许继续运行，例如 `db-health` error。
+- [x] `failed` 表示任务实际启动后退出失败。
+- [x] `cancelled` 表示用户或编排器主动中断。
 
 ### T6.3.2.4 Policy Gate
 
 - [ ] 运行前统一执行交易日历、锁、状态、依赖、失败次数和 `db-health` 检查。
-- [ ] 运行后统一记录 exit code、报告路径、error summary 和关键结论。
-- [ ] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`。
+- [x] 运行前已执行锁、状态、失败次数和 `db-health` 检查；交易日历仍待接入。
+- [x] 运行后统一记录 exit code、log path 和 error summary；报告路径和关键结论仍待 P4 汇总。
+- [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`。
 - [ ] A 股研究与数据任务默认使用 `db-health --scope cn --fail-on error` 或 `financial/error`。
 
 ### T6.3.2.5 Supervisor
 
-- [ ] 长任务使用子进程组运行，记录 pid、command、start time 和 shard。
-- [ ] `stop` 能中断一个 run 的全部 shard。
-- [ ] `resume` 只重启未完成、失败或中断的 shard。
-- [ ] 分片限速由全局额度分配，Tushare 200/min 档位默认三 shard，每 shard 66-67/min。
+- [x] 长任务使用子进程组运行，记录 pid、command、start time 和 shard。
+- [x] `stop` 能中断一个 run 的全部 shard。
+- [x] `resume` 只重启未完成、失败或中断的 shard。
+- [x] 分片限速由全局额度分配，Tushare 200/min 档位默认三 shard，每 shard 66-67/min。
 
 ### T6.3.2.6 Append-only Audit Ledger
 
-- [ ] 编排器运行事件只追加，不覆盖。
-- [ ] backfill 详细报告继续按 `reports/YYYY-MM-DD/` 输出。
-- [ ] backfill 汇总报告继续每次追加 1 行关键结论。
-- [ ] 编排器只登记报告路径与结论，不复制或改写报告内容。
+- [x] 编排器运行事件只追加，不覆盖。
+- [x] backfill 详细报告继续按 `reports/YYYY-MM-DD/` 输出。
+- [x] backfill 汇总报告继续每次追加 1 行关键结论。
+- [x] 编排器只登记日志/状态路径；报告路径与关键结论待 P4 汇总报告补齐。
 
 ---
 
@@ -157,7 +158,7 @@ data/maintenance/maintenance.sqlite
 
 ### T6.3.3.2 首批表
 
-- [ ] `maintenance_runs`
+- [x] `maintenance_runs`
   - `run_id`
   - `task_name`
   - `planned_date`
@@ -174,7 +175,7 @@ data/maintenance/maintenance.sqlite
   - `error_summary`
   - `key_conclusion`
 
-- [ ] `maintenance_events`
+- [x] `maintenance_events`
   - `event_id`
   - `run_id`
   - `task_name`
@@ -198,7 +199,7 @@ data/maintenance/maintenance.sqlite
   - `locked_at`
   - `expires_at`
 
-- [ ] `maintenance_shards`
+- [x] `maintenance_shards`
   - `shard_id`
   - `run_id`
   - `task_name`
@@ -231,11 +232,11 @@ data/maintenance/maintenance.sqlite
 
 ### T6.3.4.2 子命令职责
 
-- [ ] `maintain tick`：由 cron 每分钟调用，判断本分钟哪些任务该运行。
-- [ ] `maintain status`：展示最近成功、最近失败、当前运行、阻断原因和报告路径。
-- [ ] `maintain run --task <name>`：手动触发单个任务，仍执行门禁与锁。
-- [ ] `maintain stop --run-id|--task`：中断当前运行任务或长任务全部 shard。
-- [ ] `maintain resume --run-id|--task`：恢复可续跑任务，只重启未完成 shard。
+- [x] `maintain tick`：由 cron 每分钟调用，判断本分钟哪些任务该运行。
+- [x] `maintain status`：展示最近成功、最近失败、当前运行、阻断原因和报告路径。
+- [x] `maintain run --task <name>`：当前支持 `tushare_financial_backfill` 长任务编排。
+- [x] `maintain stop --run-id|--task`：中断当前运行任务或长任务全部 shard。
+- [x] `maintain resume --run-id|--task`：恢复可续跑任务，只重启未完成 shard。
 
 ### T6.3.4.3 配置入口
 
@@ -270,31 +271,32 @@ maintenance_orchestrator:
 
 ### T6.3.5.2 P1：状态库与 dry-run tick
 
-- [ ] 新增 `phase0/maintenance_orchestrator.py`。
-- [ ] 新增状态库初始化逻辑。
-- [ ] 新增内置任务 registry，覆盖当前 shell 调度任务。
-- [ ] 实现 `maintain tick --dry-run`，只输出将运行、跳过和阻断原因。
-- [ ] 实现 `maintain status`，读取状态库展示最近运行。
+- [x] 新增 `phase0/maintenance_orchestrator.py`。
+- [x] 新增状态库初始化逻辑。
+- [x] 新增内置任务 registry，覆盖当前 shell 调度任务。
+- [x] 实现 `maintain tick --dry-run`，只输出将运行、跳过和阻断原因。
+- [x] 实现 `maintain status`，读取状态库展示最近运行。
 
 验收标准：
 
-- [ ] 不改现有 cron 行为也能 dry-run 出与 shell 调度一致的任务判断。
-- [ ] 每个跳过原因可追溯。
-- [ ] `maintenance.sqlite` schema 可重复初始化。
+- [x] 不改现有 cron 行为也能 dry-run 出与 shell 调度一致的任务判断。
+- [x] 每个跳过原因可追溯。
+- [x] `maintenance.sqlite` schema 可重复初始化。
 
 ### T6.3.5.3 P2：短任务编排上线
 
-- [ ] 实现真实 `maintain tick`。
-- [ ] 把 `scripts/run_project_scheduler.sh` 降级为 wrapper，加载 `.env` 后调用 `maintain tick`。
-- [ ] 接入运行窗口、重试次数、重试间隔和状态锁。
-- [ ] 成功后写入 `maintenance_runs`，兼容保留现有 `logs/scheduler/*.last`。
+- [x] 实现真实 `maintain tick`。
+- [x] 把 `scripts/run_project_scheduler.sh` 降级为 wrapper，加载 `.env` 后调用 `maintain tick`。
+- [x] 接入重试次数、重试间隔和状态锁。
+- [ ] 接入交易日历和更细的运行窗口。
+- [x] 成功后写入 `maintenance_runs`，兼容保留现有 `logs/scheduler/*.last`。
 
 验收标准：
 
-- [ ] `daily_brief`、`a_share_history`、`hk_market_history`、`us_market_history`、`financial_factors` 能由编排器驱动。
-- [ ] 失败任务在时间窗口内重试。
-- [ ] 同一任务不会重复并发启动。
-- [ ] `db-health` 阻断时状态为 `blocked`，不是 `failed`。
+- [x] `daily_brief`、`a_share_history`、`hk_market_history`、`us_market_history`、`financial_factors` 能由编排器驱动。
+- [x] 失败任务在时间窗口内重试。
+- [x] 同一任务不会重复并发启动。
+- [x] `db-health` 阻断时状态为 `blocked`，不是 `failed`。
 
 ### T6.3.5.4 P3：长 backfill 分片监督
 
@@ -323,6 +325,22 @@ maintenance_orchestrator:
 - [ ] 运维报告能回答“今天哪些数据更新成功、哪些失败、为什么”。
 - [ ] 报告包含可点击或可定位的本地报告路径。
 - [ ] 不复制 backfill 详细报告内容，只引用路径和结论。
+
+### T6.3.5.6 当前优先任务待办
+
+当前最优先处理顺序：
+
+1. [ ] **P3.1 持续 supervisor**：新增 `maintain supervise` 或在 `maintain status` 中强化刷新逻辑，读取 shard pid、日志和已知报告，尽量把 `exited_unknown` 精确归类为 `succeeded / failed / cancelled`。
+2. [ ] **P4.1 维护状态 Markdown 报告**：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，输出当日任务、失败原因、跳过原因、shard 状态、日志路径和报告路径。
+3. [ ] **P2.1 交易日历判断**：A 股任务读取 `trading_calendar`，HK/US 任务先用最新交易日或源数据新鲜度近似，替代简单 weekday 判断。
+4. [ ] **P3.2 shard 报告索引**：从 backfill 当次 audit 和 summary audit 中提取关键结论，写入 `maintenance_shards.report_path / error_summary` 或后续 `maintenance_artifacts`。
+5. [ ] **P4.2 日常巡检命令**：让 `maintain status` 支持 `--output-md` 或默认生成当日状态报告，供每日运维复盘和未来 TUI 使用。
+
+暂缓事项：
+
+- [ ] 暂缓实现 `maintenance_artifacts` 独立表，等 P4 报告索引稳定后再抽表，避免早建复杂 schema。
+- [ ] 暂缓接入 System Orchestrator / TUI，先让 Maintenance Orchestrator 自身状态可靠。
+- [ ] 暂缓把所有任务配置迁入 `config.yaml`，当前内置 registry 已能支撑本地运维，配置化等交易日历和报告索引稳定后再做。
 
 ---
 
