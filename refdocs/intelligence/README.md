@@ -21,6 +21,27 @@
 | `templates/intelligence_note_template.md` | 单条情报解读模板 |
 | `templates/strategy_translation_template.md` | 情报转候选策略任务模板 |
 
+## 自动采集器
+
+自动采集器通过 `phase0.cli intelligence` 提供三个命令：
+
+```bash
+./.venv/bin/python -m phase0.cli intelligence import-local --config config.yaml --source-dir refdocs/papers
+./.venv/bin/python -m phase0.cli intelligence collect --config config.yaml
+./.venv/bin/python -m phase0.cli intelligence validate --config config.yaml
+```
+
+输出位置：
+
+| 产物 | 默认路径 |
+| --- | --- |
+| 候选情报 CSV | `data/intelligence/inbox/intelligence_candidates_YYYY-MM-DD.csv` |
+| 采集报告 | `reports/intelligence/intelligence_collect_report_YYYY-MM-DD.md` |
+| 本地导入报告 | `reports/intelligence/intelligence_import_local_report_YYYY-MM-DD.md` |
+| 台账校验报告 | `reports/intelligence/intelligence_validate_report_YYYY-MM-DD.md` |
+
+候选情报 CSV 是 inbox，不是正式台账。正式写入 `strategy_intelligence_ledger.csv` 前必须人工筛选、评分、补充偏差风险和推荐动作。
+
 ## 状态流转
 
 ```text
@@ -35,3 +56,11 @@ collected -> screened -> evaluated -> translated -> experiment_planned -> accept
 - 已识别主要偏差风险：未来函数、幸存者偏差、样本内过拟合、文本延迟、授权风险等
 
 公告新闻类情报默认只进入解释层、事件时间线或研究假设，不直接进入主 ranker。
+
+## 采集边界
+
+- 默认只扫描本地 `refdocs/papers/`。
+- `arxiv`、`openalex`、`crossref`、`rss` 仅作为元数据和链接来源，默认关闭。
+- 不抓取付费研报全文。
+- 不替代新闻/文本事件数据层。
+- 不自动把候选情报转为交易信号。

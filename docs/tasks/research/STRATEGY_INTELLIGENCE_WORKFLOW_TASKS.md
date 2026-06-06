@@ -38,6 +38,7 @@
 | 情报总台账 | `refdocs/intelligence/strategy_intelligence_ledger.csv` | 已创建 |
 | 情报解读模板 | `refdocs/intelligence/templates/intelligence_note_template.md` | 已创建 |
 | 情报转策略模板 | `refdocs/intelligence/templates/strategy_translation_template.md` | 已创建 |
+| 自动采集器 V1 | `phase0.cli intelligence` / `phase0/intelligence.py` | 已创建 |
 
 ## T5.2.4 情报来源范围
 
@@ -47,12 +48,19 @@ V1 覆盖：
 - 研究报告：券商策略、量化报告、宏观策略、行业研究。
 - 公告新闻：只作为事件线索、解释材料或研究假设，不直接生成交易信号。
 
+V1 自动采集器覆盖：
+
+- 本地论文/研报目录扫描：`local_dir`
+- 论文/研报索引元数据接口预留：`arxiv`、`openalex`、`crossref`
+- 手工配置 RSS 元数据入口：`rss`
+
 V1 暂不做：
 
 - 全网自动搜索。
 - 自动抓取付费研报。
 - 大规模新闻爬虫。
 - 情报知识图谱或 SQLite 化。
+- 自动把候选情报写入正式台账。
 
 ## T5.2.5 情报台账字段
 
@@ -168,6 +176,9 @@ external_required
 - [x] 创建情报解读模板
 - [x] 创建情报转候选策略模板
 - [x] 补录首批 20 条既有论文情报
+- [x] 新增自动采集器 V1：搜索/抓取元数据/导入候选情报
+- [x] 新增情报台账校验命令
+- [x] 默认只启用本地论文目录扫描，在线源以配置方式预留但关闭
 - [ ] 为 `INT-CN-007` 生成完整情报解读 note
 - [ ] 为 `INT-CN-005` 生成完整情报解读 note
 - [ ] 为 `INT-CN-008` 生成完整情报解读 note
@@ -182,5 +193,35 @@ external_required
 - [x] 首批台账不少于 10 条，当前已 20 条
 - [x] 每条情报包含来源、标签、评分、状态、推荐动作和关联任务
 - [x] 项目计划、周任务清单和架构文档有入口
+- [x] `phase0.cli intelligence import-local` 可把本地资料导入候选 CSV
+- [x] `phase0.cli intelligence collect` 可按配置采集候选 CSV
+- [x] `phase0.cli intelligence validate` 可校验正式台账
 - [ ] 至少 3 条核心情报完成完整 Markdown 解读 note
 - [ ] 至少 1 条情报完成“转候选策略任务”模板填充
+
+## T5.2.12 自动采集器 V1
+
+### T5.2.12.1 命令
+
+```bash
+./.venv/bin/python -m phase0.cli intelligence import-local --config config.yaml --source-dir refdocs/papers
+./.venv/bin/python -m phase0.cli intelligence collect --config config.yaml
+./.venv/bin/python -m phase0.cli intelligence validate --config config.yaml
+```
+
+### T5.2.12.2 输出
+
+- 候选情报 CSV：`data/intelligence/inbox/intelligence_candidates_YYYY-MM-DD.csv`
+- 采集报告：`reports/intelligence/intelligence_collect_report_YYYY-MM-DD.md`
+- 本地导入报告：`reports/intelligence/intelligence_import_local_report_YYYY-MM-DD.md`
+- 台账校验报告：`reports/intelligence/intelligence_validate_report_YYYY-MM-DD.md`
+
+候选 CSV 不是正式台账。人工筛选、评分、补充偏差风险后，才可并入 `refdocs/intelligence/strategy_intelligence_ledger.csv`。
+
+### T5.2.12.3 边界
+
+- 默认只扫描 `refdocs/papers/`。
+- `arxiv`、`openalex`、`crossref`、`rss` 仅采集元数据和链接，默认关闭。
+- 不抓取付费研报全文。
+- 不替代 T1.3 文本/新闻数据层。
+- 不直接把情报转为交易信号。

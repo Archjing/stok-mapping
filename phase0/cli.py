@@ -23,6 +23,7 @@ from phase0.external_market_history import (
 from phase0.factor_effectiveness import run_factor_effectiveness_report
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
+from phase0.intelligence import collect_intelligence, import_local_intelligence, validate_intelligence_ledger
 from phase0.local_history import configure_local_history
 from phase0.overfit import run_overfit_diagnostic
 from phase0.quality import aggregate_quality, audit_quality
@@ -682,6 +683,23 @@ def main() -> int:
         default="never",
         help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
     )
+    intelligence_parser = sub.add_parser("intelligence", help="Collect, import, and validate strategy intelligence metadata")
+    intelligence_sub = intelligence_parser.add_subparsers(dest="intelligence_cmd")
+    intelligence_collect_parser = intelligence_sub.add_parser("collect", help="Collect configured intelligence metadata into an inbox CSV")
+    intelligence_collect_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    intelligence_collect_parser.add_argument("--output-csv", default=None, help="Optional candidate inbox CSV output path")
+    intelligence_collect_parser.add_argument("--output-report", default=None, help="Optional Markdown report output path")
+    intelligence_collect_parser.add_argument("--limit", type=int, default=None, help="Optional per-source row/file limit")
+    intelligence_import_parser = intelligence_sub.add_parser("import-local", help="Import local paper/report metadata into an inbox CSV")
+    intelligence_import_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    intelligence_import_parser.add_argument("--source-dir", default="refdocs/papers", help="Local source directory to scan")
+    intelligence_import_parser.add_argument("--output-csv", default=None, help="Optional candidate inbox CSV output path")
+    intelligence_import_parser.add_argument("--output-report", default=None, help="Optional Markdown report output path")
+    intelligence_import_parser.add_argument("--limit", type=int, default=None, help="Optional file limit")
+    intelligence_validate_parser = intelligence_sub.add_parser("validate", help="Validate the strategy intelligence ledger CSV")
+    intelligence_validate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    intelligence_validate_parser.add_argument("--ledger", default=None, help="Ledger CSV path. Defaults to config intelligence.ledger")
+    intelligence_validate_parser.add_argument("--output-report", default=None, help="Optional Markdown validation report output path")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -999,6 +1017,63 @@ def main() -> int:
         if args.fail_on == "warning" and (result.error_count > 0 or result.warning_count > 0):
             return 2
         return 0
+    if args.cmd == "intelligence":
+        console = Console()
+        if args.intelligence_cmd == "collect":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]Strategy intelligence collect started[/bold]")
+            result = collect_intelligence(
+                config_path,
+                output_csv=args.output_csv,
+                output_report=args.output_report,
+                limit=args.limit,
+            )
+            color = "green" if result.status == "ok" else "yellow"
+            console.print(f"[{color}]Intelligence collect status: {result.status}[/{color}]")
+            console.print(f"Candidate rows: {result.rows}")
+            console.print(f"Candidate CSV: {result.candidates_csv}")
+            console.print(f"Markdown: {result.report_md}")
+            for warning in (result.warnings or [])[:10]:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+            return 0
+        if args.intelligence_cmd == "import-local":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]Strategy intelligence local import started[/bold]")
+            result = import_local_intelligence(
+                config_path,
+                source_dir=args.source_dir,
+                output_csv=args.output_csv,
+                output_report=args.output_report,
+                limit=args.limit,
+            )
+            color = "green" if result.status == "ok" else "yellow"
+            console.print(f"[{color}]Intelligence import status: {result.status}[/{color}]")
+            console.print(f"Candidate rows: {result.rows}")
+            console.print(f"Candidate CSV: {result.candidates_csv}")
+            console.print(f"Markdown: {result.report_md}")
+            for warning in (result.warnings or [])[:10]:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+            return 0
+        if args.intelligence_cmd == "validate":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]Strategy intelligence ledger validation started[/bold]")
+            result = validate_intelligence_ledger(
+                config_path,
+                ledger=args.ledger,
+                output_report=args.output_report,
+            )
+            color = "green" if result.status == "ok" else "red"
+            console.print(f"[{color}]Intelligence validation status: {result.status}[/{color}]")
+            console.print(f"Rows: {result.row_count}")
+            console.print(f"Errors: {result.error_count}")
+            console.print(f"Warnings: {result.warning_count}")
+            console.print(f"Markdown: {result.report_md}")
+            for error in result.errors[:10]:
+                console.print(f"[red]Error:[/red] {error}")
+            for warning in result.warnings[:10]:
+                console.print(f"[yellow]Warning:[/yellow] {warning}")
+            return 2 if result.error_count > 0 else 0
+        parser.error("intelligence requires a subcommand: collect, import-local, or validate")
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
             return run_daily_brief_pipeline(

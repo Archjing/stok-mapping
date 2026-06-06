@@ -1241,3 +1241,37 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] V1 不做全网自动爬取
 - [x] 新闻公告类情报只作为研究线索和解释材料，不直接进入主 ranker
 - [x] LLM 只用于摘要、标签、反方审查，不作为最终评分唯一依据
+
+# W2.23｜投资策略情报自动采集器 V1（T5.2）
+
+参考专项任务：[`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md)
+
+## W2.23.1 目标
+
+在 T5.2 情报工作流基础上，新增最小自动采集器，使论文/研报索引和本地资料可以进入候选情报 inbox，再由人工筛选并入正式情报台账。
+
+## W2.23.2 范围
+
+- [x] 新增 `phase0/intelligence.py`
+- [x] 新增 CLI：`phase0.cli intelligence collect`
+- [x] 新增 CLI：`phase0.cli intelligence import-local`
+- [x] 新增 CLI：`phase0.cli intelligence validate`
+- [x] 在 `config.yaml` 预留 `local_dir`、`arxiv`、`openalex`、`crossref`、`rss` source 配置
+- [x] 默认只启用 `refdocs/papers/` 本地扫描
+- [x] 候选输出到 `data/intelligence/inbox/`，不直接写正式台账
+- [x] Markdown 报告输出到 `reports/intelligence/`
+
+## W2.23.3 边界
+
+- [x] 不做全网爬虫
+- [x] 不抓取付费研报全文
+- [x] 不替代 T1.3 新闻/文本事件数据层
+- [x] 不自动把候选情报转成交易信号
+
+## W2.23.4 验收
+
+- [x] `compileall` 通过
+- [x] `intelligence --help` 可显示子命令
+- [x] `intelligence validate` 可校验正式台账
+- [x] `intelligence import-local --limit 5` 可生成候选 CSV 与 Markdown 报告
+- [x] `intelligence collect --limit 5` 可按配置生成候选 CSV 与 Markdown 报告

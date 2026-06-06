@@ -245,6 +245,31 @@ phase0:
       hk_symbols:
         - "HK.00700"
         - "HK.09988"
+  intelligence:
+    ledger: "refdocs/intelligence/strategy_intelligence_ledger.csv"
+    inbox_dir: "data/intelligence/inbox"
+    report_dir: "reports/intelligence"
+    sources:
+      - name: "local_papers"
+        type: "local_dir"
+        enabled: true
+        path: "refdocs/papers"
+      - name: "arxiv_quant_finance"
+        type: "arxiv"
+        enabled: false
+        query: "all:quantitative finance stock trading strategy"
+      - name: "openalex_quant_strategy"
+        type: "openalex"
+        enabled: false
+        query: "quantitative investment stock strategy"
+      - name: "crossref_quant_strategy"
+        type: "crossref"
+        enabled: false
+        query: "quantitative investment stock strategy"
+      - name: "rss_manual"
+        type: "rss"
+        enabled: false
+        url: ""
   walk_forward:
     train_years: 2
     validate_years: 1
