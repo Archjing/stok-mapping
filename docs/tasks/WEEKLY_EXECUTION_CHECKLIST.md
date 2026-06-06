@@ -1086,10 +1086,10 @@ python -m phase0.cli backfill-tushare-financials \
 ## W2.17.6 当前发现
 
 - [x] `cn.daily_basic.pe_ratio` 最新覆盖率约 `72%`，已确认不是整行缺失；PE 为空多为亏损 / TTM 盈利不可计算，已改为诊断项而非硬覆盖率 warning
-- [x] T1.5 目标季度末任务已清空 `pending/failed`；全表剩余 `pending/failed` 属于目标外 period，后续作为任务表清理项单独处理
-- [ ] US 行情 recent OHLC 违规 `3` 行，需要后续输出 sample rows 定位
-- [ ] HK 配置标的 freshness 覆盖 `28/30`，缺 `HK.03690`、`HK.00981`
-- [ ] HK 行情 recent OHLC 违规 `1` 行，需要后续输出 sample rows 定位
+- [x] T1.5 目标季度末任务已清空 `pending/failed`；全表剩余 `pending/failed` 属于目标外 period，已拆为 W2.20 清理 / 重分类任务
+- [x] US 行情 recent OHLC 违规 `3` 行，`db-health` 已输出 sample rows 定位：当前样本集中在 `CNY=X`
+- [ ] HK 配置标的 freshness 当前覆盖 `25/30`，疑似 yfinance 更新延迟 / 交易日差异，需先跑增量更新再判断是否调整门禁阈值
+- [x] HK 行情 recent OHLC 违规 `1` 行，`db-health` 已输出 sample rows 定位：当前样本为 `HK.09633`
 
 ## W2.17.7 后续任务
 
@@ -1163,4 +1163,27 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [ ] 不把网页抓取结果绕过标准化直接接入策略因子
 - [ ] 不让 LLM 直接对文本事件生成买卖评分
+
+# W2.20｜Tushare 财务回填目标外任务清理 / 重分类
+
+## W2.20.1 背景
+
+`T1.5` 已完成 2016Q1-2018Q1 原始目标季度末验收，目标季度末任务均已清空 `pending/failed`。但 `tushare_financial_backfill_tasks` 全表仍存在目标外 period 的 `pending/failed`，导致 `db-health --scope all` 继续产生 `financial.backfill_tasks.pending` 与 `financial.backfill_tasks.failed` warning。
+
+这些任务主要来自非 T1.5 季度末或后续补跑范围，不应继续被误读为 T1.5 未完成，也不应长期污染数据库健康检查结论。
+
+## W2.20.2 目标
+
+- [ ] 盘点 `tushare_financial_backfill_tasks` 中所有目标外 period，区分季度末、非季度末和误生成 period
+- [ ] 明确目标外任务处置策略：保留重试、标记 skipped、归档迁移或删除重建
+- [ ] 不影响 2016Q1-2018Q1 已验收任务状态和审计报告
+- [ ] 调整 `db-health` 对财务回填任务队列的检查口径，避免目标外历史任务阻塞 `scope all`
+- [ ] 输出清理前后任务状态审计报告
+
+## W2.20.3 验收标准
+
+- [ ] 清理后 `db-health --scope all --fail-on never` 不再因目标外 Tushare financial 任务产生误导性 warning
+- [ ] 保留需要继续补录的合法任务，且能被后续 backfill / 字段缺失补录模式继续选择
+- [ ] 清理动作可追溯，报告记录 period、status、task_count、处置方式和原因
+- [ ] 若采用重分类而非删除，任务表状态语义需补充到项目文档
 - [ ] 不在没有 as-of 口径和覆盖率诊断前做文本因子回测
