@@ -780,7 +780,7 @@ python -m phase0.cli overfit-diagnostic \
 - [x] `market_adj_factors` 验收：2016-01-04 到 2026-06-04，交易日覆盖完整，`adj_factor` 非空率 100%
 - [x] `market_daily_basic` 验收：2016-01-04 到 2026-06-03，`pb_ratio` 覆盖率约 99.37%，`pe_ratio` 覆盖率约 81.47%，`turnover_rate` 覆盖率 100%
 - [x] 输出 Tushare 补全验收报告：`reports/tushare_history_backfill_audit.md` / `reports/tushare_history_backfill_audit.csv`
-- [ ] 后续单独批次补齐 Tushare 财务因子 2016Q1-2018Q1；当前 `market_financial_factors` 仍为 2018-06-30 到 2026-03-31
+- [x] 后续单独批次补齐 Tushare 财务因子 2016Q1-2018Q1；当前 `market_financial_factors` 已覆盖 2016-03-31 到 2026-03-31
 - [x] 更新 `data/manual_history/README.md`：重定义 `a_share_history.sqlite` 为 A 股研究主库，而不是“离线缓存 / fallback”；明确 `bfq_raw / qfq_current / qfq_asof / market_adj_factors / market_daily_basic / market_financial_factors / source audit` 的职责边界，以及 `import-history`、`update-history`、`backfill-tushare-history`、`backfill-tushare-financials`、`update-financials` 的维护分工
 
 ### W2.14.6 P2 `qfq_asof` loader MVP
@@ -878,36 +878,36 @@ python -m phase0.cli adjustment-audit \
 
 ## W2.16.1 立项定位
 
-`market_financial_factors` 当前覆盖 2018-06-30 到 2026-03-31。为了让质量类因子在更长历史窗口中可用，需要补齐 2016Q1-2018Q1。Tushare 财务接口当前需要按 `ts_code + period` 拉取，属于 20 万级请求长任务，必须先做断点任务表、分片运行和验收报告。
+立项时 `market_financial_factors` 覆盖 2018-06-30 到 2026-03-31。为了让质量类因子在更长历史窗口中可用，需要补齐 2016Q1-2018Q1。当前 T1.5 已完成目标季度末补齐，主表覆盖已前推到 2016-03-31；本节保留立项背景、执行记录和验收结果。
 
 ## W2.16.2 目标季度
 
-- [ ] `2016-03-31`
-- [ ] `2016-06-30`
-- [ ] `2016-09-30`
-- [ ] `2016-12-31`
-- [ ] `2017-03-31`
-- [ ] `2017-06-30`
-- [ ] `2017-09-30`
-- [ ] `2017-12-31`
-- [ ] `2018-03-31`
+- [x] `2016-03-31`
+- [x] `2016-06-30`
+- [x] `2016-09-30`
+- [x] `2016-12-31`
+- [x] `2017-03-31`
+- [x] `2017-06-30`
+- [x] `2017-09-30`
+- [x] `2017-12-31`
+- [x] `2018-03-31`
 
 ## W2.16.3 目标字段
 
-- [ ] `announce_date`
-- [ ] `roe`
-- [ ] `revenue`
-- [ ] `revenue_growth`
-- [ ] `net_profit`
-- [ ] `profit_growth`
-- [ ] `operating_cash_flow`
-- [ ] `operating_cash_flow_to_net_profit`
-- [ ] `debt_to_asset`
-- [ ] `total_assets`
-- [ ] `total_liabilities`
-- [ ] `total_equity`
-- [ ] `source`
-- [ ] `updated_at`
+- [x] `announce_date`
+- [x] `roe`
+- [x] `revenue`
+- [x] `revenue_growth`
+- [x] `net_profit`
+- [x] `profit_growth`
+- [x] `operating_cash_flow`
+- [x] `operating_cash_flow_to_net_profit`
+- [x] `debt_to_asset`
+- [x] `total_assets`
+- [x] `total_liabilities`
+- [x] `total_equity`
+- [x] `source`
+- [x] `updated_at`
 
 ## W2.16.4 代码任务
 
@@ -982,22 +982,25 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 50 只股票单季度验证：`--period 2016-03-31 --limit-symbols 50`
 - [x] 默认覆盖行为修正为“跳过已有有效记录”，显式传 `--replace-existing` 时才覆盖
 - [x] 200 个任务小批量验证：`--start-period 2016-03-31 --end-period 2018-03-31 --limit-tasks 200 --max-runtime-minutes 10`
-- [ ] 单季度全市场分批验证
-- [ ] 跑完 2016Q1-2018Q1 全部季度
-- [ ] 重试 failed，直到 failed ratio 低于 1%
-- [ ] 重跑 `financial-pti`
-- [ ] 重跑 `factor-effectiveness`，观察 `cash_flow_quality` 历史覆盖变化
+- [x] 单季度全市场分批验证
+- [x] 跑完 2016Q1-2018Q1 全部季度
+- [x] 重试 failed，直到 failed ratio 低于 1%
+- [x] 重跑 `financial-pti`
+- [x] 重跑 `factor-effectiveness`，观察 `cash_flow_quality` 历史覆盖变化
 
-当前进度（2026-06-05）：任务表已扩展到 2016Q1-2018Q1 全部 9 个季度，合计 `26,486` 个 `period + symbol` 任务；其中 `9,292` 个已 `fetched`，`4` 个为 `empty`，`7` 个为 `failed`，`17,183` 个仍为 `pending`。下一步优先继续长任务回填，并对 `failed` 任务执行 `--retry-failed`。
+完成记录（2026-06-06）：2016Q1-2018Q1 全部 9 个目标季度末已完成回填闭环；目标季度末任务状态均为 `pending=0`、`failed=0`，仅保留每季 `empty=2`。本次收尾补跑处理残余任务 `35` 个，其中 `fetched=28`、`empty=7`、`failed=0`，新增审计报告位于 `reports/2026-06-06/tushare_financial_backfill_audit_260606_20160331_20180331.md`。
 
 ## W2.16.8 验收标准
 
-- [ ] 2016Q1-2018Q1 每个季度均有任务覆盖
-- [ ] 每季度 `fetched + empty + failed = target_symbols`
-- [ ] `failed_symbols` 经重试后低于 1%
-- [ ] 所有有效记录保留 `announce_date`
-- [ ] `financial-pti` 仍为 PASS
-- [ ] 不因补历史财务字段改变已存在的有效日线、复权和 daily_basic 数据
+- [x] 2016Q1-2018Q1 每个季度均有任务覆盖
+- [x] 每季度 `fetched + empty + failed = target_symbols`
+- [x] `failed_symbols` 经重试后低于 1%
+- [x] 所有有效记录保留 `announce_date`
+- [x] `financial-pti` 仍为 PASS
+- [x] 不因补历史财务字段改变已存在的有效日线、复权和 daily_basic 数据
+- [x] `factor-effectiveness` 已重跑，`cash_flow_quality` 覆盖率 `0.9959` 并列为 `use`
+
+说明：任务表中曾误生成的非目标 period（如 `2017-07-01`、`2017-08-01`、`2017-09-01`、`2017-10-01`、`2017-11-01`）不属于 T1.5 原始季度末验收范围，后续单独清理，不影响 T1.5 验收。
 
 ---
 
@@ -1083,8 +1086,7 @@ python -m phase0.cli backfill-tushare-financials \
 ## W2.17.6 当前发现
 
 - [x] `cn.daily_basic.pe_ratio` 最新覆盖率约 `72%`，已确认不是整行缺失；PE 为空多为亏损 / TTM 盈利不可计算，已改为诊断项而非硬覆盖率 warning
-- [ ] Tushare 财务回填任务仍有 `failed=7`
-- [ ] Tushare 财务回填任务仍有 `pending=17183`
+- [x] T1.5 目标季度末任务已清空 `pending/failed`；全表剩余 `pending/failed` 属于目标外 period，后续作为任务表清理项单独处理
 - [ ] US 行情 recent OHLC 违规 `3` 行，需要后续输出 sample rows 定位
 - [ ] HK 配置标的 freshness 覆盖 `28/30`，缺 `HK.03690`、`HK.00981`
 - [ ] HK 行情 recent OHLC 违规 `1` 行，需要后续输出 sample rows 定位
