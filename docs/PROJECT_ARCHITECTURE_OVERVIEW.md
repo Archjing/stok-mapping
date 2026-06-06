@@ -68,24 +68,27 @@
 
 ## 3. 系统分层
 
-当前架构可以拆为 8 层。
+当前架构可以拆为 9 层。
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ 8. 交付与运维层                                               │
+│ 9. 交付与运维层                                               │
 │ reports / watchlist HTML / desktop UI / scheduler / logs / ECS│
 ├──────────────────────────────────────────────────────────────┤
-│ 7. 策略治理层                                                 │
+│ 8. 策略治理层                                                 │
 │ walk-forward / gate / overfit / factor-effectiveness / admission│
 ├──────────────────────────────────────────────────────────────┤
-│ 6. 账户与执行仿真层                                           │
+│ 7. 账户与执行仿真层                                           │
 │ accounts / bill / execution profile / constraints / reconciliation│
 ├──────────────────────────────────────────────────────────────┤
-│ 5. 策略与信号层                                               │
+│ 6. 策略与信号层                                               │
 │ strategies registry / stock focus / overlay / rebalance       │
 ├──────────────────────────────────────────────────────────────┤
-│ 4. 股票池与特征层                                             │
+│ 5. 股票池与特征层                                             │
 │ universe / qfq_asof features / daily_basic / financial factors│
+├──────────────────────────────────────────────────────────────┤
+│ 4. 研究情报层                                                 │
+│ papers / research reports / news clues / intelligence ledger  │
 ├──────────────────────────────────────────────────────────────┤
 │ 3. 数据质量与审计层                                           │
 │ db-health / financial-pti / universe-pti / adjustment-audit   │
@@ -390,6 +393,27 @@ Tushare 财务历史回填当前状态：
 - [phase0/walk_forward.py](../phase0/walk_forward.py) 仍承担较多职责：数据加载、特征构造、组合模拟、候选比较和指标计算都集中在一个大模块内。
 - 短期可接受，因为系统仍处于研究迭代期。
 - 若 T2.6/T2.7 新策略开始稳定，应逐步拆出 `factors/`、`portfolio/`、`evaluation/` 子模块，降低维护成本。
+
+### 5.8 研究情报层
+
+核心资料：
+
+- `refdocs/papers/`
+- `refdocs/intelligence/strategy_intelligence_ledger.csv`
+- `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
+
+职责：
+
+- 管理论文、研究报告、公告新闻和策略线索。
+- 评估情报质量、创新性、可落地性、数据可用性和偏差风险。
+- 维护“情报来源 -> 策略假设 -> 候选任务 -> 实验结果”的追溯关系。
+- 为候选策略池、因子诊断、文本事件层和数据建设任务提供上游研究依据。
+
+边界：
+
+- 研究情报层不直接生成交易信号。
+- 公告新闻类情报默认只作为解释层、事件时间线或研究假设。
+- LLM 可以用于摘要、标签和反方审查，但不能作为最终评分和交易判断的唯一来源。
 
 ---
 

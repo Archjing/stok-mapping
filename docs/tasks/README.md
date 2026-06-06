@@ -41,6 +41,7 @@
 | `T3.1` | 港股映射 A 股候选策略 | [`cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](./cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](./account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`research/STRATEGY_SUMMARY.md`](./research/STRATEGY_SUMMARY.md) |
+| `T5.2` | 投资策略情报搜集、评估、维护、提炼与解读模块 | [`research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](./research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md) |
 | `T6.1` | 统一调度器与后台 Pipeline | [`ops/SCHEDULER_PIPELINE_TASKS.md`](./ops/SCHEDULER_PIPELINE_TASKS.md) |
 | `T6.2` | 数据库健康检查与数据质量门禁 | [`WEEKLY_EXECUTION_CHECKLIST.md`](./WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) |
 | `T6.3` | 数据治理与维护编排器 | [`ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](./ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) |

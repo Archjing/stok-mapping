@@ -1215,3 +1215,29 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 修正单接口归一化问题：只调用 `fina_indicator` 等部分接口时不再触发 `combine_first` 类型异常
 - [x] 修正补录计数口径：只有核心缺字段被填上才计入 `inserted_rows / fetched`，无字段改善标记为 `empty`
 - [ ] 大批量运行前先估算任务量和接口请求量
+
+# W2.22｜投资策略情报工作流模块 V1（T5.2）
+
+参考专项任务：[`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md)
+
+## W2.22.1 背景
+
+项目启动阶段的候选策略来自 `refdocs/papers/` 论文搜集与解读，说明外部情报对系统迭代方向具有持续影响。后续需要把论文、研究报告、公告新闻和策略线索从零散归档升级为可登记、可评分、可追溯、可转化的研究情报工作流。
+
+## W2.22.2 V1 范围
+
+- [x] 先将 T5.2 计划写入开发计划和周任务清单
+- [x] 新建 `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
+- [x] 新建 `refdocs/intelligence/README.md`
+- [x] 新建 `refdocs/intelligence/strategy_intelligence_ledger.csv`
+- [x] 新建情报解读模板与情报转候选策略模板
+- [x] 从现有 `refdocs/papers/` 补录首批 20 条情报
+- [ ] 为至少 3 条核心情报生成完整 Markdown 解读 note
+- [ ] 为至少 1 条情报生成候选策略转化任务草案
+
+## W2.22.3 边界
+
+- [x] V1 使用 Markdown + CSV，不引入 SQLite
+- [x] V1 不做全网自动爬取
+- [x] 新闻公告类情报只作为研究线索和解释材料，不直接进入主 ranker
+- [x] LLM 只用于摘要、标签、反方审查，不作为最终评分唯一依据

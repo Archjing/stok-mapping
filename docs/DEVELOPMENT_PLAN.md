@@ -166,6 +166,7 @@
 
 - `refdocs/papers/cn/cn_INDEX.md` 索引的中文 A 股论文资料
 - `refdocs/papers/en/INDEX.md` 索引的英文/国际论文资料
+- `refdocs/intelligence/strategy_intelligence_ledger.csv` 维护的投资策略情报台账
 - `docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - `reports/phase0_strategy_change_log.md`
 - `reports/phase0_walk_forward_report.md`
@@ -177,6 +178,7 @@
 - 约束架构扩展顺序
 - 判断哪些 ML / 多因子 / 量价 / 文本思路值得优先进入产品
 - 记录每次策略参数和逻辑调整的理由
+- 维护“情报来源 -> 策略假设 -> 候选任务 -> 实验结果”的可追溯链路
 
 ### 1.4 当前交叉结论
 
@@ -1040,6 +1042,7 @@ stok-mapping/
 | `T3.1` | 港股映射 A 股候选策略 | [`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`docs/tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
+| `T5.2` | 投资策略情报工作流模块 | [`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md) | **V1 已建立：Markdown + CSV 台账、模板和首批论文情报补录** |
 | `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
 | `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP、调度/研究前置门禁与 OHLC sample rows 已完成，后续补覆盖率口径判断** |
 | `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **专项计划已建立，待实现状态库、dry-run tick、维护状态查询和长任务分片监督** |
