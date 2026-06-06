@@ -1134,6 +1134,7 @@ updated_at
 - 默认跳过已有有效记录，只有显式传 `--replace-existing` 时才覆盖
 - 不允许用空行覆盖已有有效财务记录
 - CLI 已增加进度显示：目标任务数、已处理数、完成率、fetched/empty/failed、inserted_rows、rate、elapsed、eta
+- 新增字段缺失补录模式：`--missing-fields-only` 使用独立任务表 `tushare_financial_missing_field_tasks`，只为已有行的空字段建任务，并按缺失字段选择最少 Tushare 接口
 - 验收 Markdown 报告中的覆盖率按百分数展示，CSV 保持 0-1 机器可读口径
 
 CLI 设计：
@@ -1157,6 +1158,8 @@ python -m phase0.cli backfill-tushare-financials \
 --limit-tasks N
 --retry-failed
 --replace-existing
+--missing-fields-only
+--missing-fields roe,revenue_growth,profit_growth,operating_cash_flow_to_net_profit,debt_to_asset
 --shard-index N
 --shard-count N
 --max-runtime-minutes N
@@ -1205,6 +1208,8 @@ announce_date_coverage
 验收结果（2026-06-06）：2016Q1-2018Q1 全部 9 个目标季度末已完成回填闭环；每个季度均为 `pending=0`、`failed=0`，仅保留每季 `empty=2` 的请求成功但无有效财务数据任务。`market_financial_factors` 覆盖 `2016-03-31` 到 `2026-03-31` 共 `41` 个报告期、`193,817` 行、`5,611` 只股票；目标季度内 `announce_date` 覆盖 `100%`，`cash_flow_quality` 对应字段覆盖接近满值。`financial-pti` 复核结论为 `PASS`，`factor-effectiveness` 已重跑，`cash_flow_quality` 覆盖率 `0.9959` 并继续列为 `use` 因子。
 
 说明：任务表中曾误生成的非目标 period（如 `2017-07-01`、`2017-08-01` 等）不属于 T1.5 原始季度末验收范围，后续可作为任务表清理项处理，不影响 T1.5 完成判断。
+
+后续增强（2026-06-06）：`backfill-tushare-financials` 已支持字段缺失补录模式。该模式不全量覆盖已有行，而是扫描 `market_financial_factors` 中指定字段为空的既有记录，创建 `period + symbol` 级补录任务，并根据缺失字段只调用必要接口：例如 `roe / revenue_growth / profit_growth` 只需 `fina_indicator`，`operating_cash_flow_to_net_profit` 需要 `income + cashflow`，`debt_to_asset` 需要 `balancesheet + fina_indicator`。
 
 ### T6.2｜数据库健康检查与数据质量门禁
 

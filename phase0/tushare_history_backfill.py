@@ -24,6 +24,22 @@ from phase0.tushare_source import (
 from phase0.update_history import _ensure_daily_basic_table, _safe_identifier, _upsert_daily_basic_rows
 
 
+FINANCIAL_FIELD_INTERFACES: dict[str, set[str]] = {
+    "announce_date": {"income", "fina_indicator"},
+    "roe": {"fina_indicator"},
+    "revenue": {"income"},
+    "revenue_growth": {"fina_indicator"},
+    "net_profit": {"income"},
+    "profit_growth": {"fina_indicator"},
+    "operating_cash_flow": {"cashflow"},
+    "operating_cash_flow_to_net_profit": {"income", "cashflow"},
+    "debt_to_asset": {"balancesheet", "fina_indicator"},
+    "total_assets": {"balancesheet"},
+    "total_liabilities": {"balancesheet"},
+    "total_equity": {"balancesheet"},
+}
+
+
 @dataclass(frozen=True)
 class TushareHistoryBackfillResult:
     db_path: Path
@@ -419,6 +435,60 @@ def _ensure_financial_backfill_task_table(conn: sqlite3.Connection, *, table_nam
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_status_period ON {table}(status, period)")
 
 
+def _ensure_financial_missing_field_task_table(
+    conn: sqlite3.Connection,
+    *,
+    table_name: str = "tushare_financial_missing_field_tasks",
+) -> None:
+    table = _safe_identifier(table_name)
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {table} (
+            period TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            missing_fields TEXT NOT NULL,
+            interfaces TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            request_count INTEGER NOT NULL DEFAULT 0,
+            last_error TEXT,
+            updated_at TEXT,
+            PRIMARY KEY (period, symbol)
+        )
+        """
+    )
+    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_status_period ON {table}(status, period)")
+
+
+def _normalize_missing_fields(fields: list[str] | tuple[str, ...] | set[str] | None) -> list[str]:
+    if not fields:
+        return [
+            "roe",
+            "revenue_growth",
+            "profit_growth",
+            "operating_cash_flow_to_net_profit",
+            "debt_to_asset",
+        ]
+    normalized: list[str] = []
+    for field in fields:
+        value = str(field).strip()
+        if not value:
+            continue
+        if value not in FINANCIAL_FIELD_INTERFACES:
+            raise ValueError(f"unsupported financial missing field: {value}")
+        if value not in normalized:
+            normalized.append(value)
+    if not normalized:
+        raise ValueError("missing field list is empty")
+    return normalized
+
+
+def _interfaces_for_missing_fields(fields: list[str]) -> set[str]:
+    interfaces: set[str] = set()
+    for field in fields:
+        interfaces.update(FINANCIAL_FIELD_INTERFACES[field])
+    return interfaces
+
+
 def _has_existing_valid_financial_row(
     conn: sqlite3.Connection,
     *,
@@ -451,6 +521,62 @@ def _has_existing_valid_financial_row(
         params=(symbol, period),
     )
     return bool(not row.empty and _financial_non_null_count(row.iloc[0].to_dict()) > 0)
+
+
+def _initialize_financial_missing_field_tasks(
+    conn: sqlite3.Connection,
+    *,
+    task_table: str,
+    financial_table: str,
+    periods: list[str],
+    fields: list[str],
+    limit_symbols: int | None,
+) -> int:
+    _ensure_financial_missing_field_task_table(conn, table_name=task_table)
+    task = _safe_identifier(task_table)
+    financial = _safe_identifier(financial_table)
+    field_expr = " OR ".join([f"{_safe_identifier(field)} IS NULL" for field in fields])
+    period_placeholders = ",".join(["?"] * len(periods))
+    selected_fields = ", ".join([_safe_identifier(field) for field in fields])
+    query = f"""
+        SELECT symbol, report_date AS period, {selected_fields}
+        FROM {financial}
+        WHERE market = 'CN'
+          AND report_date IN ({period_placeholders})
+          AND ({field_expr})
+        ORDER BY report_date, symbol
+    """
+    rows = pd.read_sql_query(query, conn, params=periods)
+    if limit_symbols is not None and limit_symbols > 0:
+        rows = rows.groupby("period", group_keys=False).head(int(limit_symbols)).copy()
+    inserted = 0
+    now = datetime.now().isoformat(timespec="seconds")
+    for row in rows.itertuples(index=False):
+        row_dict = row._asdict()
+        missing = [field for field in fields if pd.isna(row_dict.get(field))]
+        if not missing:
+            continue
+        interfaces = sorted(_interfaces_for_missing_fields(missing))
+        cursor = conn.execute(
+            f"""
+            INSERT INTO {task} (period, symbol, missing_fields, interfaces, status, request_count, updated_at)
+            VALUES (?, ?, ?, ?, 'pending', 0, ?)
+            ON CONFLICT(period, symbol) DO UPDATE SET
+                missing_fields = excluded.missing_fields,
+                interfaces = excluded.interfaces,
+                status = CASE WHEN {task}.status IN ('fetched', 'empty') THEN {task}.status ELSE 'pending' END,
+                updated_at = excluded.updated_at
+            """,
+            (
+                str(row_dict["period"]),
+                str(row_dict["symbol"]),
+                ",".join(missing),
+                ",".join(interfaces),
+                now,
+            ),
+        )
+        inserted += int(cursor.rowcount or 0)
+    return inserted
 
 
 def _initialize_financial_backfill_tasks(
@@ -490,6 +616,39 @@ def _initialize_financial_backfill_tasks(
     return inserted
 
 
+def _select_financial_missing_field_tasks(
+    conn: sqlite3.Connection,
+    *,
+    task_table: str,
+    periods: list[str],
+    retry_failed: bool,
+    shard_index: int,
+    shard_count: int,
+    limit_tasks: int | None = None,
+) -> pd.DataFrame:
+    table = _safe_identifier(task_table)
+    statuses = ["pending", "failed"] if retry_failed else ["pending"]
+    placeholders = ",".join(["?"] * len(statuses))
+    period_placeholders = ",".join(["?"] * len(periods))
+    query = f"""
+        SELECT period, symbol, missing_fields, interfaces, status, request_count
+        FROM {table}
+        WHERE status IN ({placeholders})
+          AND period IN ({period_placeholders})
+        ORDER BY period, symbol
+    """
+    tasks = pd.read_sql_query(query, conn, params=[*statuses, *periods])
+    if tasks.empty:
+        return tasks
+    shard_count = max(1, int(shard_count))
+    shard_index = max(0, int(shard_index)) % shard_count
+    tasks = tasks.reset_index(drop=True)
+    tasks = tasks[tasks.index % shard_count == shard_index].copy()
+    if limit_tasks is not None:
+        tasks = tasks.head(int(limit_tasks)).copy()
+    return tasks
+
+
 def _select_financial_backfill_tasks(
     conn: sqlite3.Connection,
     *,
@@ -523,6 +682,41 @@ def _select_financial_backfill_tasks(
     return tasks
 
 
+def _mark_financial_missing_field_task(
+    conn: sqlite3.Connection,
+    *,
+    task_table: str,
+    period: str,
+    symbol: str,
+    status: str,
+    missing_fields: list[str] | None = None,
+    error: str = "",
+) -> None:
+    table = _safe_identifier(task_table)
+    updates = [
+        "status = ?",
+        "request_count = request_count + 1",
+        "last_error = ?",
+        "updated_at = ?",
+    ]
+    params: list[Any] = [status, error[:1000], datetime.now().isoformat(timespec="seconds")]
+    if missing_fields is not None:
+        updates.append("missing_fields = ?")
+        updates.append("interfaces = ?")
+        params.append(",".join(missing_fields))
+        params.append(",".join(sorted(_interfaces_for_missing_fields(missing_fields))) if missing_fields else "")
+    params.extend([period, symbol])
+    conn.execute(
+        f"""
+        UPDATE {table}
+        SET {", ".join(updates)}
+        WHERE period = ?
+          AND symbol = ?
+        """,
+        tuple(params),
+    )
+
+
 def _mark_financial_task(
     conn: sqlite3.Connection,
     *,
@@ -545,6 +739,53 @@ def _mark_financial_task(
         """,
         (status, error[:1000], datetime.now().isoformat(timespec="seconds"), period, symbol),
     )
+
+
+def _merge_financial_missing_fields(
+    conn: sqlite3.Connection,
+    *,
+    table_name: str,
+    row: pd.Series,
+    fields: list[str],
+) -> int:
+    table = _safe_identifier(table_name)
+    market = str(row.get("market") or "CN")
+    symbol = str(row.get("symbol") or "")
+    report_date = str(row.get("report_date") or "")
+    if not symbol or not report_date:
+        return 0
+    existing = pd.read_sql_query(
+        f"SELECT * FROM {table} WHERE market = ? AND symbol = ? AND report_date = ?",
+        conn,
+        params=(market, symbol, report_date),
+    )
+    if existing.empty:
+        return _upsert_financial_row_preserving_valid(conn, table_name=table_name, row=row, replace_existing=False)
+
+    updates: dict[str, Any] = {}
+    existing_row = existing.iloc[0].to_dict()
+    for field in fields:
+        value = row.get(field)
+        if pd.notna(value) and pd.isna(existing_row.get(field)):
+            updates[field] = value
+    if not updates:
+        return 0
+    for field in ["announce_date", "source", "updated_at"]:
+        value = row.get(field)
+        if pd.notna(value) and (field == "updated_at" or pd.isna(existing_row.get(field))):
+            updates[field] = value
+    assignments = ", ".join([f"{_safe_identifier(field)} = ?" for field in updates])
+    conn.execute(
+        f"""
+        UPDATE {table}
+        SET {assignments}
+        WHERE market = ?
+          AND symbol = ?
+          AND report_date = ?
+        """,
+        tuple(None if pd.isna(value) else value for value in updates.values()) + (market, symbol, report_date),
+    )
+    return 1
 
 
 def _coverage_audit(
@@ -984,6 +1225,8 @@ def backfill_tushare_financials_from_config(
     limit_tasks: int | None = None,
     retry_failed: bool = False,
     replace_existing: bool = False,
+    missing_fields_only: bool = False,
+    missing_fields: list[str] | tuple[str, ...] | set[str] | None = None,
     shard_index: int = 0,
     shard_count: int = 1,
     progress_callback: Callable[[dict[str, Any]], None] | None = None,
@@ -999,7 +1242,7 @@ def backfill_tushare_financials_from_config(
         db_path = root / db_path
     meta_table = str(local_cfg.get("meta_table", "market_stocks"))
     financial_table = str(local_cfg.get("financial_table", "market_financial_factors"))
-    task_table = "tushare_financial_backfill_tasks"
+    task_table = "tushare_financial_missing_field_tasks" if missing_fields_only else "tushare_financial_backfill_tasks"
     output_csv, output_md, summary_csv, summary_md = _financial_audit_paths(
         root,
         start_period=start_period,
@@ -1010,13 +1253,17 @@ def backfill_tushare_financials_from_config(
     periods = [period] if period else _quarter_periods(start_period, end_period)
     if not periods:
         periods = [start_period]
+    missing_field_list = _normalize_missing_fields(missing_fields) if missing_fields_only else []
     markets = {str(item) for item in cfg.get("universe", {}).get("markets", ["SH", "SZ"])}
     run_started_at = datetime.now().isoformat(timespec="seconds")
 
     if not tushare_available(tcfg):
         warnings.append(f"Tushare token env {tcfg.token_env} is not available.")
         with sqlite3.connect(db_path) as conn:
-            _ensure_financial_backfill_task_table(conn, table_name=task_table)
+            if missing_fields_only:
+                _ensure_financial_missing_field_task_table(conn, table_name=task_table)
+            else:
+                _ensure_financial_backfill_task_table(conn, table_name=task_table)
             ensure_financial_factor_table(conn, table=financial_table)
             audit = _financial_backfill_audit(conn, task_table=task_table, financial_table=financial_table, periods=periods)
         _write_financial_backfill_audit(audit=audit, output_csv=output_csv, output_md=output_md, warnings=warnings)
@@ -1099,28 +1346,52 @@ def backfill_tushare_financials_from_config(
         last_progress_at = now
 
     with sqlite3.connect(db_path) as conn:
-        _ensure_financial_backfill_task_table(conn, table_name=task_table)
+        if missing_fields_only:
+            _ensure_financial_missing_field_task_table(conn, table_name=task_table)
+        else:
+            _ensure_financial_backfill_task_table(conn, table_name=task_table)
         ensure_financial_factor_table(conn, table=financial_table)
-        _initialize_financial_backfill_tasks(
-            conn,
-            task_table=task_table,
-            financial_table=financial_table,
-            meta_table=meta_table,
-            periods=periods,
-            markets=markets,
-            replace_existing=replace_existing,
-            limit_symbols=limit_symbols,
-        )
+        if missing_fields_only:
+            _initialize_financial_missing_field_tasks(
+                conn,
+                task_table=task_table,
+                financial_table=financial_table,
+                periods=periods,
+                fields=missing_field_list,
+                limit_symbols=limit_symbols,
+            )
+        else:
+            _initialize_financial_backfill_tasks(
+                conn,
+                task_table=task_table,
+                financial_table=financial_table,
+                meta_table=meta_table,
+                periods=periods,
+                markets=markets,
+                replace_existing=replace_existing,
+                limit_symbols=limit_symbols,
+            )
         conn.commit()
-        tasks = _select_financial_backfill_tasks(
-            conn,
-            task_table=task_table,
-            periods=periods,
-            retry_failed=retry_failed,
-            shard_index=shard_index,
-            shard_count=shard_count,
-            limit_tasks=limit_tasks,
-        )
+        if missing_fields_only:
+            tasks = _select_financial_missing_field_tasks(
+                conn,
+                task_table=task_table,
+                periods=periods,
+                retry_failed=retry_failed,
+                shard_index=shard_index,
+                shard_count=shard_count,
+                limit_tasks=limit_tasks,
+            )
+        else:
+            tasks = _select_financial_backfill_tasks(
+                conn,
+                task_table=task_table,
+                periods=periods,
+                retry_failed=retry_failed,
+                shard_index=shard_index,
+                shard_count=shard_count,
+                limit_tasks=limit_tasks,
+            )
         target_tasks = int(len(tasks))
         emit_progress("start", target_tasks, force=True)
         for task in tasks.itertuples(index=False):
@@ -1129,39 +1400,150 @@ def backfill_tushare_financials_from_config(
                 break
             task_period = str(task.period)
             symbol = str(task.symbol)
+            task_missing_fields = (
+                [field for field in str(getattr(task, "missing_fields", "")).split(",") if field]
+                if missing_fields_only
+                else []
+            )
+            task_interfaces = (
+                {value for value in str(getattr(task, "interfaces", "")).split(",") if value}
+                if missing_fields_only
+                else None
+            )
             try:
                 last_request_at = _sleep_for_rate(last_request_at, max_requests_per_minute)
-                rows = fetch_tushare_financial_period(pd.Timestamp(task_period).date(), cfg=tcfg, ts_code=symbol)
+                rows = fetch_tushare_financial_period(
+                    pd.Timestamp(task_period).date(),
+                    cfg=tcfg,
+                    ts_code=symbol,
+                    interfaces=task_interfaces,
+                )
             except Exception as exc:
                 failed += 1
                 processed += 1
-                _mark_financial_task(
-                    conn,
-                    task_table=task_table,
-                    period=task_period,
-                    symbol=symbol,
-                    status="failed",
-                    error=str(exc),
-                )
+                if missing_fields_only:
+                    _mark_financial_missing_field_task(
+                        conn,
+                        task_table=task_table,
+                        period=task_period,
+                        symbol=symbol,
+                        status="failed",
+                        error=str(exc),
+                    )
+                else:
+                    _mark_financial_task(
+                        conn,
+                        task_table=task_table,
+                        period=task_period,
+                        symbol=symbol,
+                        status="failed",
+                        error=str(exc),
+                    )
                 conn.commit()
                 emit_progress("progress", target_tasks, force=processed >= target_tasks)
                 continue
             processed += 1
             if rows.empty or rows.apply(_financial_non_null_count, axis=1).max() == 0:
                 empty += 1
-                _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="empty")
+                if missing_fields_only:
+                    _mark_financial_missing_field_task(
+                        conn,
+                        task_table=task_table,
+                        period=task_period,
+                        symbol=symbol,
+                        status="empty",
+                        missing_fields=task_missing_fields,
+                    )
+                else:
+                    _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="empty")
                 conn.commit()
                 emit_progress("progress", target_tasks, force=processed >= target_tasks)
                 continue
             row = rows.iloc[0]
-            inserted_rows += _upsert_financial_row_preserving_valid(
-                conn,
-                table_name=financial_table,
-                row=row,
-                replace_existing=replace_existing,
-            )
-            fetched += 1
-            _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="fetched")
+            if missing_fields_only:
+                before = pd.read_sql_query(
+                    f"""
+                    SELECT {", ".join(_safe_identifier(field) for field in task_missing_fields)}
+                    FROM {_safe_identifier(financial_table)}
+                    WHERE market = 'CN'
+                      AND symbol = ?
+                      AND report_date = ?
+                    """,
+                    conn,
+                    params=(symbol, task_period),
+                )
+                inserted_rows += _merge_financial_missing_fields(
+                    conn,
+                    table_name=financial_table,
+                    row=row,
+                    fields=task_missing_fields,
+                )
+                after = pd.read_sql_query(
+                    f"""
+                    SELECT {", ".join(_safe_identifier(field) for field in task_missing_fields)}
+                    FROM {_safe_identifier(financial_table)}
+                    WHERE market = 'CN'
+                      AND symbol = ?
+                      AND report_date = ?
+                    """,
+                    conn,
+                    params=(symbol, task_period),
+                )
+                remaining_missing = task_missing_fields
+                if not after.empty:
+                    remaining_missing = [field for field in task_missing_fields if pd.isna(after.iloc[0].get(field))]
+                if before.empty:
+                    empty += 1
+                    _mark_financial_missing_field_task(
+                        conn,
+                        task_table=task_table,
+                        period=task_period,
+                        symbol=symbol,
+                        status="empty",
+                        missing_fields=remaining_missing,
+                    )
+                elif remaining_missing:
+                    before_missing = sum(1 for field in task_missing_fields if pd.isna(before.iloc[0].get(field)))
+                    after_missing = sum(1 for field in task_missing_fields if pd.isna(after.iloc[0].get(field)))
+                    if after_missing < before_missing:
+                        fetched += 1
+                        _mark_financial_missing_field_task(
+                            conn,
+                            task_table=task_table,
+                            period=task_period,
+                            symbol=symbol,
+                            status="pending",
+                            missing_fields=remaining_missing,
+                        )
+                    else:
+                        empty += 1
+                        _mark_financial_missing_field_task(
+                            conn,
+                            task_table=task_table,
+                            period=task_period,
+                            symbol=symbol,
+                            status="empty",
+                            missing_fields=remaining_missing,
+                        )
+                else:
+                    fetched += 1
+                    _mark_financial_missing_field_task(
+                        conn,
+                        task_table=task_table,
+                        period=task_period,
+                        symbol=symbol,
+                        status="fetched",
+                        missing_fields=[],
+                    )
+            else:
+                inserted_rows += _upsert_financial_row_preserving_valid(
+                    conn,
+                    table_name=financial_table,
+                    row=row,
+                    replace_existing=replace_existing,
+                )
+                fetched += 1
+                _mark_financial_task(conn, task_table=task_table, period=task_period, symbol=symbol, status="fetched")
             conn.commit()
             emit_progress("progress", target_tasks, force=processed >= target_tasks)
         audit = _financial_backfill_audit(conn, task_table=task_table, financial_table=financial_table, periods=periods)

@@ -945,6 +945,8 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] `--limit-tasks N`
 - [x] `--retry-failed`
 - [x] `--replace-existing`
+- [x] `--missing-fields-only`
+- [x] `--missing-fields field1,field2`
 - [x] `--shard-index N`
 - [x] `--shard-count N`
 - [x] `--max-runtime-minutes N`
@@ -1187,3 +1189,29 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 清理动作可追溯，报告记录 period、status、task_count、处置方式和原因
 - [ ] 若采用重分类而非删除，任务表状态语义需补充到项目文档
 - [ ] 不在没有 as-of 口径和覆盖率诊断前做文本因子回测
+
+# W2.21｜Tushare 财务因子字段缺失补录模式
+
+## W2.21.1 背景
+
+`market_financial_factors` 中部分已有 `fetched` 行仍存在字段级空值。直接用 `--replace-existing` 全量重跑会把请求量放大到数十万级，并增加覆盖已有有效值和 SQLite 写锁风险。
+
+## W2.21.2 实现范围
+
+- [x] 新增 `--missing-fields-only` 显式模式，不改变常规 `backfill-tushare-financials` 默认行为
+- [x] 新增 `--missing-fields` 参数，默认覆盖 `roe,revenue_growth,profit_growth,operating_cash_flow_to_net_profit,debt_to_asset`
+- [x] 新增独立任务表 `tushare_financial_missing_field_tasks`
+- [x] 缺字段任务粒度为 `period + symbol`，任务记录 `missing_fields`、`interfaces`、`status`、`request_count`、`last_error`、`updated_at`
+- [x] 按缺失字段选择最少 Tushare 接口：`fina_indicator` / `income` / `cashflow` / `balancesheet`
+- [x] 写入时只填补已有行中的空字段，不用空值覆盖已有有效字段
+- [x] 保留 `--limit-tasks`、`--limit-symbols`、`--retry-failed`、`--shard-index`、`--shard-count`、`--max-runtime-minutes` 的运行控制能力
+
+## W2.21.3 验收方式
+
+- [x] `compileall` 通过
+- [x] CLI help 显示 `--missing-fields-only` 与 `--missing-fields`
+- [x] `/tmp` 最小 SQLite 样本验证：能创建缺字段任务、选择最少接口、只合并空字段
+- [x] 小批量联网验证：`--start-period 2018-06-30 --end-period 2026-03-31 --missing-fields-only --limit-tasks 5`
+- [x] 修正单接口归一化问题：只调用 `fina_indicator` 等部分接口时不再触发 `combine_first` 类型异常
+- [x] 修正补录计数口径：只有核心缺字段被填上才计入 `inserted_rows / fetched`，无字段改善标记为 `empty`
+- [ ] 大批量运行前先估算任务量和接口请求量

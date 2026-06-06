@@ -328,6 +328,11 @@ def normalize_tushare_financial_factors(
 ) -> pd.DataFrame:
     frames: list[pd.DataFrame] = []
 
+    def numeric_series(frame: pd.DataFrame, column: str) -> pd.Series:
+        if column in frame.columns:
+            return pd.to_numeric(frame[column], errors="coerce")
+        return pd.Series(pd.NA, index=frame.index, dtype="Float64")
+
     if income is not None and not income.empty:
         inc = income.copy()
         inc["symbol"] = inc["ts_code"].map(normalize_cn_symbol)
@@ -385,14 +390,12 @@ def normalize_tushare_financial_factors(
     out["announce_date"] = out.get("announce_date", pd.Series(index=out.index, dtype=object)).combine_first(
         out.get("announce_date_fina", pd.Series(index=out.index, dtype=object))
     )
-    out["roe"] = pd.to_numeric(out.get("roe"), errors="coerce")
-    out["revenue_growth"] = pd.to_numeric(out.get("tr_yoy"), errors="coerce")
-    out["profit_growth"] = pd.to_numeric(out.get("netprofit_yoy"), errors="coerce")
-    out["debt_to_asset"] = pd.to_numeric(out.get("debt_to_asset"), errors="coerce").combine_first(
-        pd.to_numeric(out.get("debt_to_assets"), errors="coerce")
-    )
-    net_profit = pd.to_numeric(out.get("net_profit"), errors="coerce")
-    operating_cash_flow = pd.to_numeric(out.get("operating_cash_flow"), errors="coerce")
+    out["roe"] = numeric_series(out, "roe")
+    out["revenue_growth"] = numeric_series(out, "tr_yoy")
+    out["profit_growth"] = numeric_series(out, "netprofit_yoy")
+    out["debt_to_asset"] = numeric_series(out, "debt_to_asset").combine_first(numeric_series(out, "debt_to_assets"))
+    net_profit = numeric_series(out, "net_profit")
+    operating_cash_flow = numeric_series(out, "operating_cash_flow")
     out["operating_cash_flow_to_net_profit"] = operating_cash_flow / net_profit.replace(0, pd.NA)
     out["fiscal_year"] = pd.to_datetime(out["report_date"], errors="coerce").dt.year
     out["fiscal_quarter"] = pd.to_datetime(out["report_date"], errors="coerce").dt.quarter
@@ -433,39 +436,58 @@ def _to_tushare_code(symbol: str) -> str:
     return f"{digits}.{market}"
 
 
-def fetch_tushare_financial_period(period: date | str, *, cfg: TushareConfig, ts_code: str = "") -> pd.DataFrame:
+def fetch_tushare_financial_period(
+    period: date | str,
+    *,
+    cfg: TushareConfig,
+    ts_code: str = "",
+    interfaces: set[str] | None = None,
+) -> pd.DataFrame:
     period_text = _parse_trade_date(period)
     code = _to_tushare_code(ts_code) if ts_code else ""
     common_params = {"period": period_text}
     if code:
         common_params["ts_code"] = code
-    income = _call(
-        "income",
-        params=common_params,
-        fields=["ts_code", "ann_date", "end_date", "revenue", "n_income_attr_p"],
-        cfg=cfg,
-    )
-    time.sleep(max(0.0, cfg.request_delay))
-    cashflow = _call(
-        "cashflow",
-        params=common_params,
-        fields=["ts_code", "ann_date", "end_date", "n_cashflow_act"],
-        cfg=cfg,
-    )
-    time.sleep(max(0.0, cfg.request_delay))
-    balancesheet = _call(
-        "balancesheet",
-        params=common_params,
-        fields=["ts_code", "ann_date", "end_date", "total_assets", "total_liab", "total_hldr_eqy_exc_min_int"],
-        cfg=cfg,
-    )
-    time.sleep(max(0.0, cfg.request_delay))
-    fina_indicator = _call(
-        "fina_indicator",
-        params=common_params,
-        fields=["ts_code", "ann_date", "end_date", "roe", "tr_yoy", "netprofit_yoy", "debt_to_assets"],
-        cfg=cfg,
-    )
+    requested = interfaces or {"income", "cashflow", "balancesheet", "fina_indicator"}
+    unknown = requested - {"income", "cashflow", "balancesheet", "fina_indicator"}
+    if unknown:
+        raise ValueError(f"unknown Tushare financial interfaces: {', '.join(sorted(unknown))}")
+
+    income = pd.DataFrame()
+    cashflow = pd.DataFrame()
+    balancesheet = pd.DataFrame()
+    fina_indicator = pd.DataFrame()
+    if "income" in requested:
+        income = _call(
+            "income",
+            params=common_params,
+            fields=["ts_code", "ann_date", "end_date", "revenue", "n_income_attr_p"],
+            cfg=cfg,
+        )
+        time.sleep(max(0.0, cfg.request_delay))
+    if "cashflow" in requested:
+        cashflow = _call(
+            "cashflow",
+            params=common_params,
+            fields=["ts_code", "ann_date", "end_date", "n_cashflow_act"],
+            cfg=cfg,
+        )
+        time.sleep(max(0.0, cfg.request_delay))
+    if "balancesheet" in requested:
+        balancesheet = _call(
+            "balancesheet",
+            params=common_params,
+            fields=["ts_code", "ann_date", "end_date", "total_assets", "total_liab", "total_hldr_eqy_exc_min_int"],
+            cfg=cfg,
+        )
+        time.sleep(max(0.0, cfg.request_delay))
+    if "fina_indicator" in requested:
+        fina_indicator = _call(
+            "fina_indicator",
+            params=common_params,
+            fields=["ts_code", "ann_date", "end_date", "roe", "tr_yoy", "netprofit_yoy", "debt_to_assets"],
+            cfg=cfg,
+        )
     return normalize_tushare_financial_factors(
         income=income,
         cashflow=cashflow,

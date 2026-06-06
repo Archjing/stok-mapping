@@ -796,6 +796,16 @@ def main() -> int:
     tushare_financial_parser.add_argument("--limit-tasks", type=int, default=None, help="Optional cap for selected task rows to process")
     tushare_financial_parser.add_argument("--retry-failed", action="store_true", help="Retry failed tasks in addition to pending tasks")
     tushare_financial_parser.add_argument("--replace-existing", action="store_true", help="Replace existing valid financial rows")
+    tushare_financial_parser.add_argument(
+        "--missing-fields-only",
+        action="store_true",
+        help="Only patch existing financial rows that have missing fields",
+    )
+    tushare_financial_parser.add_argument(
+        "--missing-fields",
+        default="roe,revenue_growth,profit_growth,operating_cash_flow_to_net_profit,debt_to_asset",
+        help="Comma-separated financial fields to patch when --missing-fields-only is set",
+    )
     tushare_financial_parser.add_argument("--shard-index", type=int, default=0, help="Shard index for distributed runs")
     tushare_financial_parser.add_argument("--shard-count", type=int, default=1, help="Total shard count for distributed runs")
     tushare_financial_parser.add_argument("--max-runtime-minutes", type=int, default=None, help="Stop gracefully after this many minutes")
@@ -1247,6 +1257,8 @@ def main() -> int:
             limit_tasks=args.limit_tasks,
             retry_failed=bool(args.retry_failed),
             replace_existing=bool(args.replace_existing),
+            missing_fields_only=bool(args.missing_fields_only),
+            missing_fields=[item.strip() for item in str(args.missing_fields).split(",") if item.strip()],
             shard_index=int(args.shard_index),
             shard_count=int(args.shard_count),
             progress_callback=lambda progress: _print_tushare_financial_progress(console, progress),
