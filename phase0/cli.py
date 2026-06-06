@@ -25,7 +25,7 @@ from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.intelligence import collect_intelligence, import_local_intelligence, validate_intelligence_ledger
 from phase0.local_history import configure_local_history
-from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_tick
+from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_supervise, maintenance_tick
 from phase0.overfit import run_overfit_diagnostic
 from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
@@ -709,6 +709,13 @@ def main() -> int:
     maintain_tick_parser.add_argument("--as-of", default=None, help="Optional local time in YYYY-MM-DD HH:MM")
     maintain_status_parser = maintain_sub.add_parser("status", help="Show maintenance orchestrator task status")
     maintain_status_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_status_parser.add_argument("--write-report", action="store_true", help="Write the default Markdown maintenance report")
+    maintain_status_parser.add_argument("--output-md", default=None, help="Optional Markdown report path")
+    maintain_supervise_parser = maintain_sub.add_parser("supervise", help="Refresh long-running shard status without starting or stopping tasks")
+    maintain_supervise_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    maintain_supervise_parser.add_argument("--task", choices=["tushare_financial_backfill"], default="tushare_financial_backfill", help="Task name")
+    maintain_supervise_parser.add_argument("--run-id", type=int, default=None, help="Optional run id")
+    maintain_supervise_parser.add_argument("--dry-run", action="store_true", help="Show candidate status updates without writing them")
     maintain_run_parser = maintain_sub.add_parser("run", help="Start an orchestrated maintenance task")
     maintain_run_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     maintain_run_parser.add_argument("--task", required=True, choices=["tushare_financial_backfill"], help="Task name")
@@ -1129,10 +1136,16 @@ def main() -> int:
         if args.maintain_cmd == "status":
             config_path = Path(args.config).resolve()
             console.print("[bold]Maintenance status started[/bold]")
-            result = maintenance_status(config_path)
+            result = maintenance_status(
+                config_path,
+                output_md=Path(args.output_md).resolve() if args.output_md else None,
+                write_report=bool(args.write_report),
+            )
             console.print("[green]Maintenance status complete[/green]")
             console.print(f"State DB: {result.state_db}")
             console.print(f"Generated at: {result.generated_at}")
+            if result.report_path:
+                console.print(f"Report: {result.report_path}")
             for row in result.rows:
                 console.print(
                     f"{row.task_name}: enabled={row.enabled}, schedule={row.schedule_value}, "
@@ -1145,6 +1158,34 @@ def main() -> int:
                     console.print(
                         f"run={shard.run_id} task={shard.task_name} shard={shard.shard_index}/{shard.shard_count} "
                         f"status={shard.status} pid={shard.pid} log={shard.log_path}"
+                    )
+                    if shard.report_path or shard.error_summary or shard.key_conclusion:
+                        console.print(
+                            f"  report={shard.report_path or 'N/A'} error={shard.error_summary or 'N/A'} "
+                            f"conclusion={shard.key_conclusion or 'N/A'}"
+                        )
+            return 0
+        if args.maintain_cmd == "supervise":
+            config_path = Path(args.config).resolve()
+            result = maintenance_supervise(
+                config_path,
+                task_name=args.task,
+                run_id=args.run_id,
+                dry_run=bool(args.dry_run),
+            )
+            console.print(f"Maintenance supervise status: {result.status}")
+            console.print(f"State DB: {result.state_db}")
+            if result.message:
+                console.print(f"Message: {result.message}")
+            for shard in result.shard_rows[:20]:
+                console.print(
+                    f"run={shard.run_id} shard={shard.shard_index}/{shard.shard_count} "
+                    f"status={shard.status} pid={shard.pid} log={shard.log_path}"
+                )
+                if shard.report_path or shard.error_summary or shard.key_conclusion:
+                    console.print(
+                        f"  report={shard.report_path or 'N/A'} error={shard.error_summary or 'N/A'} "
+                        f"conclusion={shard.key_conclusion or 'N/A'}"
                     )
             return 0
         if args.maintain_cmd == "run":
@@ -1208,7 +1249,7 @@ def main() -> int:
                     f"status={shard.status} pid={shard.pid} log={shard.log_path}"
                 )
             return 0
-        parser.error("maintain requires a subcommand: tick, status, run, stop, or resume")
+        parser.error("maintain requires a subcommand: tick, status, supervise, run, stop, or resume")
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
             return run_daily_brief_pipeline(

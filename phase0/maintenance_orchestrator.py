@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import os
 import signal
@@ -38,6 +39,7 @@ class MaintenanceTaskSpec:
     retry_interval_minutes: int = 5
     max_retries: int = 0
     state_path: str = ""
+    market_calendar: str = "weekday"
 
 
 @dataclass(frozen=True)
@@ -99,6 +101,9 @@ class MaintenanceShardStatusRow:
     finished_at: str
     exit_code: int | None
     log_path: Path
+    report_path: Path | None = None
+    error_summary: str = ""
+    key_conclusion: str = ""
 
 
 @dataclass(frozen=True)
@@ -107,6 +112,7 @@ class MaintenanceStatusResult:
     generated_at: str
     rows: list[MaintenanceStatusRow]
     shards: list[MaintenanceShardStatusRow]
+    report_path: Path | None = None
 
 
 @dataclass(frozen=True)
@@ -117,6 +123,7 @@ class MaintenanceLongRunResult:
     state_db: Path
     shard_rows: list[MaintenanceShardStatusRow]
     message: str = ""
+    dry_run: bool = False
 
 
 def _resolve_path(root: Path, value: str | Path) -> Path:
@@ -158,6 +165,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         weekdays_only: bool = True,
         description: str,
         tags: list[str],
+        market_calendar: str = "weekday",
     ) -> MaintenanceTaskSpec:
         return MaintenanceTaskSpec(
             name=name,
@@ -177,6 +185,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             retry_interval_minutes=int(_env_value(f"{name.upper()}_RETRY_INTERVAL_MINUTES", "5")),
             max_retries=int(_env_value(f"{name.upper()}_MAX_RETRIES", "3")),
             state_path=str(state_dir / f"{name}.state"),
+            market_calendar=market_calendar,
         )
 
     return [
@@ -190,6 +199,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             weekdays_only=False,
             description="Weekly A-share financial factor refresh",
             tags=["scheduler", "financial"],
+            market_calendar="cn",
         ),
         make_spec(
             name="daily_brief",
@@ -199,6 +209,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             health_scope=_env_value("DAILY_BRIEF_HEALTH_SCOPE", "scheduler"),
             description="Premarket watchlist and brief pipeline",
             tags=["scheduler", "brief"],
+            market_calendar="cn",
         ),
         make_spec(
             name="hk_market_history",
@@ -208,6 +219,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             health_scope=_env_value("HK_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
             description="Hong Kong market history refresh",
             tags=["scheduler", "hk"],
+            market_calendar="hk",
         ),
         make_spec(
             name="a_share_history",
@@ -217,6 +229,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             health_scope=_env_value("A_SHARE_HISTORY_HEALTH_SCOPE", "scheduler"),
             description="A-share local history refresh",
             tags=["scheduler", "cn"],
+            market_calendar="cn",
         ),
         make_spec(
             name="us_market_history",
@@ -226,6 +239,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             health_scope=_env_value("US_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
             description="US market history refresh",
             tags=["scheduler", "us"],
+            market_calendar="us",
         ),
     ]
 
@@ -276,7 +290,8 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             error_summary TEXT NOT NULL DEFAULT '',
             log_path TEXT NOT NULL DEFAULT '',
             report_path TEXT NOT NULL DEFAULT '',
-            command_json TEXT NOT NULL DEFAULT '[]'
+            command_json TEXT NOT NULL DEFAULT '[]',
+            key_conclusion TEXT NOT NULL DEFAULT ''
         )
         """
     )
@@ -309,10 +324,26 @@ def _ensure_schema(conn: sqlite3.Connection) -> None:
             log_path TEXT NOT NULL DEFAULT '',
             command_json TEXT NOT NULL DEFAULT '[]',
             report_path TEXT NOT NULL DEFAULT '',
-            error_summary TEXT NOT NULL DEFAULT ''
+            error_summary TEXT NOT NULL DEFAULT '',
+            key_conclusion TEXT NOT NULL DEFAULT ''
         )
         """
     )
+    for table, migrations in {
+        "maintenance_runs": [
+            ("report_path", "ALTER TABLE maintenance_runs ADD COLUMN report_path TEXT NOT NULL DEFAULT ''"),
+            ("key_conclusion", "ALTER TABLE maintenance_runs ADD COLUMN key_conclusion TEXT NOT NULL DEFAULT ''"),
+        ],
+        "maintenance_shards": [
+            ("report_path", "ALTER TABLE maintenance_shards ADD COLUMN report_path TEXT NOT NULL DEFAULT ''"),
+            ("error_summary", "ALTER TABLE maintenance_shards ADD COLUMN error_summary TEXT NOT NULL DEFAULT ''"),
+            ("key_conclusion", "ALTER TABLE maintenance_shards ADD COLUMN key_conclusion TEXT NOT NULL DEFAULT ''"),
+        ],
+    }.items():
+        table_columns = {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        for column, ddl in migrations:
+            if column not in table_columns:
+                conn.execute(ddl)
     existing_columns = {
         str(row["name"])
         for row in conn.execute("PRAGMA table_info(maintenance_registry)").fetchall()
@@ -412,6 +443,75 @@ def _write_task_state(path: Path, payload: dict[str, Any]) -> None:
     _write_text(path, json.dumps(payload, ensure_ascii=True, indent=2) + "\n")
 
 
+def _decision_kwargs(
+    *,
+    spec: MaintenanceTaskSpec,
+    log_path: Path,
+    stamp_path: Path,
+    lock_path: Path,
+    state_path: Path,
+    last_success: str,
+    retry_count: int,
+) -> dict[str, Any]:
+    return {
+        "task_name": spec.name,
+        "scheduled_time": spec.schedule_value,
+        "command": spec.command,
+        "log_path": log_path,
+        "stamp_path": stamp_path,
+        "lock_path": lock_path,
+        "health_scope": spec.health_scope,
+        "health_fail_on": spec.health_fail_on,
+        "state_path": state_path,
+        "retry_window_minutes": spec.retry_window_minutes,
+        "retry_interval_minutes": spec.retry_interval_minutes,
+        "max_retries": spec.max_retries,
+        "last_success_date": last_success,
+        "retry_count": retry_count,
+    }
+
+
+def _trading_day_decision(*, root: Path, config_path: Path, spec: MaintenanceTaskSpec, now: datetime) -> tuple[bool, str]:
+    scope = spec.market_calendar.strip().lower() or "weekday"
+    weekday = now.isoweekday()
+    if scope in {"", "weekday"}:
+        return weekday in {1, 2, 3, 4, 5}, f"weekday_calendar(weekday={weekday})"
+    if scope in {"hk", "us"}:
+        if weekday not in {1, 2, 3, 4, 5}:
+            return False, f"market_calendar_weekday_fallback(scope={scope}, weekday={weekday})"
+        return True, f"market_calendar_weekday_fallback(scope={scope})"
+    if scope != "cn":
+        return weekday in {1, 2, 3, 4, 5}, f"unknown_calendar_fallback_weekday(scope={scope}, weekday={weekday})"
+
+    cfg = load_config(config_path) if config_path.exists() else {}
+    local_cfg = cfg.get("local_history", {}) if isinstance(cfg, dict) else {}
+    db_path = _resolve_path(root, str(local_cfg.get("path", "data/manual_history/a_share_history.sqlite")))
+    table = str(local_cfg.get("calendar_table", "trading_calendar"))
+    if not table.replace("_", "").isalnum():
+        return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason=invalid_table, weekday={weekday})"
+    if not db_path.exists():
+        return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason=db_missing, weekday={weekday})"
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            table_exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
+                (table,),
+            ).fetchone()
+            if not table_exists:
+                return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason=table_missing, weekday={weekday})"
+            row = conn.execute(
+                f"SELECT is_open FROM {table} WHERE date = ? ORDER BY exchange LIMIT 1",
+                (now.date().isoformat(),),
+            ).fetchone()
+    except sqlite3.Error as exc:
+        return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason={type(exc).__name__}, weekday={weekday})"
+    if row is None:
+        return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason=date_missing, weekday={weekday})"
+    is_open = int(row["is_open"] or 0) == 1
+    return is_open, f"cn_trading_calendar(is_open={1 if is_open else 0})"
+
+
 def _in_retry_window(now: datetime, spec: MaintenanceTaskSpec, state: dict[str, Any]) -> bool:
     if spec.retry_window_minutes <= 0 or spec.max_retries <= 0:
         return False
@@ -439,6 +539,7 @@ def _evaluate_task(
     root: Path,
     now: datetime,
     today: str,
+    config_path: Path,
 ) -> MaintenanceDecision:
     log_path = _resolve_path(root, spec.log_path)
     stamp_path = _resolve_path(root, spec.success_stamp)
@@ -447,52 +548,30 @@ def _evaluate_task(
     weekday = now.isoweekday()
     last_success = _read_text(stamp_path)
     state = _parse_task_state(state_path)
+    retry_count = int(state.get("retry_count") or 0)
     now_hm = now.strftime("%H:%M")
+    base_kwargs = _decision_kwargs(
+        spec=spec,
+        log_path=log_path,
+        stamp_path=stamp_path,
+        lock_path=lock_path,
+        state_path=state_path,
+        last_success=last_success,
+        retry_count=retry_count,
+    )
 
     if not spec.enabled:
-        return MaintenanceDecision(
-            task_name=spec.name,
-            decision="skipped",
-            reason="task_disabled",
-            scheduled_time=spec.schedule_value,
-            command=spec.command,
-            log_path=log_path,
-            stamp_path=stamp_path,
-            lock_path=lock_path,
-            health_scope=spec.health_scope,
-            health_fail_on=spec.health_fail_on,
-            state_path=state_path,
-            retry_window_minutes=spec.retry_window_minutes,
-            retry_interval_minutes=spec.retry_interval_minutes,
-            max_retries=spec.max_retries,
-            last_success_date=last_success,
-            retry_count=int(state.get("retry_count") or 0),
-        )
+        return MaintenanceDecision(decision="skipped", reason="task_disabled", **base_kwargs)
+
+    is_trading_day, calendar_reason = _trading_day_decision(root=root, config_path=config_path, spec=spec, now=now)
+    if not is_trading_day:
+        return MaintenanceDecision(decision="skipped", reason=f"not_trading_day({calendar_reason})", **base_kwargs)
+
     if spec.monday_only and weekday != 1:
-        reason = f"not_monday(weekday={weekday})"
-    elif spec.weekdays_only and weekday not in {1, 2, 3, 4, 5}:
-        reason = f"not_weekday(weekday={weekday})"
-    else:
-        reason = ""
-    if reason:
-        return MaintenanceDecision(
-            task_name=spec.name,
-            decision="skipped",
-            reason=reason,
-            scheduled_time=spec.schedule_value,
-            command=spec.command,
-            log_path=log_path,
-            stamp_path=stamp_path,
-            lock_path=lock_path,
-            health_scope=spec.health_scope,
-            health_fail_on=spec.health_fail_on,
-            state_path=state_path,
-            retry_window_minutes=spec.retry_window_minutes,
-            retry_interval_minutes=spec.retry_interval_minutes,
-            max_retries=spec.max_retries,
-            last_success_date=last_success,
-            retry_count=int(state.get("retry_count") or 0),
-        )
+        return MaintenanceDecision(decision="skipped", reason=f"not_monday(weekday={weekday})", **base_kwargs)
+    if spec.weekdays_only and weekday not in {1, 2, 3, 4, 5}:
+        return MaintenanceDecision(decision="skipped", reason=f"not_weekday(weekday={weekday})", **base_kwargs)
+
     if last_success == today:
         decision = "skipped"
         reason = f"already_succeeded_today({today})"
@@ -501,37 +580,19 @@ def _evaluate_task(
         reason = "lock_present"
     elif now_hm == spec.schedule_value:
         decision = "will_run"
-        reason = f"scheduled_run(scope={spec.health_scope}, fail_on={spec.health_fail_on})"
+        reason = f"scheduled_run(scope={spec.health_scope}, fail_on={spec.health_fail_on}, calendar={calendar_reason})"
     elif _in_retry_window(now, spec, state):
         decision = "will_run"
         reason = (
-            f"retry_window(retry_count={int(state.get('retry_count') or 0)}, "
-            f"interval={spec.retry_interval_minutes}m, window={spec.retry_window_minutes}m)"
+            f"retry_window(retry_count={retry_count}, interval={spec.retry_interval_minutes}m, "
+            f"window={spec.retry_window_minutes}m, calendar={calendar_reason})"
         )
     else:
         decision = "skipped"
-        reason = f"outside_schedule(now={now_hm}, expected={spec.schedule_value})"
+        reason = f"outside_schedule(now={now_hm}, expected={spec.schedule_value}, calendar={calendar_reason})"
     if decision == "will_run" and not _env_flag("SCHEDULER_HEALTH_ENABLED", "1"):
         reason = "health_gate_disabled"
-    return MaintenanceDecision(
-        task_name=spec.name,
-        decision=decision,
-        reason=reason,
-        scheduled_time=spec.schedule_value,
-        command=spec.command,
-        log_path=log_path,
-        stamp_path=stamp_path,
-        lock_path=lock_path,
-        health_scope=spec.health_scope,
-        health_fail_on=spec.health_fail_on,
-        state_path=state_path,
-        retry_window_minutes=spec.retry_window_minutes,
-        retry_interval_minutes=spec.retry_interval_minutes,
-        max_retries=spec.max_retries,
-        last_success_date=last_success,
-        retry_count=int(state.get("retry_count") or 0),
-    )
-
+    return MaintenanceDecision(decision=decision, reason=reason, **base_kwargs)
 
 def _record_decisions(conn: sqlite3.Connection, decisions: list[MaintenanceDecision], *, created_at: str) -> None:
     for decision in decisions:
@@ -630,60 +691,226 @@ def _pid_alive(pid: int | None) -> bool:
         return False
 
 
-def _refresh_shards(conn: sqlite3.Connection) -> None:
+def _tail_text(path: Path, *, max_bytes: int = 65536) -> str:
+    if not path.exists():
+        return ""
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(size - max_bytes, 0), os.SEEK_SET)
+            return handle.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+
+
+def _command_option(command: list[str], name: str) -> str:
+    if name not in command:
+        return ""
+    idx = command.index(name)
+    if idx + 1 >= len(command):
+        return ""
+    return str(command[idx + 1])
+
+
+def _parse_financial_backfill_command(command_json: str) -> dict[str, str | int]:
+    try:
+        command = json.loads(command_json)
+    except json.JSONDecodeError:
+        command = []
+    if not isinstance(command, list):
+        command = []
+    command = [str(item) for item in command]
+    return {
+        "start_period": _command_option(command, "--start-period"),
+        "end_period": _command_option(command, "--end-period"),
+        "shard_index": int(_command_option(command, "--shard-index") or -1),
+        "shard_count": int(_command_option(command, "--shard-count") or -1),
+    }
+
+
+def _compact_period(value: str) -> str:
+    return value.replace("-", "")
+
+
+def _read_summary_matches(path: Path, *, start_period: str, end_period: str, shard_index: int, shard_count: int) -> list[dict[str, str]]:
+    if not path.exists() or not start_period or not end_period:
+        return []
+    try:
+        with path.open("r", encoding="utf-8", newline="") as handle:
+            rows = list(csv.DictReader(handle))
+    except (OSError, csv.Error):
+        return []
+    matches: list[dict[str, str]] = []
+    for row in rows:
+        if str(row.get("start_period") or "") != start_period:
+            continue
+        if str(row.get("end_period") or "") != end_period:
+            continue
+        if str(row.get("shard_index") or "") != str(shard_index):
+            continue
+        if str(row.get("shard_count") or "") != str(shard_count):
+            continue
+        matches.append({str(k): str(v) for k, v in row.items()})
+    return matches
+
+
+def _find_financial_backfill_report(root: Path, command_json: str) -> tuple[Path | None, str, str, bool]:
+    meta = _parse_financial_backfill_command(command_json)
+    start_period = str(meta.get("start_period") or "")
+    end_period = str(meta.get("end_period") or "")
+    shard_index = int(meta.get("shard_index") or -1)
+    shard_count = int(meta.get("shard_count") or -1)
+    summary_csv = root / "reports" / "tushare_financial_backfill_audit_summary.csv"
+    matches = _read_summary_matches(
+        summary_csv,
+        start_period=start_period,
+        end_period=end_period,
+        shard_index=shard_index,
+        shard_count=shard_count,
+    )
+    if matches:
+        row = matches[-1]
+        report_raw = row.get("detail_report_md") or row.get("detail_md") or row.get("output_md") or row.get("report_md") or ""
+        report_path = _resolve_path(root, report_raw) if report_raw else None
+        conclusion = row.get("key_conclusion") or row.get("conclusion") or ""
+        if not conclusion:
+            conclusion = (
+                f"{start_period}..{end_period} shard {shard_index}/{shard_count}, "
+                f"processed={row.get('processed_tasks', '')}, fetched={row.get('fetched_tasks', '')}, "
+                f"failed={row.get('failed_tasks', '')}, inserted_rows={row.get('inserted_rows', '')}"
+            )
+        status = row.get("status") or ""
+        is_success = status in {"ok", "ok_with_warnings"}
+        error_summary = "" if is_success else status
+        return report_path, conclusion, error_summary, is_success
+
+    range_tag = f"{_compact_period(start_period)}_{_compact_period(end_period)}"
+    candidates = sorted((root / "reports").glob(f"*/tushare_financial_backfill_audit_*_{range_tag}.md"))
+    if candidates:
+        return candidates[-1], "", "", False
+    return None, "", "", False
+
+
+def _classify_backfill_shard(root: Path, *, log_path: Path, command_json: str) -> tuple[str, Path | None, str, str]:
+    report_path, conclusion, report_error, summary_success = _find_financial_backfill_report(root, command_json)
+    log_tail = _tail_text(log_path).lower()
+    success_markers = [
+        "tushare financial backfill status: ok",
+        "tushare financial backfill status: ok_with_warnings",
+    ]
+    failure_markers = ["traceback", "status: failed", "database is locked", "frequency超限", "频率超限"]
+    if report_error:
+        return "failed", report_path, conclusion, report_error
+    if any(marker in log_tail for marker in failure_markers):
+        return "failed", report_path, conclusion, "explicit_failure_marker_in_log"
+    if any(marker in log_tail for marker in success_markers) or summary_success:
+        return "succeeded", report_path, conclusion or "explicit_success_marker", ""
+    return "exited_unknown", report_path, conclusion, report_error or "process_not_alive_exit_code_unknown"
+
+
+def _rollup_run_status(statuses: list[str]) -> tuple[str, str]:
+    if not statuses:
+        return "exited_unknown", "no_shards_found"
+    if any(status == "running" for status in statuses):
+        return "running", "some_shards_running"
+    if all(status == "succeeded" for status in statuses):
+        return "succeeded", "all_shards_succeeded"
+    if any(status == "failed" for status in statuses):
+        return "failed", "one_or_more_shards_failed"
+    if any(status == "cancelled" for status in statuses):
+        return "cancelled", "one_or_more_shards_cancelled"
+    return "exited_unknown", "all_shards_not_running_exit_unknown"
+
+
+def _refresh_shards(conn: sqlite3.Connection, root: Path, *, task_name: str | None = None, run_id: int | None = None, dry_run: bool = False) -> int:
     now_iso = datetime.now().isoformat(timespec="seconds")
+    where = "status = 'running'"
+    params: list[Any] = []
+    if task_name is not None:
+        where += " AND task_name = ?"
+        params.append(task_name)
+    if run_id is not None:
+        where += " AND run_id = ?"
+        params.append(int(run_id))
     rows = conn.execute(
-        """
-        SELECT shard_id, pid, status
+        f"""
+        SELECT shard_id, run_id, pid, status, log_path, command_json
         FROM maintenance_shards
-        WHERE status = 'running'
-        """
+        WHERE {where}
+        """,
+        tuple(params),
     ).fetchall()
+    changed = 0
     for row in rows:
         pid = int(row["pid"]) if row["pid"] is not None else None
-        if not _pid_alive(pid):
+        if _pid_alive(pid):
+            continue
+        log_path = _resolve_path(root, str(row["log_path"]))
+        status, report_path, conclusion, error_summary = _classify_backfill_shard(
+            root,
+            log_path=log_path,
+            command_json=str(row["command_json"]),
+        )
+        if not dry_run:
             conn.execute(
                 """
                 UPDATE maintenance_shards
-                SET status = 'exited_unknown', finished_at = ?, error_summary = ?
+                SET status = ?, finished_at = ?, report_path = ?, error_summary = ?, key_conclusion = ?
                 WHERE shard_id = ?
                 """,
-                (now_iso, "process_not_alive_exit_code_unknown", int(row["shard_id"])),
+                (
+                    status,
+                    now_iso,
+                    str(report_path) if report_path else "",
+                    error_summary,
+                    conclusion,
+                    int(row["shard_id"]),
+                ),
             )
+        changed += 1
+
+    run_where = "task_name = ? AND status = 'running'"
+    run_params: list[Any] = [task_name or LONG_BACKFILL_TASK]
+    if run_id is not None:
+        run_where += " AND run_id = ?"
+        run_params.append(int(run_id))
     run_rows = conn.execute(
-        """
-        SELECT run_id
-        FROM maintenance_runs
-        WHERE task_name = ? AND status = 'running'
-        """,
-        (LONG_BACKFILL_TASK,),
+        f"SELECT run_id FROM maintenance_runs WHERE {run_where}",
+        tuple(run_params),
     ).fetchall()
     for run in run_rows:
-        run_id = int(run["run_id"])
-        statuses = [
-            str(item["status"])
-            for item in conn.execute(
-                "SELECT status FROM maintenance_shards WHERE run_id = ?",
-                (run_id,),
-            ).fetchall()
-        ]
-        if statuses and all(status != "running" for status in statuses):
-            final_status = "succeeded" if all(status == "succeeded" for status in statuses) else "exited_unknown"
+        current_run_id = int(run["run_id"])
+        shard_rows = conn.execute(
+            "SELECT status, report_path, error_summary, key_conclusion FROM maintenance_shards WHERE run_id = ?",
+            (current_run_id,),
+        ).fetchall()
+        statuses = [str(item["status"]) for item in shard_rows]
+        final_status, reason = _rollup_run_status(statuses)
+        if final_status == "running":
+            continue
+        report_path = next((str(item["report_path"]) for item in shard_rows if str(item["report_path"] or "")), "")
+        conclusion = "; ".join(str(item["key_conclusion"]) for item in shard_rows if str(item["key_conclusion"] or ""))[:1000]
+        error_summary = "; ".join(str(item["error_summary"]) for item in shard_rows if str(item["error_summary"] or ""))[:1000] or reason
+        if not dry_run:
             conn.execute(
                 """
                 UPDATE maintenance_runs
-                SET status = ?, finished_at = ?, error_summary = ?
+                SET status = ?, finished_at = ?, report_path = ?, error_summary = ?, key_conclusion = ?
                 WHERE run_id = ?
                 """,
-                (final_status, now_iso, "all_shards_not_running", run_id),
+                (final_status, now_iso, report_path, error_summary, conclusion, current_run_id),
             )
-    conn.commit()
-
+        changed += 1
+    if not dry_run:
+        conn.commit()
+    return changed
 
 def _shard_rows(conn: sqlite3.Connection, root: Path, *, run_id: int | None = None) -> list[MaintenanceShardStatusRow]:
     query = """
         SELECT run_id, task_name, shard_index, shard_count, status, pid, started_at,
-               COALESCE(finished_at, '') AS finished_at, exit_code, log_path
+               COALESCE(finished_at, '') AS finished_at, exit_code, log_path,
+               report_path, error_summary, key_conclusion
         FROM maintenance_shards
     """
     params: tuple[Any, ...] = ()
@@ -704,6 +931,9 @@ def _shard_rows(conn: sqlite3.Connection, root: Path, *, run_id: int | None = No
             finished_at=str(row["finished_at"]),
             exit_code=int(row["exit_code"]) if row["exit_code"] is not None else None,
             log_path=_resolve_path(root, str(row["log_path"])),
+            report_path=_resolve_path(root, str(row["report_path"])) if str(row["report_path"] or "") else None,
+            error_summary=str(row["error_summary"] or ""),
+            key_conclusion=str(row["key_conclusion"] or ""),
         )
         for row in rows
     ]
@@ -896,7 +1126,7 @@ def maintenance_tick(
     with _connect(state_db) as conn:
         _ensure_schema(conn)
         _sync_registry(conn, specs, now_iso=now_iso)
-        decisions = [_evaluate_task(spec=spec, root=root, now=now, today=now.date().isoformat()) for spec in specs]
+        decisions = [_evaluate_task(spec=spec, root=root, now=now, today=now.date().isoformat(), config_path=config_path) for spec in specs]
         _record_decisions(conn, decisions, created_at=now_iso)
         if not dry_run:
             for decision in decisions:
@@ -951,7 +1181,7 @@ def maintenance_run_long_task(
 
     with _connect(state_db) as conn:
         _ensure_schema(conn)
-        _refresh_shards(conn)
+        _refresh_shards(conn, root)
         running = conn.execute(
             """
             SELECT COUNT(*) AS count
@@ -1037,7 +1267,7 @@ def maintenance_stop(
     task_name = task_name or LONG_BACKFILL_TASK
     with _connect(state_db) as conn:
         _ensure_schema(conn)
-        _refresh_shards(conn)
+        _refresh_shards(conn, root)
         where = "status = 'running' AND task_name = ?"
         params: list[Any] = [task_name]
         if run_id is not None:
@@ -1101,7 +1331,7 @@ def maintenance_resume(
     task_name = task_name or LONG_BACKFILL_TASK
     with _connect(state_db) as conn:
         _ensure_schema(conn)
-        _refresh_shards(conn)
+        _refresh_shards(conn, root)
         where = "task_name = ? AND status != 'running' AND status != 'succeeded'"
         params: list[Any] = [task_name]
         if run_id is not None:
@@ -1164,14 +1394,152 @@ def _configured_state_db(root: Path, orchestrator_cfg: dict[str, Any]) -> Path:
     return _resolve_path(root, orchestrator_cfg.get("state_db", "data/maintenance/maintenance.sqlite"))
 
 
-def maintenance_status(config_path: Path) -> MaintenanceStatusResult:
+def _relative_display(root: Path, path: Path | None) -> str:
+    if path is None:
+        return ""
+    try:
+        return str(path.relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def _md_escape(value: object) -> str:
+    text = str(value if value is not None else "")
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def _md_table(headers: list[str], rows: list[list[object]]) -> str:
+    lines = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
+    for row in rows:
+        lines.append("| " + " | ".join(_md_escape(item) for item in row) + " |")
+    return "\n".join(lines)
+
+
+def write_maintenance_status_report(result: MaintenanceStatusResult, output_path: Path, *, root: Path) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    decision_counts: dict[str, int] = {}
+    run_counts: dict[str, int] = {}
+    shard_counts: dict[str, int] = {}
+    for row in result.rows:
+        decision_counts[row.last_decision] = decision_counts.get(row.last_decision, 0) + 1
+        run_counts[row.last_run_status] = run_counts.get(row.last_run_status, 0) + 1
+    for shard in result.shards:
+        shard_counts[shard.status] = shard_counts.get(shard.status, 0) + 1
+
+    task_rows = [
+        [
+            row.task_name,
+            "yes" if row.enabled else "no",
+            f"{row.schedule_type}:{row.schedule_value}",
+            row.last_decision,
+            row.last_reason,
+            row.last_run_status,
+            row.last_error,
+            row.retry_count,
+            _relative_display(root, row.log_path),
+        ]
+        for row in result.rows
+    ]
+    shard_rows = [
+        [
+            shard.run_id,
+            shard.task_name,
+            f"{shard.shard_index}/{shard.shard_count}",
+            shard.status,
+            shard.pid or "",
+            shard.started_at,
+            shard.finished_at,
+            _relative_display(root, shard.log_path),
+            _relative_display(root, shard.report_path),
+            shard.error_summary,
+            shard.key_conclusion,
+        ]
+        for shard in result.shards[:100]
+    ]
+    risk_items = []
+    for shard in result.shards:
+        if shard.status in {"failed", "exited_unknown", "running"}:
+            risk_items.append(
+                f"- run={shard.run_id} shard={shard.shard_index}/{shard.shard_count} "
+                f"status={shard.status} error={shard.error_summary or 'N/A'} log={_relative_display(root, shard.log_path)}"
+            )
+    lines = [
+        "# Maintenance Status Report",
+        "",
+        f"Generated at: {result.generated_at}",
+        f"State DB: {result.state_db}",
+        "",
+        "## Summary",
+        "",
+        _md_table(
+            ["metric", "value"],
+            [
+                ["tasks", len(result.rows)],
+                ["decisions", json.dumps(decision_counts, ensure_ascii=False, sort_keys=True)],
+                ["latest_run_statuses", json.dumps(run_counts, ensure_ascii=False, sort_keys=True)],
+                ["shard_statuses", json.dumps(shard_counts, ensure_ascii=False, sort_keys=True)],
+            ],
+        ),
+        "",
+        "## Scheduled Tasks",
+        "",
+        _md_table(
+            ["task", "enabled", "schedule", "last_decision", "reason", "last_run", "last_error", "retry_count", "log"],
+            task_rows,
+        ),
+        "",
+        "## Long Backfill Shards",
+        "",
+        _md_table(
+            ["run_id", "task", "shard", "status", "pid", "started_at", "finished_at", "log", "report", "error", "conclusion"],
+            shard_rows,
+        ) if shard_rows else "No long backfill shards recorded.",
+        "",
+        "## Open Risks",
+        "",
+    ]
+    lines.extend(risk_items or ["- None"])
+    output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return output_path
+
+
+def maintenance_supervise(
+    config_path: Path,
+    *,
+    task_name: str | None = None,
+    run_id: int | None = None,
+    dry_run: bool = False,
+) -> MaintenanceLongRunResult:
+    root, orchestrator_cfg = _load_maintenance_cfg(config_path)
+    state_db = _configured_state_db(root, orchestrator_cfg)
+    task_name = task_name or LONG_BACKFILL_TASK
+    with _connect(state_db) as conn:
+        _ensure_schema(conn)
+        changed = _refresh_shards(conn, root, task_name=task_name, run_id=run_id, dry_run=dry_run)
+        return MaintenanceLongRunResult(
+            status="dry_run" if dry_run else "ok",
+            task_name=task_name,
+            run_id=run_id,
+            state_db=state_db,
+            shard_rows=_shard_rows(conn, root, run_id=run_id),
+            message=f"updated_or_candidate_rows={changed}",
+            dry_run=dry_run,
+        )
+
+
+def maintenance_status(
+    config_path: Path,
+    *,
+    output_md: Path | None = None,
+    write_report: bool = False,
+) -> MaintenanceStatusResult:
     root, orchestrator_cfg = _load_maintenance_cfg(config_path)
     state_db = _configured_state_db(root, orchestrator_cfg)
     now_iso = datetime.now().isoformat(timespec="seconds")
 
     with _connect(state_db) as conn:
         _ensure_schema(conn)
-        _refresh_shards(conn)
+        _refresh_shards(conn, root)
         _sync_registry(conn, _default_registry(config_path), now_iso=now_iso)
         registry_rows = conn.execute(
             """
@@ -1233,4 +1601,16 @@ def maintenance_status(config_path: Path) -> MaintenanceStatusResult:
                 )
             )
         shards = _shard_rows(conn, root)
-    return MaintenanceStatusResult(state_db=state_db, generated_at=now_iso, rows=rows, shards=shards)
+    result = MaintenanceStatusResult(state_db=state_db, generated_at=now_iso, rows=rows, shards=shards)
+    report_path: Path | None = None
+    if write_report or output_md is not None:
+        report_path = output_md or (root / "reports" / "maintenance" / f"maintenance_status_{datetime.now().date().isoformat()}.md")
+        write_maintenance_status_report(result, report_path, root=root)
+        result = MaintenanceStatusResult(
+            state_db=result.state_db,
+            generated_at=result.generated_at,
+            rows=result.rows,
+            shards=result.shards,
+            report_path=report_path,
+        )
+    return result

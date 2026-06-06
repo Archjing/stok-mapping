@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-05（同步 Tushare 财务回填可观测性、数据库健康检查和数据治理维护编排器专项）
+> 最后修订：2026-06-07（同步 T6.3 维护编排器 supervisor、交易日历、Markdown 报告和 backfill 报告索引）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.10 有效策略重建**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -36,7 +36,7 @@
 - `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
 - `T1.5` Tushare 财务因子逐股票历史补齐已完成并验收：2016Q1-2018Q1 目标季度末无 pending/failed，`financial-pti` 复核为 PASS，`factor-effectiveness` 已重跑
 - `T6.2` 数据库健康检查只读 MVP 已落地，新增 `phase0.cli db-health`，可输出 CSV / Markdown 报告并按 `--fail-on` 作为调度或 CI 门禁
-- `T6.3` 数据治理与维护编排器专项计划已建立，目标是把当前 shell 调度器、`db-health` 门禁、backfill 分片监督、运行状态和审计账本演进为统一的本地控制平面
+- `T6.3` 数据治理与维护编排器专项已完成关键收口项：`maintain supervise`、交易日历判断、维护状态 Markdown 报告和 backfill 报告索引已落地，继续作为统一本地控制平面演进
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
 - `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
@@ -94,7 +94,7 @@
 4. 维护 `research` / `live` profile 的参数治理，确保策略研究口径和实盘仿真口径分离。
 5. `T1.5` Tushare 财务因子逐股票历史补齐已完成；后续只保留例行增量维护和非目标 period 任务表清理，不再阻塞策略重建。
 6. 将 `T6.2` 数据库健康检查接入调度前置门禁，先用只读报告和 `--fail-on` 控制失败退出，不默认写健康状态表。
-7. 推进 `T6.3` 数据治理与维护编排器专项：先做状态库、dry-run tick 和 `maintain status`，再替换 shell 内部调度逻辑，最后接入长 backfill 分片监督。
+7. 推进 `T6.3` 数据治理与维护编排器专项：状态库、真实 tick、wrapper 接管、长 backfill 分片监督、状态报告和报告索引已落地；下一步转向 System Orchestrator/TUI 汇总入口。
 8. 将 `T2.4` 策略过拟合诊断工具继续接入策略治理链路，下一步进入 gate / brief / 模拟账户准入检查。
 9. 基于已通过的财务因子 PTI 校验和财务历史回填结果，谨慎恢复质量成长 / 多因子后续验证。
 10. 在盘前观察池和账户级仿真之间补齐 `Signal & Rebalance Engine`，生成可交易信号、目标权重、调仓建议单、模拟订单、阻断原因和风险说明。
@@ -1045,14 +1045,14 @@ stok-mapping/
 | `T5.2` | 投资策略情报工作流模块 | [`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md) | **V1 已建立：Markdown + CSV 台账、模板、首批论文情报补录与自动采集器** |
 | `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
 | `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP、调度/研究前置门禁与 OHLC sample rows 已完成，后续补覆盖率口径判断** |
-| `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3 基础版已完成：短任务真实 tick、wrapper 接管、最小重试、Tushare financial 3 shard run/stop/resume 已落地；持续 supervisor 待增强** |
+| `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3/P4 关键收口已完成：真实 tick、wrapper 接管、最小重试、3 shard run/stop/resume、supervise、交易日历、Markdown 报告和 backfill 报告索引已落地** |
 
 ### 当前最高优先级
 
-- [ ] `T6.3` 当前优先 1：补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败
-- [ ] `T6.3` 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，汇总每日维护状态、失败原因、跳过原因、shard 状态和报告路径
-- [ ] `T6.3` 当前优先 3：接入交易日历和更细的运行窗口，降低节假日和非交易日误触发
-- [ ] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
+- [x] `T6.3` 当前优先 1：补持续 supervisor，使后台 shard 可基于 pid、日志和 audit 报告保守归类为成功、失败或 unknown
+- [x] `T6.3` 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，汇总每日维护状态、失败原因、跳过原因、shard 状态和报告路径
+- [x] `T6.3` 当前优先 3：接入交易日历和更细的运行窗口，降低节假日和非交易日误触发
+- [x] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 
 - [x] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
 - [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
@@ -1277,9 +1277,9 @@ announce_date_coverage
 第一阶段交付：
 
 - 新增 `phase0/maintenance_orchestrator.py`
-- 新增 `phase0.cli maintain tick/status/run/stop/resume`
+- 新增 `phase0.cli maintain tick/status/supervise/run/stop/resume`
 - 新增 `data/maintenance/maintenance.sqlite`
-- 先实现 `maintain tick --dry-run` 与 `maintain status`
+- 已实现 `maintain tick --dry-run`、`maintain status --write-report/--output-md` 与 `maintain supervise`
 - 保持 cron 单入口，但逐步把 shell 内部调度逻辑迁移到 Python 编排器
 - 后续在维护编排器之上增加轻量 `System Orchestrator`：提供 `system status/run/tui`，统一汇总维护、研究、交付、账户和关注个股分析状态
 

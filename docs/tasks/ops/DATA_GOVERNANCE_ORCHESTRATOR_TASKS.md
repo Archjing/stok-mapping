@@ -288,7 +288,7 @@ maintenance_orchestrator:
 - [x] 实现真实 `maintain tick`。
 - [x] 把 `scripts/run_project_scheduler.sh` 降级为 wrapper，加载 `.env` 后调用 `maintain tick`。
 - [x] 接入重试次数、重试间隔和状态锁。
-- [ ] 接入交易日历和更细的运行窗口。
+- [x] 接入交易日历和更细的运行窗口。
 - [x] 成功后写入 `maintenance_runs`，兼容保留现有 `logs/scheduler/*.last`。
 
 验收标准：
@@ -305,7 +305,7 @@ maintenance_orchestrator:
 - [x] 支持 `stop` 中断所有 shard。
 - [x] 支持 `resume` 只重启未完成、失败或中断 shard。
 - [x] 将每个 shard 的 pid、命令、日志路径和状态写入 `maintenance_shards`。
-- [ ] 补持续 supervisor，使后台 shard 退出码可从 `exited_unknown` 精确更新为成功或失败。
+- [x] 补持续 supervisor，使后台 shard 可基于 pid、日志和 audit 报告保守归类为 `succeeded / failed / exited_unknown`。
 
 验收标准：
 
@@ -316,25 +316,25 @@ maintenance_orchestrator:
 
 ### T6.3.5.5 P4：治理报告与观察面板
 
-- [ ] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`。
-- [ ] 输出当日任务状态、失败原因、跳过原因、健康门禁结果、报告路径。
+- [x] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`。
+- [x] 输出当日任务状态、失败原因、跳过原因、健康门禁结果、报告路径。
 - [ ] 后续可接入 ECS 同步或通知，但第一版不默认启用。
 
 验收标准：
 
-- [ ] 运维报告能回答“今天哪些数据更新成功、哪些失败、为什么”。
-- [ ] 报告包含可点击或可定位的本地报告路径。
-- [ ] 不复制 backfill 详细报告内容，只引用路径和结论。
+- [x] 运维报告能回答“今天哪些数据更新成功、哪些失败、为什么”。
+- [x] 报告包含可点击或可定位的本地报告路径。
+- [x] 不复制 backfill 详细报告内容，只引用路径和结论。
 
 ### T6.3.5.6 当前优先任务待办
 
 当前最优先处理顺序：
 
-1. [ ] **P3.1 持续 supervisor**：新增 `maintain supervise` 或在 `maintain status` 中强化刷新逻辑，读取 shard pid、日志和已知报告，尽量把 `exited_unknown` 精确归类为 `succeeded / failed / cancelled`。
-2. [ ] **P4.1 维护状态 Markdown 报告**：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，输出当日任务、失败原因、跳过原因、shard 状态、日志路径和报告路径。
-3. [ ] **P2.1 交易日历判断**：A 股任务读取 `trading_calendar`，HK/US 任务先用最新交易日或源数据新鲜度近似，替代简单 weekday 判断。
-4. [ ] **P3.2 shard 报告索引**：从 backfill 当次 audit 和 summary audit 中提取关键结论，写入 `maintenance_shards.report_path / error_summary` 或后续 `maintenance_artifacts`。
-5. [ ] **P4.2 日常巡检命令**：让 `maintain status` 支持 `--output-md` 或默认生成当日状态报告，供每日运维复盘和未来 TUI 使用。
+1. [x] **P3.1 持续 supervisor**：新增 `maintain supervise`，并在 `maintain status` 中刷新 shard 状态；读取 shard pid、日志和已知报告，保守归类为 `succeeded / failed / exited_unknown`。
+2. [x] **P4.1 维护状态 Markdown 报告**：新增 `maintain status --write-report/--output-md`，输出当日任务、失败原因、跳过原因、shard 状态、日志路径和报告路径。
+3. [x] **P2.1 交易日历判断**：A 股任务读取 `trading_calendar`；HK/US 任务先用 weekday fallback 并显式记录 fallback reason。
+4. [x] **P3.2 shard 报告索引**：从 backfill audit summary 和当次报告中提取 report path、error summary、key conclusion，写入维护状态。
+5. [x] **P4.2 日常巡检命令最小版**：`maintain status` 支持 `--write-report` 和 `--output-md`，供每日运维复盘和未来 TUI 使用。
 
 暂缓事项：
 
@@ -372,3 +372,12 @@ maintenance_orchestrator:
 - [ ] 长 backfill 能统一启动、停止、恢复和查看 shard 状态。
 - [ ] 现有业务命令、报告路径和数据表不被破坏。
 - [ ] 编排器异常退出时不会留下永久锁。
+
+## T6.3.8 本次实现记录（2026-06-07）
+
+- [x] 新增 `maintain supervise`，支持 `--run-id`、`--task`、`--dry-run`。
+- [x] `maintain status` 支持 `--write-report` 和 `--output-md`。
+- [x] A 股调度任务接入本地 `trading_calendar`；HK/US 暂用 weekday fallback 并显式记录原因。
+- [x] backfill shard 状态登记 `report_path`、`error_summary`、`key_conclusion`。
+- [x] 后台进程退出分类采用保守策略：只有日志或 summary audit 明确成功才标记 `succeeded`，明确错误才标记 `failed`，否则保留 `exited_unknown`。
+
