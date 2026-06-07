@@ -3,7 +3,7 @@ cn,cn.database.exists,pass,db_path,/home/zj/workspace/stok-mapping/data/manual_h
 cn,cn.market_daily_bars.schema,pass,missing_columns,none,none
 cn,cn.daily.latest_date,pass,latest_date,2026-06-05,
 cn,cn.daily.latest_coverage,pass,latest_symbols/total_symbols,5514/5762 (95.70%),80.00%
-cn,cn.daily.staleness,pass,calendar_day_staleness,1,<= 1
+cn,cn.daily.staleness,pass,trade_day_staleness,0,<= 1; expected_trade_date=2026-06-05
 cn,cn.daily.ohlc,pass,recent_ohlc_violations,0,0
 cn,cn.daily.positive_prices,pass,recent_non_positive_price_rows,0,0
 cn,cn.daily.non_negative_liquidity,pass,recent_negative_volume_amount_rows,0,0

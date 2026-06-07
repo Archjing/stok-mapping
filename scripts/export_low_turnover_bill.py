@@ -23,6 +23,7 @@ from phase0.walk_forward import (
     _calc_metrics,
     _load_symbol_cached,
     _load_symbol_map,
+    _resolve_walk_forward_window,
     iter_point_in_time_universe_folds,
 )
 
@@ -1085,6 +1086,9 @@ def export_low_turnover_bill(
     _load_symbol_cached.cache_clear()
 
     wcfg = config["walk_forward"]
+    window_cfg = _resolve_walk_forward_window(wcfg)
+    train_years = int(window_cfg["train_years"])
+    validate_years = int(window_cfg["validate_years"])
     execution_cfg = _execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
     strategy = get_strategy("legacy_momentum_low_turnover_v1")
@@ -1103,8 +1107,8 @@ def export_low_turnover_bill(
         fold_contexts, universe_audit = iter_point_in_time_universe_folds(
             config,
             years=history_years,
-            train_years=int(wcfg["train_years"]),
-            validate_years=int(wcfg["validate_years"]),
+            train_years=train_years,
+            validate_years=validate_years,
             min_samples=int(wcfg["min_samples"]),
             strategy_cfg=strategy_cfg,
         )
@@ -1162,8 +1166,8 @@ def export_low_turnover_bill(
         )
         for fold, train, valid in _fold_windows(
             panel,
-            train_years=int(wcfg["train_years"]),
-            validate_years=int(wcfg["validate_years"]),
+            train_years=train_years,
+            validate_years=validate_years,
             min_samples=int(wcfg["min_samples"]),
         ):
             bill, daily = _build_low_turnover_fold_bill(

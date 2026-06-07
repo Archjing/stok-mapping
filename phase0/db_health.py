@@ -322,6 +322,67 @@ def _latest_date(
     return str(value or "")
 
 
+def _trade_day_staleness(
+    conn: sqlite3.Connection,
+    *,
+    calendar_table: str,
+    latest: str,
+    as_of: date,
+) -> tuple[int, str, str, str]:
+    if not latest:
+        return 9999, "trade_day_staleness", "N/A", "trading_calendar unavailable; latest date missing"
+    try:
+        latest_date = datetime.strptime(latest, "%Y-%m-%d").date()
+    except ValueError:
+        return 9999, "trade_day_staleness", "N/A", "trading_calendar unavailable; latest date invalid"
+
+    try:
+        table = _safe_identifier(calendar_table)
+    except ValueError:
+        fallback = (as_of - latest_date).days
+        return fallback, "calendar_day_staleness", "N/A", "trading_calendar unavailable; invalid table name"
+    if not _table_exists(conn, calendar_table):
+        fallback = (as_of - latest_date).days
+        return fallback, "calendar_day_staleness", "N/A", "trading_calendar unavailable; table missing"
+    columns = _table_columns(conn, calendar_table)
+    if not {"date", "is_open"}.issubset(columns):
+        fallback = (as_of - latest_date).days
+        return fallback, "calendar_day_staleness", "N/A", "trading_calendar unavailable; required columns missing"
+
+    expected_trade_date = str(
+        _scalar(
+            conn,
+            f"""
+            SELECT MAX(date)
+            FROM {table}
+            WHERE is_open = 1
+              AND date <= ?
+            """,
+            (as_of.isoformat(),),
+        )
+        or ""
+    )
+    if not expected_trade_date:
+        fallback = (as_of - latest_date).days
+        return fallback, "calendar_day_staleness", "N/A", "trading_calendar unavailable; no open date before as-of"
+
+    stale_days = int(
+        _scalar(
+            conn,
+            f"""
+            SELECT COUNT(*)
+            FROM {table}
+            WHERE is_open = 1
+              AND date > ?
+              AND date <= ?
+            """,
+            (latest, expected_trade_date),
+        )
+        or 0
+    )
+    return stale_days, "trade_day_staleness", expected_trade_date, "trading_calendar"
+
+
 def _recent_date_bounds(
     conn: sqlite3.Connection,
     *,
@@ -535,7 +596,12 @@ def _check_cn_market_data(
                 or 0
             )
             coverage = latest_symbols / total_symbols if total_symbols else 0.0
-        staleness = (as_of - datetime.strptime(latest, "%Y-%m-%d").date()).days if latest else 9999
+        staleness, staleness_metric, expected_trade_date, staleness_source = _trade_day_staleness(
+            conn,
+            calendar_table=calendar_table,
+            latest=latest,
+            as_of=as_of,
+        )
         _add_summary(summary, section=section, check_id="cn.daily.latest_date", status="pass" if latest else "fail", metric="latest_date", value=latest or "N/A")
         _add_summary(
             summary,
@@ -562,9 +628,9 @@ def _check_cn_market_data(
             section=section,
             check_id="cn.daily.staleness",
             status="pass" if staleness <= max_staleness_days else "fail",
-            metric="calendar_day_staleness",
+            metric=staleness_metric,
             value=staleness,
-            threshold=f"<= {max_staleness_days}",
+            threshold=f"<= {max_staleness_days}; expected_trade_date={expected_trade_date}",
         )
         if staleness > max_staleness_days:
             _add_finding(
@@ -573,9 +639,9 @@ def _check_cn_market_data(
                 check_id="cn.daily.staleness",
                 table_name=daily_table,
                 date_value=latest,
-                message="latest A-share daily bar date is stale relative to as-of date",
+                message="latest A-share daily bar date is stale relative to expected trade date",
                 sample_value=staleness,
-                expected_rule=f"staleness <= {max_staleness_days} calendar days",
+                expected_rule=f"staleness <= {max_staleness_days} trading days ({staleness_source})",
             )
 
         recent_start, _ = _recent_date_bounds(conn, table=daily_table, where_sql=where_sql, params=params)

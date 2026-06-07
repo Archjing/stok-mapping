@@ -45,6 +45,29 @@ def _xmarket_enabled(strategy_cfg: dict[str, Any]) -> bool:
     return bool(strategy_cfg.get("cross_market", {}).get("enabled", False))
 
 
+def _resolve_walk_forward_window(wcfg: dict[str, Any]) -> dict[str, Any]:
+    preset_name = str(wcfg.get("preset_name", "") or "").strip()
+    presets = wcfg.get("presets", {})
+    if preset_name:
+        if not isinstance(presets, dict) or preset_name not in presets:
+            raise ValueError(f"walk_forward preset_name not found: {preset_name}")
+        preset = presets[preset_name] or {}
+        return {
+            "preset_name": preset_name,
+            "train_years": int(preset["train_years"]),
+            "validate_years": int(preset["validate_years"]),
+            "description": str(preset.get("description", "")),
+        }
+
+    # Backward-compatible fallback for older config files. New project config should use preset_name.
+    return {
+        "preset_name": "legacy_inline",
+        "train_years": int(wcfg["train_years"]),
+        "validate_years": int(wcfg["validate_years"]),
+        "description": "Legacy inline train_years/validate_years config.",
+    }
+
+
 @dataclass
 class FoldResult:
     fold: int
@@ -2272,6 +2295,9 @@ def _run_single_symbol(
 def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
     years = int(config["years"])
     wcfg = config["walk_forward"]
+    window_cfg = _resolve_walk_forward_window(wcfg)
+    train_years = int(window_cfg["train_years"])
+    validate_years = int(window_cfg["validate_years"])
     configure_local_history(config.get("local_history", {}), Path.cwd())
     configure_us_market_history(config.get("us_market_history", {}), Path.cwd())
     symbols = config["symbols"]
@@ -2300,8 +2326,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_point_in_time(
                 config,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 slippage=float(wcfg["slippage"]),
                 commission=float(wcfg["commission"]),
@@ -2312,8 +2338,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_qfq_asof_static(
                 symbols=symbols,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 slippage=float(wcfg["slippage"]),
                 commission=float(wcfg["commission"]),
@@ -2324,8 +2350,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             all_rows, candidate_rows, candidate_summary_rows = _run_compare(
                 symbols=symbols,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 slippage=float(wcfg["slippage"]),
                 commission=float(wcfg["commission"]),
@@ -2337,8 +2363,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             fold_contexts, universe_audit_df = iter_point_in_time_universe_folds(
                 config,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 strategy_cfg=strategy_cfg,
                 xfeatures=_load_cross_market_features(years, strategy_cfg.get("cross_market", {}))
@@ -2369,8 +2395,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             all_rows = _run_portfolio(
                 symbols=symbols,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 slippage=float(wcfg["slippage"]),
                 commission=float(wcfg["commission"]),
@@ -2384,8 +2410,8 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             folds = _run_single_symbol(
                 symbol=sym,
                 years=years,
-                train_years=int(wcfg["train_years"]),
-                validate_years=int(wcfg["validate_years"]),
+                train_years=train_years,
+                validate_years=validate_years,
                 min_samples=int(wcfg["min_samples"]),
                 slippage=float(wcfg["slippage"]),
                 commission=float(wcfg["commission"]),
@@ -2424,6 +2450,9 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
             "summary": {
                 "status": "failed",
                 "reason": "no valid folds",
+                "walk_forward_preset": window_cfg["preset_name"],
+                "walk_forward_train_years": train_years,
+                "walk_forward_validate_years": validate_years,
                 "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
                 "universe_lookahead_guard": bool(use_point_in_time_universe),
             },
@@ -2431,6 +2460,9 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
 
     summary = {
         "status": "ok",
+        "walk_forward_preset": window_cfg["preset_name"],
+        "walk_forward_train_years": train_years,
+        "walk_forward_validate_years": validate_years,
         "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
         "universe_lookahead_guard": bool(use_point_in_time_universe),
         "fold_count": int(len(folds_df)),

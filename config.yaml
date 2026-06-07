@@ -280,8 +280,20 @@ phase0:
       default_start_period: "2018-06-30"
       default_end_period: "2026-03-31"
   walk_forward:
-    train_years: 2
-    validate_years: 1
+    preset_name: "baseline_2y_1y"
+    presets:
+      baseline_2y_1y:
+        train_years: 2
+        validate_years: 1
+        description: "统一候选比较 baseline，保留与既有报告可比性。"
+      quality_3y_1y:
+        train_years: 3
+        validate_years: 1
+        description: "低频质量/低换手策略稳健性复核窗口。"
+      quality_4y_1y:
+        train_years: 4
+        validate_years: 1
+        description: "质量/低换手策略严格复核窗口。"
     min_samples: 200
     initial_cash: 1000000
     commission: 0.00025
@@ -302,7 +314,7 @@ phase0:
       min_oos_positive_fold_ratio: 1.0
     strategy_v2:
       mode: "compare"
-      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "multifactor_volume_price_filter_v1", "core_selection_quality_momentum_v1", "theme_exposure_momentum_v1"]
+      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "low_vol_low_turnover_quality_v1", "quality_low_turnover_monthly_v1", "multifactor_volume_price_filter_v1", "core_selection_quality_momentum_v1", "theme_exposure_momentum_v1"]
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -435,6 +447,38 @@ phase0:
             profit_growth: 0.20
             revenue_growth: 0.15
             low_debt: 0.15
+        low_vol_low_turnover_quality:
+          enabled: true
+          quality_quantiles: [0.6, 0.7]
+          low_vol_windows: [20, 60]
+          low_vol_quantiles: [0.5]
+          low_turnover_quantiles: [0.5]
+          momentum_windows: [20, 60]
+          top_n_values: [10, 20]
+          hold_rank_multipliers: [2.0]
+          rebalance_days_values: [20, 40]
+          min_hold_days_values: [20]
+          turnover_penalties: [0.02]
+          max_symbol_weight: 0.10
+          use_xmarket_overlay: false
+          factor_weights:
+            low_volatility: 0.40
+            low_turnover: 0.25
+            quality: 0.25
+            medium_momentum: 0.10
+        quality_low_turnover_monthly:
+          enabled: true
+          quality_quantiles: [0.6, 0.7]
+          low_vol_windows: [20, 60]
+          low_vol_quantiles: [0.5, 0.6]
+          low_turnover_quantiles: [0.5]
+          top_n_values: [10, 20]
+          hold_rank_multipliers: [2.0]
+          rebalance_days_values: [20, 40]
+          min_hold_days_values: [20]
+          turnover_penalties: [0.02]
+          max_symbol_weight: 0.10
+          use_xmarket_overlay: false
   accounts:
     simulated:
       - account_id: "default"

@@ -135,22 +135,45 @@ score =
 
 ### T2.8.1 目标
 
-- [ ] 新增 `strategy-admission` 报告
+- [x] 新增 `strategy-admission` 报告 MVP
 - [ ] 合并 effectiveness gate、qfq_asof compare、factor diagnostic、overfit diagnostic
-- [ ] 给出策略是否可进入观察池 / 模拟账户的明确结论
+- [x] 加入 walk-forward 窗口稳健性矩阵，避免只因单一训练/验证窗口成立就进入模拟账户
+- [x] 将 walk-forward 窗口配置模块化为 preset，保留当前 `baseline_2y_1y` 作为 baseline
+- [x] 给出策略是否可进入观察池 / 模拟账户的明确结论
 
 ### T2.8.2 硬规则
 
 - [ ] `qfq_current` 通过但 `qfq_asof` 失败：拒绝进入模拟账户
-- [ ] `overfit_risk_level in {high, critical}`：拒绝
-- [ ] 年化换手 `> 3`：第一阶段拒绝作为主候选
-- [ ] 正收益折比例不足：拒绝
+- [x] `overfit_risk_level in {high, critical}`：阻断进入模拟审查，进入 retest / reject
+- [x] 年化换手 `> 3`：第一阶段拒绝作为主候选
+- [x] 正收益折比例不足：拒绝或降级复核
 - [ ] 缺少因子诊断：仅 research-only
+- [x] 仅在单一窗口 preset 下通过、但在同类策略推荐窗口下失效：仅 research-only
+- [x] 选中参数在窗口内频繁切换：阻断进入模拟审查，进入 retest
 
 ### T2.8.3 输出
 
-- [ ] `reports/strategy_admission_report.csv`
-- [ ] `reports/strategy_admission_report.md`
+- [x] `reports/strategy_admission/strategy_admission_constraint_review.csv`
+- [x] `reports/strategy_admission/strategy_admission_report.md`
+- [x] `reports/strategy_admission/strategy_admission_window_matrix.csv`
+- [x] `reports/strategy_admission/strategy_admission_candidate_folds.csv`
+
+### T2.8.4 Walk-forward preset 设计
+
+- [x] `baseline_2y_1y`：2 年训练 + 1 年验证，作为当前候选统一可比口径
+- [x] `quality_3y_1y`：3 年训练 + 1 年验证，作为 T2.6/T2.7 低频质量策略推荐稳健性窗口
+- [x] `quality_4y_1y`：4 年训练 + 1 年验证，作为质量/低换手策略严格复核窗口
+- [ ] `factor_stability_5y_1y`：5 年训练 + 1 年验证，参考滚动 5 年因子有效性检验，用于因子稳定性分析
+- [ ] `ml_asset_10y_1y`：10 年训练 + 1 年验证，参考资产特征组合选择论文，用于后续高维 ML / 资产特征模型
+- [ ] `short_signal_1y_1m`：1 年训练 + 1 个月验证，用于短周期技术、文本、事件策略
+- [ ] `short_signal_1y_1m_embargo10d`：1 年训练 + 10 交易日 embargo + 1 个月验证，用于标签含未来收益的短周期 ML 分类策略
+
+设计依据：
+
+- A 股资产特征组合选择论文采用滚动 `10 年训练 + 1 年测试`。
+- A 股 LASSO 定价因子研究采用滚动 `5 年` 时间窗口考察因子有效性时变。
+- S&P 500 相对收益 ML 研究采用约 `1 年训练 + 10 日 gap + 1 个月测试`。
+- StockMixer 窗口敏感性结论显示：窗口过短信息不足，窗口过长早期信息贡献下降且学习成本增加。
 
 ---
 

@@ -24,7 +24,7 @@ from phase0.accounts import (
 from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history
 from phase0.strategies import get_strategy
-from phase0.walk_forward import _calc_metrics
+from phase0.walk_forward import _calc_metrics, _resolve_walk_forward_window
 from scripts.export_low_turnover_bill import (
     DEFAULT_PANEL_CACHE,
     _execution_settings,
@@ -678,7 +678,8 @@ def export_premarket_watchlist(
     panel = panel.copy()
     panel["date"] = pd.to_datetime(panel["date"])
     dates = pd.Series(sorted(panel["date"].dropna().unique()))
-    train_len = int(training_days or int(wcfg["train_years"]) * 252)
+    window_cfg = _resolve_walk_forward_window(wcfg)
+    train_len = int(training_days or int(window_cfg["train_years"]) * 252)
     min_samples = int(wcfg.get("min_samples", 200))
     if len(dates) < max(min_samples, train_len):
         raise ValueError("not enough market history to select premarket parameters")

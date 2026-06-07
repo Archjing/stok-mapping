@@ -34,6 +34,7 @@ from phase0.reporting import (
     write_effectiveness_gate_report,
     write_walk_forward_report,
 )
+from phase0.strategy_admission import run_strategy_admission
 from phase0.throttle import configure_akshare_throttle
 from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
@@ -665,6 +666,11 @@ def main() -> int:
     overfit_parser.add_argument("--candidates", default=None, help="Path to walk-forward candidates CSV")
     overfit_parser.add_argument("--folds", default=None, help="Path to walk-forward folds CSV")
     overfit_parser.add_argument("--output-dir", default=None, help="Output directory for diagnostic reports")
+    admission_parser = sub.add_parser("strategy-admission", help="Run strategy admission window and constraint review")
+    admission_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    admission_parser.add_argument("--presets", nargs="+", default=None, help="Walk-forward preset names to evaluate")
+    admission_parser.add_argument("--strategies", nargs="+", default=None, help="Strategy IDs to evaluate")
+    admission_parser.add_argument("--output-dir", default=None, help="Output directory for admission reports")
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
@@ -996,6 +1002,28 @@ def main() -> int:
         console.print(f"CSV: {result.csv_path}")
         console.print(f"Markdown: {result.md_path}")
         console.print(f"Rows: {result.rows}")
+        return 0
+    if args.cmd == "strategy-admission":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]Strategy admission review started[/bold]")
+        result = run_strategy_admission(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            presets=args.presets,
+            strategies=args.strategies,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+        )
+        console.print("[green]Strategy admission review complete[/green]")
+        console.print(f"Strategies: {result.strategies}")
+        console.print(f"Presets: {result.presets}")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"Window matrix CSV: {result.matrix_csv}")
+        console.print(f"Constraint review CSV: {result.constraint_csv}")
+        console.print(f"Candidate folds CSV: {result.folds_csv}")
+        console.print(f"Overfit CSV: {result.overfit_csv}")
+        console.print(f"Markdown: {result.report_md}")
         return 0
     if args.cmd == "factor-effectiveness":
         config_path = Path(args.config).resolve()

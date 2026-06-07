@@ -141,6 +141,9 @@ KISS means: Keep It Simple and Straightforward.
 * 每个模块必须有 README 或 header comment
 * API 必须有 input/output 示例
 * 复杂逻辑必须解释“why not just what”
+* 中文注释应按程序逻辑整合为段落，说明“这一段为什么这样设计、约束是什么、风险在哪里”，不要为每个显而易见的变量逐行复述代码。
+* 量化策略、数据治理、回测和调度代码中的关键段落应优先解释：数据口径、point-in-time 边界、未来函数规避、成本/换手处理、fallback 行为和验收风险。
+* 注释密度以帮助下一位维护者快速理解流程为准；如果注释比代码更难读，应收敛为阶段性说明或迁移到文档。
 
 ---
 

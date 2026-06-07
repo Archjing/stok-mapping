@@ -1,0 +1,330 @@
+Tushare financial backfill started
+Tushare financial backfill selected: 0/6149 (0.0%), fetched=0, empty=0, 
+failed=0, inserted_rows=0, rate=0.0/min, elapsed=0s, eta=unknown
+Tushare financial backfill progress: 3/6149 (0.0%), fetched=0, empty=3, 
+failed=0, inserted_rows=0, rate=4.8/min, elapsed=37s, eta=21h32m18s
+Tushare financial backfill progress: 24/6149 (0.4%), fetched=0, empty=24, 
+failed=0, inserted_rows=0, rate=20.9/min, elapsed=1m08s, eta=4h52m30s
+Tushare financial backfill progress: 42/6149 (0.7%), fetched=0, empty=42, 
+failed=0, inserted_rows=0, rate=25.4/min, elapsed=1m39s, eta=4h00m51s
+Tushare financial backfill progress: 61/6149 (1.0%), fetched=0, empty=60, 
+failed=1, inserted_rows=0, rate=28.1/min, elapsed=2m10s, eta=3h36m38s
+Tushare financial backfill progress: 79/6149 (1.3%), fetched=0, empty=78, 
+failed=1, inserted_rows=0, rate=25.3/min, elapsed=3m07s, eta=3h59m57s
+Tushare financial backfill progress: 113/6149 (1.8%), fetched=5, empty=106, 
+failed=2, inserted_rows=0, rate=30.3/min, elapsed=3m44s, eta=3h19m25s
+Tushare financial backfill progress: 116/6149 (1.9%), fetched=5, empty=106, 
+failed=5, inserted_rows=0, rate=25.3/min, elapsed=4m35s, eta=3h58m43s
+Tushare financial backfill progress: 149/6149 (2.4%), fetched=7, empty=136, 
+failed=6, inserted_rows=1, rate=28.7/min, elapsed=5m11s, eta=3h29m23s
+Tushare financial backfill progress: 156/6149 (2.5%), fetched=7, empty=140, 
+failed=9, inserted_rows=1, rate=27.4/min, elapsed=5m42s, eta=3h39m00s
+Tushare financial backfill progress: 162/6149 (2.6%), fetched=7, empty=146, 
+failed=9, inserted_rows=1, rate=25.3/min, elapsed=6m23s, eta=3h56m30s
+Tushare financial backfill progress: 182/6149 (3.0%), fetched=7, empty=166, 
+failed=9, inserted_rows=1, rate=26.4/min, elapsed=6m53s, eta=3h46m13s
+Tushare financial backfill progress: 200/6149 (3.3%), fetched=11, empty=178, 
+failed=11, inserted_rows=5, rate=26.7/min, elapsed=7m29s, eta=3h42m51s
+Tushare financial backfill progress: 219/6149 (3.6%), fetched=14, empty=194, 
+failed=11, inserted_rows=8, rate=27.4/min, elapsed=7m59s, eta=3h36m27s
+Tushare financial backfill progress: 233/6149 (3.8%), fetched=23, empty=196, 
+failed=14, inserted_rows=17, rate=27.4/min, elapsed=8m30s, eta=3h36m07s
+Tushare financial backfill progress: 261/6149 (4.2%), fetched=27, empty=220, 
+failed=14, inserted_rows=21, rate=28.9/min, elapsed=9m00s, eta=3h23m24s
+Tushare financial backfill progress: 269/6149 (4.4%), fetched=27, empty=224, 
+failed=18, inserted_rows=21, rate=28.0/min, elapsed=9m37s, eta=3h30m16s
+Tushare financial backfill progress: 299/6149 (4.9%), fetched=29, empty=251, 
+failed=19, inserted_rows=23, rate=29.3/min, elapsed=10m12s, eta=3h19m38s
+Tushare financial backfill progress: 307/6149 (5.0%), fetched=29, empty=256, 
+failed=22, inserted_rows=23, rate=28.6/min, elapsed=10m42s, eta=3h23m55s
+Tushare financial backfill progress: 328/6149 (5.3%), fetched=29, empty=277, 
+failed=22, inserted_rows=23, rate=29.2/min, elapsed=11m14s, eta=3h19m29s
+Tushare financial backfill progress: 339/6149 (5.5%), fetched=29, empty=286, 
+failed=24, inserted_rows=23, rate=28.8/min, elapsed=11m45s, eta=3h21m29s
+Tushare financial backfill progress: 360/6149 (5.9%), fetched=29, empty=307, 
+failed=24, inserted_rows=23, rate=29.3/min, elapsed=12m16s, eta=3h17m21s
+Tushare financial backfill progress: 368/6149 (6.0%), fetched=29, empty=313, 
+failed=26, inserted_rows=23, rate=28.8/min, elapsed=12m46s, eta=3h20m47s
+Tushare financial backfill progress: 383/6149 (6.2%), fetched=29, empty=328, 
+failed=26, inserted_rows=23, rate=27.9/min, elapsed=13m42s, eta=3h26m23s
+Tushare financial backfill progress: 408/6149 (6.6%), fetched=31, empty=351, 
+failed=26, inserted_rows=25, rate=28.7/min, elapsed=14m12s, eta=3h19m58s
+Tushare financial backfill progress: 418/6149 (6.8%), fetched=31, empty=358, 
+failed=29, inserted_rows=25, rate=28.4/min, elapsed=14m43s, eta=3h21m54s
+Tushare financial backfill progress: 445/6149 (7.2%), fetched=34, empty=382, 
+failed=29, inserted_rows=28, rate=29.2/min, elapsed=15m13s, eta=3h15m13s
+Tushare financial backfill progress: 453/6149 (7.4%), fetched=34, empty=387, 
+failed=32, inserted_rows=28, rate=28.8/min, elapsed=15m43s, eta=3h17m49s
+Tushare financial backfill progress: 482/6149 (7.8%), fetched=37, empty=412, 
+failed=33, inserted_rows=31, rate=29.6/min, elapsed=16m17s, eta=3h11m27s
+Tushare financial backfill progress: 488/6149 (7.9%), fetched=39, empty=413, 
+failed=36, inserted_rows=33, rate=29.1/min, elapsed=16m47s, eta=3h14m45s
+Tushare financial backfill progress: 516/6149 (8.4%), fetched=42, empty=437, 
+failed=37, inserted_rows=36, rate=29.7/min, elapsed=17m20s, eta=3h09m21s
+Tushare financial backfill progress: 527/6149 (8.6%), fetched=42, empty=445, 
+failed=40, inserted_rows=36, rate=29.5/min, elapsed=17m51s, eta=3h10m34s
+Tushare financial backfill progress: 551/6149 (9.0%), fetched=44, empty=465, 
+failed=42, inserted_rows=38, rate=29.8/min, elapsed=18m28s, eta=3h07m45s
+Tushare financial backfill progress: 563/6149 (9.2%), fetched=44, empty=476, 
+failed=43, inserted_rows=38, rate=29.6/min, elapsed=18m59s, eta=3h08m26s
+Tushare financial backfill progress: 580/6149 (9.4%), fetched=44, empty=492, 
+failed=44, inserted_rows=38, rate=29.7/min, elapsed=19m30s, eta=3h07m23s
+Tushare financial backfill progress: 596/6149 (9.7%), fetched=45, empty=505, 
+failed=46, inserted_rows=39, rate=29.8/min, elapsed=20m01s, eta=3h06m36s
+Tushare financial backfill progress: 612/6149 (10.0%), fetched=47, empty=517, 
+failed=48, inserted_rows=41, rate=29.7/min, elapsed=20m35s, eta=3h06m16s
+Tushare financial backfill progress: 631/6149 (10.3%), fetched=50, empty=532, 
+failed=49, inserted_rows=44, rate=29.9/min, elapsed=21m06s, eta=3h04m33s
+Tushare financial backfill progress: 647/6149 (10.5%), fetched=52, empty=543, 
+failed=52, inserted_rows=46, rate=29.9/min, elapsed=21m40s, eta=3h04m18s
+Tushare financial backfill progress: 674/6149 (11.0%), fetched=57, empty=564, 
+failed=53, inserted_rows=51, rate=30.4/min, elapsed=22m11s, eta=3h00m15s
+Tushare financial backfill progress: 684/6149 (11.1%), fetched=57, empty=570, 
+failed=57, inserted_rows=51, rate=30.1/min, elapsed=22m44s, eta=3h01m39s
+Tushare financial backfill progress: 711/6149 (11.6%), fetched=59, empty=595, 
+failed=57, inserted_rows=53, rate=30.6/min, elapsed=23m14s, eta=2h57m44s
+Tushare financial backfill progress: 719/6149 (11.7%), fetched=60, empty=598, 
+failed=61, inserted_rows=54, rate=30.3/min, elapsed=23m45s, eta=2h59m22s
+Tushare financial backfill progress: 740/6149 (12.0%), fetched=63, empty=616, 
+failed=61, inserted_rows=57, rate=30.5/min, elapsed=24m16s, eta=2h57m25s
+Tushare financial backfill progress: 750/6149 (12.2%), fetched=63, empty=624, 
+failed=63, inserted_rows=57, rate=30.2/min, elapsed=24m50s, eta=2h58m48s
+Tushare financial backfill progress: 771/6149 (12.5%), fetched=63, empty=645, 
+failed=63, inserted_rows=57, rate=30.4/min, elapsed=25m21s, eta=2h56m54s
+Tushare financial backfill progress: 778/6149 (12.7%), fetched=63, empty=650, 
+failed=65, inserted_rows=57, rate=30.1/min, elapsed=25m52s, eta=2h58m37s
+Tushare financial backfill progress: 799/6149 (13.0%), fetched=63, empty=671, 
+failed=65, inserted_rows=57, rate=30.3/min, elapsed=26m23s, eta=2h56m45s
+Tushare financial backfill progress: 807/6149 (13.1%), fetched=63, empty=677, 
+failed=67, inserted_rows=57, rate=30.0/min, elapsed=26m56s, eta=2h58m20s
+Tushare financial backfill progress: 822/6149 (13.4%), fetched=63, empty=692, 
+failed=67, inserted_rows=57, rate=29.9/min, elapsed=27m27s, eta=2h57m56s
+Tushare financial backfill progress: 829/6149 (13.5%), fetched=63, empty=697, 
+failed=69, inserted_rows=57, rate=29.7/min, elapsed=27m57s, eta=2h59m25s
+Tushare financial backfill progress: 855/6149 (13.9%), fetched=65, empty=720, 
+failed=70, inserted_rows=59, rate=29.9/min, elapsed=28m34s, eta=2h56m57s
+Tushare financial backfill progress: 865/6149 (14.1%), fetched=65, empty=729, 
+failed=71, inserted_rows=59, rate=29.7/min, elapsed=29m05s, eta=2h57m39s
+Tushare financial backfill progress: 887/6149 (14.4%), fetched=69, empty=745, 
+failed=73, inserted_rows=63, rate=29.9/min, elapsed=29m38s, eta=2h55m52s
+Tushare financial backfill progress: 906/6149 (14.7%), fetched=69, empty=763, 
+failed=74, inserted_rows=63, rate=30.0/min, elapsed=30m10s, eta=2h54m37s
+Tushare financial backfill progress: 921/6149 (15.0%), fetched=70, empty=774, 
+failed=77, inserted_rows=64, rate=29.9/min, elapsed=30m45s, eta=2h54m37s
+Tushare financial backfill progress: 945/6149 (15.4%), fetched=76, empty=792, 
+failed=77, inserted_rows=70, rate=30.2/min, elapsed=31m16s, eta=2h52m12s
+Tushare financial backfill progress: 955/6149 (15.5%), fetched=77, empty=797, 
+failed=81, inserted_rows=71, rate=30.0/min, elapsed=31m51s, eta=2h53m17s
+Tushare financial backfill progress: 985/6149 (16.0%), fetched=81, empty=823, 
+failed=81, inserted_rows=75, rate=30.4/min, elapsed=32m22s, eta=2h49m42s
+Tushare financial backfill progress: 993/6149 (16.1%), fetched=81, empty=828, 
+failed=84, inserted_rows=75, rate=30.1/min, elapsed=32m56s, eta=2h51m03s
+Tushare financial backfill progress: 1012/6149 (16.5%), fetched=85, empty=843, 
+failed=84, inserted_rows=79, rate=30.3/min, elapsed=33m27s, eta=2h49m48s
+Tushare financial backfill progress: 1020/6149 (16.6%), fetched=85, empty=850, 
+failed=85, inserted_rows=79, rate=30.0/min, elapsed=33m57s, eta=2h50m45s
+Tushare financial backfill progress: 1035/6149 (16.8%), fetched=85, empty=864, 
+failed=86, inserted_rows=79, rate=29.9/min, elapsed=34m35s, eta=2h50m54s
+Tushare financial backfill progress: 1044/6149 (17.0%), fetched=85, empty=871, 
+failed=88, inserted_rows=79, rate=29.7/min, elapsed=35m07s, eta=2h51m44s
+Tushare financial backfill progress: 1062/6149 (17.3%), fetched=95, empty=877, 
+failed=90, inserted_rows=89, rate=29.8/min, elapsed=35m39s, eta=2h50m47s
+Tushare financial backfill progress: 1073/6149 (17.4%), fetched=98, empty=884, 
+failed=91, inserted_rows=92, rate=29.7/min, elapsed=36m10s, eta=2h51m05s
+Tushare financial backfill progress: 1082/6149 (17.6%), fetched=98, empty=891, 
+failed=93, inserted_rows=92, rate=29.5/min, elapsed=36m42s, eta=2h51m52s
+Tushare financial backfill progress: 1100/6149 (17.9%), fetched=113, empty=893, 
+failed=94, inserted_rows=107, rate=29.6/min, elapsed=37m13s, eta=2h50m49s
+Tushare financial backfill progress: 1116/6149 (18.1%), fetched=124, empty=895, 
+failed=97, inserted_rows=118, rate=29.5/min, elapsed=37m49s, eta=2h50m33s
+Tushare financial backfill progress: 1138/6149 (18.5%), fetched=125, empty=916, 
+failed=97, inserted_rows=119, rate=29.7/min, elapsed=38m21s, eta=2h48m53s
+Tushare financial backfill progress: 1147/6149 (18.7%), fetched=125, empty=922, 
+failed=100, inserted_rows=119, rate=29.4/min, elapsed=38m57s, eta=2h49m53s
+Tushare financial backfill progress: 1174/6149 (19.1%), fetched=125, empty=949, 
+failed=100, inserted_rows=119, rate=29.7/min, elapsed=39m28s, eta=2h47m15s
+Tushare financial backfill progress: 1186/6149 (19.3%), fetched=126, empty=958, 
+failed=102, inserted_rows=120, rate=29.7/min, elapsed=39m58s, eta=2h47m16s
+Tushare financial backfill progress: 1219/6149 (19.8%), fetched=127, empty=990, 
+failed=102, inserted_rows=121, rate=30.1/min, elapsed=40m29s, eta=2h43m46s
+Tushare financial backfill progress: 1224/6149 (19.9%), fetched=127, empty=993, 
+failed=104, inserted_rows=121, rate=29.8/min, elapsed=41m00s, eta=2h45m00s
+Tushare financial backfill progress: 1238/6149 (20.1%), fetched=127, empty=1007,
+failed=104, inserted_rows=121, rate=29.8/min, elapsed=41m30s, eta=2h44m41s
+Tushare financial backfill progress: 1244/6149 (20.2%), fetched=127, empty=1012,
+failed=105, inserted_rows=121, rate=29.6/min, elapsed=42m03s, eta=2h45m50s
+Tushare financial backfill progress: 1259/6149 (20.5%), fetched=127, empty=1027,
+failed=105, inserted_rows=121, rate=29.6/min, elapsed=42m34s, eta=2h45m21s
+Tushare financial backfill progress: 1268/6149 (20.6%), fetched=127, empty=1035,
+failed=106, inserted_rows=121, rate=29.4/min, elapsed=43m06s, eta=2h45m56s
+Tushare financial backfill progress: 1280/6149 (20.8%), fetched=127, empty=1045,
+failed=108, inserted_rows=121, rate=29.3/min, elapsed=43m44s, eta=2h46m23s
+Tushare financial backfill progress: 1290/6149 (21.0%), fetched=127, empty=1054,
+failed=109, inserted_rows=121, rate=29.2/min, elapsed=44m14s, eta=2h46m38s
+Tushare financial backfill progress: 1299/6149 (21.1%), fetched=127, empty=1061,
+failed=111, inserted_rows=121, rate=29.0/min, elapsed=44m46s, eta=2h47m12s
+Tushare financial backfill progress: 1310/6149 (21.3%), fetched=127, empty=1072,
+failed=111, inserted_rows=121, rate=28.9/min, elapsed=45m16s, eta=2h47m16s
+Tushare financial backfill progress: 1318/6149 (21.4%), fetched=127, empty=1078,
+failed=113, inserted_rows=121, rate=28.8/min, elapsed=45m47s, eta=2h47m50s
+Tushare financial backfill progress: 1336/6149 (21.7%), fetched=127, empty=1096,
+failed=113, inserted_rows=121, rate=28.9/min, elapsed=46m18s, eta=2h46m47s
+Tushare financial backfill progress: 1346/6149 (21.9%), fetched=127, empty=1104,
+failed=115, inserted_rows=121, rate=28.7/min, elapsed=46m52s, eta=2h47m15s
+Tushare financial backfill progress: 1375/6149 (22.4%), fetched=131, empty=1129,
+failed=115, inserted_rows=125, rate=29.0/min, elapsed=47m22s, eta=2h44m29s
+Tushare financial backfill progress: 1388/6149 (22.6%), fetched=132, empty=1138,
+failed=118, inserted_rows=126, rate=29.0/min, elapsed=47m55s, eta=2h44m24s
+Tushare financial backfill progress: 1418/6149 (23.1%), fetched=134, empty=1166,
+failed=118, inserted_rows=128, rate=29.3/min, elapsed=48m26s, eta=2h41m36s
+Tushare financial backfill progress: 1425/6149 (23.2%), fetched=134, empty=1170,
+failed=121, inserted_rows=128, rate=29.1/min, elapsed=49m00s, eta=2h42m27s
+Tushare financial backfill progress: 1455/6149 (23.7%), fetched=140, empty=1194,
+failed=121, inserted_rows=134, rate=29.4/min, elapsed=49m30s, eta=2h39m43s
+Tushare financial backfill progress: 1461/6149 (23.8%), fetched=140, empty=1197,
+failed=124, inserted_rows=134, rate=29.2/min, elapsed=50m01s, eta=2h40m30s
+Tushare financial backfill progress: 1479/6149 (24.1%), fetched=143, empty=1212,
+failed=124, inserted_rows=137, rate=29.3/min, elapsed=50m32s, eta=2h39m35s
+Tushare financial backfill progress: 1484/6149 (24.1%), fetched=143, empty=1215,
+failed=126, inserted_rows=137, rate=29.1/min, elapsed=51m03s, eta=2h40m28s
+Tushare financial backfill progress: 1497/6149 (24.3%), fetched=143, empty=1227,
+failed=127, inserted_rows=137, rate=29.0/min, elapsed=51m37s, eta=2h40m27s
+Tushare financial backfill progress: 1504/6149 (24.5%), fetched=143, empty=1232,
+failed=129, inserted_rows=137, rate=28.8/min, elapsed=52m08s, eta=2h41m02s
+Tushare financial backfill progress: 1519/6149 (24.7%), fetched=143, empty=1245,
+failed=131, inserted_rows=137, rate=28.8/min, elapsed=52m46s, eta=2h40m51s
+Tushare financial backfill progress: 1535/6149 (25.0%), fetched=143, empty=1260,
+failed=132, inserted_rows=137, rate=28.8/min, elapsed=53m16s, eta=2h40m08s
+Tushare financial backfill progress: 1544/6149 (25.1%), fetched=143, empty=1267,
+failed=134, inserted_rows=137, rate=28.7/min, elapsed=53m47s, eta=2h40m27s
+Tushare financial backfill progress: 1561/6149 (25.4%), fetched=143, empty=1283,
+failed=135, inserted_rows=137, rate=28.7/min, elapsed=54m18s, eta=2h39m36s
+Tushare financial backfill progress: 1582/6149 (25.7%), fetched=143, empty=1302,
+failed=137, inserted_rows=137, rate=28.8/min, elapsed=54m53s, eta=2h38m26s
+Tushare financial backfill progress: 1604/6149 (26.1%), fetched=151, empty=1316,
+failed=137, inserted_rows=145, rate=29.0/min, elapsed=55m23s, eta=2h36m57s
+Tushare financial backfill progress: 1622/6149 (26.4%), fetched=151, empty=1332,
+failed=139, inserted_rows=145, rate=29.0/min, elapsed=55m55s, eta=2h36m06s
+Tushare financial backfill progress: 1647/6149 (26.8%), fetched=153, empty=1355,
+failed=139, inserted_rows=147, rate=29.2/min, elapsed=56m26s, eta=2h34m15s
+Tushare financial backfill progress: 1660/6149 (27.0%), fetched=155, empty=1364,
+failed=141, inserted_rows=149, rate=29.1/min, elapsed=56m59s, eta=2h34m06s
+Tushare financial backfill progress: 1694/6149 (27.5%), fetched=157, empty=1396,
+failed=141, inserted_rows=151, rate=29.5/min, elapsed=57m30s, eta=2h31m14s
+Tushare financial backfill progress: 1700/6149 (27.6%), fetched=157, empty=1399,
+failed=144, inserted_rows=151, rate=29.3/min, elapsed=58m00s, eta=2h31m49s
+Tushare financial backfill progress: 1731/6149 (28.2%), fetched=159, empty=1428,
+failed=144, inserted_rows=153, rate=29.6/min, elapsed=58m31s, eta=2h29m21s
+Tushare financial backfill progress: 1740/6149 (28.3%), fetched=160, empty=1433,
+failed=147, inserted_rows=154, rate=29.5/min, elapsed=59m02s, eta=2h29m36s
+Tushare financial backfill progress: 1755/6149 (28.5%), fetched=160, empty=1447,
+failed=148, inserted_rows=154, rate=29.4/min, elapsed=59m40s, eta=2h29m24s
+Tushare financial backfill progress: 1763/6149 (28.7%), fetched=160, empty=1453,
+failed=150, inserted_rows=154, rate=29.3/min, elapsed=1h00m10s, eta=2h29m41s
+Tushare financial backfill progress: 1775/6149 (28.9%), fetched=160, empty=1463,
+failed=152, inserted_rows=154, rate=29.2/min, elapsed=1h00m48s, eta=2h29m50s
+Tushare financial backfill progress: 1785/6149 (29.0%), fetched=160, empty=1472,
+failed=153, inserted_rows=154, rate=29.1/min, elapsed=1h01m19s, eta=2h29m56s
+Tushare financial backfill progress: 1793/6149 (29.2%), fetched=160, empty=1477,
+failed=156, inserted_rows=154, rate=28.9/min, elapsed=1h01m57s, eta=2h30m30s
+Tushare financial backfill progress: 1807/6149 (29.4%), fetched=160, empty=1491,
+failed=156, inserted_rows=154, rate=28.9/min, elapsed=1h02m29s, eta=2h30m09s
+Tushare financial backfill progress: 1812/6149 (29.5%), fetched=160, empty=1493,
+failed=159, inserted_rows=154, rate=28.7/min, elapsed=1h03m02s, eta=2h30m54s
+Tushare financial backfill progress: 1827/6149 (29.7%), fetched=160, empty=1508,
+failed=159, inserted_rows=154, rate=28.7/min, elapsed=1h03m34s, eta=2h30m23s
+Tushare financial backfill progress: 1835/6149 (29.8%), fetched=160, empty=1515,
+failed=160, inserted_rows=154, rate=28.6/min, elapsed=1h04m05s, eta=2h30m39s
+Tushare financial backfill progress: 1860/6149 (30.2%), fetched=162, empty=1538,
+failed=160, inserted_rows=156, rate=28.8/min, elapsed=1h04m36s, eta=2h28m57s
+Tushare financial backfill progress: 1867/6149 (30.4%), fetched=162, empty=1543,
+failed=162, inserted_rows=156, rate=28.7/min, elapsed=1h05m06s, eta=2h29m20s
+Tushare financial backfill progress: 1899/6149 (30.9%), fetched=163, empty=1573,
+failed=163, inserted_rows=157, rate=28.9/min, elapsed=1h05m41s, eta=2h27m02s
+Tushare financial backfill progress: 1911/6149 (31.1%), fetched=163, empty=1583,
+failed=165, inserted_rows=157, rate=28.9/min, elapsed=1h06m12s, eta=2h26m49s
+Tushare financial backfill progress: 1936/6149 (31.5%), fetched=163, empty=1606,
+failed=167, inserted_rows=157, rate=29.0/min, elapsed=1h06m47s, eta=2h25m20s
+Tushare financial backfill progress: 1955/6149 (31.8%), fetched=171, empty=1615,
+failed=169, inserted_rows=165, rate=29.1/min, elapsed=1h07m17s, eta=2h24m22s
+Tushare financial backfill progress: 1971/6149 (32.1%), fetched=183, empty=1616,
+failed=172, inserted_rows=177, rate=29.0/min, elapsed=1h07m54s, eta=2h23m56s
+Tushare financial backfill progress: 1995/6149 (32.4%), fetched=192, empty=1631,
+failed=172, inserted_rows=186, rate=29.2/min, elapsed=1h08m25s, eta=2h22m27s
+Tushare financial backfill progress: 2005/6149 (32.6%), fetched=195, empty=1635,
+failed=175, inserted_rows=189, rate=29.1/min, elapsed=1h08m56s, eta=2h22m28s
+Tushare financial backfill progress: 2029/6149 (33.0%), fetched=211, empty=1643,
+failed=175, inserted_rows=205, rate=29.2/min, elapsed=1h09m26s, eta=2h21m01s
+Tushare financial backfill progress: 2043/6149 (33.2%), fetched=219, empty=1647,
+failed=177, inserted_rows=213, rate=29.2/min, elapsed=1h09m59s, eta=2h20m40s
+Tushare financial backfill progress: 2057/6149 (33.5%), fetched=219, empty=1661,
+failed=177, inserted_rows=213, rate=29.2/min, elapsed=1h10m31s, eta=2h20m18s
+Tushare financial backfill progress: 2065/6149 (33.6%), fetched=219, empty=1667,
+failed=179, inserted_rows=213, rate=29.1/min, elapsed=1h11m03s, eta=2h20m31s
+Tushare financial backfill progress: 2079/6149 (33.8%), fetched=219, empty=1681,
+failed=179, inserted_rows=213, rate=29.0/min, elapsed=1h11m34s, eta=2h20m06s
+Tushare financial backfill progress: 2087/6149 (33.9%), fetched=219, empty=1688,
+failed=180, inserted_rows=213, rate=28.9/min, elapsed=1h12m05s, eta=2h20m19s
+Tushare financial backfill progress: 2096/6149 (34.1%), fetched=219, empty=1697,
+failed=180, inserted_rows=213, rate=28.7/min, elapsed=1h12m59s, eta=2h21m08s
+Tushare financial backfill progress: 2119/6149 (34.5%), fetched=231, empty=1708,
+failed=180, inserted_rows=225, rate=28.8/min, elapsed=1h13m30s, eta=2h19m48s
+Tushare financial backfill progress: 2126/6149 (34.6%), fetched=231, empty=1713,
+failed=182, inserted_rows=225, rate=28.7/min, elapsed=1h14m06s, eta=2h20m13s
+Tushare financial backfill progress: 2158/6149 (35.1%), fetched=262, empty=1713,
+failed=183, inserted_rows=256, rate=28.9/min, elapsed=1h14m43s, eta=2h18m10s
+Tushare financial backfill progress: 2171/6149 (35.3%), fetched=269, empty=1716,
+failed=186, inserted_rows=263, rate=28.9/min, elapsed=1h15m13s, eta=2h17m49s
+Tushare financial backfill progress: 2193/6149 (35.7%), fetched=272, empty=1734,
+failed=187, inserted_rows=266, rate=29.0/min, elapsed=1h15m44s, eta=2h16m38s
+Tushare financial backfill progress: 2204/6149 (35.8%), fetched=274, empty=1741,
+failed=189, inserted_rows=268, rate=28.9/min, elapsed=1h16m15s, eta=2h16m29s
+Tushare financial backfill progress: 2236/6149 (36.4%), fetched=278, empty=1769,
+failed=189, inserted_rows=272, rate=29.1/min, elapsed=1h16m45s, eta=2h14m20s
+Tushare financial backfill progress: 2244/6149 (36.5%), fetched=278, empty=1775,
+failed=191, inserted_rows=272, rate=29.0/min, elapsed=1h17m17s, eta=2h14m29s
+Tushare financial backfill progress: 2258/6149 (36.7%), fetched=278, empty=1789,
+failed=191, inserted_rows=272, rate=29.0/min, elapsed=1h17m49s, eta=2h14m07s
+Tushare financial backfill progress: 2268/6149 (36.9%), fetched=278, empty=1798,
+failed=192, inserted_rows=272, rate=28.9/min, elapsed=1h18m20s, eta=2h14m04s
+Tushare financial backfill progress: 2282/6149 (37.1%), fetched=278, empty=1811,
+failed=193, inserted_rows=272, rate=28.9/min, elapsed=1h18m57s, eta=2h13m48s
+Tushare financial backfill progress: 2293/6149 (37.3%), fetched=278, empty=1822,
+failed=193, inserted_rows=272, rate=28.9/min, elapsed=1h19m28s, eta=2h13m38s
+Tushare financial backfill progress: 2302/6149 (37.4%), fetched=278, empty=1829,
+failed=195, inserted_rows=272, rate=28.8/min, elapsed=1h20m01s, eta=2h13m44s
+Tushare financial backfill progress: 2313/6149 (37.6%), fetched=278, empty=1840,
+failed=195, inserted_rows=272, rate=28.7/min, elapsed=1h20m31s, eta=2h13m33s
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/zj/workspace/stok-mapping/phase0/cli.py", line 1632, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/home/zj/workspace/stok-mapping/phase0/cli.py", line 1500, in main
+    result = backfill_tushare_financials_from_config(
+        config_path,
+    ...<13 lines>...
+        progress_callback=lambda progress: _print_tushare_financial_progress(console, progress),
+    )
+  File "/home/zj/workspace/stok-mapping/phase0/tushare_history_backfill.py", line 1449, in backfill_tushare_financials_from_config
+    _mark_financial_missing_field_task(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        conn,
+        ^^^^^
+    ...<4 lines>...
+        missing_fields=task_missing_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/zj/workspace/stok-mapping/phase0/tushare_history_backfill.py", line 709, in _mark_financial_missing_field_task
+    conn.execute(
+    ~~~~~~~~~~~~^
+        f"""
+        ^^^^
+    ...<5 lines>...
+        tuple(params),
+        ^^^^^^^^^^^^^^
+    )
+    ^
+sqlite3.OperationalError: database is locked
