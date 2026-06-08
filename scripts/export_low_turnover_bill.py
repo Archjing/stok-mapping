@@ -32,12 +32,28 @@ DEFAULT_BILL_OUTPUT = "reports/phase0_low_turnover_bill.csv"
 DEFAULT_DAILY_OUTPUT = "reports/phase0_low_turnover_daily_assets.csv"
 DEFAULT_PREVIEW_OUTPUT = "reports/phase0_low_turnover_bill_preview.html"
 DEFAULT_PANEL_CACHE = "reports/cache/low_turnover_panel.pkl"
+DEFAULT_STRATEGY_ID = "legacy_momentum_low_turnover_v1"
 DEFAULT_PREVIEW_HEAD_ROWS = 120
 DEFAULT_PREVIEW_TAIL_ROWS = 120
 PREVIEW_SCROLL_WIDTH_VW = 96
 
 
-def _format_preview_html(df: pd.DataFrame, *, total_rows: int) -> str:
+def _strategy_report_cfg(config: dict[str, Any], strategy_id: str) -> dict[str, Any]:
+    reports_cfg = config.get("strategy_reports", {}) or {}
+    strategies_cfg = reports_cfg.get("strategies", {}) or {}
+    return dict(strategies_cfg.get(strategy_id, {}) or {})
+
+
+def _default_report_strategy_id(config: dict[str, Any]) -> str:
+    reports_cfg = config.get("strategy_reports", {}) or {}
+    return str(reports_cfg.get("default_strategy_id") or DEFAULT_STRATEGY_ID)
+
+
+def _bill_report_cfg(config: dict[str, Any], strategy_id: str) -> dict[str, Any]:
+    return dict(_strategy_report_cfg(config, strategy_id).get("bill", {}) or {})
+
+
+def _format_preview_html(df: pd.DataFrame, *, total_rows: int, title: str = "Phase 0 Strategy Bill Preview") -> str:
     if df.empty:
         body = "<p>No bill rows.</p>\n"
     else:
@@ -172,7 +188,7 @@ body {
             style
             + '<div class="page">\n'
             + '<div class="meta">\n'
-            + "<h1>Phase 0 Low Turnover Bill Preview</h1>\n"
+            + f"<h1>{html.escape(title)}</h1>\n"
             + f'<span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>\n'
             + f"<p>Full CSV rows: {total_rows} | Dashboard rows rendered: {len(df)}</p>\n"
             + "</div>\n"
@@ -184,7 +200,7 @@ body {
             + "\n</tbody>\n</table>\n</div>\n</div>\n"
         )
 
-    return "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Phase 0 Low Turnover Bill Preview</title>\n</head>\n<body>\n" + body + "\n</body>\n</html>\n"
+    return f"<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>{html.escape(title)}</title>\n</head>\n<body>\n" + body + "\n</body>\n</html>\n"
 
 
 def _build_preview_slice(
@@ -404,7 +420,7 @@ def _load_bfq_execution_price_frame(price_frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _build_low_turnover_fold_bill(
+def _build_strategy_fold_bill(
     *,
     strategy: Any,
     train: pd.DataFrame,
@@ -414,6 +430,7 @@ def _build_low_turnover_fold_bill(
     wcfg: dict[str, Any],
     names: dict[str, str],
     execution_cfg: dict[str, Any],
+    score_label: str = "策略分数",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     params = strategy.select_params(
         train,
@@ -443,6 +460,7 @@ def _build_low_turnover_fold_bill(
         stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
         params_text=params_text,
         execution_cfg=execution_cfg,
+        score_label=score_label,
     )
     metric = _calc_metrics(strategy_output.returns, strategy_output.exposure)
     bill["折年化收益"] = metric["annualized_return"]
@@ -615,18 +633,27 @@ def _ledger_for_fold(
     stamp_duty_sell: float,
     params_text: str,
     execution_cfg: dict[str, Any],
+    score_label: str = "策略分数",
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    required_signal_cols = {"date", "symbol", "weight"}
+    if signal_frame.empty or not required_signal_cols <= set(signal_frame.columns):
+        return pd.DataFrame(), pd.DataFrame()
     sf = _prepare_execution_frame(signal_frame, price_frame, execution_cfg)
     sf = sf.sort_values(["date", "symbol"]).reset_index(drop=True)
     sf["stock_name"] = sf["symbol"].map(names).fillna("")
+    for col in ["score", "rank"]:
+        if col not in sf.columns:
+            sf[col] = np.nan
     sf["prev_weight"] = sf.groupby("symbol")["weight"].shift(1).fillna(0.0)
+    if "held_days" not in sf.columns:
+        sf["held_days"] = 0
     sf["prev_held_days"] = sf.groupby("symbol")["held_days"].shift(1).fillna(0.0)
     sf["delta_weight"] = sf["weight"] - sf["prev_weight"]
-    buy_top_n = int(params["buy_top_n"])
-    hold_top_n = int(params["hold_top_n"])
-    buy_threshold = float(params["buy_threshold"])
-    hold_threshold = float(params["hold_threshold"])
-    min_hold_days = int(params["min_hold_days"])
+    buy_top_n = int(params.get("buy_top_n", params.get("top_n", 0)) or 0)
+    hold_top_n = int(params.get("hold_top_n", buy_top_n) or buy_top_n)
+    buy_threshold = params.get("buy_threshold")
+    hold_threshold = params.get("hold_threshold", buy_threshold)
+    min_hold_days = int(params.get("min_hold_days", 0) or 0)
 
     def classify_reason(row: pd.Series) -> str:
         score = row.get("score")
@@ -638,10 +665,10 @@ def _ledger_for_fold(
         if curr_weight > prev_weight:
             if prev_weight <= 1e-12:
                 reasons = []
-                if pd.notna(rank) and float(rank) <= buy_top_n:
+                if buy_top_n > 0 and pd.notna(rank) and float(rank) <= buy_top_n:
                     reasons.append("新进前N")
-                if pd.notna(score) and float(score) > buy_threshold:
-                    reasons.append("满足动量阈值")
+                if buy_threshold is not None and pd.notna(score) and float(score) > float(buy_threshold):
+                    reasons.append("满足买入阈值")
                 if not reasons:
                     reasons.append("调仓纳入持仓")
                 return "调仓买入-" + "、".join(reasons)
@@ -653,9 +680,9 @@ def _ledger_for_fold(
                 if pd.isna(score) or pd.isna(rank):
                     reasons.append("当日无有效信号")
                 else:
-                    if float(score) <= hold_threshold:
+                    if hold_threshold is not None and float(score) <= float(hold_threshold):
                         reasons.append("跌破持有阈值")
-                    if float(rank) > hold_top_n:
+                    if hold_top_n > 0 and float(rank) > hold_top_n:
                         reasons.append("跌出持有排名")
                 if prev_held_days >= min_hold_days:
                     reasons.append("满足最小持有期")
@@ -1046,7 +1073,7 @@ def _ledger_for_fold(
             "trade_cost": "交易成本",
             "target_weight": "目标权重",
             "actual_weight_after_trade": "实际权重",
-            "score": "动量分数",
+            "score": score_label,
             "rank": "当日排名",
             "selected_params": "策略参数",
         }
@@ -1054,25 +1081,36 @@ def _ledger_for_fold(
     return bill, daily
 
 
-def export_low_turnover_bill(
+def export_strategy_bill(
     *,
     config_path: Path,
-    output: str | Path = DEFAULT_BILL_OUTPUT,
-    daily_output: str | Path = DEFAULT_DAILY_OUTPUT,
-    preview_output: str | Path = DEFAULT_PREVIEW_OUTPUT,
+    output: str | Path | None = None,
+    daily_output: str | Path | None = None,
+    preview_output: str | Path | None = None,
     valid_start: str | None = None,
     valid_end: str | None = None,
     years: int | None = None,
-    panel_cache: str | Path = DEFAULT_PANEL_CACHE,
+    panel_cache: str | Path | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
     walk_forward_overrides: dict[str, Any] | None = None,
     execution_overrides: dict[str, Any] | None = None,
+    strategy_id: str | None = None,
+    preview_title: str | None = None,
+    score_label: str | None = None,
 ) -> dict[str, Any]:
-    """Export the selected low-turnover strategy bill used by Phase 0 reports."""
+    """Export account-level bill artifacts for any registered portfolio strategy."""
     root = Path.cwd()
     config_path = _resolve_path(root, config_path)
     config = load_config(config_path)
+    strategy_id = str(strategy_id or _default_report_strategy_id(config))
+    report_cfg = _bill_report_cfg(config, strategy_id)
+    output = output or report_cfg.get("output", DEFAULT_BILL_OUTPUT)
+    daily_output = daily_output or report_cfg.get("daily_output", DEFAULT_DAILY_OUTPUT)
+    preview_output = preview_output or report_cfg.get("preview_output", DEFAULT_PREVIEW_OUTPUT)
+    panel_cache = panel_cache or report_cfg.get("panel_cache", DEFAULT_PANEL_CACHE)
+    preview_title = preview_title or report_cfg.get("preview_title")
+    score_label = score_label or str(report_cfg.get("score_label", "策略分数"))
     if walk_forward_overrides:
         config.setdefault("walk_forward", {}).update(walk_forward_overrides)
     if execution_overrides:
@@ -1091,7 +1129,7 @@ def export_low_turnover_bill(
     validate_years = int(window_cfg["validate_years"])
     execution_cfg = _execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
-    strategy = get_strategy("legacy_momentum_low_turnover_v1")
+    strategy = get_strategy(strategy_id)
     history_years = int(years or config["years"])
     use_point_in_time_universe = bool(
         config.get("universe", {}).get("enabled", False)
@@ -1121,7 +1159,7 @@ def export_low_turnover_bill(
             valid_dates = set(pd.to_datetime(ctx["valid"]["date"]).dt.normalize().unique())
             train = prepared[prepared["date"].isin(train_dates)].copy()
             valid = prepared[prepared["date"].isin(valid_dates)].copy()
-            bill, daily = _build_low_turnover_fold_bill(
+            bill, daily = _build_strategy_fold_bill(
                 strategy=strategy,
                 train=train,
                 valid=valid,
@@ -1130,6 +1168,7 @@ def export_low_turnover_bill(
                 wcfg=wcfg,
                 names=names,
                 execution_cfg=execution_cfg,
+                score_label=score_label,
             )
             if not bill.empty:
                 bill["股票池模式"] = "point_in_time"
@@ -1170,7 +1209,7 @@ def export_low_turnover_bill(
             validate_years=validate_years,
             min_samples=int(wcfg["min_samples"]),
         ):
-            bill, daily = _build_low_turnover_fold_bill(
+            bill, daily = _build_strategy_fold_bill(
                 strategy=strategy,
                 train=train,
                 valid=valid,
@@ -1179,6 +1218,7 @@ def export_low_turnover_bill(
                 wcfg=wcfg,
                 names=names,
                 execution_cfg=execution_cfg,
+                score_label=score_label,
             )
             all_bills.append(bill)
             all_daily.append(daily)
@@ -1202,11 +1242,11 @@ def export_low_turnover_bill(
     for col in ["账户总资产", "股票资产", "现金资产", "成交价", "收益额", "成交金额"]:
         if col in preview.columns:
             preview[col] = preview[col].map(lambda x: f"{float(x):,.2f}" if str(x) not in {"", "nan", "NaT"} else "")
-    for col in ["收益率", "折年化收益", "折Sharpe", "动量分数", "最大成交参与率"]:
+    for col in ["收益率", "折年化收益", "折Sharpe", score_label, "最大成交参与率"]:
         if col in preview.columns:
             preview[col] = preview[col].map(lambda x: f"{float(x):.4f}" if str(x) not in {"", "nan", "NaT"} else "")
     preview_path.write_text(
-        _format_preview_html(preview, total_rows=len(bill_df)),
+        _format_preview_html(preview, total_rows=len(bill_df), title=preview_title or f"Phase 0 Strategy Bill Preview - {strategy_id}"),
         encoding="utf-8",
     )
     return {
@@ -1217,28 +1257,38 @@ def export_low_turnover_bill(
         "daily_rows": len(daily_df),
         "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
         "universe_audit_rows": len(universe_audit),
+        "strategy_id": strategy_id,
     }
+
+
+def export_low_turnover_bill(**kwargs: Any) -> dict[str, Any]:
+    """Backward-compatible wrapper for the historical low-turnover bill command."""
+    kwargs.setdefault("strategy_id", DEFAULT_STRATEGY_ID)
+    kwargs.setdefault("preview_title", "Phase 0 Low Turnover Bill Preview")
+    return export_strategy_bill(**kwargs)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--output", default=DEFAULT_BILL_OUTPUT)
-    parser.add_argument("--daily-output", default=DEFAULT_DAILY_OUTPUT)
-    parser.add_argument("--preview-output", default=DEFAULT_PREVIEW_OUTPUT)
+    parser.add_argument("--output", default=None, help="Output CSV path; defaults to strategy_reports.<strategy>.bill.output")
+    parser.add_argument("--daily-output", default=None, help="Daily assets CSV path; defaults to strategy_reports.<strategy>.bill.daily_output")
+    parser.add_argument("--preview-output", default=None, help="Preview HTML path; defaults to strategy_reports.<strategy>.bill.preview_output")
     parser.add_argument("--valid-start", default=None, help="Optional inclusive validation date lower bound, e.g. 2018-08-01")
     parser.add_argument("--valid-end", default=None, help="Optional inclusive validation date upper bound, e.g. 2022-10-31")
     parser.add_argument("--years", type=int, default=None, help="Optional history lookback override for period validation")
+    parser.add_argument("--strategy-id", default=None, help="Registered strategy ID to export; defaults to strategy_reports.default_strategy_id")
+    parser.add_argument("--score-label", default=None, help="Display label for the score column")
     parser.add_argument(
         "--panel-cache",
-        default=DEFAULT_PANEL_CACHE,
-        help="Cached aligned market panel path; relative paths are resolved from project root",
+        default=None,
+        help="Cached aligned market panel path; defaults to strategy_reports.<strategy>.bill.panel_cache",
     )
     parser.add_argument("--refresh-cache", action="store_true", help="Rebuild the cached market panel before exporting")
     parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     args = parser.parse_args()
 
-    result = export_low_turnover_bill(
+    result = export_strategy_bill(
         config_path=Path(args.config),
         output=args.output,
         daily_output=args.daily_output,
@@ -1246,6 +1296,8 @@ def main() -> int:
         valid_start=args.valid_start,
         valid_end=args.valid_end,
         years=args.years,
+        strategy_id=args.strategy_id,
+        score_label=args.score_label,
         panel_cache=args.panel_cache,
         refresh_cache=bool(args.refresh_cache),
         no_panel_cache=bool(args.no_panel_cache),

@@ -175,13 +175,15 @@ def _run_db_health_gate(
 def _export_phase0_low_turnover_bill(
     *,
     config_path: Path,
+    strategy_id: str | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
-    from scripts.export_low_turnover_bill import export_low_turnover_bill
+    from scripts.export_low_turnover_bill import export_strategy_bill
 
-    return export_low_turnover_bill(
+    return export_strategy_bill(
         config_path=config_path,
+        strategy_id=strategy_id,
         refresh_cache=refresh_cache,
         no_panel_cache=no_panel_cache,
     )
@@ -201,6 +203,7 @@ def _export_phase0_market_regime_report() -> dict:
 def _export_phase0_oos_report(
     *,
     config_path: Path,
+    strategy_id: str | None = None,
     profile: str | None = None,
     output_dir: str | None = None,
     refresh_cache: bool = False,
@@ -214,10 +217,11 @@ def _export_phase0_oos_report(
     enable_limit_check: bool | None = None,
     enable_suspension_check: bool | None = None,
 ) -> dict:
-    from scripts.export_low_turnover_oos_report import export_low_turnover_oos_report
+    from scripts.export_low_turnover_oos_report import export_strategy_oos_report
 
-    return export_low_turnover_oos_report(
+    return export_strategy_oos_report(
         config_path=config_path,
+        strategy_id=strategy_id,
         profile=profile,
         output_dir=output_dir,
         refresh_cache=refresh_cache,
@@ -301,6 +305,7 @@ def _export_brief_account_bill(*, config_path: Path, brief_date: str | None = No
 def _export_phase0_execution_gate(
     *,
     config_path: Path,
+    strategy_id: str | None = None,
     profile: str | None = None,
     output_dir: str | None = None,
     refresh_cache: bool = False,
@@ -318,6 +323,7 @@ def _export_phase0_execution_gate(
 
     return export_execution_effectiveness_report(
         config_path=config_path,
+        strategy_id=strategy_id,
         profile=profile,
         output_dir=output_dir,
         refresh_cache=refresh_cache,
@@ -461,7 +467,7 @@ def run_phase0(config_path: Path) -> int:
         gate_cfg=cfg.get("walk_forward", {}).get("gate", {}),
     )
 
-    console.print("4) Exporting selected low-turnover bill and daily assets...")
+    console.print("4) Exporting selected strategy bill and daily assets...")
     bill_result = _export_phase0_low_turnover_bill(config_path=config_path)
     console.print(f"Bill: {bill_result['bill']}")
     console.print(f"Daily assets: {bill_result['daily']}")
@@ -672,14 +678,16 @@ def main() -> int:
         action="store_true",
         help="Use cost_sensitivity.scenarios from config.yaml. Required when --scenario is omitted.",
     )
-    bill_parser = sub.add_parser("bill", help="Export selected phase0 low-turnover bill artifacts")
+    bill_parser = sub.add_parser("bill", help="Export selected phase0 strategy bill artifacts")
     bill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    bill_parser.add_argument("--strategy-id", default=None, help="Registered strategy ID; defaults to strategy_reports.default_strategy_id")
     bill_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     bill_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     market_regime_parser = sub.add_parser("market-regime", help="Export phase0 market-regime validation report")
     market_regime_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     oos_parser = sub.add_parser("oos-report", help="Export phase0 continuous OOS report with execution profile")
     oos_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    oos_parser.add_argument("--strategy-id", default=None, help="Registered strategy ID; defaults to strategy_reports.default_strategy_id")
     oos_parser.add_argument("--profile", choices=["research", "live"], default=None, help="Execution parameter profile: research or live")
     oos_parser.add_argument("--output-dir", default=None, help="Optional standalone output directory for OOS artifacts")
     oos_parser.add_argument("--slippage", type=float, default=None, help="Override profile slippage for this run")
@@ -829,6 +837,7 @@ def main() -> int:
     daily_brief_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
     execution_gate_parser = sub.add_parser("execution-gate", help="Run phase0 account execution effectiveness gate")
     execution_gate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    execution_gate_parser.add_argument("--strategy-id", default=None, help="Registered strategy ID; defaults to strategy_reports.default_strategy_id")
     execution_gate_parser.add_argument("--profile", choices=["research", "live"], default=None, help="Execution parameter profile: research or live")
     execution_gate_parser.add_argument("--output-dir", default=None, help="Optional standalone output directory for live execution backtest artifacts")
     execution_gate_parser.add_argument("--slippage", type=float, default=None, help="Override profile slippage for this run")
@@ -940,10 +949,12 @@ def main() -> int:
         console.print("[bold]Phase 0 bill export started[/bold]")
         result = _export_phase0_low_turnover_bill(
             config_path=config_path,
+            strategy_id=args.strategy_id,
             refresh_cache=bool(args.refresh_cache),
             no_panel_cache=bool(args.no_panel_cache),
         )
         console.print("[green]Bill export complete[/green]")
+        console.print(f"Strategy: {result.get('strategy_id', '')}")
         console.print(f"Bill: {result['bill']}")
         console.print(f"Daily assets: {result['daily']}")
         console.print(f"Preview: {result['preview']}")
@@ -965,6 +976,7 @@ def main() -> int:
         console.print("[bold]Phase 0 OOS report started[/bold]")
         result = _export_phase0_oos_report(
             config_path=config_path,
+            strategy_id=args.strategy_id,
             profile=args.profile,
             output_dir=args.output_dir,
             refresh_cache=bool(args.refresh_cache),
@@ -979,6 +991,7 @@ def main() -> int:
             enable_suspension_check=args.enable_suspension_check,
         )
         console.print("[green]OOS report complete[/green]")
+        console.print(f"Strategy: {result.get('strategy_id', '')}")
         console.print(f"Profile: {result['profile']}")
         console.print(f"Daily assets: {result['daily_assets']}")
         console.print(f"Report: {result['report']}")
@@ -1391,6 +1404,7 @@ def main() -> int:
         console.print("[bold]Phase 0 account execution gate started[/bold]")
         result = _export_phase0_execution_gate(
             config_path=config_path,
+            strategy_id=args.strategy_id,
             profile=args.profile,
             output_dir=args.output_dir,
             refresh_cache=bool(args.refresh_cache),
@@ -1405,6 +1419,7 @@ def main() -> int:
             enable_suspension_check=args.enable_suspension_check,
         )
         console.print("[green]Account execution gate complete[/green]")
+        console.print(f"Strategy: {result.get('strategy_id', '')}")
         console.print(f"Verdict: {result['verdict']}")
         console.print(f"Folds: {result['folds']}")
         console.print(f"Report: {result['report']}")

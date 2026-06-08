@@ -587,6 +587,30 @@ phase0:
       star: 0.20
       chinext: 0.20
       bj: 0.30
+  strategy_reports:
+    default_strategy_id: "legacy_momentum_low_turnover_v1"
+    strategies:
+      legacy_momentum_low_turnover_v1:
+        display_name: "低换手经典动量"
+        bill:
+          output: "reports/phase0_low_turnover_bill.csv"
+          daily_output: "reports/phase0_low_turnover_daily_assets.csv"
+          preview_output: "reports/phase0_low_turnover_bill_preview.html"
+          panel_cache: "reports/cache/low_turnover_panel.pkl"
+          preview_title: "Phase 0 Low Turnover Bill Preview"
+          score_label: "策略分数"
+        oos:
+          output_dir: "reports/live_execution_backtest"
+          daily_assets: "reports/live_execution_backtest/oos_daily_assets.csv"
+          report_output: "reports/live_execution_backtest/oos_report.html"
+          curve_output: "reports/live_execution_backtest/oos_curve.csv"
+          fold_output: "reports/live_execution_backtest/oos_fold_compare.csv"
+          title: "Phase 0 Low Turnover Continuous OOS Report"
+          checkpoint_date: "2025-05-30"
+          checkpoint_note: "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。"
+        period_compare:
+          title: "低换手经典动量：早期区间与当前区间对比"
+          note: "两段都沿用 walk-forward 的 2 年训练 + 1 年验证方法。该表用于观察策略是否只适配最近区间。"
   live_execution_backtest:
     name: "实盘仿真回测"
     default_profile: "live"

@@ -2,11 +2,26 @@ from __future__ import annotations
 
 import argparse
 import html
+import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from phase0.config import load_config
+from scripts.export_low_turnover_bill import DEFAULT_STRATEGY_ID, _default_report_strategy_id, _strategy_report_cfg
+
+
+DEFAULT_COMPARE_TITLE = "策略 OOS：早期区间与当前区间对比"
+DEFAULT_COMPARE_NOTE = "两段应沿用相同 walk-forward 与执行口径；该表用于观察策略是否只适配某一段市场环境。"
+
+
+def _period_compare_cfg(config: dict[str, Any], strategy_id: str) -> dict[str, Any]:
+    return dict(_strategy_report_cfg(config, strategy_id).get("period_compare", {}) or {})
 
 
 def _annualized_return(returns: pd.Series) -> float:
@@ -90,29 +105,31 @@ def _parse_pct(text: str) -> float:
     return float(str(text).rstrip("%")) / 100.0
 
 
-def _conclusion(summary: pd.DataFrame) -> tuple[str, list[dict[str, str]]]:
-    early = summary[summary["区间"] == "早期区间"].iloc[0]
-    current = summary[summary["区间"] == "当前区间"].iloc[0]
+def _conclusion(summary: pd.DataFrame, *, early_label: str, current_label: str) -> tuple[str, list[dict[str, str]]]:
+    early = summary[summary["区间"] == early_label].iloc[0]
+    current = summary[summary["区间"] == current_label].iloc[0]
     early_excess = _parse_pct(early["超额收益"])
     current_excess = _parse_pct(current["超额收益"])
     early_sharpe = float(early["策略Sharpe"])
     current_sharpe = float(current["策略Sharpe"])
 
     if early_excess > 0 and current_excess > 0:
-        text = "结论：早期区间和当前区间都取得正超额收益，暂未看到该策略只依赖最近行情的明显证据。"
+        text = f"结论：{early_label}和{current_label}都取得正超额收益，暂未看到该策略只依赖单一区间的明显证据。"
     else:
         text = "结论：不同区间表现存在明显分化，需要继续拆解市场状态和因子暴露。"
 
     cards = [
-        {"指标": "早期超额收益", "数值": early["超额收益"]},
-        {"指标": "当前超额收益", "数值": current["超额收益"]},
+        {"指标": f"{early_label}超额收益", "数值": early["超额收益"]},
+        {"指标": f"{current_label}超额收益", "数值": current["超额收益"]},
         {"指标": "Sharpe 差异", "数值": _fmt_float(early_sharpe - current_sharpe)},
     ]
     return text, cards
 
 
-def _build_html(summary: pd.DataFrame) -> str:
-    conclusion, cards = _conclusion(summary)
+def _build_html(summary: pd.DataFrame, *, title: str, note: str) -> str:
+    early_label = str(summary["区间"].iloc[0])
+    current_label = str(summary["区间"].iloc[1])
+    conclusion, cards = _conclusion(summary, early_label=early_label, current_label=current_label)
     cards_html = "".join(
         f'<div class="card"><span>{html.escape(item["指标"])}</span><strong>{html.escape(item["数值"])}</strong></div>'
         for item in cards
@@ -255,17 +272,17 @@ th {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Low Turnover Period Compare</title>
+  <title>{html.escape(title)}</title>
   {style}
 </head>
 <body>
   <main class="page">
     <div class="hero">
       <div class="title-row">
-        <h1>低换手经典动量：早期区间与当前区间对比</h1>
+        <h1>{html.escape(title)}</h1>
         <span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
       </div>
-      <p class="note">两段都沿用 walk-forward 的 2 年训练 + 1 年验证方法。该表用于观察策略是否只适配最近区间。</p>
+      <p class="note">{html.escape(note)}</p>
     </div>
     <div class="decision">{html.escape(conclusion)}</div>
     <div class="cards">{cards_html}</div>
@@ -280,20 +297,32 @@ th {
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compare low-turnover strategy OOS periods")
+    parser = argparse.ArgumentParser(description="Compare strategy OOS periods")
+    parser.add_argument("--config", type=Path, default=Path("config.yaml"))
+    parser.add_argument("--strategy-id", default=None)
     parser.add_argument("--early-curve", type=Path, default=Path("reports/phase0_low_turnover_oos_curve_201808_202210.csv"))
     parser.add_argument("--current-curve", type=Path, default=Path("reports/phase0_low_turnover_oos_curve.csv"))
     parser.add_argument("--output", type=Path, default=Path("reports/phase0_low_turnover_period_compare.html"))
+    parser.add_argument("--early-label", default="早期区间")
+    parser.add_argument("--current-label", default="当前区间")
+    parser.add_argument("--title", default=None)
+    parser.add_argument("--note", default=None)
     args = parser.parse_args()
+    config_path = args.config if args.config.is_absolute() else Path.cwd() / args.config
+    config = load_config(config_path)
+    strategy_id = str(args.strategy_id or _default_report_strategy_id(config) or DEFAULT_STRATEGY_ID)
+    report_cfg = _period_compare_cfg(config, strategy_id)
+    title = args.title or str(report_cfg.get("title") or DEFAULT_COMPARE_TITLE)
+    note = args.note or str(report_cfg.get("note") or DEFAULT_COMPARE_NOTE)
 
     summary = pd.DataFrame(
         [
-            _summarize("早期区间", args.early_curve),
-            _summarize("当前区间", args.current_curve),
+            _summarize(args.early_label, args.early_curve),
+            _summarize(args.current_label, args.current_curve),
         ]
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(_build_html(summary), encoding="utf-8")
+    args.output.write_text(_build_html(summary, title=title, note=note), encoding="utf-8")
     print(args.output)
 
 

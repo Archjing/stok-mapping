@@ -13,8 +13,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from scripts.export_low_turnover_bill import (
+    _default_report_strategy_id,
     _execution_settings,
-    export_low_turnover_bill,
+    export_strategy_bill,
 )
 
 
@@ -139,7 +140,7 @@ def _max_drawdown(returns: pd.Series) -> float:
     return float((equity / peak - 1.0).min())
 
 
-def _fold_metrics(daily: pd.DataFrame, bill: pd.DataFrame) -> pd.DataFrame:
+def _fold_metrics(daily: pd.DataFrame, bill: pd.DataFrame, *, strategy_id: str) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     bill_by_fold = bill.groupby("折号") if not bill.empty and "折号" in bill.columns else {}
     for fold, fold_df in daily.groupby("fold", sort=True):
@@ -167,7 +168,7 @@ def _fold_metrics(daily: pd.DataFrame, bill: pd.DataFrame) -> pd.DataFrame:
                 "trades": int(len(executed)),
                 "passed_min_samples": True,
                 "selected_params": str(one["selected_params"].dropna().iloc[0]) if "selected_params" in one.columns and one["selected_params"].notna().any() else "",
-                "candidate": "legacy_momentum_low_turnover_v1_account_execution_v2",
+                "candidate": f"{strategy_id}_account_execution_v2",
                 "panel_scope": "portfolio",
                 "final_account_assets": float(one["account_total_assets"].iloc[-1]),
                 "min_cash_assets": float(one["cash_assets"].min()) if "cash_assets" in one.columns else 0.0,
@@ -182,6 +183,7 @@ def _summary_from_folds(
     folds: pd.DataFrame,
     governance_cfg: dict[str, Any],
     *,
+    strategy_id: str,
     bill: pd.DataFrame | None = None,
     daily: pd.DataFrame | None = None,
 ) -> dict[str, Any]:
@@ -190,7 +192,7 @@ def _summary_from_folds(
     selected_candidate_eligible = fold_count >= min_portfolio_fold_count
     summary: dict[str, Any] = {
         "status": "ok" if fold_count else "failed",
-        "selected_candidate": "legacy_momentum_low_turnover_v1_account_execution_v2",
+        "selected_candidate": f"{strategy_id}_account_execution_v2",
         "selected_candidate_eligible": selected_candidate_eligible,
         "selected_candidate_governance_reason": "eligible" if selected_candidate_eligible else f"portfolio_fold_count<{min_portfolio_fold_count}",
         "fold_count": fold_count,
@@ -424,6 +426,7 @@ def _write_report(
 def export_execution_effectiveness_report(
     *,
     config_path: Path,
+    strategy_id: str | None = None,
     profile: str | None = None,
     output_dir: str | Path | None = None,
     fold_output: str | Path | None = None,
@@ -442,6 +445,7 @@ def export_execution_effectiveness_report(
     root = Path.cwd()
     config_path = config_path if config_path.is_absolute() else root / config_path
     config = load_config(config_path)
+    strategy_id = str(strategy_id or _default_report_strategy_id(config))
     selected_profile = str(profile or config.get("live_execution_backtest", {}).get("default_profile", "live"))
     profile_cfg = _profile_settings(config, selected_profile)
     effective_config, walk_forward_overrides, execution_overrides = _apply_profile_to_config(
@@ -477,8 +481,9 @@ def export_execution_effectiveness_report(
         for key in ["slippage", "commission", "stamp_duty_sell"]
         if key in effective_config.get("walk_forward", {})
     }
-    bill_result = export_low_turnover_bill(
+    bill_result = export_strategy_bill(
         config_path=config_path,
+        strategy_id=strategy_id,
         output=live_cfg["bill_output"],
         daily_output=live_cfg["daily_output"],
         preview_output=live_cfg["preview_output"],
@@ -492,11 +497,12 @@ def export_execution_effectiveness_report(
     bill = pd.read_csv(bill_result["bill"])
     daily = pd.read_csv(bill_result["daily"])
     daily["date"] = pd.to_datetime(daily["date"])
-    folds = _fold_metrics(daily, bill)
+    folds = _fold_metrics(daily, bill, strategy_id=strategy_id)
     gate_cfg = effective_config.get("live_execution_backtest", {}).get("gate", {})
     summary = _summary_from_folds(
         folds,
         effective_config.get("walk_forward", {}).get("strategy_v2", {}).get("candidate_governance", {}),
+        strategy_id=strategy_id,
         bill=bill,
         daily=daily,
     )
@@ -530,12 +536,14 @@ def export_execution_effectiveness_report(
         "daily": bill_result["daily"],
         "preview": bill_result["preview"],
         "pipeline": live_cfg["name"],
+        "strategy_id": strategy_id,
     }
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--strategy-id", default=None)
     parser.add_argument("--profile", default=None, choices=["research", "live"])
     parser.add_argument("--output-dir", default=None)
     parser.add_argument("--fold-output", default=None)
@@ -553,6 +561,7 @@ def main() -> int:
     args = parser.parse_args()
     result = export_execution_effectiveness_report(
         config_path=Path(args.config),
+        strategy_id=args.strategy_id,
         profile=args.profile,
         output_dir=args.output_dir,
         fold_output=args.fold_output,

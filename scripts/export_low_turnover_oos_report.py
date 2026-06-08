@@ -19,13 +19,23 @@ from scripts.export_execution_effectiveness_report import (
     _live_backtest_settings,
     _profile_settings,
 )
-from scripts.export_low_turnover_bill import export_low_turnover_bill
+from scripts.export_low_turnover_bill import (
+    DEFAULT_STRATEGY_ID,
+    _default_report_strategy_id,
+    _strategy_report_cfg,
+    export_strategy_bill,
+)
 
 
 DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "reports/live_execution_backtest/oos_daily_assets.csv"
 DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "reports/live_execution_backtest/oos_report.html"
 DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "reports/live_execution_backtest/oos_curve.csv"
 DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "reports/live_execution_backtest/oos_fold_compare.csv"
+DEFAULT_CHECKPOINT_DATE = "2025-05-30"
+DEFAULT_CHECKPOINT_NOTE = (
+    "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。"
+    "预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。"
+)
 
 
 def _annualized_return(returns: pd.Series) -> float:
@@ -214,6 +224,7 @@ def _build_report_html(
     fold_breakdown: pd.DataFrame,
     *,
     report_title: str,
+    strategy_id: str,
     checkpoint_date: str | None,
     checkpoint_note: str,
     profile_name: str = "",
@@ -410,7 +421,7 @@ section h2 {
         <span class="generated-at">生成时间：{datetime.now().strftime("%Y-%m-%d %H:%M")}</span>
       </div>
       <div class="meta-grid">
-        <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">legacy_momentum_low_turnover_v1</span></div>
+        <div class="meta-card"><span class="meta-label">策略</span><span class="meta-value">{strategy_id}</span></div>
         <div class="meta-card"><span class="meta-label">连续样本外区间</span><span class="meta-value">{start_date} 至 {end_date}</span></div>
         <div class="meta-card"><span class="meta-label">样本外交易日</span><span class="meta-value">{total_days}</span></div>
         <div class="meta-card"><span class="meta-label">基准</span><span class="meta-value">{benchmark_symbol} / {benchmark_name}</span></div>
@@ -445,18 +456,19 @@ section h2 {
 """
 
 
-def export_low_turnover_oos_report(
+def export_strategy_oos_report(
     *,
     config_path: Path,
+    strategy_id: str | None = None,
     profile: str | None = None,
     output_dir: str | Path | None = None,
     daily_assets_path: Path | None = None,
     report_output: Path | None = None,
     curve_output: Path | None = None,
     fold_output: Path | None = None,
-    title: str = "Phase 0 Low Turnover Continuous OOS Report",
-    checkpoint_date: str | None = "2025-05-30",
-    checkpoint_note: str = "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+    title: str | None = None,
+    checkpoint_date: str | None = None,
+    checkpoint_note: str | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
     slippage: float | None = None,
@@ -471,6 +483,8 @@ def export_low_turnover_oos_report(
     root = Path.cwd()
     config_path = config_path if config_path.is_absolute() else root / config_path
     config = load_config(config_path)
+    strategy_id = str(strategy_id or _default_report_strategy_id(config))
+    oos_cfg = dict(_strategy_report_cfg(config, strategy_id).get("oos", {}) or {})
     selected_profile = str(profile or config.get("live_execution_backtest", {}).get("default_profile", "live"))
     profile_cfg = _profile_settings(config, selected_profile)
     effective_config, _, _ = _apply_profile_to_config(
@@ -486,22 +500,25 @@ def export_low_turnover_oos_report(
         enable_suspension_check=enable_suspension_check,
     )
     live_cfg = _live_backtest_settings(config)
-    output_root = Path(output_dir or live_cfg.get("output_dir") or "reports/live_execution_backtest")
+    output_root = Path(output_dir or oos_cfg.get("output_dir") or live_cfg.get("output_dir") or "reports/live_execution_backtest")
     output_root = output_root if output_root.is_absolute() else root / output_root
+    use_config_paths = output_dir is None
     if daily_assets_path is None:
-        daily_assets_path = output_root / "oos_daily_assets.csv"
+        daily_assets_path = Path(str(oos_cfg.get("daily_assets"))) if use_config_paths and oos_cfg.get("daily_assets") else output_root / "oos_daily_assets.csv"
     if report_output is None:
-        report_output = output_root / "oos_report.html"
+        report_output = Path(str(oos_cfg.get("report_output"))) if use_config_paths and oos_cfg.get("report_output") else output_root / "oos_report.html"
     if curve_output is None:
-        curve_output = output_root / "oos_curve.csv"
+        curve_output = Path(str(oos_cfg.get("curve_output"))) if use_config_paths and oos_cfg.get("curve_output") else output_root / "oos_curve.csv"
     if fold_output is None:
-        fold_output = output_root / "oos_fold_compare.csv"
+        fold_output = Path(str(oos_cfg.get("fold_output"))) if use_config_paths and oos_cfg.get("fold_output") else output_root / "oos_fold_compare.csv"
     daily_assets_path = daily_assets_path if daily_assets_path.is_absolute() else root / daily_assets_path
     report_output = report_output if report_output.is_absolute() else root / report_output
     curve_output = curve_output if curve_output.is_absolute() else root / curve_output
     fold_output = fold_output if fold_output.is_absolute() else root / fold_output
 
     configure_local_history(effective_config.get("local_history", {}), root)
+    checkpoint_date = checkpoint_date if checkpoint_date is not None else str(oos_cfg.get("checkpoint_date") or DEFAULT_CHECKPOINT_DATE)
+    checkpoint_note = checkpoint_note if checkpoint_note is not None else str(oos_cfg.get("checkpoint_note") or DEFAULT_CHECKPOINT_NOTE)
 
     if daily_assets_path.exists() and daily_assets_path.name != "oos_daily_assets.csv":
         daily_assets = _load_assets(daily_assets_path)
@@ -518,11 +535,13 @@ def export_low_turnover_oos_report(
             for key in ["slippage", "commission", "stamp_duty_sell"]
             if key in effective_config.get("walk_forward", {})
         }
-        export_low_turnover_bill(
+        export_strategy_bill(
             config_path=config_path,
             output=bill_path,
             daily_output=daily_assets_path,
             preview_output=preview_path,
+            strategy_id=strategy_id,
+            preview_title=f"Phase 0 Strategy Bill Preview - {strategy_id}",
             refresh_cache=refresh_cache,
             no_panel_cache=no_panel_cache,
             walk_forward_overrides=bill_walk_forward_overrides,
@@ -559,7 +578,8 @@ def export_low_turnover_oos_report(
         benchmark_symbol,
         benchmark_name,
         fold_breakdown,
-        report_title=title,
+        report_title=title or str(oos_cfg.get("title") or f"Phase 0 Strategy Continuous OOS Report - {strategy_id}"),
+        strategy_id=strategy_id,
         checkpoint_date=checkpoint_date,
         checkpoint_note=checkpoint_note,
         profile_name=f"{selected_profile} / {profile_cfg.get('name', selected_profile)}",
@@ -579,6 +599,7 @@ def export_low_turnover_oos_report(
 
     return {
         "profile": selected_profile,
+        "strategy_id": strategy_id,
         "daily_assets": daily_assets_path,
         "report": report_output,
         "curve": curve_output,
@@ -586,20 +607,28 @@ def export_low_turnover_oos_report(
     }
 
 
+def export_low_turnover_oos_report(**kwargs: Any) -> dict[str, Path | str]:
+    """Backward-compatible wrapper for the historical low-turnover OOS report."""
+    kwargs.setdefault("strategy_id", DEFAULT_STRATEGY_ID)
+    kwargs.setdefault("title", "Phase 0 Low Turnover Continuous OOS Report")
+    return export_strategy_oos_report(**kwargs)
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Export continuous OOS report for low-turnover strategy")
+    parser = argparse.ArgumentParser(description="Export continuous OOS report for a registered strategy")
     parser.add_argument("--config", type=Path, default=Path("config.yaml"))
+    parser.add_argument("--strategy-id", default=None)
     parser.add_argument("--profile", choices=["research", "live"], default=None)
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--daily-assets", type=Path, default=None)
     parser.add_argument("--report-output", type=Path, default=None)
     parser.add_argument("--curve-output", type=Path, default=None)
     parser.add_argument("--fold-output", type=Path, default=None)
-    parser.add_argument("--title", default="Phase 0 Low Turnover Continuous OOS Report")
-    parser.add_argument("--checkpoint-date", default="2025-05-30")
+    parser.add_argument("--title", default=None)
+    parser.add_argument("--checkpoint-date", default=None)
     parser.add_argument(
         "--checkpoint-note",
-        default="这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。",
+        default=None,
     )
     parser.add_argument("--slippage", type=float, default=None)
     parser.add_argument("--commission", type=float, default=None)
@@ -613,8 +642,9 @@ def main() -> None:
     parser.add_argument("--no-panel-cache", action="store_true")
     args = parser.parse_args()
 
-    result = export_low_turnover_oos_report(
+    result = export_strategy_oos_report(
         config_path=args.config,
+        strategy_id=args.strategy_id,
         profile=args.profile,
         output_dir=args.output_dir,
         daily_assets_path=args.daily_assets,
