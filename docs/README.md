@@ -6,6 +6,7 @@
 
 - [开发计划书](./DEVELOPMENT_PLAN.md)
 - [项目整体架构说明](./PROJECT_ARCHITECTURE_OVERVIEW.md)
+- [长期技术栈演进方案](./LONG_TERM_TECH_STACK_EVOLUTION_PLAN.md)
 - [Coding Style Rules](./CODING_STYLE_RULES.md)
 
 ## 策略研发

@@ -42922,3 +42922,3243 @@ a_share_history skipped at 16:30 | outside_schedule(now=02:30, expected=16:30,
 calendar=cn_trading_calendar(is_open=1))
 us_market_history skipped at 17:10 | outside_schedule(now=02:30, expected=17:10,
 calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:31:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:31, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:31, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:31, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:31, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:32:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:32, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:32, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:32, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:32, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:33:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:33, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:33, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:33, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:33, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:34:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:34, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:34, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:34, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:34, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:35:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:35, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:35, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:35, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:35, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:36:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:36, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:36, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:36, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:36, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:37:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:37, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:37, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:37, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:37, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:38:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:38, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:38, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:38, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:38, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:39:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:39, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:39, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:39, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:39, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:40:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:40, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:40, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:40, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:40, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:41:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:41, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:41, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:41, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:41, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:42:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:42, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:42, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:42, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:42, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:43:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:43, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:43, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:43, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:43, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:44:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:44, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:44, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:44, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:44, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:45:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:45, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:45, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:45, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:45, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:46:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:46, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:46, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:46, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:46, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:47:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:47, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:47, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:47, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:47, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:48:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:48, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:48, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:48, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:48, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:49:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:49, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:49, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:49, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:49, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:50:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:50, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:50, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:50, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:50, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:51:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:51, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:51, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:51, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:51, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:52:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:52, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:52, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:52, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:52, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:53:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:53, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:53, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:53, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:53, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:54:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:54, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:54, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:54, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:54, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:55:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:55, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:55, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:55, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:55, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:56:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:56, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:56, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:56, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:56, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:57:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:57, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:57, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:57, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:57, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:58:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:58, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:58, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:58, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:58, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T02:59:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=02:59, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=02:59, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=02:59, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=02:59, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:00:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:00, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:00, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:00, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:00, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:01:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:01, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:01, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:01, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:01, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:02:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:02, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:02, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:02, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:02, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:03:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:03, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:03, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:03, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:03, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:04:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:04, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:04, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:04, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:04, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:05:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:05, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:05, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:05, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:05, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:06:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:06, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:06, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:06, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:06, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:07:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:07, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:07, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:07, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:07, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:08:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:08, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:08, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:08, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:08, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:09:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:09, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:09, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:09, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:09, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:10:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:10, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:10, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:10, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:10, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:11:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:11, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:11, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:11, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:11, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:12:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:12, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:12, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:12, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:12, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:13:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:13, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:13, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:13, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:13, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:14:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:14, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:14, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:14, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:14, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:15:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:15, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:15, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:15, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:15, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:16:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:16, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:16, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:16, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:16, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:17:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:17, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:17, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:17, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:17, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:18:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:18, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:18, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:18, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:18, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:19:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:19, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:19, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:19, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:19, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:20:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:20, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:20, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:20, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:20, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:21:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:21, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:21, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:21, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:21, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:22:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:22, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:22, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:22, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:22, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:23:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:23, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:23, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:23, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:23, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:24:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:24, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:24, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:24, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:24, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:25:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:25, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:25, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:25, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:25, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:26:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:26, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:26, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:26, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:26, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:27:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:27, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:27, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:27, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:27, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:28:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:28, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:28, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:28, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:28, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:29:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:29, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:29, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:29, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:29, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:30:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:30, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:30, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:30, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:30, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:31:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:31, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:31, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:31, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:31, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:32:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:32, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:32, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:32, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:32, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:33:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:33, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:33, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:33, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:33, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:34:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:34, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:34, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:34, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:34, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:35:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:35, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:35, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:35, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:35, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:36:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:36, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:36, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:36, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:36, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:37:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:37, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:37, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:37, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:37, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:38:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:38, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:38, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:38, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:38, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:39:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:39, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:39, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:39, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:39, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:40:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:40, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:40, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:40, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:40, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:41:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:41, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:41, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:41, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:41, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:42:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:42, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:42, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:42, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:42, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:43:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:43, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:43, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:43, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:43, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:44:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:44, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:44, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:44, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:44, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:45:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:45, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:45, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:45, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:45, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:46:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:46, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:46, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:46, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:46, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:47:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:47, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:47, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:47, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:47, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:48:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:48, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:48, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:48, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:48, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:49:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:49, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:49, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:49, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:49, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:50:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:50, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:50, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:50, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:50, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:51:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:51, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:51, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:51, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:51, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:52:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:52, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:52, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:52, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:52, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:53:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:53, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:53, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:53, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:53, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:54:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:54, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:54, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:54, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:54, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:55:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:55, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:55, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:55, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:55, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:56:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:56, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:56, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:56, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:56, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:57:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:57, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:57, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:57, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:57, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:58:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:58, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:58, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:58, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:58, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T03:59:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=03:59, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=03:59, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=03:59, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=03:59, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:00:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:00, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:00, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:00, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:00, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:01:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:01, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:01, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:01, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:01, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:02:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:02, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:02, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:02, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:02, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:03:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:03, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:03, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:03, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:03, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:04:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:04, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:04, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:04, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:04, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:05:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:05, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:05, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:05, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:05, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:06:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:06, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:06, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:06, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:06, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:07:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:07, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:07, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:07, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:07, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:08:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:08, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:08, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:08, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:08, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:09:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:09, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:09, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:09, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:09, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:10:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:10, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:10, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:10, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:10, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:11:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:11, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:11, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:11, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:11, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:12:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:12, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:12, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:12, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:12, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:13:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:13, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:13, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:13, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:13, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:14:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:14, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:14, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:14, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:14, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:15:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:15, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:15, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:15, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:15, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:16:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:16, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:16, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:16, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:16, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:17:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:17, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:17, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:17, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:17, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:18:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:18, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:18, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:18, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:18, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:19:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:19, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:19, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:19, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:19, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:20:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:20, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:20, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:20, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:20, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:21:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:21, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:21, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:21, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:21, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:22:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:22, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:22, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:22, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:22, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:23:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:23, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:23, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:23, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:23, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:24:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:24, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:24, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:24, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:24, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:25:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:25, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:25, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:25, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:25, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:26:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:26, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:26, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:26, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:26, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:27:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:27, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:27, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:27, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:27, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:28:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:28, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:28, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:28, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:28, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:29:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:29, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:29, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:29, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:29, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:30:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:30, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:30, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:30, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:30, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:31:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:31, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:31, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:31, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:31, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:32:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:32, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:32, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:32, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:32, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:33:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:33, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:33, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:33, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:33, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:34:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:34, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:34, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:34, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:34, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:35:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:35, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:35, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:35, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:35, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:36:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:36, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:36, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:36, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:36, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:37:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:37, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:37, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:37, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:37, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:38:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:38, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:38, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:38, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:38, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:39:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:39, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:39, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:39, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:39, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:40:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:40, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:40, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:40, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:40, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:41:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:41, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:41, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:41, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:41, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:42:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:42, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:42, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:42, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:42, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:43:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:43, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:43, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:43, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:43, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:44:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:44, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:44, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:44, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:44, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:45:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:45, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:45, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:45, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:45, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:46:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:46, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:46, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:46, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:46, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:47:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:47, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:47, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:47, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:47, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:48:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:48, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:48, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:48, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:48, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:49:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:49, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:49, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:49, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:49, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:50:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:50, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:50, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:50, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:50, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:51:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:51, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:51, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:51, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:51, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:52:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:52, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:52, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:52, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:52, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:53:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:53, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:53, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:53, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:53, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:54:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:54, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:54, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:54, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:54, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:55:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:55, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:55, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:55, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:55, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:56:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:56, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:56, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:56, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:56, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:57:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:57, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:57, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:57, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:57, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:58:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:58, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:58, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:58, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:58, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T04:59:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=04:59, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=04:59, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=04:59, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=04:59, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:00:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:00, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:00, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:00, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:00, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:01:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:01, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:01, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:01, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:01, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:02:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:02, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:02, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:02, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:02, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:03:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:03, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:03, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:03, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:03, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:04:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:04, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:04, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:04, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:04, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:05:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:05, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:05, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:05, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:05, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:06:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:06, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:06, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:06, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:06, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:07:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:07, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:07, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:07, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:07, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:08:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:08, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:08, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:08, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:08, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:09:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:09, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:09, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:09, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:09, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:10:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:10, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:10, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:10, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:10, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:11:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:11, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:11, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:11, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:11, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:12:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:12, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:12, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:12, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:12, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:13:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:13, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:13, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:13, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:13, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:14:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:14, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:14, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:14, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:14, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:15:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:15, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:15, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:15, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:15, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:16:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:16, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:16, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:16, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:16, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:17:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:17, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:17, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:17, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:17, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:18:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:18, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:18, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:18, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:18, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:19:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:19, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:19, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:19, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:19, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:20:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:20, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:20, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:20, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:20, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:21:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:21, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:21, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:21, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:21, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:22:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:22, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:22, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:22, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:22, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:23:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:23, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:23, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:23, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:23, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:24:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:24, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:24, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:24, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:24, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:25:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:25, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:25, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:25, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:25, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:26:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:26, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:26, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:26, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:26, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:27:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:27, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:27, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:27, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:27, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:28:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:28, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:28, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:28, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:28, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:29:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:29, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:29, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:29, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:29, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:30:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:30, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:30, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:30, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:30, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:31:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:31, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:31, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:31, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:31, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:32:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:32, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:32, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:32, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:32, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:33:01
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:33, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:33, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:33, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:33, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:34:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:34, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:34, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:34, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:34, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:35:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:35, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:35, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:35, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:35, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:36:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:36, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:36, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:36, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:36, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:37:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:37, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:37, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:37, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:37, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:38:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:38, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:38, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:38, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:38, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:39:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:39, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:39, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:39, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:39, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:40:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:40, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:40, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:40, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:40, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:41:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:41, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:41, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:41, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:41, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:42:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:42, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:42, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:42, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:42, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:43:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:43, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:43, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:43, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:43, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:44:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:44, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:44, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:44, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:44, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:45:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:45, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:45, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:45, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:45, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:46:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:46, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:46, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:46, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:46, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:47:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:47, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:47, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:47, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:47, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:48:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:48, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:48, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:48, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:48, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:49:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:49, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:49, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:49, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:49, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:50:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:50, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:50, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:50, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:50, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:51:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:51, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:51, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:51, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:51, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:52:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:52, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:52, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:52, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:52, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:53:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:53, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:53, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:53, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:53, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:54:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:54, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:54, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:54, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:54, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:55:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:55, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:55, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:55, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:55, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:56:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:56, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:56, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:56, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:56, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:57:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:57, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:57, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:57, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:57, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:58:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:58, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:58, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:58, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:58, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T05:59:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=05:59, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=05:59, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=05:59, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=05:59, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:00:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:00, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:00, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:00, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:00, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:01:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:01, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:01, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:01, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:01, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:02:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:02, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:02, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:02, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:02, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:03:03
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:03, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:03, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:03, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:03, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:04:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:04, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:04, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:04, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:04, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:05:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:05, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:05, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:05, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:05, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
+Maintenance tick started
+Maintenance tick complete
+State DB: /home/zj/workspace/stok-mapping/data/maintenance/maintenance.sqlite
+As of: 2026-06-09T06:06:02
+Dry run: False
+Executed runs: 0
+financial_factors skipped at 03:30 | not_monday(weekday=2)
+daily_brief skipped at 07:20 | outside_schedule(now=06:06, expected=07:20, 
+calendar=cn_trading_calendar(is_open=1))
+hk_market_history skipped at 16:20 | outside_schedule(now=06:06, expected=16:20,
+calendar=market_calendar_weekday_fallback(scope=hk))
+a_share_history skipped at 16:30 | outside_schedule(now=06:06, expected=16:30, 
+calendar=cn_trading_calendar(is_open=1))
+us_market_history skipped at 17:10 | outside_schedule(now=06:06, expected=17:10,
+calendar=market_calendar_weekday_fallback(scope=us))
