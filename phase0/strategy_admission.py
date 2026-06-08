@@ -33,6 +33,7 @@ def run_strategy_admission(
     presets: list[str] | None = None,
     strategies: list[str] | None = None,
     output_dir: Path | None = None,
+    trace_callback: Any | None = None,
 ) -> StrategyAdmissionResult:
     output_dir = output_dir or root / "reports" / "strategy_admission"
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -59,7 +60,7 @@ def run_strategy_admission(
         scenario_wcfg["preset_name"] = preset_name
         scenario_strategy_cfg = scenario_wcfg.setdefault("strategy_v2", {})
         scenario_strategy_cfg["compare_strategies"] = strategy_names
-        result = run_walk_forward(scenario_cfg)
+        result = run_walk_forward(scenario_cfg, trace_callback=trace_callback)
         summary = result.get("summary", {}) or {}
         folds = result.get("candidate_folds", pd.DataFrame())
         if folds is None or folds.empty:

@@ -4,6 +4,7 @@ import pandas as pd
 
 from phase0.strategies.base import StrategyOutput
 from phase0.strategy_constraints import apply_strategy_constraints
+from phase0.walk_forward import _signal_trace_summary
 
 
 def _sample_output() -> StrategyOutput:
@@ -131,3 +132,14 @@ def test_unknown_industry_reject_sets_weight_to_zero() -> None:
 
     constrained = result.output.signal_frame
     assert float(constrained.loc[constrained["symbol"] == "AAA", "weight_unshifted"].abs().sum()) == 0.0
+
+
+def test_signal_trace_summary_reports_target_and_live_holdings() -> None:
+    output = _sample_output()
+    summary = _signal_trace_summary(output)
+    assert summary["target_days"] == 3
+    assert summary["live_days"] == 3
+    assert summary["avg_target_holdings"] == 5.0
+    assert summary["avg_live_holdings"] == 5.0
+    assert summary["first_target_date"] == "2024-01-02"
+    assert summary["first_target_symbols"][:3] == ["AAA", "BBB", "CCC"]

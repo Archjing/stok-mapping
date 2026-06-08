@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -40,6 +40,8 @@ FINANCIAL_FACTOR_COLUMNS = [
     "cash_flow_quality",
     "debt_to_asset",
 ]
+
+TraceCallback = Callable[[dict[str, Any]], None]
 
 
 def _xmarket_enabled(strategy_cfg: dict[str, Any]) -> bool:
@@ -478,6 +480,71 @@ def _align_symbol_map(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def _emit_trace(callback: TraceCallback | None, payload: dict[str, Any]) -> None:
+    if callback is None:
+        return
+    callback(payload)
+
+
+def _signal_trace_summary(output: StrategyOutput, *, top_n: int = 5) -> dict[str, Any]:
+    signal = output.signal_frame.copy()
+    if signal.empty:
+        return {
+            "target_days": 0,
+            "live_days": 0,
+            "avg_target_holdings": 0.0,
+            "avg_live_holdings": 0.0,
+            "trade_days": 0,
+            "first_target_date": "",
+            "first_target_symbols": [],
+        }
+
+    if "date" in signal.columns:
+        signal["date"] = pd.to_datetime(signal["date"], errors="coerce").dt.normalize()
+    if "symbol" in signal.columns:
+        signal["symbol"] = signal["symbol"].astype(str)
+
+    target_col = "weight_unshifted" if "weight_unshifted" in signal.columns else "selected"
+    target = pd.to_numeric(signal.get(target_col, pd.Series(0.0, index=signal.index)), errors="coerce").fillna(0.0)
+    live = pd.to_numeric(signal.get("weight", pd.Series(0.0, index=signal.index)), errors="coerce").fillna(0.0)
+
+    target_frame = signal[target.abs() > 1e-12].copy()
+    live_frame = signal[live.abs() > 1e-12].copy()
+    target_counts = target_frame.groupby("date")["symbol"].nunique() if not target_frame.empty else pd.Series(dtype=int)
+    live_counts = live_frame.groupby("date")["symbol"].nunique() if not live_frame.empty else pd.Series(dtype=int)
+
+    trade_days = 0
+    if not signal.empty and "date" in signal.columns and "symbol" in signal.columns and "weight" in signal.columns:
+        weights = (
+            signal.pivot(index="date", columns="symbol", values="weight")
+            .fillna(0.0)
+            .sort_index()
+        )
+        trade_days = int(weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1)).gt(1e-12).sum())
+
+    first_target_date = ""
+    first_target_symbols: list[str] = []
+    if not target_frame.empty:
+        first_target_date = str(pd.Timestamp(target_frame["date"].min()).date())
+        first_day = target_frame[target_frame["date"] == pd.Timestamp(first_target_date)]
+        sort_col = "score" if "score" in first_day.columns else None
+        if sort_col is not None:
+            first_day = first_day.sort_values([sort_col, "symbol"], ascending=[False, True], na_position="last")
+        else:
+            first_day = first_day.sort_values(["symbol"])
+        first_target_symbols = first_day["symbol"].head(top_n).astype(str).tolist()
+
+    return {
+        "target_days": int(target_counts.shape[0]),
+        "live_days": int(live_counts.shape[0]),
+        "avg_target_holdings": float(target_counts.mean()) if not target_counts.empty else 0.0,
+        "avg_live_holdings": float(live_counts.mean()) if not live_counts.empty else 0.0,
+        "trade_days": trade_days,
+        "first_target_date": first_target_date,
+        "first_target_symbols": first_target_symbols,
+    }
 
 
 def _add_fold_metadata(panel: pd.DataFrame, metadata: pd.DataFrame | None) -> pd.DataFrame:
@@ -1674,6 +1741,7 @@ def _run_strategy_on_explicit_fold(
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
     extra: dict[str, Any] | None = None,
+    trace_callback: TraceCallback | None = None,
 ) -> list[dict[str, Any]]:
     strategy = get_strategy(strategy_name)
     if not strategy.is_enabled(strategy_cfg):
@@ -1692,12 +1760,39 @@ def _run_strategy_on_explicit_fold(
     if fold_train.empty or fold_valid.empty:
         return []
 
+    _emit_trace(
+        trace_callback,
+        {
+            "event": "fold_start",
+            "strategy_id": strategy_name,
+            "fold": int(fold),
+            "panel_scope": strategy.panel_scope,
+            "train_start": str(pd.Timestamp(fold_train["date"].min()).date()),
+            "train_end": str(pd.Timestamp(fold_train["date"].max()).date()),
+            "valid_start": str(pd.Timestamp(fold_valid["date"].min()).date()),
+            "valid_end": str(pd.Timestamp(fold_valid["date"].max()).date()),
+            "train_rows": int(len(fold_train)),
+            "valid_rows": int(len(fold_valid)),
+            "train_symbols": int(fold_train["symbol"].astype(str).nunique()) if "symbol" in fold_train.columns else 0,
+            "valid_symbols": int(fold_valid["symbol"].astype(str).nunique()) if "symbol" in fold_valid.columns else 0,
+        },
+    )
     params = strategy.select_params(
         fold_train,
         strategy_cfg,
         slippage=slippage,
         commission=commission,
         stamp_duty_sell=stamp_duty_sell,
+    )
+    _emit_trace(
+        trace_callback,
+        {
+            "event": "fold_params",
+            "strategy_id": strategy_name,
+            "fold": int(fold),
+            "eligible": bool(params.get("eligible", True)),
+            "formatted_params": strategy.format_params(params),
+        },
     )
     result = strategy.apply(
         fold_valid,
@@ -1744,6 +1839,27 @@ def _run_strategy_on_explicit_fold(
         "supports_paper_trade": meta.get("supports_paper_trade", True),
     }
     row.update(constraint_result.metrics)
+    row.update(_signal_trace_summary(output))
+    _emit_trace(
+        trace_callback,
+        {
+            "event": "fold_result",
+            "strategy_id": strategy_name,
+            "fold": int(fold),
+            "annualized_return": float(metric["annualized_return"]),
+            "sharpe": float(metric["sharpe"]),
+            "max_drawdown": float(metric["max_drawdown"]),
+            "turnover_annual": float(metric["turnover_annual"]),
+            "trades": int(metric["trades"]),
+            "constraint_mode": row.get("constraint_mode", ""),
+            "constraint_status": row.get("constraint_status", ""),
+            "avg_target_holdings": row.get("avg_target_holdings", 0.0),
+            "avg_live_holdings": row.get("avg_live_holdings", 0.0),
+            "trade_days": row.get("trade_days", 0),
+            "first_target_date": row.get("first_target_date", ""),
+            "first_target_symbols": row.get("first_target_symbols", []),
+        },
+    )
     if extra:
         row.update(extra)
     return [row]
@@ -1761,6 +1877,7 @@ def _run_strategy_on_symbol_panel(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    trace_callback: TraceCallback | None = None,
 ) -> list[dict[str, Any]]:
     strategy = get_strategy(strategy_name)
     if not strategy.is_enabled(strategy_cfg):
@@ -1843,7 +1960,25 @@ def _run_strategy_on_symbol_panel(
                 "supports_brief": meta.get("supports_brief", True),
                 "supports_paper_trade": meta.get("supports_paper_trade", True),
                 **constraint_result.metrics,
+                **_signal_trace_summary(output),
             }
+        )
+        _emit_trace(
+            trace_callback,
+            {
+                "event": "fold_result",
+                "strategy_id": strategy_name,
+                "fold": int(fold_idx),
+                "symbol": str(valid["symbol"].iloc[0]) if "symbol" in valid.columns and not valid.empty else "",
+                "annualized_return": float(metric["annualized_return"]),
+                "sharpe": float(metric["sharpe"]),
+                "max_drawdown": float(metric["max_drawdown"]),
+                "turnover_annual": float(metric["turnover_annual"]),
+                "trades": int(metric["trades"]),
+                "constraint_mode": constraint_result.metrics.get("constraint_mode", ""),
+                "constraint_status": constraint_result.metrics.get("constraint_status", ""),
+                **_signal_trace_summary(output),
+            },
         )
         start += fold_days_valid
     return rows
@@ -1859,6 +1994,7 @@ def _run_compare(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     candidates: dict[str, list[dict[str, Any]]] = {}
     # compare 模式先准备可复用的外盘特征，保证多个候选策略面对同一份外部市场信息。
@@ -1891,6 +2027,7 @@ def _run_compare(
                         commission=commission,
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg=strategy_cfg,
+                        trace_callback=trace_callback,
                     )
                 )
         else:
@@ -1915,6 +2052,7 @@ def _run_compare(
                     commission=commission,
                     stamp_duty_sell=stamp_duty_sell,
                     strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                    trace_callback=trace_callback,
                 )
             )
         candidates[strategy.candidate_name] = strategy_rows
@@ -1975,6 +2113,7 @@ def _run_compare_qfq_asof_static(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
     end = date.today()
     start = end - timedelta(days=365 * int(years) + 30)
@@ -2061,6 +2200,7 @@ def _run_compare_qfq_asof_static(
                             stamp_duty_sell=stamp_duty_sell,
                             strategy_cfg=strategy_cfg,
                             extra=extra,
+                            trace_callback=trace_callback,
                         )
                     )
             else:
@@ -2075,6 +2215,7 @@ def _run_compare_qfq_asof_static(
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg={**strategy_cfg, "mode": "portfolio"},
                         extra=extra,
+                        trace_callback=trace_callback,
                     )
                 )
 
@@ -2133,6 +2274,7 @@ def _run_compare_point_in_time(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
     candidates: dict[str, list[dict[str, Any]]] = {}
     xfeatures = _load_cross_market_features(years, strategy_cfg.get("cross_market", {})) if _xmarket_enabled(strategy_cfg) else None
@@ -2175,6 +2317,7 @@ def _run_compare_point_in_time(
                             stamp_duty_sell=stamp_duty_sell,
                             strategy_cfg=strategy_cfg,
                             extra=extra,
+                            trace_callback=trace_callback,
                         )
                     )
             else:
@@ -2189,6 +2332,7 @@ def _run_compare_point_in_time(
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg={**strategy_cfg, "mode": "portfolio"},
                         extra=extra,
+                        trace_callback=trace_callback,
                     )
                 )
         candidates[strategy.candidate_name] = strategy_rows
@@ -2372,7 +2516,7 @@ def _run_single_symbol(
     return folds
 
 
-def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
+def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
     years = int(config["years"])
     wcfg = config["walk_forward"]
     window_cfg = _resolve_walk_forward_window(wcfg)
@@ -2413,6 +2557,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                trace_callback=trace_callback,
             )
         elif _strict_qfq_asof_enabled(config):
             all_rows, candidate_rows, candidate_summary_rows, universe_audit_df = _run_compare_qfq_asof_static(
@@ -2425,6 +2570,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                trace_callback=trace_callback,
             )
         else:
             all_rows, candidate_rows, candidate_summary_rows = _run_compare(
@@ -2437,6 +2583,7 @@ def run_walk_forward(config: dict[str, Any]) -> dict[str, Any]:
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                trace_callback=trace_callback,
             )
     elif strategy_cfg.get("mode") == "portfolio":
         if use_point_in_time_universe:

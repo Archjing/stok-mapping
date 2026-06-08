@@ -103,6 +103,46 @@ def _print_tushare_financial_progress(console: Console, progress: dict) -> None:
     )
 
 
+def _print_walk_forward_trace(console: Console, payload: dict[str, object]) -> None:
+    event = str(payload.get("event") or "")
+    strategy_id = str(payload.get("strategy_id") or "")
+    fold = int(payload.get("fold") or 0)
+    if event == "fold_start":
+        console.print(
+            "WF fold start: "
+            f"strategy={strategy_id} fold={fold} "
+            f"train={payload.get('train_start')}..{payload.get('train_end')} "
+            f"valid={payload.get('valid_start')}..{payload.get('valid_end')} "
+            f"train_symbols={payload.get('train_symbols')} valid_symbols={payload.get('valid_symbols')}"
+        )
+        return
+    if event == "fold_params":
+        console.print(
+            "WF fold params: "
+            f"strategy={strategy_id} fold={fold} eligible={payload.get('eligible')} "
+            f"params={payload.get('formatted_params')}"
+        )
+        return
+    if event == "fold_result":
+        first_symbols = payload.get("first_target_symbols") or []
+        console.print(
+            "WF fold result: "
+            f"strategy={strategy_id} fold={fold} "
+            f"ann={float(payload.get('annualized_return') or 0.0):.4f} "
+            f"sharpe={float(payload.get('sharpe') or 0.0):.4f} "
+            f"turnover={float(payload.get('turnover_annual') or 0.0):.2f} "
+            f"trades={int(payload.get('trades') or 0)} "
+            f"target_days={int(payload.get('target_days') or 0)} "
+            f"live_days={int(payload.get('live_days') or 0)} "
+            f"avg_target_holdings={float(payload.get('avg_target_holdings') or 0.0):.2f} "
+            f"avg_live_holdings={float(payload.get('avg_live_holdings') or 0.0):.2f} "
+            f"trade_days={int(payload.get('trade_days') or 0)} "
+            f"first_target_date={payload.get('first_target_date') or ''} "
+            f"first_target_symbols={','.join(str(item) for item in first_symbols)} "
+            f"constraint={payload.get('constraint_mode') or ''}/{payload.get('constraint_status') or ''}"
+        )
+
+
 def _run_db_health_gate(
     *,
     console: Console,
@@ -671,6 +711,7 @@ def main() -> int:
     admission_parser.add_argument("--presets", nargs="+", default=None, help="Walk-forward preset names to evaluate")
     admission_parser.add_argument("--strategies", nargs="+", default=None, help="Strategy IDs to evaluate")
     admission_parser.add_argument("--output-dir", default=None, help="Output directory for admission reports")
+    admission_parser.add_argument("--trace-run", action="store_true", help="Print fold-level walk-forward trace while running")
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
@@ -1014,6 +1055,7 @@ def main() -> int:
             presets=args.presets,
             strategies=args.strategies,
             output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            trace_callback=(lambda payload: _print_walk_forward_trace(console, payload)) if args.trace_run else None,
         )
         console.print("[green]Strategy admission review complete[/green]")
         console.print(f"Strategies: {result.strategies}")
