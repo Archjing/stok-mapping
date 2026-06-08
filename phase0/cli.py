@@ -179,7 +179,7 @@ def _export_phase0_low_turnover_bill(
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
-    from scripts.export_low_turnover_bill import export_strategy_bill
+    from scripts.export_strategy_bill import export_strategy_bill
 
     return export_strategy_bill(
         config_path=config_path,
@@ -217,7 +217,7 @@ def _export_phase0_oos_report(
     enable_limit_check: bool | None = None,
     enable_suspension_check: bool | None = None,
 ) -> dict:
-    from scripts.export_low_turnover_oos_report import export_strategy_oos_report
+    from scripts.export_strategy_oos_report import export_strategy_oos_report
 
     return export_strategy_oos_report(
         config_path=config_path,

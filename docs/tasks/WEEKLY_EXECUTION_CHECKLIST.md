@@ -268,11 +268,11 @@
 
 - [x] 当前 selected candidate：`legacy_momentum_low_turnover_v1`
 - [x] current-cost gate：PASS
-- [x] 账单导出脚本：`scripts/export_low_turnover_bill.py`
+- [x] 策略账单导出脚本：`scripts/export_strategy_bill.py`（旧 `scripts/export_low_turnover_bill.py` 保留兼容）
 - [x] 账单导出缓存：默认 `reports/cache/low_turnover_panel.pkl`
 - [x] 预览产物：`reports/phase0_low_turnover_bill_preview.html`
 - [x] 日资产产物：`reports/phase0_low_turnover_daily_assets.csv`
-- [x] 连续 OOS 报表脚本：`scripts/export_low_turnover_oos_report.py`
+- [x] 连续 OOS 报表脚本：`scripts/export_strategy_oos_report.py`（旧 `scripts/export_low_turnover_oos_report.py` 保留兼容）
 - [x] 连续 OOS 报表：`reports/phase0_low_turnover_oos_report.html`
 - [x] 成本敏感性命令：`phase0.cli cost-sensitivity`
 - [x] 账单导出命令：`phase0.cli bill`
@@ -327,7 +327,7 @@
 
 ## W1.7.2 当前基线
 
-- [x] 当前账单脚本：`scripts/export_low_turnover_bill.py`
+- [x] 当前账单脚本：`scripts/export_strategy_bill.py`（旧低换手入口保留兼容）
 - [x] 当前账单命令：`phase0.cli bill`
 - [x] 当前盘前观察池命令：`phase0.cli premarket`
 - [x] 已支持 `100` 股整手成交

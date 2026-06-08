@@ -559,8 +559,9 @@ data health PASS / acceptable warning
 核心模块：
 
 - [phase0/accounts.py](../phase0/accounts.py)
-- [scripts/export_low_turnover_bill.py](../scripts/export_low_turnover_bill.py)
-- [scripts/export_low_turnover_oos_report.py](../scripts/export_low_turnover_oos_report.py)
+- [scripts/export_strategy_bill.py](../scripts/export_strategy_bill.py)
+- [scripts/export_strategy_oos_report.py](../scripts/export_strategy_oos_report.py)
+- [scripts/export_strategy_period_compare.py](../scripts/export_strategy_period_compare.py)
 - [scripts/export_premarket_watchlist.py](../scripts/export_premarket_watchlist.py)
 
 当前能力：
@@ -571,6 +572,7 @@ data health PASS / acceptable warning
 - 成交价 profile：`research` / `live` 与 `close` / `next_open` / `conservative` 等口径。
 - 涨跌停、停牌、流动性参与率、未成交原因。
 - 真实账户 CSV 对账格式预留。
+- 旧 `scripts/export_low_turnover_*.py` 仅保留为兼容入口；新开发应使用 `export_strategy_*` 通用报表模块。
 
 边界：
 
