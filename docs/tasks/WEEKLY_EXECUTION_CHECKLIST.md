@@ -864,11 +864,12 @@ python -m phase0.cli adjustment-audit \
 - [x] 新增 `quality_low_turnover_monthly_v1` 策略说明文档
 - [x] 设计两者在 `phase0/strategies/` 中的实现接口
 - [x] 明确调仓周期、top_n、换手上限、行业约束、单票权重上限；已新增通用策略修饰层 `strategy_v2.constraints`，行业约束支持 `audit/enforce`
-- [ ] 制定并实现回测窗口期配置模块 V1（KISS 收缩版）：先解决 T2.7 折数不足和窗口单一问题
-- [ ] 扩展 walk-forward preset schema：支持 `start_date` / `end_date`、`expected_folds`
-- [ ] 新增 `baseline_2y_1y_5fold`：固定 `2019-04-01` 到 `2026-03-31`，作为所有策略第一道公共 smoke/admission baseline
-- [ ] 新增 `quality_3y_1y_4fold`：固定 `2019-04-01` 到 `2026-03-31`，作为低频质量/低估值策略专用窗口
-- [ ] `strategy-admission` 报告输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
+- [x] 制定并实现回测窗口期配置模块 V1（KISS 收缩版）：先解决 T2.7 折数不足和窗口单一问题
+- [x] 扩展 walk-forward preset schema：支持 `start_date` / `end_date`、`expected_folds`
+- [x] 新增 `baseline_2y_1y_5fold`：固定 `2019-04-01` 到 `2026-03-31`，作为所有策略第一道公共 smoke/admission baseline
+- [x] 新增 `quality_3y_1y_4fold`：固定 `2019-04-01` 到 `2026-03-31`，作为低频质量/低估值策略专用窗口
+- [x] `strategy-admission` 报告输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
+- [x] `strategy-admission` 支持默认 `strategy_set`、CLI `--strategy-set`、CLI `--strategies` 覆盖和 `diagnostics.suites`
 - [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，复核能否区分折数不足、参数不稳定、收益不达标和组合构造失败
 - [ ] V2 候选暂不实施：`momentum_1y_6m`、`short_horizon_6m_3m`、`event_rolling_n_events`、`ml_purged_walk_forward`、`validation_family`、`strategy_window_policy`
 - [x] 策略准入报告应输出窗口稳健性矩阵，低频质量策略至少比较 `baseline_2y_1y`、`quality_3y_1y` 和 `quality_4y_1y`

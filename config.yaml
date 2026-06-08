@@ -326,9 +326,63 @@ phase0:
       max_negative_fold_count: 1
       min_fold_annualized_return_min: -0.10
       min_oos_positive_fold_ratio: 1.0
+    admission:
+      # strategy_sets 是准入设计输入，不记录运行状态。
+      # 一次性缩小范围优先用 CLI --strategies；下次不带该参数会回到默认集合。
+      # 注释某个策略行属于持久配置变更，需要手动取消注释恢复。
+      default_strategy_set: "baseline_admission_all_v1"
+      strategy_sets:
+        baseline_admission_all_v1:
+          description: "默认全局准入策略集合；临时缩小范围优先使用 CLI --strategies 覆盖。"
+          strategies:
+            - "legacy_momentum"
+            - "legacy_momentum_low_turnover_v1"
+            - "ma_kline_baseline_v1"
+            - "residual_momentum_reversal_v1"
+            - "residual_momentum_reversal_v2"
+            - "quality_growth_price_v1"
+            - "low_vol_low_turnover_quality_v1"
+            - "quality_low_turnover_monthly_v1"
+            - "multifactor_volume_price_filter_v1"
+            - "core_selection_quality_momentum_v1"
+            - "theme_exposure_momentum_v1"
+        quality_research_v1:
+          description: "质量/低换手策略专项研究集合。"
+          strategies:
+            - "quality_growth_price_v1"
+            - "low_vol_low_turnover_quality_v1"
+            - "quality_low_turnover_monthly_v1"
+      gate:
+        annualized_return_min: 0.0
+        sharpe_min: 0.5
+        max_drawdown_min: -0.25
+        positive_fold_ratio_min: 0.75
+        turnover_annual_mean_max: 3.0
+        turnover_annual_max_max: 5.0
+        overfit_risk_max: "medium"
+        require_parameter_stability: true
+        require_industry_concentration_check: true
+      diagnostics:
+        suites:
+          - "data_quality_v1"
+          - "execution_feasibility_v1"
+          - "factor_explainability_v1"
+          - "overfit_v1"
     strategy_v2:
       mode: "compare"
-      compare_strategies: ["legacy_momentum", "legacy_momentum_low_turnover_v1", "ma_kline_baseline_v1", "residual_momentum_reversal_v1", "residual_momentum_reversal_v2", "quality_growth_price_v1", "low_vol_low_turnover_quality_v1", "quality_low_turnover_monthly_v1", "multifactor_volume_price_filter_v1", "core_selection_quality_momentum_v1", "theme_exposure_momentum_v1"]
+      # 非 admission walk-forward 的兼容候选列表。
+      compare_strategies:
+        - "legacy_momentum"
+        - "legacy_momentum_low_turnover_v1"
+        - "ma_kline_baseline_v1"
+        - "residual_momentum_reversal_v1"
+        - "residual_momentum_reversal_v2"
+        - "quality_growth_price_v1"
+        - "low_vol_low_turnover_quality_v1"
+        - "quality_low_turnover_monthly_v1"
+        - "multifactor_volume_price_filter_v1"
+        - "core_selection_quality_momentum_v1"
+        - "theme_exposure_momentum_v1"
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"

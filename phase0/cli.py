@@ -709,6 +709,7 @@ def main() -> int:
     admission_parser = sub.add_parser("strategy-admission", help="Run strategy admission window and constraint review")
     admission_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     admission_parser.add_argument("--presets", nargs="+", default=None, help="Walk-forward preset names to evaluate")
+    admission_parser.add_argument("--strategy-set", default=None, help="Admission strategy set name from walk_forward.admission.strategy_sets")
     admission_parser.add_argument("--strategies", nargs="+", default=None, help="Strategy IDs to evaluate")
     admission_parser.add_argument("--output-dir", default=None, help="Output directory for admission reports")
     admission_parser.add_argument("--trace-run", action="store_true", help="Print fold-level walk-forward trace while running")
@@ -1053,6 +1054,7 @@ def main() -> int:
             config=cfg.get("phase0", cfg),
             root=config_path.parent,
             presets=args.presets,
+            strategy_set=args.strategy_set,
             strategies=args.strategies,
             output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
             trace_callback=(lambda payload: _print_walk_forward_trace(console, payload)) if args.trace_run else None,

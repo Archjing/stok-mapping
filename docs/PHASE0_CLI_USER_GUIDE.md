@@ -44,7 +44,11 @@ uv sync
 - `bill`
 - `market-regime`
 - `oos-report`
+- `strategy-admission`
+- `overfit-diagnostic`
 - `financial-pti`
+- `factor-effectiveness`
+- `db-health`
 - `daily-brief`
 - `premarket`
 - `execution-gate`
@@ -77,6 +81,29 @@ uv sync
 
 # 使用 config.yaml 的 cost_sensitivity.scenarios
 ./.venv/bin/python -m phase0.cli cost-sensitivity --config config.yaml --use-config-scenarios
+```
+
+`strategy-admission`：运行统一策略准入报告。默认读取 `config.yaml` 中的
+`walk_forward.admission.default_strategy_set` 和 `walk_forward.admission.strategy_sets`；
+临时缩小候选范围时优先使用 CLI `--strategies`，不要把一次性实验状态写回配置。
+如果确实要长期移除某个候选，可以在 `strategy_sets` 中注释对应策略行；该变更不会自动恢复，
+需要手动取消注释或用 `--strategy-set` / `--strategies` 临时覆盖。
+
+```bash
+# 使用默认 strategy set
+./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
+  --presets baseline_2y_1y_5fold --trace-run
+
+# 使用配置中的专项 strategy set
+./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
+  --presets baseline_2y_1y_5fold quality_3y_1y_4fold \
+  --strategy-set quality_research_v1 --trace-run
+
+# 临时只跑少数策略；下次不带 --strategies 会回到默认 strategy set
+./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
+  --presets baseline_2y_1y_5fold \
+  --strategies low_vol_low_turnover_quality_v1 quality_low_turnover_monthly_v1 \
+  --trace-run
 ```
 
 ### 3.2 导出类命令
@@ -219,6 +246,11 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 - `reports/phase0_effectiveness_report.md`
 - `reports/phase0_walk_forward_folds.csv`
 - `reports/phase0_walk_forward_candidates.csv`
+- `reports/strategy_admission/strategy_admission_report.md`
+- `reports/strategy_admission/strategy_admission_window_matrix.csv`
+- `reports/strategy_admission/strategy_admission_constraint_review.csv`
+- `reports/strategy_admission/strategy_admission_candidate_folds.csv`
+- `reports/strategy_admission/overfit_diagnostic/strategy_overfit_diagnostic.csv`
 - `reports/phase0_cost_sensitivity_report.md`
 - `reports/phase0_cost_sensitivity.csv`
 - `reports/phase0_low_turnover_bill.csv`

@@ -26,11 +26,75 @@ class StrategyAdmissionResult:
     rows: int
 
 
+def _resolve_strategy_scope(
+    strategy_cfg: dict[str, Any],
+    admission_cfg: dict[str, Any],
+    *,
+    strategy_set: str | None,
+    strategies: list[str] | None,
+) -> dict[str, Any]:
+    if strategies:
+        return {
+            "source": "cli_strategies",
+            "strategy_set": "",
+            "description": "Explicit CLI --strategies override.",
+            "strategies": [str(item) for item in strategies],
+        }
+
+    sets = admission_cfg.get("strategy_sets", {}) or {}
+    selected_set = str(strategy_set or admission_cfg.get("default_strategy_set", "") or "").strip()
+    if selected_set:
+        if selected_set not in sets:
+            raise ValueError(f"unknown admission strategy_set: {selected_set}")
+        raw_set = sets[selected_set] or {}
+        if isinstance(raw_set, dict):
+            names = raw_set.get("strategies", [])
+            description = str(raw_set.get("description", ""))
+        else:
+            names = raw_set
+            description = ""
+        return {
+            "source": "strategy_set",
+            "strategy_set": selected_set,
+            "description": description,
+            "strategies": [str(item) for item in names],
+        }
+
+    return {
+        "source": "legacy_compare_strategies",
+        "strategy_set": "",
+        "description": "Backward-compatible strategy_v2.compare_strategies fallback.",
+        "strategies": [str(item) for item in strategy_cfg.get("compare_strategies", [])],
+    }
+
+
+def _resolve_admission_gate(wcfg: dict[str, Any]) -> dict[str, Any]:
+    legacy_gate = wcfg.get("gate", {}) or {}
+    configured = (wcfg.get("admission", {}) or {}).get("gate", {}) or {}
+    return {
+        "annualized_return_min": float(configured.get("annualized_return_min", legacy_gate.get("annualized_return_min", 0.0))),
+        "sharpe_min": float(configured.get("sharpe_min", legacy_gate.get("sharpe_min", 0.5))),
+        "max_drawdown_min": float(configured.get("max_drawdown_min", legacy_gate.get("max_drawdown_min", -0.25))),
+        "positive_fold_ratio_min": float(configured.get("positive_fold_ratio_min", legacy_gate.get("min_positive_fold_ratio", 0.75))),
+        "turnover_annual_mean_max": float(configured.get("turnover_annual_mean_max", 3.0)),
+        "turnover_annual_max_max": float(configured.get("turnover_annual_max_max", 5.0)),
+        "overfit_risk_max": str(configured.get("overfit_risk_max", "medium")),
+        "require_parameter_stability": bool(configured.get("require_parameter_stability", True)),
+        "require_industry_concentration_check": bool(configured.get("require_industry_concentration_check", True)),
+    }
+
+
+def _resolve_diagnostic_suites(admission_cfg: dict[str, Any]) -> list[str]:
+    diagnostics = admission_cfg.get("diagnostics", {}) or {}
+    return [str(item) for item in diagnostics.get("suites", [])]
+
+
 def run_strategy_admission(
     *,
     config: dict[str, Any],
     root: Path,
     presets: list[str] | None = None,
+    strategy_set: str | None = None,
     strategies: list[str] | None = None,
     output_dir: Path | None = None,
     trace_callback: Any | None = None,
@@ -47,8 +111,12 @@ def run_strategy_admission(
     if missing_presets:
         raise ValueError(f"unknown walk_forward presets: {missing_presets}")
 
+    admission_cfg = wcfg.get("admission", {}) or {}
+    gate_cfg = _resolve_admission_gate(wcfg)
+    diagnostics_suites = _resolve_diagnostic_suites(admission_cfg)
     strategy_cfg = wcfg.get("strategy_v2", {})
-    strategy_names = strategies or [str(item) for item in strategy_cfg.get("compare_strategies", [])]
+    strategy_scope = _resolve_strategy_scope(strategy_cfg, admission_cfg, strategy_set=strategy_set, strategies=strategies)
+    strategy_names = strategy_scope["strategies"]
     if not strategy_names:
         raise ValueError("strategy-admission requires at least one strategy")
 
@@ -60,6 +128,7 @@ def run_strategy_admission(
         scenario_wcfg["preset_name"] = preset_name
         scenario_strategy_cfg = scenario_wcfg.setdefault("strategy_v2", {})
         scenario_strategy_cfg["compare_strategies"] = strategy_names
+        _force_strategy_set_enabled_for_admission(scenario_strategy_cfg, strategy_names)
         result = run_walk_forward(scenario_cfg, trace_callback=trace_callback)
         summary = result.get("summary", {}) or {}
         folds = result.get("candidate_folds", pd.DataFrame())
@@ -91,7 +160,7 @@ def run_strategy_admission(
 
     folds_df = pd.concat(all_folds, ignore_index=True) if all_folds else pd.DataFrame()
     failures_df = pd.DataFrame(failure_rows)
-    matrix_df = _build_window_matrix(folds_df, failures_df, strategy_names, preset_names)
+    matrix_df = _build_window_matrix(folds_df, failures_df, strategy_names, preset_names, gate_cfg)
 
     folds_csv = output_dir / "strategy_admission_candidate_folds.csv"
     if folds_df.empty:
@@ -112,14 +181,24 @@ def run_strategy_admission(
         overfit_csv = overfit_result.csv_path
         overfit_df = pd.read_csv(overfit_csv)
 
-    constraint_df = _build_constraint_review(matrix_df, overfit_df, preset_names)
+    constraint_df = _build_constraint_review(matrix_df, overfit_df, preset_names, gate_cfg)
 
     matrix_csv = output_dir / "strategy_admission_window_matrix.csv"
     constraint_csv = output_dir / "strategy_admission_constraint_review.csv"
     report_md = output_dir / "strategy_admission_report.md"
     matrix_df.to_csv(matrix_csv, index=False)
     constraint_df.to_csv(constraint_csv, index=False)
-    _write_report(report_md, matrix_df, constraint_df, preset_names, strategy_names, root=root)
+    _write_report(
+        report_md,
+        matrix_df,
+        constraint_df,
+        preset_names,
+        strategy_names,
+        root=root,
+        strategy_scope=strategy_scope,
+        gate_cfg=gate_cfg,
+        diagnostics_suites=diagnostics_suites,
+    )
 
     return StrategyAdmissionResult(
         output_dir=output_dir,
@@ -134,11 +213,35 @@ def run_strategy_admission(
     )
 
 
+def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], strategy_names: list[str]) -> None:
+    legacy_switches = {
+        "ma_kline_baseline_v1": ("baseline_ma_kline",),
+        "core_selection_quality_momentum_v1": ("core_selection_quality_momentum",),
+        "theme_exposure_momentum_v1": ("theme_exposure_momentum",),
+        "residual_momentum_reversal_v1": ("local_factor",),
+        "residual_momentum_reversal_v2": ("local_factor", "residual_reversal_v2"),
+        "quality_growth_price_v1": ("local_factor", "quality_growth"),
+        "low_vol_low_turnover_quality_v1": ("local_factor", "low_vol_low_turnover_quality"),
+        "quality_low_turnover_monthly_v1": ("local_factor", "quality_low_turnover_monthly"),
+        "multifactor_volume_price_filter_v1": ("local_factor", "multifactor_filter"),
+    }
+    for strategy_name in strategy_names:
+        path = legacy_switches.get(str(strategy_name))
+        if not path:
+            continue
+        target = strategy_cfg
+        for key in path:
+            target = target.setdefault(key, {})
+        if isinstance(target, dict):
+            target["enabled"] = True
+
+
 def _build_window_matrix(
     folds: pd.DataFrame,
     failures: pd.DataFrame,
     strategy_names: list[str],
     preset_names: list[str],
+    gate_cfg: dict[str, Any],
 ) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     strategy_col = "strategy_id" if "strategy_id" in folds.columns else "candidate"
@@ -182,11 +285,11 @@ def _build_window_matrix(
                     }
                 )
                 continue
-            rows.append(_window_metrics(strategy_name, preset_name, group))
+            rows.append(_window_metrics(strategy_name, preset_name, group, gate_cfg))
     return pd.DataFrame(rows)
 
 
-def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> dict[str, Any]:
+def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gate_cfg: dict[str, Any]) -> dict[str, Any]:
     ann = _numeric_column(group, "annualized_return")
     sharpe = _numeric_column(group, "sharpe")
     mdd = _numeric_column(group, "max_drawdown")
@@ -220,11 +323,11 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
     turnover_annual_mean = float(turnover.mean()) if turnover.notna().any() else 0.0
     turnover_annual_max = float(turnover.max()) if turnover.notna().any() else 0.0
     fold_count = int(len(group))
-    is_return_pass = annualized_return_mean > 0
-    is_sharpe_pass = sharpe_mean > 0.5
-    is_drawdown_pass = max_drawdown_worst > -0.25
-    is_positive_fold_pass = positive_fold_ratio >= 0.75
-    is_turnover_pass = turnover_annual_mean <= 3.0 and turnover_annual_max <= 5.0
+    is_return_pass = annualized_return_mean > float(gate_cfg["annualized_return_min"])
+    is_sharpe_pass = sharpe_mean > float(gate_cfg["sharpe_min"])
+    is_drawdown_pass = max_drawdown_worst > float(gate_cfg["max_drawdown_min"])
+    is_positive_fold_pass = positive_fold_ratio >= float(gate_cfg["positive_fold_ratio_min"])
+    is_turnover_pass = turnover_annual_mean <= float(gate_cfg["turnover_annual_mean_max"]) and turnover_annual_max <= float(gate_cfg["turnover_annual_max_max"])
     expected_folds = group.get("walk_forward_expected_folds", pd.Series(dtype=object)).dropna()
     expected_folds_value = expected_folds.iloc[0] if not expected_folds.empty else ""
     actual_folds = group.get("walk_forward_actual_folds", pd.Series(dtype=object)).dropna()
@@ -277,7 +380,7 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
     }
 
 
-def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset_names: list[str]) -> pd.DataFrame:
+def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset_names: list[str], gate_cfg: dict[str, Any]) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     overfit_by_strategy = {}
     if not overfit.empty and "strategy_id" in overfit.columns:
@@ -287,11 +390,11 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         sid = str(strategy_id)
         ok_windows = group[group["status"] == "ok"]
         pass_count = int(pd.Series(group.get("is_window_pass", False)).astype(bool).sum())
-        turnover_fail_count = int((pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce") > 3.0).sum())
+        turnover_fail_count = int((pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce") > float(gate_cfg["turnover_annual_mean_max"])).sum())
         missing_window_count = int((group["status"] != "ok").sum())
-        industry_concentration_count = _industry_concentration_window_count(ok_windows)
+        industry_concentration_count = _industry_concentration_window_count(ok_windows) if bool(gate_cfg.get("require_industry_concentration_check", True)) else 0
         parameter_unique_total = int(pd.to_numeric(ok_windows.get("parameter_unique_count"), errors="coerce").fillna(0).sum()) if not ok_windows.empty else 0
-        parameter_unstable_count = _parameter_unstable_window_count(ok_windows)
+        parameter_unstable_count = _parameter_unstable_window_count(ok_windows) if bool(gate_cfg.get("require_parameter_stability", True)) else 0
         overfit_row = overfit_by_strategy.get(sid)
         overfit_level = str(overfit_row["overfit_risk_level"]) if overfit_row is not None and "overfit_risk_level" in overfit_row else "unknown"
         overfit_score = int(overfit_row["overfit_score"]) if overfit_row is not None and "overfit_score" in overfit_row else 0
@@ -304,6 +407,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
             industry_concentration_count=industry_concentration_count,
             overfit_level=overfit_level,
             group=group,
+            gate_cfg=gate_cfg,
         )
         rows.append(
             {
@@ -333,6 +437,12 @@ def _parameter_unstable_window_count(ok_windows: pd.DataFrame) -> int:
     return int((param_counts > limits).sum())
 
 
+def _overfit_blocks_admission(level: str, gate_cfg: dict[str, Any]) -> bool:
+    order = {"low": 0, "medium": 1, "high": 2, "critical": 3, "unknown": 99}
+    max_level = str(gate_cfg.get("overfit_risk_max", "medium"))
+    return order.get(str(level), 99) > order.get(max_level, 1)
+
+
 def _industry_concentration_window_count(ok_windows: pd.DataFrame) -> int:
     if ok_windows.empty:
         return 0
@@ -352,11 +462,13 @@ def _admission_action(
     industry_concentration_count: int,
     overfit_level: str,
     group: pd.DataFrame,
+    gate_cfg: dict[str, Any],
 ) -> tuple[str, list[str]]:
     reasons: list[str] = []
+    overfit_blocks = _overfit_blocks_admission(overfit_level, gate_cfg)
     if missing_window_count:
         reasons.append("one or more presets produced no valid folds")
-    if overfit_level in {"critical", "high"}:
+    if overfit_blocks:
         reasons.append(f"overfit risk is {overfit_level}")
     if turnover_fail_count:
         reasons.append("annual turnover exceeds threshold in one or more windows")
@@ -364,15 +476,15 @@ def _admission_action(
         reasons.append("selected parameters change too frequently in one or more windows")
     if industry_concentration_count:
         reasons.append("industry concentration exceeds audit threshold in one or more windows")
-    positive_fail = int((_numeric_column(group, "positive_fold_ratio") < 0.75).sum())
+    positive_fail = int((_numeric_column(group, "positive_fold_ratio") < float(gate_cfg["positive_fold_ratio_min"])).sum())
     if positive_fail:
-        reasons.append("positive fold ratio below 75% in one or more windows")
+        reasons.append(f"positive fold ratio below {float(gate_cfg['positive_fold_ratio_min']):.0%} in one or more windows")
     if (
         pass_count == preset_count
-        and overfit_level not in {"critical", "high"}
+        and not overfit_blocks
         and turnover_fail_count == 0
-        and parameter_unstable_count == 0
-        and industry_concentration_count == 0
+        and (parameter_unstable_count == 0 or not bool(gate_cfg.get("require_parameter_stability", True)))
+        and (industry_concentration_count == 0 or not bool(gate_cfg.get("require_industry_concentration_check", True)))
     ):
         return "eligible_for_paper_review", reasons or ["all configured windows pass"]
     if pass_count == 1:
@@ -383,7 +495,18 @@ def _admission_action(
     return "retest", reasons or ["window robustness incomplete"]
 
 
-def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, presets: list[str], strategies: list[str], *, root: Path) -> None:
+def _write_report(
+    path: Path,
+    matrix: pd.DataFrame,
+    review: pd.DataFrame,
+    presets: list[str],
+    strategies: list[str],
+    *,
+    root: Path,
+    strategy_scope: dict[str, Any],
+    gate_cfg: dict[str, Any],
+    diagnostics_suites: list[str],
+) -> None:
     factor_evidence = _load_quality_factor_evidence(root)
     lines = [
         "# Strategy Admission Report",
@@ -393,7 +516,17 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
         "## Scope",
         "",
         f"- Presets: `{', '.join(presets)}`",
+        f"- Strategy scope source: `{_safe_str(strategy_scope.get('source', ''))}`",
+        f"- Strategy set: `{_safe_str(strategy_scope.get('strategy_set', ''))}`",
         f"- Strategies: `{', '.join(strategies)}`",
+        f"- Diagnostics suites: `{', '.join(diagnostics_suites) if diagnostics_suites else 'none'}`",
+        "",
+        "## Global Admission Gate",
+        "",
+        _md_table(
+            ["gate", "value"],
+            [[str(key), str(value)] for key, value in gate_cfg.items()],
+        ),
         "",
         "## Constraint Review",
         "",
@@ -440,13 +573,13 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
             [
                 [
                     str(row["strategy_id"]),
-                    str(row["walk_forward_preset"]),
-                    str(row["status"]),
+                    _safe_str(row["walk_forward_preset"]),
+                    _safe_str(row["status"]),
                     str(_safe_int(row["fold_count"])),
-                    f"{str(row.get('walk_forward_start_date', ''))}~{str(row.get('walk_forward_end_date', ''))}",
-                    str(row.get("walk_forward_expected_folds", "")),
-                    str(row.get("walk_forward_actual_folds", "")),
-                    str(row.get("walk_forward_fold_generation_warning", "")),
+                    f"{_safe_str(row.get('walk_forward_start_date', ''))}~{_safe_str(row.get('walk_forward_end_date', ''))}",
+                    _safe_str(row.get("walk_forward_expected_folds", "")),
+                    _safe_str(row.get("walk_forward_actual_folds", "")),
+                    _safe_str(row.get("walk_forward_fold_generation_warning", "")),
                     f"{_safe_float(row['annualized_return_mean']):.4f}",
                     f"{_safe_float(row['sharpe_mean']):.4f}",
                     f"{_safe_float(row['max_drawdown_worst']):.4f}",
@@ -564,6 +697,15 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
 
 def _safe_int(value: Any, default: int = 0) -> int:
     return int(round(_safe_float(value, float(default))))
+
+
+def _safe_str(value: Any, default: str = "") -> str:
+    if value is None:
+        return default
+    if isinstance(value, float) and np.isnan(value):
+        return default
+    text = str(value)
+    return default if text.lower() == "nan" else text
 
 
 def _numeric_column(df: pd.DataFrame, column: str) -> pd.Series:

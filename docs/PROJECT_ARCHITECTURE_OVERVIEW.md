@@ -516,6 +516,7 @@ updated_at
 - [phase0/walk_forward.py](../phase0/walk_forward.py)
 - [phase0/overfit.py](../phase0/overfit.py)
 - [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
+- [phase0/strategy_admission.py](../phase0/strategy_admission.py)
 - [phase0/reporting.py](../phase0/reporting.py)
 
 当前治理能力：
@@ -529,6 +530,7 @@ updated_at
 - factor effectiveness diagnostic
 - qfq adjustment audit
 - financial PTI audit
+- strategy-admission MVP：窗口稳健性矩阵、全局 admission gate、strategy set、diagnostics suites 和约束复核
 
 策略准入应逐步收敛为统一规则：
 
@@ -547,8 +549,8 @@ data health PASS / acceptable warning
 当前缺口：
 
 - `overfit-diagnostic` 还未接入 `execution-gate` 和 `brief`。
-- `strategy-admission` 统一报告尚未实现。
-- 成本敏感性、参数邻域扰动、收益集中度仍需进一步量化。
+- `strategy-admission` 已有 MVP，但尚未完整合并 `qfq_asof` 对照、factor diagnostic、financial PTI 和 execution gate。
+- 成本敏感性、参数邻域扰动、收益集中度仍需进一步量化并进入 admission 结论。
 
 ---
 
@@ -778,13 +780,13 @@ SQLite / reports / logs / source audit
 
 - Tushare 财务历史回填未完成，质量/现金流类因子长期历史诊断仍不完整。
 - 调度仍由 shell 脚本承担主要状态判断，缺少统一维护编排器、运行账本和长任务监督。
-- 统一 `strategy-admission` 报告尚未实现，准入判断仍分散在多个报告中。
+- 统一 `strategy-admission` 报告已有 MVP，但完整准入判断仍分散在 qfq、factor、financial PTI、execution gate 等报告中。
 
 ### P1
 
 - [phase0/walk_forward.py](../phase0/walk_forward.py) 职责过宽，后续稳定后应拆出因子、组合和评估子模块。
 - `brief daily` 仍复用 watchlist 兼容路径，正式日报产物需要独立建模。
-- `overfit-diagnostic` 未进入 gate / brief / admission 主流程。
+- `overfit-diagnostic` 已进入 `strategy-admission` MVP，仍未进入 execution gate / brief 主流程。
 - `daily_basic.pe_ratio` 覆盖不足仍需建立口径判断，区分数据缺失和亏损公司自然为空。
 
 ### P2
@@ -813,7 +815,7 @@ SQLite / reports / logs / source audit
 
 完成标准：
 
-- 新增 `strategy-admission` 报告。
+- 完成 `strategy-admission` 从 MVP 到统一准入报告的升级。
 - 合并 qfq_asof、PIT universe、financial PTI、factor effectiveness、overfit、execution gate。
 - 明确何种策略能进入长期观察池，何种策略只能作为研究样本。
 

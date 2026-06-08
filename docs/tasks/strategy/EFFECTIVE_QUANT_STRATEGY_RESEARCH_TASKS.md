@@ -150,7 +150,8 @@ score =
 - [ ] 合并 effectiveness gate、qfq_asof compare、factor diagnostic、overfit diagnostic
 - [x] 加入 walk-forward 窗口稳健性矩阵，避免只因单一训练/验证窗口成立就进入模拟账户
 - [x] 将 walk-forward 窗口配置模块化为 preset，保留当前 `baseline_2y_1y` 作为 baseline
-- [ ] 建立回测窗口期配置模块 V1，优先解决固定研究区间、期望折数和 T2.7 复测问题
+- [x] 建立回测窗口期配置模块 V1，优先解决固定研究区间、期望折数和 T2.7 复测问题
+- [x] 新增全局 admission 配置层：`strategy_sets`、`gate`、`diagnostics.suites`
 - [x] 给出策略是否可进入观察池 / 模拟账户的明确结论
 
 ### T2.8.2 硬规则
@@ -175,8 +176,8 @@ score =
 - [x] `baseline_2y_1y`：2 年训练 + 1 年验证，作为当前候选统一可比口径
 - [x] `quality_3y_1y`：3 年训练 + 1 年验证，作为 T2.6/T2.7 低频质量策略推荐稳健性窗口
 - [x] `quality_4y_1y`：4 年训练 + 1 年验证，作为质量/低换手策略严格复核窗口
-- [ ] `baseline_2y_1y_5fold`：2 年训练 + 1 年验证，固定 `2019-04-01` 到 `2026-03-31`，作为所有策略第一道公共 baseline
-- [ ] `quality_3y_1y_4fold`：3 年训练 + 1 年验证，固定 `2019-04-01` 到 `2026-03-31`，作为低频质量/低估值策略专用窗口
+- [x] `baseline_2y_1y_5fold`：2 年训练 + 1 年验证，固定 `2019-04-01` 到 `2026-03-31`，作为所有策略第一道公共 baseline
+- [x] `quality_3y_1y_4fold`：3 年训练 + 1 年验证，固定 `2019-04-01` 到 `2026-03-31`，作为低频质量/低估值策略专用窗口
 - [ ] `momentum_1y_6m`：V2 候选，1 年训练 + 6 个月验证，用于中期动量、行业轮动和风险 overlay
 - [ ] `short_horizon_6m_3m`：V2 候选，6 个月训练 + 3 个月验证，用于短线反转、K 线和技术形态
 - [ ] `event_rolling_n_events`：V2 候选，按事件数滚动，用于 PEAD、公告、新闻和文本事件策略
@@ -221,11 +222,12 @@ V1 preset：
 
 V1 开发任务：
 
-- [ ] 扩展 preset schema：支持 `start_date` / `end_date`、`expected_folds`
-- [ ] 保持 `train_years` / `validate_years` 兼容，不破坏现有 `baseline_2y_1y`、`quality_3y_1y`、`quality_4y_1y`
-- [ ] 在 fold 生成逻辑中支持 preset 级固定 `start_date` / `end_date`
-- [ ] 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
-- [ ] 新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`
+- [x] 扩展 preset schema：支持 `start_date` / `end_date`、`expected_folds`
+- [x] 保持 `train_years` / `validate_years` 兼容，不破坏现有 `baseline_2y_1y`、`quality_3y_1y`、`quality_4y_1y`
+- [x] 在 fold 生成逻辑中支持 preset 级固定 `start_date` / `end_date`
+- [x] 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
+- [x] 新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`
+- [x] `strategy-admission` 支持 `walk_forward.admission.strategy_sets`、CLI `--strategy-set`、CLI `--strategies` 覆盖和 `diagnostics.suites` 报告说明
 - [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
 
 V1 不做：

@@ -460,7 +460,10 @@ logs/project_scheduler.log
 - `quality_growth_price_v1`
 - `multifactor_volume_price_filter_v1`
 
-`config.yaml` 中的 `walk_forward.strategy_v2.compare_strategies` 控制参与 compare 的候选。
+`strategy-admission` 默认使用 `config.yaml` 中的 `walk_forward.admission.default_strategy_set` 和
+`walk_forward.admission.strategy_sets` 控制本轮候选集合；临时缩小范围优先用 CLI `--strategies` 覆盖，
+避免把临时实验状态写回配置。若长期不希望某个策略参与默认准入，可以在 `strategy_sets` 中注释对应策略行；
+该变更是持久设计变更，不会自动恢复。`walk_forward.strategy_v2.compare_strategies` 仅保留为向后兼容入口。
 
 策略变更要求：
 
