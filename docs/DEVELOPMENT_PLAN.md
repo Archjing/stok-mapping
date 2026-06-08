@@ -1080,10 +1080,11 @@ stok-mapping/
 - [x] 将 `db-health --scope cn --fail-on error` 接入 `factor-effectiveness` 前置检查
 - [x] 将 `db-health --scope cn --fail-on error` 接入 `run` 前置检查
 - [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
-- [ ] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
-- [ ] 实现 `T2.7` `quality_low_turnover_monthly_v1`
+- [x] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
+- [x] 实现 `T2.7` `quality_low_turnover_monthly_v1`
 - [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断和过拟合诊断；当前已完成 strategy-admission MVP、过拟合诊断合并和窗口/约束准入复核
 - [x] 在 `T2.8` 中加入 walk-forward 窗口 preset 与窗口稳健性矩阵：保留 `baseline_2y_1y` 为统一可比口径，并为低频质量策略增加 `quality_3y_1y`、`quality_4y_1y` 复核
+- [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
 - [ ] 完成 Tushare 主源长期稳定性验证与源审计闭环；当前日级 `daily_basic` / `adj_factor` 和财务因子 2016Q1-2018Q1 已补齐并有验收报告，后续重点转为增量维护和源稳定性审计

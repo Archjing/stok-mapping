@@ -64,9 +64,9 @@
 
 ### T2.6.1 目标
 
-- [ ] 新增低波低换手质量三因子候选
-- [ ] 接入 `phase0/strategies/registry.py`
-- [ ] 加入 compare，但通过 gate 前不得进入模拟账户
+- [x] 新增低波低换手质量三因子候选
+- [x] 接入 `phase0/strategies/registry.py`
+- [x] 加入 compare，但通过 gate 前不得进入模拟账户
 
 ### T2.6.2 初始评分
 
@@ -80,11 +80,11 @@ score =
 
 ### T2.6.3 参数范围
 
-- [ ] 调仓周期：`20 / 40` 个交易日
-- [ ] top_n：`10 / 20`
-- [ ] 低波窗口：`20 / 60`
-- [ ] 中期动量窗口：`20 / 60`
-- [ ] 单票权重上限：`10%`
+- [x] 调仓周期：`20 / 40` 个交易日
+- [x] top_n：`10 / 20`
+- [x] 低波窗口：`20 / 60`
+- [x] 中期动量窗口：`20 / 60`
+- [x] 单票权重上限：`10%`
 - [ ] 年化换手目标：`<= 3`
 
 ### T2.6.4 验收
@@ -96,37 +96,48 @@ score =
 - [ ] 年化换手 `<= 3`
 - [ ] overfit risk 不高于 `medium`
 
+### T2.6.5 行业约束复核
+
+- [x] 新增通用策略修饰层模块，行业约束不写死在 T2.6 内部
+- [x] 支持 `strategy_v2.constraints.industry.mode = audit/enforce`
+- [x] 支持 `max_names_per_industry`
+- [x] 支持 `max_industry_weight`
+- [x] 支持 `unknown_industry_policy = allow/cap/reject`
+- [x] 在 PIT universe 折内携带历史 `industry/name` 元数据
+- [x] 在 candidate fold 和 strategy-admission 输出行业集中度复核指标
+- [ ] 后续增加 `shadow` 模式，输出原策略与约束版并行对照候选
+
 ---
 
 ## T2.7 `quality_low_turnover_monthly_v1`
 
 ### T2.7.1 目标
 
-- [ ] 重做 `quality_growth_price_v1` 的低频质量版本
-- [ ] 质量因子作为核心 ranker，低波和低换手作为联合约束
-- [ ] 月频或 20 日以上调仓，避免财务慢变量被日频交易化
+- [x] 重做 `quality_growth_price_v1` 的低频质量版本
+- [x] 质量因子作为核心 ranker，低波和低换手作为联合约束
+- [x] 月频或 20 日以上调仓，避免财务慢变量被日频交易化
 
 ### T2.7.2 信号
 
-- [ ] ROE
-- [ ] 现金流质量
-- [ ] 利润增长
-- [ ] 营收增长
-- [ ] 低负债
-- [ ] 低波
-- [ ] 低换手
+- [x] ROE
+- [x] 现金流质量
+- [x] 利润增长
+- [x] 营收增长
+- [x] 低负债
+- [x] 低波
+- [x] 低换手
 
 ### T2.7.3 输出解释
 
-- [ ] 输出质量字段贡献拆解
+- [x] 输出质量字段贡献拆解
 - [ ] 输出财务字段公告日 point-in-time 覆盖率
 - [ ] 输出缺失财务字段对候选池影响
 
 ### T2.7.4 验收
 
 - [ ] 年化换手 `<= 3`
-- [ ] 不依赖短线趋势过滤
-- [ ] 至少一个质量子因子在 T2.5 中有正向证据
+- [x] 不依赖短线趋势过滤
+- [x] 至少一个质量子因子在 T2.5 中有正向证据
 - [ ] 若失败，报告明确区分“质量因子无效”还是“组合构造无效”
 
 ---
@@ -243,8 +254,8 @@ final_score =
 ## 近期执行顺序
 
 1. [x] T2.5 因子有效性诊断报告
-2. [ ] T2.6 `low_vol_low_turnover_quality_v1`
-3. [ ] T2.7 `quality_low_turnover_monthly_v1`
+2. [x] T2.6 `low_vol_low_turnover_quality_v1`
+3. [x] T2.7 `quality_low_turnover_monthly_v1`
 4. [ ] T2.8 策略准入报告
 5. [ ] T2.9 sleeve 组合与二阶段 rerank
 6. [ ] T2.10 PEAD / 文本 / 跨市场增强

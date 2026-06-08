@@ -27,6 +27,7 @@ from phase0.local_history import (
 )
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
+from phase0.strategy_constraints import apply_strategy_constraints
 from phase0.throttle import configure_akshare_throttle
 from phase0.universe import load_point_in_time_universe, load_universe_symbols
 
@@ -477,6 +478,54 @@ def _align_symbol_map(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
     return pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def _add_fold_metadata(panel: pd.DataFrame, metadata: pd.DataFrame | None) -> pd.DataFrame:
+    if panel.empty or metadata is None or metadata.empty or "symbol" not in metadata.columns:
+        return panel
+    meta_cols = [col for col in ["symbol", "name", "industry"] if col in metadata.columns]
+    if len(meta_cols) <= 1:
+        return panel
+    meta = metadata[meta_cols].copy().drop_duplicates("symbol")
+    meta["symbol"] = meta["symbol"].astype(str)
+    out = panel.copy()
+    out["symbol"] = out["symbol"].astype(str)
+    merged = out.merge(meta, on="symbol", how="left", suffixes=("", "_meta"))
+    for col in ["name", "industry"]:
+        meta_col = f"{col}_meta"
+        if meta_col not in merged.columns:
+            continue
+        if col not in merged.columns:
+            merged[col] = merged[meta_col]
+        else:
+            current = merged[col]
+            missing = current.isna() | current.astype(str).str.strip().eq("")
+            merged[col] = current.where(~missing, merged[meta_col])
+    return merged.drop(columns=[col for col in merged.columns if col.endswith("_meta")])
+
+
+def _load_current_symbol_metadata(symbols: list[str]) -> pd.DataFrame:
+    if not symbols:
+        return pd.DataFrame()
+    db_path = local_history_path()
+    if not db_path.exists():
+        return pd.DataFrame()
+    placeholders = ",".join("?" for _ in symbols)
+    query = f"""
+        SELECT symbol, name, industry
+        FROM market_stocks
+        WHERE market = ?
+          AND symbol IN ({placeholders})
+    """
+    try:
+        with sqlite3.connect(db_path) as conn:
+            df = pd.read_sql_query(query, conn, params=["CN", *symbols])
+    except sqlite3.Error:
+        return pd.DataFrame()
+    if df.empty:
+        return df
+    df["symbol"] = df["symbol"].astype(str)
+    return df
 
 
 def _apply_portfolio_strategy(
@@ -1593,6 +1642,8 @@ def iter_point_in_time_universe_folds(
         if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
             audit_rows.append({**audit, "warning": "; ".join(warnings + ["fold skipped: insufficient train/valid samples"])})
             continue
+        train = _add_fold_metadata(train, universe.universe)
+        valid = _add_fold_metadata(valid, universe.universe)
 
         audit["price_adjustment_for_backtest"] = _price_adjustment_mode(config)
         audit["train_price_as_of_date"] = train_end_date.isoformat() if use_strict_asof else ""
@@ -1656,6 +1707,17 @@ def _run_strategy_on_explicit_fold(
         stamp_duty_sell=stamp_duty_sell,
     )
     output = _normalize_strategy_output(result, fold_valid, strategy_name, params)
+    constraint_result = apply_strategy_constraints(
+        output,
+        strategy_name=strategy_name,
+        panel_scope=strategy.panel_scope,
+        strategy_cfg=strategy_cfg,
+        panel=fold_valid,
+        slippage=slippage,
+        commission=commission,
+        stamp_duty_sell=stamp_duty_sell,
+    )
+    output = constraint_result.output
     metric = _calc_metrics(output.returns, output.exposure)
     meta = output.metadata or strategy.build_metadata(params)
     row = {
@@ -1681,6 +1743,7 @@ def _run_strategy_on_explicit_fold(
         "supports_brief": meta.get("supports_brief", True),
         "supports_paper_trade": meta.get("supports_paper_trade", True),
     }
+    row.update(constraint_result.metrics)
     if extra:
         row.update(extra)
     return [row]
@@ -1741,6 +1804,17 @@ def _run_strategy_on_symbol_panel(
             stamp_duty_sell=stamp_duty_sell,
         )
         output = _normalize_strategy_output(result, valid, strategy_name, params)
+        constraint_result = apply_strategy_constraints(
+            output,
+            strategy_name=strategy_name,
+            panel_scope=strategy.panel_scope,
+            strategy_cfg=strategy_cfg,
+            panel=valid,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        output = constraint_result.output
         # 验证窗输出每日收益和持仓暴露，再汇总为年化收益、Sharpe、回撤、胜率和换手等指标。
         metric = _calc_metrics(output.returns, output.exposure)
         meta = output.metadata or strategy.build_metadata(params)
@@ -1768,6 +1842,7 @@ def _run_strategy_on_symbol_panel(
                 "panel_scope": meta.get("panel_scope", strategy.panel_scope),
                 "supports_brief": meta.get("supports_brief", True),
                 "supports_paper_trade": meta.get("supports_paper_trade", True),
+                **constraint_result.metrics,
             }
         )
         start += fold_days_valid
@@ -1791,6 +1866,7 @@ def _run_compare(
     compare_strategies = _resolve_compare_strategies(strategy_cfg)
 
     combined_panel: pd.DataFrame | None = None
+    current_metadata = _load_current_symbol_metadata(symbols)
     # 逐个候选策略跑同一套滚动回测；单票策略逐只测，组合策略用同一横截面股票池测。
     for strategy_name in compare_strategies:
         if strategy_name not in available_strategies():
@@ -1822,6 +1898,7 @@ def _run_compare(
                 # 组合策略需要同日横截面排名，因此先把所有股票行情合并成一个 panel。
                 combined_panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
                 if not combined_panel.empty:
+                    combined_panel = _add_fold_metadata(combined_panel, current_metadata)
                     combined_panel = _add_cross_market_to_panel(combined_panel, years, strategy_cfg, xfeatures)
             if combined_panel is None or combined_panel.empty:
                 candidates[strategy.candidate_name] = []
@@ -1956,6 +2033,9 @@ def _run_compare_qfq_asof_static(
         if train_panel["date"].nunique() < min_samples or valid_panel["date"].nunique() < min_samples // 2:
             audit_rows.append({**audit, "warning": "fold skipped: insufficient train/valid samples"})
             continue
+        current_metadata = _load_current_symbol_metadata(symbols)
+        train_panel = _add_fold_metadata(train_panel, current_metadata)
+        valid_panel = _add_fold_metadata(valid_panel, current_metadata)
         audit_rows.append(audit)
         for strategy_name in compare_strategies:
             if strategy_name not in available_strategies():

@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from phase0.overfit import run_overfit_diagnostic
@@ -175,12 +176,17 @@ def _build_window_matrix(
 
 
 def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> dict[str, Any]:
-    ann = pd.to_numeric(group.get("annualized_return"), errors="coerce")
-    sharpe = pd.to_numeric(group.get("sharpe"), errors="coerce")
-    mdd = pd.to_numeric(group.get("max_drawdown"), errors="coerce")
-    turnover = pd.to_numeric(group.get("turnover_annual"), errors="coerce")
-    trades = pd.to_numeric(group.get("trades"), errors="coerce")
+    ann = _numeric_column(group, "annualized_return")
+    sharpe = _numeric_column(group, "sharpe")
+    mdd = _numeric_column(group, "max_drawdown")
+    turnover = _numeric_column(group, "turnover_annual")
+    trades = _numeric_column(group, "trades")
     params = group.get("selected_params", pd.Series(dtype=object)).fillna("").astype(str)
+    top_industry_avg = _numeric_column(group, "top_industry_avg_share")
+    top_industry_p95 = _numeric_column(group, "top_industry_p95_share")
+    top_industry_max = _numeric_column(group, "top_industry_max_share")
+    top3_industry_avg = _numeric_column(group, "top3_industries_avg_share")
+    violation_days = _numeric_column(group, "industry_constraint_violation_days")
     positive_fold_ratio = float((ann > 0).mean()) if len(group) else 0.0
     annualized_return_mean = float(ann.mean()) if ann.notna().any() else 0.0
     sharpe_mean = float(sharpe.mean()) if sharpe.notna().any() else 0.0
@@ -207,6 +213,11 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
         "turnover_annual_max": turnover_annual_max,
         "trades_total": int(trades.sum()) if trades.notna().any() else 0,
         "parameter_unique_count": int(params[params != ""].nunique()),
+        "top_industry_avg_share_mean": float(top_industry_avg.mean()) if top_industry_avg.notna().any() else 0.0,
+        "top_industry_p95_share_max": float(top_industry_p95.max()) if top_industry_p95.notna().any() else 0.0,
+        "top_industry_max_share_max": float(top_industry_max.max()) if top_industry_max.notna().any() else 0.0,
+        "top3_industries_avg_share_mean": float(top3_industry_avg.mean()) if top3_industry_avg.notna().any() else 0.0,
+        "industry_violation_days_total": int(violation_days.fillna(0).sum()) if violation_days.notna().any() else 0,
         "is_return_pass": is_return_pass,
         "is_sharpe_pass": is_sharpe_pass,
         "is_drawdown_pass": is_drawdown_pass,
@@ -228,6 +239,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         pass_count = int(pd.Series(group.get("is_window_pass", False)).astype(bool).sum())
         turnover_fail_count = int((pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce") > 3.0).sum())
         missing_window_count = int((group["status"] != "ok").sum())
+        industry_concentration_count = _industry_concentration_window_count(ok_windows)
         parameter_unique_total = int(pd.to_numeric(ok_windows.get("parameter_unique_count"), errors="coerce").fillna(0).sum()) if not ok_windows.empty else 0
         parameter_unstable_count = _parameter_unstable_window_count(ok_windows)
         overfit_row = overfit_by_strategy.get(sid)
@@ -239,6 +251,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
             turnover_fail_count=turnover_fail_count,
             missing_window_count=missing_window_count,
             parameter_unstable_count=parameter_unstable_count,
+            industry_concentration_count=industry_concentration_count,
             overfit_level=overfit_level,
             group=group,
         )
@@ -250,6 +263,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
                 "window_count": len(preset_names),
                 "turnover_fail_count": turnover_fail_count,
                 "missing_window_count": missing_window_count,
+                "industry_concentration_window_count": industry_concentration_count,
                 "overfit_risk_level": overfit_level,
                 "overfit_score": overfit_score,
                 "parameter_unique_total": parameter_unique_total,
@@ -263,10 +277,19 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
 def _parameter_unstable_window_count(ok_windows: pd.DataFrame) -> int:
     if ok_windows.empty:
         return 0
-    fold_counts = pd.to_numeric(ok_windows.get("fold_count"), errors="coerce").fillna(0).astype(int)
-    param_counts = pd.to_numeric(ok_windows.get("parameter_unique_count"), errors="coerce").fillna(0).astype(int)
+    fold_counts = _numeric_column(ok_windows, "fold_count").fillna(0).astype(int)
+    param_counts = _numeric_column(ok_windows, "parameter_unique_count").fillna(0).astype(int)
     limits = fold_counts.map(lambda fold_count: max(2, fold_count // 2 + 1))
     return int((param_counts > limits).sum())
+
+
+def _industry_concentration_window_count(ok_windows: pd.DataFrame) -> int:
+    if ok_windows.empty:
+        return 0
+    top1 = _numeric_column(ok_windows, "top_industry_avg_share_mean").fillna(0.0)
+    top3 = _numeric_column(ok_windows, "top3_industries_avg_share_mean").fillna(0.0)
+    violations = _numeric_column(ok_windows, "industry_violation_days_total").fillna(0)
+    return int(((top1 > 0.35) | (top3 > 0.65) | (violations > 0)).sum())
 
 
 def _admission_action(
@@ -276,6 +299,7 @@ def _admission_action(
     turnover_fail_count: int,
     missing_window_count: int,
     parameter_unstable_count: int,
+    industry_concentration_count: int,
     overfit_level: str,
     group: pd.DataFrame,
 ) -> tuple[str, list[str]]:
@@ -288,7 +312,9 @@ def _admission_action(
         reasons.append("annual turnover exceeds threshold in one or more windows")
     if parameter_unstable_count:
         reasons.append("selected parameters change too frequently in one or more windows")
-    positive_fail = int((pd.to_numeric(group.get("positive_fold_ratio"), errors="coerce") < 0.75).sum())
+    if industry_concentration_count:
+        reasons.append("industry concentration exceeds audit threshold in one or more windows")
+    positive_fail = int((_numeric_column(group, "positive_fold_ratio") < 0.75).sum())
     if positive_fail:
         reasons.append("positive fold ratio below 75% in one or more windows")
     if (
@@ -296,6 +322,7 @@ def _admission_action(
         and overfit_level not in {"critical", "high"}
         and turnover_fail_count == 0
         and parameter_unstable_count == 0
+        and industry_concentration_count == 0
     ):
         return "eligible_for_paper_review", reasons or ["all configured windows pass"]
     if pass_count == 1:
@@ -320,7 +347,7 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
         "## Constraint Review",
         "",
         _md_table(
-            ["strategy_id", "action", "window_pass", "turnover_fail", "param_unstable", "overfit", "reasons"],
+            ["strategy_id", "action", "window_pass", "turnover_fail", "param_unstable", "industry_conc", "overfit", "reasons"],
             [
                 [
                     str(row["strategy_id"]),
@@ -328,6 +355,7 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
                     f"{int(row['window_pass_count'])}/{int(row['window_count'])}",
                     str(int(row["turnover_fail_count"])),
                     str(int(row["parameter_unstable_window_count"])),
+                    str(int(row.get("industry_concentration_window_count", 0))),
                     str(row["overfit_risk_level"]),
                     str(row["main_reasons"]),
                 ]
@@ -338,7 +366,7 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
         "## Window Matrix",
         "",
         _md_table(
-            ["strategy_id", "preset", "status", "folds", "ann", "sharpe", "mdd", "turnover", "pass"],
+            ["strategy_id", "preset", "status", "folds", "ann", "sharpe", "mdd", "turnover", "top1_ind", "top3_ind", "pass"],
             [
                 [
                     str(row["strategy_id"]),
@@ -349,6 +377,8 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
                     f"{float(row['sharpe_mean']):.4f}",
                     f"{float(row['max_drawdown_worst']):.4f}",
                     f"{float(row['turnover_annual_mean']):.2f}",
+                    f"{float(row.get('top_industry_avg_share_mean', 0.0)):.2f}",
+                    f"{float(row.get('top3_industries_avg_share_mean', 0.0)):.2f}",
                     str(bool(row["is_window_pass"])),
                 ]
                 for _, row in matrix.iterrows()
@@ -364,3 +394,9 @@ def _md_table(headers: list[str], rows: list[list[str]]) -> str:
     for row in rows:
         out.append("| " + " | ".join(str(cell).replace("|", "\\|") for cell in row) + " |")
     return "\n".join(out)
+
+
+def _numeric_column(df: pd.DataFrame, column: str) -> pd.Series:
+    if column not in df.columns:
+        return pd.Series(np.nan, index=df.index)
+    return pd.to_numeric(df[column], errors="coerce")

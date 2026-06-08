@@ -860,10 +860,10 @@ python -m phase0.cli adjustment-audit \
 
 ## W2.15.4 第二优先级任务
 
-- [ ] 新增 `low_vol_low_turnover_quality_v1` 策略说明文档
-- [ ] 新增 `quality_low_turnover_monthly_v1` 策略说明文档
-- [ ] 设计两者在 `phase0/strategies/` 中的实现接口
-- [ ] 明确调仓周期、top_n、换手上限、行业约束、单票权重上限
+- [x] 新增 `low_vol_low_turnover_quality_v1` 策略说明文档
+- [x] 新增 `quality_low_turnover_monthly_v1` 策略说明文档
+- [x] 设计两者在 `phase0/strategies/` 中的实现接口
+- [x] 明确调仓周期、top_n、换手上限、行业约束、单票权重上限；已新增通用策略修饰层 `strategy_v2.constraints`，行业约束支持 `audit/enforce`
 - [ ] 为 T2.8 继续补齐 `factor_stability_5y_1y`、`ml_asset_10y_1y`、`short_signal_1y_1m`、`short_signal_1y_1m_embargo10d` 等扩展窗口 preset；`baseline_2y_1y`、`quality_3y_1y` 与 `quality_4y_1y` 已落地
 - [x] 策略准入报告应输出窗口稳健性矩阵，低频质量策略至少比较 `baseline_2y_1y`、`quality_3y_1y` 和 `quality_4y_1y`
 

@@ -321,6 +321,15 @@ phase0:
         min_fold_count: 20
         min_symbol_count: 20
         min_portfolio_fold_count: 4
+      constraints:
+        enabled: false
+        apply_to: []
+        industry:
+          enabled: false
+          mode: "audit"
+          max_names_per_industry: 2
+          max_industry_weight: 0.35
+          unknown_industry_policy: "allow"
       top_n: 3
       mom_windows: [3, 5, 10, 20]
       mom_quantiles: [0.5, 0.6]
