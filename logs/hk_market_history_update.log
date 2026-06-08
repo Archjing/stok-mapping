@@ -152,3 +152,63 @@ Warning: yfinance HK.02899 returned empty data.
 Warning: yfinance HK.09633 returned empty data.
 Warning: yfinance HK.06160 returned empty data.
 [2026-06-05 16:20:51 +0800] fail hk_market_history
+[2026-06-08 16:20:02 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:20:03 ] block hk_market_history: health gate failed
+[2026-06-08 16:26:02 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:26:03 ] block hk_market_history: health gate failed
+[2026-06-08 16:32:02 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:32:03 ] block hk_market_history: health gate failed
+[2026-06-08 16:38:02 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:38:03 ] block hk_market_history: health gate failed

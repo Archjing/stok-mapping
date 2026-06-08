@@ -1,42 +1,23 @@
 # Database Health Report
 
-- Status: pass
-- Scope: cn
-- As-of date: 2026-06-07
-- Generated at: 2026-06-07T20:39:09
-- Findings: errors=0, warnings=0, info=0
+- Status: warning
+- Scope: scheduler
+- As-of date: 2026-06-08
+- Generated at: 2026-06-08T17:27:02
+- Findings: errors=0, warnings=1, info=0
 
 ## Summary
 
 | Section | Check | Status | Metric | Value | Threshold |
 | --- | --- | --- | --- | --- | --- |
-| cn | cn.database.exists | pass | db_path | /home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite |  |
-| cn | cn.market_daily_bars.schema | pass | missing_columns | none | none |
-| cn | cn.daily.latest_date | pass | latest_date | 2026-06-05 |  |
-| cn | cn.daily.latest_coverage | pass | latest_symbols/total_symbols | 5514/5762 (95.70%) | 80.00% |
-| cn | cn.daily.staleness | pass | trade_day_staleness | 0 | <= 1; expected_trade_date=2026-06-05 |
-| cn | cn.daily.ohlc | pass | recent_ohlc_violations | 0 | 0 |
-| cn | cn.daily.positive_prices | pass | recent_non_positive_price_rows | 0 | 0 |
-| cn | cn.daily.non_negative_liquidity | pass | recent_negative_volume_amount_rows | 0 | 0 |
-| cn | cn.market_stocks.schema | pass | missing_columns | none | none |
-| cn | cn.meta.active_symbols | pass | active/total | 5526/5526 |  |
-| cn | cn.meta.list_date_coverage | pass | list_date_coverage | 99.96% | 95.00% |
-| cn | cn.market_daily_basic.schema | pass | missing_columns | none | none |
-| cn | cn.daily_basic.latest_date | pass | latest_date | 2026-06-05 |  |
-| cn | cn.daily_basic.latest_rows | pass | latest_rows | 5514 |  |
-| cn | cn.daily_basic.market_cap | pass | latest_non_null_coverage | 100.00% | 80.00% |
-| cn | cn.daily_basic.pe_ratio | pass | latest_non_null_coverage | 72.00% | diagnostic only |
-| cn | cn.daily_basic.pb_ratio | pass | latest_non_null_coverage | 99.26% | 80.00% |
-| cn | cn.daily_basic.turnover_rate | pass | latest_non_null_coverage | 100.00% | 80.00% |
-| cn | cn.daily_basic.pe_ratio_missing | info | missing/rows | 1544/5514 (28.00%) | diagnostic only |
-| cn | cn.daily_basic.pe_ratio_missing_pb_present | info | pb_present_among_pe_missing | 1504/1544 (97.41%) | diagnostic only |
-| cn | cn.daily_basic.pe_ratio_missing_st | info | st_or_star_st_among_pe_missing | 193/1544 (12.50%) | diagnostic only |
-| cn | cn.market_adj_factors.schema | pass | missing_columns | none | none |
-| cn | cn.adjustment.positive_factor | pass | recent_non_positive_adj_factor_rows | 0 | 0 |
-| cn | cn.trading_calendar.schema | pass | missing_columns | none | none |
+| scheduler | scheduler.a_share_history.last_file | pass | mtime | 2026-06-05 | <= 3 days |
+| scheduler | scheduler.us_market_history.last_file | pass | mtime | 2026-06-05 | <= 3 days |
+| scheduler | scheduler.hk_market_history.last_file | warning | mtime | 2026-06-04 | <= 3 days |
+| scheduler | scheduler.daily_brief.last_file | pass | mtime | 2026-06-05 | <= 3 days |
+| scheduler | scheduler.market_data_source_runs.audit | pass | latest_fetched_at | 2026-06-05T16:30:35 | <= 3 days |
 
 ## Findings
 
 | Severity | Check | Table | Symbol | Date | Field | Message | Sample | Expected |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| info | database_health.clean |  |  |  |  | no findings |  |  |
+| warning | scheduler.hk_market_history.last_file |  |  |  |  | scheduler last-run marker is stale | 2026-06-04 | mtime within 3 days |

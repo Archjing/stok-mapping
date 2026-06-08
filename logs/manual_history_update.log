@@ -100,3 +100,63 @@ RemoteDisconnected('Remote end closed connection without response'))
 Warning: AkShare all-A snapshot was empty; used configured local history 
 fallback.
 [2026-06-05 16:31:04 +0800] finish a_share_history
+[2026-06-08 16:30:02 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:30:03 ] block a_share_history: health gate failed
+[2026-06-08 16:36:02 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:36:03 ] block a_share_history: health gate failed
+[2026-06-08 16:42:02 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:42:03 ] block a_share_history: health gate failed
+[2026-06-08 16:48:02 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=1, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-08 16:48:03 ] block a_share_history: health gate failed
