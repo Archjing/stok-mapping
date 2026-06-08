@@ -8,6 +8,7 @@
 - [Tushare MCP 查询工作流](./TUSHARE_MCP_WORKFLOW.md)
 - [最终运行形态流程图](./PROJECT_FINAL_RUNTIME_FLOW.md)
 - [运行形态图样式版本](./runtime-flow-variants/README.md)
+- [编排与调度外部参考](./ORCHESTRATION_AND_SCHEDULING_REFERENCES.md)
 
 ## 数据、风控与账户备忘
 
@@ -32,6 +33,7 @@
 - [目标产品展望汇编](./OUTLOOK/TARGET_PRODUCT_OUTLOOK.md)
 - [近游戏体验研究工作台 UI 主题研究 Note](./near_game_research_workbench_ui_note_2026-06-05.md)
 - [2026-06-04 Session 上下文与原文归档](./context/SESSION_CONTEXT_2026-06-04.md)
+- [2026-06-08 Session 增量知识归档（排除 MCP / Activepieces 讨论）](./context/SESSION_CONTEXT_2026-06-08_incremental.md)
 
 ## 迁移说明
 

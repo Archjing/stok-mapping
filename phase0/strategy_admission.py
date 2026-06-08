@@ -80,6 +80,11 @@ def run_strategy_admission(
         folds["walk_forward_preset"] = preset_name
         folds["walk_forward_train_years"] = int(summary.get("walk_forward_train_years", available_presets[preset_name].get("train_years", 0)))
         folds["walk_forward_validate_years"] = int(summary.get("walk_forward_validate_years", available_presets[preset_name].get("validate_years", 0)))
+        folds["walk_forward_start_date"] = str(summary.get("walk_forward_start_date", available_presets[preset_name].get("start_date", "")))
+        folds["walk_forward_end_date"] = str(summary.get("walk_forward_end_date", available_presets[preset_name].get("end_date", "")))
+        folds["walk_forward_expected_folds"] = summary.get("walk_forward_expected_folds", available_presets[preset_name].get("expected_folds", ""))
+        folds["walk_forward_actual_folds"] = summary.get("walk_forward_actual_folds", folds["fold"].nunique() if "fold" in folds.columns else 0)
+        folds["walk_forward_fold_generation_warning"] = str(summary.get("walk_forward_fold_generation_warning", ""))
         folds["status"] = "ok"
         folds["failure_reason"] = ""
         all_folds.append(folds)
@@ -114,7 +119,7 @@ def run_strategy_admission(
     report_md = output_dir / "strategy_admission_report.md"
     matrix_df.to_csv(matrix_csv, index=False)
     constraint_df.to_csv(constraint_csv, index=False)
-    _write_report(report_md, matrix_df, constraint_df, preset_names, strategy_names)
+    _write_report(report_md, matrix_df, constraint_df, preset_names, strategy_names, root=root)
 
     return StrategyAdmissionResult(
         output_dir=output_dir,
@@ -155,6 +160,11 @@ def _build_window_matrix(
                         "status": "failed",
                         "failure_reason": failure_reason,
                         "fold_count": 0,
+                        "walk_forward_start_date": "",
+                        "walk_forward_end_date": "",
+                        "walk_forward_expected_folds": "",
+                        "walk_forward_actual_folds": 0,
+                        "walk_forward_fold_generation_warning": failure_reason,
                         "positive_fold_ratio": 0.0,
                         "annualized_return_mean": 0.0,
                         "sharpe_mean": 0.0,
@@ -188,6 +198,21 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
     top_industry_max = _numeric_column(group, "top_industry_max_share")
     top3_industry_avg = _numeric_column(group, "top3_industries_avg_share")
     violation_days = _numeric_column(group, "industry_constraint_violation_days")
+    account_ann = _numeric_column(group, "account_annualized_return")
+    account_sharpe = _numeric_column(group, "account_sharpe")
+    account_mdd = _numeric_column(group, "account_max_drawdown")
+    account_orders = _numeric_column(group, "account_executed_order_count")
+    account_unfilled = _numeric_column(group, "account_unfilled_order_count")
+    account_partial = _numeric_column(group, "account_partial_fill_order_count")
+    account_unfilled_or_partial_ratio = _numeric_column(group, "account_unfilled_or_partial_order_ratio")
+    account_partial_ratio = _numeric_column(group, "account_partial_fill_order_ratio")
+    financial_announce = _numeric_column(group, "financial_pit_announce_coverage")
+    selected_financial_announce = _numeric_column(group, "selected_financial_pit_announce_coverage")
+    financial_field_coverage = _numeric_column(group, "financial_field_coverage_mean")
+    selected_financial_field_coverage = _numeric_column(group, "selected_financial_field_coverage_mean")
+    missing_blocked = _numeric_column(group, "financial_missing_blocked_ratio")
+    quality_lift = _numeric_column(group, "selected_quality_score_lift")
+    cash_flow_component = _numeric_column(group, "selected_quality_cash_flow_component_mean")
     positive_fold_ratio = float((ann > 0).mean()) if len(group) else 0.0
     annualized_return_mean = float(ann.mean()) if ann.notna().any() else 0.0
     sharpe_mean = float(sharpe.mean()) if sharpe.notna().any() else 0.0
@@ -200,12 +225,21 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
     is_drawdown_pass = max_drawdown_worst > -0.25
     is_positive_fold_pass = positive_fold_ratio >= 0.75
     is_turnover_pass = turnover_annual_mean <= 3.0 and turnover_annual_max <= 5.0
+    expected_folds = group.get("walk_forward_expected_folds", pd.Series(dtype=object)).dropna()
+    expected_folds_value = expected_folds.iloc[0] if not expected_folds.empty else ""
+    actual_folds = group.get("walk_forward_actual_folds", pd.Series(dtype=object)).dropna()
+    actual_folds_value = int(actual_folds.iloc[0]) if not actual_folds.empty and str(actual_folds.iloc[0]).strip() != "" else int(group["fold"].nunique()) if "fold" in group.columns else fold_count
     return {
         "strategy_id": strategy_id,
         "walk_forward_preset": preset_name,
         "status": "ok",
         "failure_reason": "",
         "fold_count": fold_count,
+        "walk_forward_start_date": str(group["walk_forward_start_date"].iloc[0]) if "walk_forward_start_date" in group.columns else "",
+        "walk_forward_end_date": str(group["walk_forward_end_date"].iloc[0]) if "walk_forward_end_date" in group.columns else "",
+        "walk_forward_expected_folds": expected_folds_value,
+        "walk_forward_actual_folds": actual_folds_value,
+        "walk_forward_fold_generation_warning": str(group["walk_forward_fold_generation_warning"].iloc[0]) if "walk_forward_fold_generation_warning" in group.columns else "",
         "positive_fold_ratio": positive_fold_ratio,
         "annualized_return_mean": annualized_return_mean,
         "sharpe_mean": sharpe_mean,
@@ -219,6 +253,21 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame) -> 
         "top_industry_max_share_max": float(top_industry_max.max()) if top_industry_max.notna().any() else 0.0,
         "top3_industries_avg_share_mean": float(top3_industry_avg.mean()) if top3_industry_avg.notna().any() else 0.0,
         "industry_violation_days_total": int(violation_days.fillna(0).sum()) if violation_days.notna().any() else 0,
+        "account_annualized_return_mean": float(account_ann.mean()) if account_ann.notna().any() else 0.0,
+        "account_sharpe_mean": float(account_sharpe.mean()) if account_sharpe.notna().any() else 0.0,
+        "account_max_drawdown_worst": float(account_mdd.min()) if account_mdd.notna().any() else 0.0,
+        "account_executed_order_count_total": int(account_orders.fillna(0).sum()) if account_orders.notna().any() else 0,
+        "account_unfilled_order_count_total": int(account_unfilled.fillna(0).sum()) if account_unfilled.notna().any() else 0,
+        "account_partial_fill_order_count_total": int(account_partial.fillna(0).sum()) if account_partial.notna().any() else 0,
+        "account_unfilled_or_partial_order_ratio_mean": float(account_unfilled_or_partial_ratio.mean()) if account_unfilled_or_partial_ratio.notna().any() else 0.0,
+        "account_partial_fill_order_ratio_mean": float(account_partial_ratio.mean()) if account_partial_ratio.notna().any() else 0.0,
+        "financial_pit_announce_coverage_mean": float(financial_announce.mean()) if financial_announce.notna().any() else 0.0,
+        "selected_financial_pit_announce_coverage_mean": float(selected_financial_announce.mean()) if selected_financial_announce.notna().any() else 0.0,
+        "financial_field_coverage_mean": float(financial_field_coverage.mean()) if financial_field_coverage.notna().any() else 0.0,
+        "selected_financial_field_coverage_mean": float(selected_financial_field_coverage.mean()) if selected_financial_field_coverage.notna().any() else 0.0,
+        "financial_missing_blocked_ratio_mean": float(missing_blocked.mean()) if missing_blocked.notna().any() else 0.0,
+        "selected_quality_score_lift_mean": float(quality_lift.mean()) if quality_lift.notna().any() else 0.0,
+        "selected_cash_flow_quality_component_mean": float(cash_flow_component.mean()) if cash_flow_component.notna().any() else 0.0,
         "is_return_pass": is_return_pass,
         "is_sharpe_pass": is_sharpe_pass,
         "is_drawdown_pass": is_drawdown_pass,
@@ -334,7 +383,8 @@ def _admission_action(
     return "retest", reasons or ["window robustness incomplete"]
 
 
-def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, presets: list[str], strategies: list[str]) -> None:
+def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, presets: list[str], strategies: list[str], *, root: Path) -> None:
+    factor_evidence = _load_quality_factor_evidence(root)
     lines = [
         "# Strategy Admission Report",
         "",
@@ -353,10 +403,10 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
                 [
                     str(row["strategy_id"]),
                     str(row["admission_action"]),
-                    f"{int(row['window_pass_count'])}/{int(row['window_count'])}",
-                    str(int(row["turnover_fail_count"])),
-                    str(int(row["parameter_unstable_window_count"])),
-                    str(int(row.get("industry_concentration_window_count", 0))),
+                    f"{_safe_int(row['window_pass_count'])}/{_safe_int(row['window_count'])}",
+                    str(_safe_int(row["turnover_fail_count"])),
+                    str(_safe_int(row["parameter_unstable_window_count"])),
+                    str(_safe_int(row.get("industry_concentration_window_count", 0))),
                     str(row["overfit_risk_level"]),
                     str(row["main_reasons"]),
                 ]
@@ -367,20 +417,76 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
         "## Window Matrix",
         "",
         _md_table(
-            ["strategy_id", "preset", "status", "folds", "ann", "sharpe", "mdd", "turnover", "top1_ind", "top3_ind", "pass"],
+            [
+                "strategy_id",
+                "preset",
+                "status",
+                "folds",
+                "window",
+                "expected",
+                "actual",
+                "warning",
+                "ann",
+                "sharpe",
+                "mdd",
+                "turnover",
+                "top1_ind",
+                "top3_ind",
+                "acct_ann",
+                "acct_sharpe",
+                "acct_orders",
+                "pass",
+            ],
             [
                 [
                     str(row["strategy_id"]),
                     str(row["walk_forward_preset"]),
                     str(row["status"]),
-                    str(int(row["fold_count"])),
-                    f"{float(row['annualized_return_mean']):.4f}",
-                    f"{float(row['sharpe_mean']):.4f}",
-                    f"{float(row['max_drawdown_worst']):.4f}",
-                    f"{float(row['turnover_annual_mean']):.2f}",
-                    f"{float(row.get('top_industry_avg_share_mean', 0.0)):.2f}",
-                    f"{float(row.get('top3_industries_avg_share_mean', 0.0)):.2f}",
+                    str(_safe_int(row["fold_count"])),
+                    f"{str(row.get('walk_forward_start_date', ''))}~{str(row.get('walk_forward_end_date', ''))}",
+                    str(row.get("walk_forward_expected_folds", "")),
+                    str(row.get("walk_forward_actual_folds", "")),
+                    str(row.get("walk_forward_fold_generation_warning", "")),
+                    f"{_safe_float(row['annualized_return_mean']):.4f}",
+                    f"{_safe_float(row['sharpe_mean']):.4f}",
+                    f"{_safe_float(row['max_drawdown_worst']):.4f}",
+                    f"{_safe_float(row['turnover_annual_mean']):.2f}",
+                    f"{_safe_float(row.get('top_industry_avg_share_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('top3_industries_avg_share_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('account_annualized_return_mean', 0.0)):.4f}",
+                    f"{_safe_float(row.get('account_sharpe_mean', 0.0)):.4f}",
+                    str(_safe_int(row.get("account_executed_order_count_total", 0))),
                     str(bool(row["is_window_pass"])),
+                ]
+                for _, row in matrix.iterrows()
+            ],
+        ),
+        "",
+        "## Strategy Quality Diagnostics",
+        "",
+        _md_table(
+            [
+                "strategy_id",
+                "preset",
+                "pit_ann",
+                "field_cov",
+                "selected_field_cov",
+                "missing_blocked",
+                "quality_lift",
+                "cash_flow_evidence",
+                "failure_attribution",
+            ],
+            [
+                [
+                    str(row["strategy_id"]),
+                    str(row["walk_forward_preset"]),
+                    f"{_safe_float(row.get('financial_pit_announce_coverage_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('financial_field_coverage_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('selected_financial_field_coverage_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('financial_missing_blocked_ratio_mean', 0.0)):.2f}",
+                    f"{_safe_float(row.get('selected_quality_score_lift_mean', 0.0)):.3f}",
+                    _quality_factor_evidence_label(factor_evidence),
+                    _quality_failure_attribution(row, factor_evidence),
                 ]
                 for _, row in matrix.iterrows()
             ],
@@ -390,11 +496,74 @@ def _write_report(path: Path, matrix: pd.DataFrame, review: pd.DataFrame, preset
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _load_quality_factor_evidence(root: Path) -> dict[str, str]:
+    paths = [
+        root / "reports" / "factor_effectiveness" / "factor_effectiveness.csv",
+        root / "reports" / "2026-06-05" / "stok-factor-effectiveness-gated" / "factor_effectiveness.csv",
+    ]
+    evidence: dict[str, str] = {}
+    for path in paths:
+        if not path.exists():
+            continue
+        try:
+            df = pd.read_csv(path)
+        except Exception:
+            continue
+        if "factor" not in df.columns or "recommendation" not in df.columns:
+            continue
+        for _, row in df.iterrows():
+            evidence[str(row["factor"])] = str(row["recommendation"])
+        if evidence:
+            break
+    return evidence
+
+
+def _quality_factor_evidence_label(evidence: dict[str, str]) -> str:
+    quality_factors = ["roe", "cash_flow_quality", "profit_growth", "revenue_growth", "low_debt_to_asset"]
+    usable = [name for name in quality_factors if evidence.get(name) == "use"]
+    observed = [name for name in quality_factors if evidence.get(name) == "observe"]
+    if usable:
+        return "use:" + ",".join(usable)
+    if observed:
+        return "observe:" + ",".join(observed)
+    if evidence:
+        return "none"
+    return "not_available"
+
+
+def _quality_failure_attribution(row: pd.Series, evidence: dict[str, str]) -> str:
+    strategy_id = str(row.get("strategy_id", ""))
+    if strategy_id != "quality_low_turnover_monthly_v1":
+        return "not_applicable"
+    if _safe_float(row.get("financial_pit_announce_coverage_mean", 0.0)) < 0.95:
+        return "data_quality: PIT announce coverage below 95%"
+    if _safe_float(row.get("financial_field_coverage_mean", 0.0)) < 0.80:
+        return "data_quality: financial field coverage below 80%"
+    if _quality_factor_evidence_label(evidence) in {"none", "not_available"}:
+        return "factor_invalid: no positive quality subfactor evidence"
+    if _safe_float(row.get("selected_quality_score_lift_mean", 0.0)) <= 0:
+        return "construction_invalid: selected names do not improve quality score"
+    if not bool(row.get("is_return_pass", False)) or not bool(row.get("is_sharpe_pass", False)):
+        return "construction_or_regime: quality exposure did not convert to return"
+    if not bool(row.get("is_turnover_pass", False)):
+        return "construction_invalid: turnover threshold failed"
+    return "passed"
+
+
 def _md_table(headers: list[str], rows: list[list[str]]) -> str:
     out = ["| " + " | ".join(headers) + " |", "| " + " | ".join(["---"] * len(headers)) + " |"]
     for row in rows:
         out.append("| " + " | ".join(str(cell).replace("|", "\\|") for cell in row) + " |")
     return "\n".join(out)
+
+
+def _safe_float(value: Any, default: float = 0.0) -> float:
+    parsed = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    return default if pd.isna(parsed) else float(parsed)
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    return int(round(_safe_float(value, float(default))))
 
 
 def _numeric_column(df: pd.DataFrame, column: str) -> pd.Series:

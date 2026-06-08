@@ -287,6 +287,12 @@ class QualityLowTurnoverMonthlyStrategy(BaseStrategy):
                     "held_days",
                     "ret",
                     "position_ret",
+                    "quality_growth_score",
+                    "quality_threshold",
+                    "low_vol_window",
+                    "turnover_rate20",
+                    "turnover_threshold",
+                    "financial_announce_date",
                     "financial_available_fields",
                     "quality_roe_component",
                     "quality_cash_flow_component",
@@ -297,6 +303,9 @@ class QualityLowTurnoverMonthlyStrategy(BaseStrategy):
                 if col in out.columns
             ]
         ].copy()
+        signal_frame["quality_threshold"] = float(params.get("quality_threshold", np.nan))
+        signal_frame["low_vol_window"] = int(params.get("low_vol_window", 0))
+        signal_frame["turnover_threshold"] = float(params.get("turnover_threshold", np.nan))
         return StrategyOutput(returns=returns, exposure=exposure, signal_frame=signal_frame, metadata=self.build_metadata(params))
 
     def format_params(self, params: dict[str, Any]) -> str:

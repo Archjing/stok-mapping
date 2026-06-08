@@ -1084,6 +1084,9 @@ stok-mapping/
 - [x] 实现 `T2.7` `quality_low_turnover_monthly_v1`
 - [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断和过拟合诊断；当前已完成 strategy-admission MVP、过拟合诊断合并和窗口/约束准入复核
 - [x] 在 `T2.8` 中加入 walk-forward 窗口 preset 与窗口稳健性矩阵：保留 `baseline_2y_1y` 为统一可比口径，并为低频质量策略增加 `quality_3y_1y`、`quality_4y_1y` 复核
+- [ ] 建立 `T2.8` 回测窗口期配置模块 V1（KISS 收缩版）：先只支持 preset 级 `start_date` / `end_date`、`expected_folds`，新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`，解决 T2.7 折数不足和窗口单一问题
+- [ ] 为窗口配置模块补齐最小报告字段：在 `strategy-admission` 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
+- [ ] 使用 T2.7 复测 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
 - [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选

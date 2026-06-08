@@ -103,7 +103,6 @@ def audit_industry_exposure(signal_frame: pd.DataFrame, industry_cfg: dict[str, 
 
     holding["abs_weight"] = pd.to_numeric(holding["weight"], errors="coerce").fillna(0.0).abs()
     holding["industry"] = _clean_industry(holding["industry"])
-    daily_total = holding.groupby("date", as_index=False)["abs_weight"].sum().rename(columns={"abs_weight": "total_weight"})
     daily_count = holding.groupby("date", as_index=False)["symbol"].nunique().rename(columns={"symbol": "holding_count"})
     daily_industry_count = holding.groupby("date", as_index=False)["industry"].nunique().rename(columns={"industry": "industry_count"})
 
@@ -111,36 +110,33 @@ def audit_industry_exposure(signal_frame: pd.DataFrame, industry_cfg: dict[str, 
         abs_weight=("abs_weight", "sum"),
         name_count=("symbol", "nunique"),
     )
-    industry_daily = industry_daily.merge(daily_total, on="date", how="left")
-    industry_daily["share"] = industry_daily["abs_weight"] / industry_daily["total_weight"].replace(0, np.nan)
     top1 = (
-        industry_daily.sort_values(["date", "share"], ascending=[True, False])
+        industry_daily.sort_values(["date", "abs_weight"], ascending=[True, False])
         .groupby("date", as_index=False)
-        .first()[["date", "share"]]
-        .rename(columns={"share": "top1_share"})
+        .first()[["date", "abs_weight"]]
+        .rename(columns={"abs_weight": "top1_share"})
     )
     top3 = (
-        industry_daily.sort_values(["date", "share"], ascending=[True, False])
+        industry_daily.sort_values(["date", "abs_weight"], ascending=[True, False])
         .groupby("date")
         .head(3)
-        .groupby("date", as_index=False)["share"]
+        .groupby("date", as_index=False)["abs_weight"]
         .sum()
-        .rename(columns={"share": "top3_share"})
+        .rename(columns={"abs_weight": "top3_share"})
     )
-    daily = daily_total.merge(daily_count, on="date").merge(daily_industry_count, on="date").merge(top1, on="date").merge(top3, on="date")
+    daily = daily_count.merge(daily_industry_count, on="date").merge(top1, on="date").merge(top3, on="date")
 
     max_weight = _optional_float(industry_cfg.get("max_industry_weight"))
     max_names = _optional_int(industry_cfg.get("max_names_per_industry"))
     violation_dates: set[pd.Timestamp] = set()
     if max_weight is not None:
-        violation_dates.update(industry_daily.loc[industry_daily["share"] > max_weight + EPS, "date"].tolist())
+        violation_dates.update(industry_daily.loc[industry_daily["abs_weight"] > max_weight + EPS, "date"].tolist())
     if max_names is not None:
         violation_dates.update(industry_daily.loc[industry_daily["name_count"] > max_names, "date"].tolist())
 
     unknown = holding[holding["industry"] == UNKNOWN_INDUSTRY]
     unknown_daily = unknown.groupby("date")["abs_weight"].sum() if not unknown.empty else pd.Series(dtype=float)
-    total_by_date = daily_total.set_index("date")["total_weight"]
-    unknown_share = unknown_daily.div(total_by_date, fill_value=0.0)
+    unknown_weight = unknown_daily.reindex(daily["date"], fill_value=0.0)
 
     return {
         "avg_industries": float(daily["industry_count"].mean()) if not daily.empty else 0.0,
@@ -149,7 +145,7 @@ def audit_industry_exposure(signal_frame: pd.DataFrame, industry_cfg: dict[str, 
         "top_industry_max_share": float(daily["top1_share"].max()) if not daily.empty else 0.0,
         "top3_industries_avg_share": float(daily["top3_share"].mean()) if not daily.empty else 0.0,
         "industry_constraint_violation_days": int(len(violation_dates)),
-        "unknown_industry_weight_avg": float(unknown_share.mean()) if len(unknown_share) else 0.0,
+        "unknown_industry_weight_avg": float(unknown_weight.mean()) if len(unknown_weight) else 0.0,
     }
 
 
@@ -163,13 +159,22 @@ def enforce_industry_constraints(signal_frame: pd.DataFrame, industry_cfg: dict[
         policy = "allow"
 
     frames: list[pd.DataFrame] = []
+    previous_original: dict[str, float] | None = None
+    previous_constrained: dict[str, float] | None = None
     for _, day in signal.groupby("date", sort=True):
         adjusted = day.copy()
         adjusted["weight_unshifted"] = pd.to_numeric(adjusted["weight_unshifted"], errors="coerce").fillna(0.0)
-        target_mask = adjusted["weight_unshifted"].abs() > EPS
-        if target_mask.any():
+        original_weights = _active_weight_map(adjusted, "weight_unshifted")
+        if original_weights and previous_original is not None and previous_constrained is not None and _weights_equal(original_weights, previous_original):
+            adjusted["weight_unshifted"] = adjusted["symbol"].astype(str).map(previous_constrained).fillna(0.0)
+        elif original_weights:
             adjusted = _enforce_max_names(adjusted, industry_cfg, policy)
             adjusted = _enforce_max_industry_weight(adjusted, industry_cfg, policy)
+            previous_original = original_weights
+            previous_constrained = _active_weight_map(adjusted, "weight_unshifted")
+        else:
+            previous_original = {}
+            previous_constrained = {}
         frames.append(adjusted)
     out = pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
     out["selected"] = (pd.to_numeric(out["weight_unshifted"], errors="coerce").fillna(0.0).abs() > EPS).astype(float)
@@ -279,38 +284,39 @@ def _enforce_max_industry_weight(day: pd.DataFrame, industry_cfg: dict[str, Any]
     adjusted = day.copy()
     if policy == "reject":
         adjusted.loc[adjusted["industry"] == UNKNOWN_INDUSTRY, "weight_unshifted"] = 0.0
-    for _ in range(8):
-        active = adjusted[pd.to_numeric(adjusted["weight_unshifted"], errors="coerce").fillna(0.0).abs() > EPS].copy()
-        if policy == "allow":
-            active = active[active["industry"] != UNKNOWN_INDUSTRY]
-        if active.empty:
-            break
-        weights = pd.to_numeric(active["weight_unshifted"], errors="coerce").fillna(0.0).abs()
-        industry_weight = weights.groupby(active["industry"]).sum()
-        total = float(industry_weight.sum())
-        if total <= EPS:
-            break
-        shares = industry_weight / total
-        over = shares[shares > max_weight + EPS]
-        if over.empty:
-            break
-        changed = False
-        for industry in over.sort_values(ascending=False).index:
-            group_idx = active.index[active["industry"] == industry]
-            group_total = float(pd.to_numeric(adjusted.loc[group_idx, "weight_unshifted"], errors="coerce").fillna(0.0).abs().sum())
-            other_total = max(total - group_total, 0.0)
-            target_total = max_weight * other_total / max(1.0 - max_weight, EPS)
-            if target_total >= group_total - EPS:
-                continue
-            scale = max(target_total / group_total, 0.0) if group_total > EPS else 0.0
-            adjusted.loc[group_idx, "weight_unshifted"] = pd.to_numeric(
-                adjusted.loc[group_idx, "weight_unshifted"],
-                errors="coerce",
-            ).fillna(0.0) * scale
-            changed = True
-        if not changed:
-            break
+    active = adjusted[pd.to_numeric(adjusted["weight_unshifted"], errors="coerce").fillna(0.0).abs() > EPS].copy()
+    if policy == "allow":
+        active = active[active["industry"] != UNKNOWN_INDUSTRY]
+    if active.empty:
+        return adjusted
+    weights = pd.to_numeric(active["weight_unshifted"], errors="coerce").fillna(0.0).abs()
+    industry_weight = weights.groupby(active["industry"]).sum()
+    for industry, group_total in industry_weight.items():
+        group_total = float(group_total)
+        if group_total <= max_weight + EPS:
+            continue
+        group_idx = active.index[active["industry"] == industry]
+        scale = max_weight / group_total if group_total > EPS else 0.0
+        adjusted.loc[group_idx, "weight_unshifted"] = pd.to_numeric(
+            adjusted.loc[group_idx, "weight_unshifted"],
+            errors="coerce",
+        ).fillna(0.0) * scale
     return adjusted
+
+
+def _active_weight_map(frame: pd.DataFrame, column: str) -> dict[str, float]:
+    weights = pd.to_numeric(frame[column], errors="coerce").fillna(0.0)
+    active = frame.loc[weights.abs() > EPS, ["symbol"]].copy()
+    if active.empty:
+        return {}
+    active["_weight"] = weights.loc[active.index].astype(float)
+    return {str(row["symbol"]): float(row["_weight"]) for _, row in active.iterrows()}
+
+
+def _weights_equal(left: dict[str, float], right: dict[str, float]) -> bool:
+    if left.keys() != right.keys():
+        return False
+    return all(abs(float(left[key]) - float(right[key])) <= EPS for key in left)
 
 
 def _normalize_signal(signal_frame: pd.DataFrame) -> pd.DataFrame:

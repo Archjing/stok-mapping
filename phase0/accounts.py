@@ -34,6 +34,14 @@ class SimulatedAccountConfig:
     limit_up_down_pct: dict[str, float] | None = None
 
 
+@dataclass(frozen=True)
+class SignalAccountExecutionResult:
+    daily_assets: pd.DataFrame
+    trades: pd.DataFrame
+    positions: pd.DataFrame
+    metrics: dict[str, Any]
+
+
 def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[SimulatedAccountConfig]:
     walk_forward = config.get("walk_forward", {})
     execution = config.get("execution", {})
@@ -523,6 +531,346 @@ def build_account_ledger(
     )
     latest = ledger.iloc[-1].to_dict() if not ledger.empty else {}
     return ledger, latest
+
+
+def run_signal_account_execution(
+    *,
+    signal_frame: pd.DataFrame,
+    account: SimulatedAccountConfig,
+) -> SignalAccountExecutionResult:
+    """Simulate account execution from strategy target weights without writing ledgers."""
+    signal = _prepare_signal_execution_frame(signal_frame)
+    if signal.empty:
+        return SignalAccountExecutionResult(pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), _empty_signal_execution_metrics())
+
+    previous_positions: dict[str, tuple[float, float, str]] = {}
+    previous_total_asset = float(account.initial_cash)
+    previous_cash_asset = float(account.initial_cash)
+    daily_rows: list[dict[str, Any]] = []
+    trade_rows: list[dict[str, Any]] = []
+    position_rows: list[dict[str, Any]] = []
+    unfilled_orders_total = 0
+    partial_fill_orders_total = 0
+
+    for date_value, frame in signal.groupby("date", sort=True):
+        trade_date = str(pd.Timestamp(date_value).date())
+        symbols = sorted(set(previous_positions) | set(frame["symbol"].astype(str)))
+        price_map = _price_rows_from_signal_day(frame)
+        for symbol in set(previous_positions) - set(price_map):
+            prev_shares, prev_close, name = previous_positions[symbol]
+            if pd.notna(prev_close) and prev_close > 0:
+                price_map[symbol] = {
+                    "symbol": symbol,
+                    "open": float(prev_close),
+                    "high": float(prev_close),
+                    "low": float(prev_close),
+                    "close": float(prev_close),
+                    "volume": np.nan,
+                    "amount": np.nan,
+                    "previous_close": float(prev_close),
+                    "name": name,
+                }
+
+        target_weights = {
+            str(row["symbol"]): float(row["execution_target_weight"])
+            for _, row in frame.iterrows()
+            if abs(float(row["execution_target_weight"])) > 1e-12
+        }
+        names = {
+            str(row["symbol"]): str(row.get("name", ""))
+            for _, row in frame.iterrows()
+        }
+
+        pre_trade_positions: dict[str, tuple[float, float, str]] = {}
+        stock_asset_before_trade = 0.0
+        stale_valuation_positions = 0
+        for symbol, (prev_shares, prev_close, name) in previous_positions.items():
+            close = float(price_map.get(symbol, {}).get("close", np.nan))
+            if pd.notna(close) and close > 0:
+                pre_trade_positions[symbol] = (float(prev_shares), close, name)
+                stock_asset_before_trade += float(prev_shares) * close
+            else:
+                stale_valuation_positions += 1
+        total_asset_before_trade = previous_cash_asset + stock_asset_before_trade
+        post_trade_positions = dict(pre_trade_positions)
+        cash_asset = previous_cash_asset
+        estimated_trade_amount = 0.0
+        estimated_volume = 0.0
+        day_unfilled_orders = 0
+        day_partial_fill_orders = 0
+
+        def planned_side(symbol: str) -> str:
+            current_shares = float(post_trade_positions.get(symbol, (0.0, np.nan, ""))[0])
+            close = float(price_map.get(symbol, {}).get("close", np.nan))
+            current_value = current_shares * close if pd.notna(close) else 0.0
+            target_value = float(target_weights.get(symbol, 0.0) or 0.0) * total_asset_before_trade
+            return "buy" if target_value > current_value else "sell"
+
+        ordered_symbols = sorted(
+            symbols,
+            key=lambda symbol: (0 if planned_side(str(symbol)) == "sell" else 1, str(symbol)),
+        )
+        for symbol in ordered_symbols:
+            price_row = price_map.get(symbol, {})
+            close_price = float(price_row.get("close", np.nan))
+            if not pd.notna(close_price) or close_price <= 0 or total_asset_before_trade <= 0:
+                continue
+            current_shares = float(post_trade_positions.get(symbol, (0.0, np.nan, ""))[0])
+            current_value = current_shares * close_price
+            current_weight = current_value / total_asset_before_trade
+            target_weight = float(target_weights.get(symbol, 0.0) or 0.0)
+            target_value = target_weight * total_asset_before_trade
+            weight_change = target_weight - current_weight
+            if abs(weight_change) <= 1e-12:
+                continue
+            side = "buy" if target_value > current_value else "sell"
+            price = _execution_price(price_row, side, account)
+            if not pd.notna(price) or float(price) <= 0:
+                continue
+
+            target_trade_amount = abs(target_value - current_value)
+            raw_shares = target_trade_amount / float(price)
+            requested_shares = round_lot_floor(raw_shares, account.lot_size)
+            shares = requested_shares
+            if shares <= 0:
+                continue
+            trade_amount = shares * float(price)
+            block_reasons = _trade_block_reasons(price_row, side, account)
+            volume = float(price_row.get("volume", np.nan))
+            if pd.notna(volume) and account.max_participation_rate > 0:
+                market_shares = round_lot_floor(volume * account.max_participation_rate, account.lot_size)
+                shares = min(shares, market_shares)
+                trade_amount = shares * float(price)
+            if block_reasons or shares <= 0:
+                day_unfilled_orders += 1
+                unfilled_orders_total += 1
+                continue
+            if side == "buy":
+                buy_rate = account.slippage + account.commission
+                affordable_shares = round_lot_floor(cash_asset / (float(price) * (1.0 + buy_rate)), account.lot_size)
+                shares = min(shares, affordable_shares)
+                trade_amount = shares * float(price)
+                if affordable_shares <= 0 or shares <= 0:
+                    day_unfilled_orders += 1
+                    unfilled_orders_total += 1
+                    continue
+            else:
+                shares = min(shares, current_shares)
+                trade_amount = shares * float(price)
+                if shares <= 0:
+                    day_unfilled_orders += 1
+                    unfilled_orders_total += 1
+                    continue
+            if shares < requested_shares - 1e-12:
+                day_partial_fill_orders += 1
+                partial_fill_orders_total += 1
+
+            lots = shares / float(account.lot_size) if account.lot_size else np.nan
+            if side == "buy":
+                trade_cost = trade_amount * (account.slippage + account.commission)
+                cash_asset -= trade_amount + trade_cost
+                new_shares = current_shares + shares
+            else:
+                trade_cost = trade_amount * (account.slippage + account.commission + account.stamp_duty_sell)
+                cash_asset += trade_amount - trade_cost
+                new_shares = current_shares - shares
+            if new_shares > 1e-12:
+                post_trade_positions[symbol] = (new_shares, close_price, names.get(symbol, ""))
+            else:
+                post_trade_positions.pop(symbol, None)
+            estimated_trade_amount += trade_amount
+            estimated_volume += shares
+            trade_rows.append(
+                {
+                    "date": trade_date,
+                    "symbol": symbol,
+                    "name": names.get(symbol, ""),
+                    "side": side,
+                    "price": float(price),
+                    "amount": float(trade_amount),
+                    "cost": float(trade_cost),
+                    "shares": float(shares),
+                    "lots": float(lots) if pd.notna(lots) else np.nan,
+                    "lot_size": int(account.lot_size),
+                    "raw_shares": float(raw_shares),
+                    "requested_shares": float(requested_shares),
+                    "is_partial": bool(shares < requested_shares - 1e-12),
+                    "weight_before": float(current_weight),
+                    "weight_after": float(target_weight),
+                    "weight_change": float(weight_change),
+                }
+            )
+
+        stock_asset = 0.0
+        for symbol, (shares, _prev_close, name) in list(post_trade_positions.items()):
+            close = float(price_map.get(symbol, {}).get("close", _prev_close))
+            if pd.notna(close) and close > 0:
+                post_trade_positions[symbol] = (shares, close, name)
+                stock_asset += shares * close
+        total_asset = cash_asset + stock_asset
+        daily_return = (total_asset / previous_total_asset - 1.0) if previous_total_asset else 0.0
+        exposure = stock_asset / total_asset if total_asset else 0.0
+        daily_rows.append(
+            {
+                "date": trade_date,
+                "total_asset": float(total_asset),
+                "stock_asset": float(stock_asset),
+                "cash_asset": float(cash_asset),
+                "daily_return": float(daily_return),
+                "exposure": float(exposure),
+                "estimated_trade_amount": float(estimated_trade_amount),
+                "estimated_volume": float(estimated_volume),
+                "unfilled_orders": int(day_unfilled_orders),
+                "partial_fill_orders": int(day_partial_fill_orders),
+                "stale_valuation_positions": int(stale_valuation_positions),
+            }
+        )
+        for symbol, (shares, close, name) in sorted(post_trade_positions.items()):
+            if shares > 1e-12:
+                position_rows.append(
+                    {
+                        "date": trade_date,
+                        "symbol": symbol,
+                        "name": name,
+                        "close": float(close),
+                        "market_value": float(shares * close),
+                        "shares": float(shares),
+                        "lots": float(shares / float(account.lot_size)) if account.lot_size else np.nan,
+                        "target_weight": float(shares * close / total_asset) if total_asset else 0.0,
+                    }
+                )
+        previous_total_asset = total_asset
+        previous_cash_asset = cash_asset
+        previous_positions = post_trade_positions
+
+    daily = pd.DataFrame(daily_rows)
+    trades = pd.DataFrame(trade_rows)
+    positions = pd.DataFrame(position_rows)
+    metrics = _signal_execution_metrics(daily, trades, unfilled_orders_total, partial_fill_orders_total)
+    return SignalAccountExecutionResult(daily, trades, positions, metrics)
+
+
+def _prepare_signal_execution_frame(signal_frame: pd.DataFrame) -> pd.DataFrame:
+    required = {"date", "symbol", "weight_unshifted"}
+    if signal_frame is None or signal_frame.empty or not required.issubset(signal_frame.columns):
+        return pd.DataFrame()
+    signal = signal_frame.copy()
+    signal["date"] = pd.to_datetime(signal["date"], errors="coerce").dt.normalize()
+    signal["symbol"] = signal["symbol"].astype(str)
+    for col in ["weight_unshifted", "open", "high", "low", "close", "volume", "amount", "previous_close"]:
+        if col not in signal.columns:
+            signal[col] = np.nan
+        signal[col] = pd.to_numeric(signal[col], errors="coerce")
+    if "name" not in signal.columns:
+        signal["name"] = ""
+    signal = signal.dropna(subset=["date", "symbol"]).sort_values(["symbol", "date"]).reset_index(drop=True)
+    computed_previous_close = signal.groupby("symbol")["close"].shift(1)
+    signal["previous_close"] = signal["previous_close"].where(signal["previous_close"].notna(), computed_previous_close)
+    # Strategy targets are formed after the signal date; account execution uses the next trading row.
+    signal["execution_target_weight"] = signal.groupby("symbol")["weight_unshifted"].shift(1).fillna(0.0)
+    return signal.sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def _price_rows_from_signal_day(frame: pd.DataFrame) -> dict[str, dict[str, float]]:
+    out: dict[str, dict[str, float]] = {}
+    for _, row in frame.iterrows():
+        symbol = str(row["symbol"])
+        close = float(row.get("close", np.nan))
+        open_price = float(row.get("open", np.nan))
+        if not pd.notna(open_price) or open_price <= 0:
+            open_price = close
+        out[symbol] = {
+            "symbol": symbol,
+            "open": open_price,
+            "high": float(row.get("high", np.nan)),
+            "low": float(row.get("low", np.nan)),
+            "close": close,
+            "volume": float(row.get("volume", np.nan)),
+            "amount": float(row.get("amount", np.nan)),
+            "previous_close": float(row.get("previous_close", np.nan)),
+            "name": str(row.get("name", "")),
+        }
+    return out
+
+
+def _signal_execution_metrics(
+    daily: pd.DataFrame,
+    trades: pd.DataFrame,
+    unfilled_orders_total: int,
+    partial_fill_orders_total: int,
+) -> dict[str, Any]:
+    if daily.empty:
+        return _empty_signal_execution_metrics()
+    returns = pd.Series(pd.to_numeric(daily["daily_return"], errors="coerce").fillna(0.0).values, index=pd.to_datetime(daily["date"]))
+    exposure = pd.Series(pd.to_numeric(daily["exposure"], errors="coerce").fillna(0.0).values, index=pd.to_datetime(daily["date"]))
+    total_asset = pd.to_numeric(daily["total_asset"], errors="coerce").dropna()
+    ann = _annualized_return_from_returns(returns)
+    sharpe = _sharpe_from_returns(returns)
+    max_drawdown = _max_drawdown_from_returns(returns)
+    executed_order_count = int(len(trades))
+    total_orders = executed_order_count + int(unfilled_orders_total)
+    return {
+        "account_execution_enabled": True,
+        "account_annualized_return": ann,
+        "account_sharpe": sharpe,
+        "account_max_drawdown": max_drawdown,
+        "account_final_assets": float(total_asset.iloc[-1]) if len(total_asset) else 0.0,
+        "account_min_cash_assets": float(pd.to_numeric(daily["cash_asset"], errors="coerce").min()),
+        "account_exposure_mean": float(exposure.mean()) if len(exposure) else 0.0,
+        "account_executed_order_count": executed_order_count,
+        "account_unfilled_order_count": int(unfilled_orders_total),
+        "account_partial_fill_order_count": int(partial_fill_orders_total),
+        "account_unfilled_or_partial_order_ratio": float((unfilled_orders_total + partial_fill_orders_total) / total_orders) if total_orders else 0.0,
+        "account_partial_fill_order_ratio": float(partial_fill_orders_total / total_orders) if total_orders else 0.0,
+        "account_stale_valuation_positions_total": int(pd.to_numeric(daily.get("stale_valuation_positions", 0), errors="coerce").fillna(0).sum()),
+        "account_lot_size": int(trades["lot_size"].dropna().iloc[0]) if not trades.empty and "lot_size" in trades.columns else 0,
+    }
+
+
+def _annualized_return_from_returns(returns: pd.Series) -> float:
+    if returns.empty:
+        return 0.0
+    cumulative = float((1.0 + returns.fillna(0.0)).prod())
+    if cumulative <= 0:
+        return -1.0
+    return float(cumulative ** (252.0 / len(returns)) - 1.0)
+
+
+def _sharpe_from_returns(returns: pd.Series) -> float:
+    if returns.empty:
+        return 0.0
+    std = float(returns.std())
+    if std == 0 or np.isnan(std):
+        return 0.0
+    return float(returns.mean() / std * np.sqrt(252))
+
+
+def _max_drawdown_from_returns(returns: pd.Series) -> float:
+    if returns.empty:
+        return 0.0
+    equity = (1.0 + returns.fillna(0.0)).cumprod()
+    peak = equity.cummax()
+    drawdown = equity / peak - 1.0
+    return float(drawdown.min())
+
+
+def _empty_signal_execution_metrics() -> dict[str, Any]:
+    return {
+        "account_execution_enabled": False,
+        "account_annualized_return": 0.0,
+        "account_sharpe": 0.0,
+        "account_max_drawdown": 0.0,
+        "account_final_assets": 0.0,
+        "account_min_cash_assets": 0.0,
+        "account_exposure_mean": 0.0,
+        "account_executed_order_count": 0,
+        "account_unfilled_order_count": 0,
+        "account_partial_fill_order_count": 0,
+        "account_unfilled_or_partial_order_ratio": 0.0,
+        "account_partial_fill_order_ratio": 0.0,
+        "account_stale_valuation_positions_total": 0,
+        "account_lot_size": 0,
+    }
 
 
 def ensure_account_tables(conn: sqlite3.Connection) -> None:

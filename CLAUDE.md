@@ -15,3 +15,5 @@
 - Research references under `refdocs/papers/cn/`, `refdocs/papers/en/`, and markdown reports under `reports/` are important development evidence and should be treated as design inputs.
 - Files under `refdocs/OUTLOOK/` are long-range outlook only. Do not treat them as current execution scope unless the user explicitly promotes them.
 - Keep long-range evolution toward ML research, portfolio construction, and account-level simulation possible, but do not let that derail the current mainline product work.
+
+@AGENTS.md

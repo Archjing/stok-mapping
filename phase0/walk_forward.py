@@ -12,6 +12,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from phase0.accounts import SimulatedAccountConfig, run_signal_account_execution
 from phase0.data_sources import fetch_cn_daily, fetch_hk_daily, fetch_yf_daily
 from phase0.external_market_history import (
     configure_us_market_history,
@@ -44,6 +45,12 @@ FINANCIAL_FACTOR_COLUMNS = [
 TraceCallback = Callable[[dict[str, Any]], None]
 
 
+def _parse_optional_date(value: Any) -> date | None:
+    if value is None or str(value).strip() == "":
+        return None
+    return pd.Timestamp(value).date()
+
+
 def _xmarket_enabled(strategy_cfg: dict[str, Any]) -> bool:
     return bool(strategy_cfg.get("cross_market", {}).get("enabled", False))
 
@@ -59,6 +66,9 @@ def _resolve_walk_forward_window(wcfg: dict[str, Any]) -> dict[str, Any]:
             "preset_name": preset_name,
             "train_years": int(preset["train_years"]),
             "validate_years": int(preset["validate_years"]),
+            "start_date": _parse_optional_date(preset.get("start_date")),
+            "end_date": _parse_optional_date(preset.get("end_date")),
+            "expected_folds": int(preset["expected_folds"]) if preset.get("expected_folds") is not None else None,
             "description": str(preset.get("description", "")),
         }
 
@@ -67,6 +77,9 @@ def _resolve_walk_forward_window(wcfg: dict[str, Any]) -> dict[str, Any]:
         "preset_name": "legacy_inline",
         "train_years": int(wcfg["train_years"]),
         "validate_years": int(wcfg["validate_years"]),
+        "start_date": _parse_optional_date(wcfg.get("start_date")),
+        "end_date": _parse_optional_date(wcfg.get("end_date")),
+        "expected_folds": int(wcfg["expected_folds"]) if wcfg.get("expected_folds") is not None else None,
         "description": "Legacy inline train_years/validate_years config.",
     }
 
@@ -1177,6 +1190,8 @@ def _add_quality_growth_features(panel: pd.DataFrame, strategy_cfg: dict[str, An
     d["quality_growth_score"] = weighted_sum / available_weight.replace(0, np.nan)
     min_available_fields = int(qcfg.get("min_available_fields", 4))
     d.loc[d["financial_available_fields"] < min_available_fields, "quality_growth_score"] = np.nan
+    if "announce_date" in d.columns and "financial_announce_date" not in d.columns:
+        d["financial_announce_date"] = d["announce_date"]
     return d
 
 
@@ -1191,29 +1206,25 @@ def _run_portfolio(
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
+    window_cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
     if panel.empty:
         return []
     panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
 
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
+    fold_windows = _date_window_slices(
+        panel["date"].dropna().tolist(),
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        start_date=(window_cfg or {}).get("start_date"),
+        end_date=(window_cfg or {}).get("end_date"),
+    )
+    for fold_idx, train_dates, valid_dates in fold_windows:
         train = panel[panel["date"].isin(train_dates)].copy()
         valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
 
         params = _select_portfolio_params(
             train,
@@ -1256,7 +1267,6 @@ def _run_portfolio(
                 "candidate": "xmarket_portfolio_v2" if _xmarket_enabled(strategy_cfg) else "portfolio_v2",
             }
         )
-        start += fold_days_valid
     return rows
 
 
@@ -1271,29 +1281,25 @@ def _run_next_open_portfolio(
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
+    window_cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
     if panel.empty:
         return []
     panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
 
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
+    fold_windows = _date_window_slices(
+        panel["date"].dropna().tolist(),
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        start_date=(window_cfg or {}).get("start_date"),
+        end_date=(window_cfg or {}).get("end_date"),
+    )
+    for fold_idx, train_dates, valid_dates in fold_windows:
         train = panel[panel["date"].isin(train_dates)].copy()
         valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
 
         params = _select_next_open_portfolio_params(
             train,
@@ -1336,7 +1342,6 @@ def _run_next_open_portfolio(
                 "candidate": "xmarket_next_open_v1",
             }
         )
-        start += fold_days_valid
     return rows
 
 
@@ -1351,29 +1356,25 @@ def _run_magnitude_soft_risk_portfolio(
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
+    window_cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     panel = _align_symbol_map(_load_symbol_map(symbols, years=years))
     if panel.empty:
         return []
     panel = _add_cross_market_to_panel(panel, years, strategy_cfg, xfeatures)
 
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
+    fold_windows = _date_window_slices(
+        panel["date"].dropna().tolist(),
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        start_date=(window_cfg or {}).get("start_date"),
+        end_date=(window_cfg or {}).get("end_date"),
+    )
+    for fold_idx, train_dates, valid_dates in fold_windows:
         train = panel[panel["date"].isin(train_dates)].copy()
         valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
 
         params = _select_magnitude_soft_risk_portfolio_params(
             train,
@@ -1416,7 +1417,6 @@ def _run_magnitude_soft_risk_portfolio(
                 "candidate": "xmarket_magnitude_soft_risk_v1",
             }
         )
-        start += fold_days_valid
     return rows
 
 
@@ -1527,7 +1527,13 @@ def _normalize_strategy_output(
 ) -> StrategyOutput:
     strategy = get_strategy(strategy_name)
     if isinstance(result, StrategyOutput):
-        return result
+        signal_frame = _merge_signal_metadata(result.signal_frame, panel)
+        return StrategyOutput(
+            returns=result.returns,
+            exposure=result.exposure,
+            signal_frame=signal_frame,
+            metadata=result.metadata,
+        )
 
     returns, exposure = result
     d = panel.copy()
@@ -1539,37 +1545,125 @@ def _normalize_strategy_output(
     d["raw_weight"] = d["selected"]
     d["weight"] = exposure
     d["position_ret"] = returns
-    signal_frame = d[[c for c in ["date", "symbol", "score", "selected", "raw_weight", "weight", "ret", "position_ret"] if c in d.columns]].copy()
+    signal_frame = d[
+        [
+            c
+            for c in [
+                "date",
+                "symbol",
+                "score",
+                "selected",
+                "raw_weight",
+                "weight",
+                "ret",
+                "position_ret",
+                "industry",
+                "name",
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "amount",
+                "previous_close",
+            ]
+            if c in d.columns
+        ]
+    ].copy()
     return StrategyOutput(
         returns=returns,
         exposure=exposure,
         signal_frame=signal_frame,
         metadata=strategy.build_metadata(params),
     )
+
+
+def _merge_signal_metadata(signal_frame: pd.DataFrame, panel: pd.DataFrame) -> pd.DataFrame:
+    if signal_frame is None or signal_frame.empty or panel.empty:
+        return signal_frame
+    if "symbol" not in signal_frame.columns or "symbol" not in panel.columns:
+        return signal_frame
+
+    signal = signal_frame.copy()
+    signal["symbol"] = signal["symbol"].astype(str)
+    price_cols = ["open", "high", "low", "close", "volume", "amount", "previous_close"]
+    merge_cols = ["industry", "name"]
+    if "date" in signal.columns and "date" in panel.columns:
+        merge_cols.extend(price_cols)
+    meta_cols = [col for col in ["date", "symbol", *merge_cols] if col in panel.columns]
+    if "symbol" not in meta_cols or len(meta_cols) <= 1:
+        return signal
+
+    meta = panel[meta_cols].copy()
+    meta["symbol"] = meta["symbol"].astype(str)
+    if "date" in signal.columns and "date" in meta.columns:
+        signal["date"] = pd.to_datetime(signal["date"], errors="coerce").dt.normalize()
+        meta["date"] = pd.to_datetime(meta["date"], errors="coerce").dt.normalize()
+        join_cols = ["date", "symbol"]
+    else:
+        meta = meta.drop(columns=["date"], errors="ignore")
+        join_cols = ["symbol"]
+    meta = meta.drop_duplicates(join_cols)
+    if meta.empty:
+        return signal
+
+    merged = signal.merge(meta.rename(columns={col: f"__meta_{col}" for col in meta.columns if col not in join_cols}), on=join_cols, how="left")
+    for col in ["industry", "name", *price_cols]:
+        meta_col = f"__meta_{col}"
+        if meta_col not in merged.columns:
+            continue
+        if col not in merged.columns:
+            merged[col] = merged[meta_col]
+        else:
+            current = merged[col]
+            missing = current.isna() | current.astype(str).str.strip().eq("")
+            merged[col] = current.where(~missing, merged[meta_col])
+    return merged.drop(columns=[col for col in merged.columns if col.startswith("__meta_")])
 def _date_window_slices(
     dates: list[Any],
     train_years: int,
     validate_years: int,
     min_samples: int,
+    start_date: date | str | None = None,
+    end_date: date | str | None = None,
 ) -> list[tuple[int, set[pd.Timestamp], set[pd.Timestamp]]]:
     normalized = sorted(pd.to_datetime(pd.Series(dates).dropna()).dt.normalize().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     rows: list[tuple[int, set[pd.Timestamp], set[pd.Timestamp]]] = []
-    start = 0
+    if not normalized:
+        return rows
+    configured_start = _parse_optional_date(start_date)
+    configured_end = _parse_optional_date(end_date)
+    if configured_start is not None:
+        lower = pd.Timestamp(configured_start).normalize()
+        normalized = [value for value in normalized if pd.Timestamp(value).normalize() >= lower]
+    if configured_end is not None:
+        upper = pd.Timestamp(configured_end).normalize()
+        normalized = [value for value in normalized if pd.Timestamp(value).normalize() <= upper]
+    if not normalized:
+        return rows
+    first_date = pd.Timestamp(configured_start).normalize() if configured_start is not None else pd.Timestamp(normalized[0]).normalize()
+    train_start = first_date
     fold_idx = 0
     while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(normalized):
-            break
-        train_dates = {pd.Timestamp(value).normalize() for value in normalized[start:train_end]}
-        valid_dates = {pd.Timestamp(value).normalize() for value in normalized[train_end:valid_end]}
+        train_end_exclusive = (train_start + pd.DateOffset(years=int(train_years))).normalize()
+        valid_start = train_end_exclusive
+        valid_end_exclusive = (valid_start + pd.DateOffset(years=int(validate_years))).normalize()
+        # 窗口边界按自然日期滚动，再用交易日历过滤；不再用固定 252 个交易日近似一年。
+        train_dates = {
+            pd.Timestamp(value).normalize()
+            for value in normalized
+            if train_start <= pd.Timestamp(value).normalize() < train_end_exclusive
+        }
+        valid_dates = {
+            pd.Timestamp(value).normalize()
+            for value in normalized
+            if valid_start <= pd.Timestamp(value).normalize() < valid_end_exclusive
+        }
         if len(train_dates) < min_samples or len(valid_dates) < min_samples // 2:
             break
         fold_idx += 1
         rows.append((fold_idx, train_dates, valid_dates))
-        start += fold_days_valid
+        train_start = (train_start + pd.DateOffset(years=int(validate_years))).normalize()
     return rows
 
 
@@ -1581,6 +1675,101 @@ def _price_adjustment_mode(config: dict[str, Any]) -> str:
 
 def _strict_qfq_asof_enabled(config: dict[str, Any]) -> bool:
     return _price_adjustment_mode(config) == "qfq_asof"
+
+
+def _build_account_execution_config(
+    config: dict[str, Any],
+    wcfg: dict[str, Any],
+    strategy_cfg: dict[str, Any],
+) -> SimulatedAccountConfig | None:
+    cfg = strategy_cfg.get("account_execution", {})
+    if not bool(cfg.get("enabled", False)):
+        return None
+    execution_cfg = config.get("execution", {})
+    return SimulatedAccountConfig(
+        account_id="walk_forward_fold",
+        name="Walk-forward fold execution profile",
+        initial_cash=float(cfg.get("initial_cash", wcfg.get("initial_cash", 1_000_000))),
+        ledger_path=Path(""),
+        database_path=Path(""),
+        enabled=True,
+        execution_price_mode=str(cfg.get("execution_price_mode", execution_cfg.get("price_mode", "next_open"))),
+        max_participation_rate=float(cfg.get("max_participation_rate", execution_cfg.get("max_participation_rate", 0.05))),
+        lot_size=int(cfg.get("lot_size", execution_cfg.get("lot_size", 100))),
+        commission=float(cfg.get("commission", wcfg.get("commission", 0.0))),
+        stamp_duty_sell=float(cfg.get("stamp_duty_sell", wcfg.get("stamp_duty_sell", 0.0))),
+        slippage=float(cfg.get("slippage", wcfg.get("slippage", 0.0))),
+        conservative_price_buffer=float(cfg.get("conservative_price_buffer", execution_cfg.get("conservative_price_buffer", 0.001))),
+        enable_limit_check=bool(cfg.get("enable_limit_check", execution_cfg.get("enable_limit_check", True))),
+        enable_suspension_check=bool(cfg.get("enable_suspension_check", execution_cfg.get("enable_suspension_check", True))),
+        limit_up_down_pct={
+            "default": float(execution_cfg.get("limit_up_down_pct", {}).get("default", 0.10)),
+            "star": float(execution_cfg.get("limit_up_down_pct", {}).get("star", 0.20)),
+            "chinext": float(execution_cfg.get("limit_up_down_pct", {}).get("chinext", 0.20)),
+            "bj": float(execution_cfg.get("limit_up_down_pct", {}).get("bj", 0.30)),
+        },
+    )
+
+
+def _account_execution_metrics(output: StrategyOutput, account: SimulatedAccountConfig | None, panel_scope: str) -> dict[str, Any]:
+    if account is None or panel_scope != "portfolio":
+        return {}
+    result = run_signal_account_execution(signal_frame=output.signal_frame, account=account)
+    return result.metrics
+
+
+def _quality_signal_diagnostics(output: StrategyOutput) -> dict[str, Any]:
+    signal = output.signal_frame
+    if signal is None or signal.empty or "financial_available_fields" not in signal.columns:
+        return {}
+    total = len(signal)
+    selected = signal[pd.to_numeric(signal.get("weight_unshifted", 0.0), errors="coerce").fillna(0.0) > 0].copy()
+    financial_fields = pd.to_numeric(signal["financial_available_fields"], errors="coerce")
+    selected_fields = pd.to_numeric(selected.get("financial_available_fields", pd.Series(dtype=float)), errors="coerce")
+    component_cols = [
+        "quality_roe_component",
+        "quality_cash_flow_component",
+        "quality_profit_growth_component",
+        "quality_revenue_growth_component",
+        "quality_low_debt_component",
+    ]
+    component_coverage = {
+        col.replace("quality_", "").replace("_component", "_coverage"): float(pd.to_numeric(signal[col], errors="coerce").notna().mean())
+        for col in component_cols
+        if col in signal.columns
+    }
+    selected_component_means = {
+        f"selected_{col}_mean": float(pd.to_numeric(selected[col], errors="coerce").mean())
+        for col in component_cols
+        if col in selected.columns and not selected.empty
+    }
+    score = pd.to_numeric(signal.get("quality_growth_score", pd.Series(dtype=float)), errors="coerce")
+    selected_score = pd.to_numeric(selected.get("quality_growth_score", pd.Series(dtype=float)), errors="coerce")
+    min_required_fields = int((financial_fields[score.notna()].min() if score.notna().any() else 4) or 4)
+    missing_quality_rows = int((financial_fields < min_required_fields).sum()) if total else 0
+    announce_col = signal.get("financial_announce_date")
+    announce_coverage = 0.0
+    if announce_col is not None:
+        announce = pd.Series(announce_col)
+        announce_coverage = float((announce.notna() & announce.astype(str).str.strip().ne("")).mean())
+    selected_announce_coverage = 0.0
+    if "financial_announce_date" in selected.columns and not selected.empty:
+        announce = selected["financial_announce_date"]
+        selected_announce_coverage = float((announce.notna() & announce.astype(str).str.strip().ne("")).mean())
+    return {
+        "quality_explain_rows": int(total),
+        "quality_selected_rows": int(len(selected)),
+        "financial_pit_announce_coverage": announce_coverage,
+        "selected_financial_pit_announce_coverage": selected_announce_coverage,
+        "financial_field_coverage_mean": float(financial_fields.mean() / len(FINANCIAL_FACTOR_COLUMNS)) if total else 0.0,
+        "selected_financial_field_coverage_mean": float(selected_fields.mean() / len(FINANCIAL_FACTOR_COLUMNS)) if len(selected_fields) else 0.0,
+        "financial_missing_blocked_ratio": float(missing_quality_rows / total) if total else 0.0,
+        "quality_score_mean": float(score.mean()) if score.notna().any() else 0.0,
+        "selected_quality_score_mean": float(selected_score.mean()) if selected_score.notna().any() else 0.0,
+        "selected_quality_score_lift": float(selected_score.mean() - score.mean()) if selected_score.notna().any() and score.notna().any() else 0.0,
+        **component_coverage,
+        **selected_component_means,
+    }
 
 
 def _build_panel_for_fold_asof(
@@ -1635,16 +1824,22 @@ def iter_point_in_time_universe_folds(
     min_samples: int,
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
+    window_cfg: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], pd.DataFrame]:
     """Build read-only, fold-local panels from historical point-in-time universes."""
-    end = date.today()
-    start = end - timedelta(days=365 * int(years) + 30)
+    window_cfg = window_cfg or {}
+    explicit_start = _parse_optional_date(window_cfg.get("start_date"))
+    explicit_end = _parse_optional_date(window_cfg.get("end_date"))
+    end = explicit_end or date.today()
+    start = explicit_start or (end - timedelta(days=365 * int(years) + 30))
     trading_dates = load_trading_dates_from_local_history(start, end)
     fold_windows = _date_window_slices(
         trading_dates,
         train_years=train_years,
         validate_years=validate_years,
         min_samples=min_samples,
+        start_date=explicit_start,
+        end_date=explicit_end,
     )
     if not fold_windows:
         return [], _empty_pit_fold_frame()
@@ -1740,6 +1935,7 @@ def _run_strategy_on_explicit_fold(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    account_execution: SimulatedAccountConfig | None = None,
     extra: dict[str, Any] | None = None,
     trace_callback: TraceCallback | None = None,
 ) -> list[dict[str, Any]]:
@@ -1814,6 +2010,8 @@ def _run_strategy_on_explicit_fold(
     )
     output = constraint_result.output
     metric = _calc_metrics(output.returns, output.exposure)
+    account_metrics = _account_execution_metrics(output, account_execution, strategy.panel_scope)
+    quality_metrics = _quality_signal_diagnostics(output)
     meta = output.metadata or strategy.build_metadata(params)
     row = {
         "symbol": str(fold_valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
@@ -1839,7 +2037,10 @@ def _run_strategy_on_explicit_fold(
         "supports_paper_trade": meta.get("supports_paper_trade", True),
     }
     row.update(constraint_result.metrics)
-    row.update(_signal_trace_summary(output))
+    row.update(account_metrics)
+    row.update(quality_metrics)
+    trace_summary = _signal_trace_summary(output)
+    row.update(trace_summary)
     _emit_trace(
         trace_callback,
         {
@@ -1853,11 +2054,7 @@ def _run_strategy_on_explicit_fold(
             "trades": int(metric["trades"]),
             "constraint_mode": row.get("constraint_mode", ""),
             "constraint_status": row.get("constraint_status", ""),
-            "avg_target_holdings": row.get("avg_target_holdings", 0.0),
-            "avg_live_holdings": row.get("avg_live_holdings", 0.0),
-            "trade_days": row.get("trade_days", 0),
-            "first_target_date": row.get("first_target_date", ""),
-            "first_target_symbols": row.get("first_target_symbols", []),
+            **trace_summary,
         },
     )
     if extra:
@@ -1877,6 +2074,8 @@ def _run_strategy_on_symbol_panel(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    account_execution: SimulatedAccountConfig | None = None,
+    window_cfg: dict[str, Any] | None = None,
     trace_callback: TraceCallback | None = None,
 ) -> list[dict[str, Any]]:
     strategy = get_strategy(strategy_name)
@@ -1887,23 +2086,18 @@ def _run_strategy_on_symbol_panel(
         return []
 
     # walk-forward 模拟滚动实盘：每一折只用历史训练窗选参数，再把规则前推到紧随其后的验证窗。
-    dates = sorted(panel["date"].dropna().unique())
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     rows: list[dict[str, Any]] = []
-    start = 0
-    fold_idx = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(dates):
-            break
-        train_dates = set(dates[start:train_end])
-        valid_dates = set(dates[train_end:valid_end])
+    fold_windows = _date_window_slices(
+        panel["date"].dropna().tolist(),
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        start_date=(window_cfg or {}).get("start_date"),
+        end_date=(window_cfg or {}).get("end_date"),
+    )
+    for fold_idx, train_dates, valid_dates in fold_windows:
         train = panel[panel["date"].isin(train_dates)].copy()
         valid = panel[panel["date"].isin(valid_dates)].copy()
-        if train["date"].nunique() < min_samples or valid["date"].nunique() < min_samples // 2:
-            break
 
         # 选参阶段只能“看见”训练窗，验证窗用固定参数执行，避免事后挑最优。
         params = strategy.select_params(
@@ -1934,8 +2128,10 @@ def _run_strategy_on_symbol_panel(
         output = constraint_result.output
         # 验证窗输出每日收益和持仓暴露，再汇总为年化收益、Sharpe、回撤、胜率和换手等指标。
         metric = _calc_metrics(output.returns, output.exposure)
+        account_metrics = _account_execution_metrics(output, account_execution, strategy.panel_scope)
+        quality_metrics = _quality_signal_diagnostics(output)
         meta = output.metadata or strategy.build_metadata(params)
-        fold_idx += 1
+        trace_summary = _signal_trace_summary(output)
         rows.append(
             {
                 "symbol": str(valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
@@ -1960,7 +2156,9 @@ def _run_strategy_on_symbol_panel(
                 "supports_brief": meta.get("supports_brief", True),
                 "supports_paper_trade": meta.get("supports_paper_trade", True),
                 **constraint_result.metrics,
-                **_signal_trace_summary(output),
+                **account_metrics,
+                **quality_metrics,
+                **trace_summary,
             }
         )
         _emit_trace(
@@ -1977,10 +2175,9 @@ def _run_strategy_on_symbol_panel(
                 "trades": int(metric["trades"]),
                 "constraint_mode": constraint_result.metrics.get("constraint_mode", ""),
                 "constraint_status": constraint_result.metrics.get("constraint_status", ""),
-                **_signal_trace_summary(output),
+                **trace_summary,
             },
         )
-        start += fold_days_valid
     return rows
 
 
@@ -1994,6 +2191,8 @@ def _run_compare(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    account_execution: SimulatedAccountConfig | None = None,
+    window_cfg: dict[str, Any] | None = None,
     trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
     candidates: dict[str, list[dict[str, Any]]] = {}
@@ -2027,6 +2226,8 @@ def _run_compare(
                         commission=commission,
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg=strategy_cfg,
+                        account_execution=account_execution,
+                        window_cfg=window_cfg,
                         trace_callback=trace_callback,
                     )
                 )
@@ -2052,6 +2253,8 @@ def _run_compare(
                     commission=commission,
                     stamp_duty_sell=stamp_duty_sell,
                     strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                    account_execution=account_execution,
+                    window_cfg=window_cfg,
                     trace_callback=trace_callback,
                 )
             )
@@ -2113,16 +2316,23 @@ def _run_compare_qfq_asof_static(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    account_execution: SimulatedAccountConfig | None = None,
+    window_cfg: dict[str, Any] | None = None,
     trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
-    end = date.today()
-    start = end - timedelta(days=365 * int(years) + 30)
+    window_cfg = window_cfg or {}
+    explicit_start = _parse_optional_date(window_cfg.get("start_date"))
+    explicit_end = _parse_optional_date(window_cfg.get("end_date"))
+    end = explicit_end or date.today()
+    start = explicit_start or (end - timedelta(days=365 * int(years) + 30))
     trading_dates = load_trading_dates_from_local_history(start, end)
     fold_windows = _date_window_slices(
         trading_dates,
         train_years=train_years,
         validate_years=validate_years,
         min_samples=min_samples,
+        start_date=explicit_start,
+        end_date=explicit_end,
     )
     if not fold_windows:
         return [], [], [], _empty_pit_fold_frame()
@@ -2199,6 +2409,7 @@ def _run_compare_qfq_asof_static(
                             commission=commission,
                             stamp_duty_sell=stamp_duty_sell,
                             strategy_cfg=strategy_cfg,
+                            account_execution=account_execution,
                             extra=extra,
                             trace_callback=trace_callback,
                         )
@@ -2214,6 +2425,7 @@ def _run_compare_qfq_asof_static(
                         commission=commission,
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                        account_execution=account_execution,
                         extra=extra,
                         trace_callback=trace_callback,
                     )
@@ -2274,6 +2486,8 @@ def _run_compare_point_in_time(
     commission: float,
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
+    account_execution: SimulatedAccountConfig | None = None,
+    window_cfg: dict[str, Any] | None = None,
     trace_callback: TraceCallback | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], pd.DataFrame]:
     candidates: dict[str, list[dict[str, Any]]] = {}
@@ -2286,6 +2500,7 @@ def _run_compare_point_in_time(
         min_samples=min_samples,
         strategy_cfg=strategy_cfg,
         xfeatures=xfeatures,
+        window_cfg=window_cfg,
     )
     compare_strategies = _resolve_compare_strategies(strategy_cfg)
 
@@ -2316,6 +2531,7 @@ def _run_compare_point_in_time(
                             commission=commission,
                             stamp_duty_sell=stamp_duty_sell,
                             strategy_cfg=strategy_cfg,
+                            account_execution=account_execution,
                             extra=extra,
                             trace_callback=trace_callback,
                         )
@@ -2331,6 +2547,7 @@ def _run_compare_point_in_time(
                         commission=commission,
                         stamp_duty_sell=stamp_duty_sell,
                         strategy_cfg={**strategy_cfg, "mode": "portfolio"},
+                        account_execution=account_execution,
                         extra=extra,
                         trace_callback=trace_callback,
                     )
@@ -2449,28 +2666,28 @@ def _run_single_symbol(
     stamp_duty_sell: float,
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
+    window_cfg: dict[str, Any] | None = None,
 ) -> list[FoldResult]:
     df = _load_symbol(symbol, years=years)
     if df.empty or len(df) < min_samples:
         return []
     df = _add_cross_market_to_panel(df.assign(symbol=symbol), years, strategy_cfg, xfeatures)
 
-    fold_days_train = train_years * 252
-    fold_days_valid = validate_years * 252
     folds: list[FoldResult] = []
-    fold_idx = 0
-    start = 0
-    while True:
-        train_end = start + fold_days_train
-        valid_end = train_end + fold_days_valid
-        if valid_end > len(df):
-            break
-
-        train = df.iloc[start:train_end].copy()
-        valid = df.iloc[train_end:valid_end].copy()
+    fold_windows = _date_window_slices(
+        df["date"].dropna().tolist(),
+        train_years=train_years,
+        validate_years=validate_years,
+        min_samples=min_samples,
+        start_date=(window_cfg or {}).get("start_date"),
+        end_date=(window_cfg or {}).get("end_date"),
+    )
+    for fold_idx, train_dates, valid_dates in fold_windows:
+        train = df[df["date"].isin(train_dates)].copy()
+        valid = df[df["date"].isin(valid_dates)].copy()
         passed = len(train) >= min_samples and len(valid) >= min_samples // 2
         if not passed:
-            break
+            continue
 
         params = _select_params(
             train,
@@ -2511,15 +2728,37 @@ def _run_single_symbol(
                 selected_params=_format_params(params),
             )
         )
-
-        start += fold_days_valid
     return folds
 
 
+def _effective_history_years(configured_years: int, window_cfg: dict[str, Any]) -> int:
+    start = _parse_optional_date(window_cfg.get("start_date"))
+    end = _parse_optional_date(window_cfg.get("end_date")) or date.today()
+    if start is None:
+        return int(configured_years)
+    required_years = int(np.ceil(max((end - start).days, 1) / 365.0)) + 1
+    return max(int(configured_years), required_years)
+
+
+def _window_summary_fields(window_cfg: dict[str, Any], folds_df: pd.DataFrame) -> dict[str, Any]:
+    expected_folds = window_cfg.get("expected_folds")
+    actual_folds = int(folds_df["fold"].nunique()) if not folds_df.empty and "fold" in folds_df.columns else 0
+    warning = ""
+    if expected_folds is not None and actual_folds != int(expected_folds):
+        warning = f"expected_folds={int(expected_folds)} actual_folds={actual_folds}"
+    return {
+        "walk_forward_start_date": str(window_cfg.get("start_date") or ""),
+        "walk_forward_end_date": str(window_cfg.get("end_date") or ""),
+        "walk_forward_expected_folds": "" if expected_folds is None else int(expected_folds),
+        "walk_forward_actual_folds": actual_folds,
+        "walk_forward_fold_generation_warning": warning,
+    }
+
+
 def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
-    years = int(config["years"])
     wcfg = config["walk_forward"]
     window_cfg = _resolve_walk_forward_window(wcfg)
+    years = _effective_history_years(int(config["years"]), window_cfg)
     train_years = int(window_cfg["train_years"])
     validate_years = int(window_cfg["validate_years"])
     configure_local_history(config.get("local_history", {}), Path.cwd())
@@ -2538,6 +2777,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
     if universe_symbols:
         symbols = universe_symbols
     strategy_cfg = wcfg.get("strategy_v2", {})
+    account_execution = _build_account_execution_config(config, wcfg, strategy_cfg)
     configure_akshare_throttle(config.get("data_sources", {}).get("akshare", {}))
     _load_symbol_cached.cache_clear()
 
@@ -2557,6 +2797,8 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                account_execution=account_execution,
+                window_cfg=window_cfg,
                 trace_callback=trace_callback,
             )
         elif _strict_qfq_asof_enabled(config):
@@ -2570,6 +2812,8 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                account_execution=account_execution,
+                window_cfg=window_cfg,
                 trace_callback=trace_callback,
             )
         else:
@@ -2583,6 +2827,8 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                account_execution=account_execution,
+                window_cfg=window_cfg,
                 trace_callback=trace_callback,
             )
     elif strategy_cfg.get("mode") == "portfolio":
@@ -2597,6 +2843,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 xfeatures=_load_cross_market_features(years, strategy_cfg.get("cross_market", {}))
                 if _xmarket_enabled(strategy_cfg)
                 else None,
+                window_cfg=window_cfg,
             )
             all_rows = []
             for ctx in fold_contexts:
@@ -2629,6 +2876,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 commission=float(wcfg["commission"]),
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
+                window_cfg=window_cfg,
             )
     else:
         all_rows: list[dict[str, Any]] = []
@@ -2645,6 +2893,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 stamp_duty_sell=float(wcfg["stamp_duty_sell"]),
                 strategy_cfg=strategy_cfg,
                 xfeatures=xfeatures,
+                window_cfg=window_cfg,
             )
             for f in folds:
                 all_rows.append(
@@ -2670,6 +2919,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
     folds_df = pd.DataFrame(all_rows)
     candidate_folds_df = pd.DataFrame(candidate_rows)
     if folds_df.empty:
+        empty_summary_df = pd.DataFrame()
         return {
             "folds": folds_df,
             "candidate_folds": candidate_folds_df,
@@ -2680,6 +2930,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 "walk_forward_preset": window_cfg["preset_name"],
                 "walk_forward_train_years": train_years,
                 "walk_forward_validate_years": validate_years,
+                **_window_summary_fields(window_cfg, empty_summary_df),
                 "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
                 "universe_lookahead_guard": bool(use_point_in_time_universe),
             },
@@ -2690,6 +2941,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
         "walk_forward_preset": window_cfg["preset_name"],
         "walk_forward_train_years": train_years,
         "walk_forward_validate_years": validate_years,
+        **_window_summary_fields(window_cfg, folds_df),
         "universe_mode": "point_in_time" if use_point_in_time_universe else "static_current_snapshot",
         "universe_lookahead_guard": bool(use_point_in_time_universe),
         "fold_count": int(len(folds_df)),

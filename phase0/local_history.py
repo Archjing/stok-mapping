@@ -490,8 +490,8 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
     out = pd.DataFrame(
         {
             "symbol": df["symbol"],
-            "name": "",
-            "industry": "",
+            "name": df.get("name", ""),
+            "industry": df.get("industry", ""),
             "latest_price": pd.to_numeric(df["latest_price"], errors="coerce"),
             "pct_change": np.nan,
             "amount": pd.to_numeric(df["amount"], errors="coerce"),
@@ -519,8 +519,9 @@ def load_snapshot_from_local_history_as_of(as_of_date: date | str, days: int = 9
     out.attrs.update(attrs)
     out.attrs["note"] = (
         "point-in-time universe uses historical OHLCV, nearest available daily_basic valuation snapshot, "
-        "and announced financial factors as of the historical date."
+        "announced financial factors as of the historical date, and current static stock metadata for name/industry."
     )
+    out.attrs["industry_metadata_source"] = "market_stocks_current_static"
     return out
 
 
