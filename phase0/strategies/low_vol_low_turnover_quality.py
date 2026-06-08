@@ -49,6 +49,15 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
             d["turnover_rate20"] = pd.to_numeric(d["amount_ratio20"], errors="coerce")
         else:
             d["turnover_rate20"] = np.nan
+        contribution_map = {
+            "_roe_score": "quality_roe_component",
+            "_cash_flow_score": "quality_cash_flow_component",
+            "_profit_growth_score": "quality_profit_growth_component",
+            "_revenue_growth_score": "quality_revenue_growth_component",
+            "_low_debt_score": "quality_low_debt_component",
+        }
+        for source, target in contribution_map.items():
+            d[target] = d[source] if source in d.columns else np.nan
         return d
 
     def select_params(
@@ -326,6 +335,16 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
                     "low_vol_rank_component",
                     "low_turnover_rank_component",
                     "medium_momentum_rank_component",
+                    "quality_growth_score",
+                    "financial_announce_date",
+                    "financial_available_fields",
+                    "quality_roe_component",
+                    "quality_cash_flow_component",
+                    "quality_profit_growth_component",
+                    "quality_revenue_growth_component",
+                    "quality_low_debt_component",
+                    "industry",
+                    "name",
                 ]
                 if col in out.columns
             ]

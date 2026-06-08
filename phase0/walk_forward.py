@@ -41,6 +41,13 @@ FINANCIAL_FACTOR_COLUMNS = [
     "cash_flow_quality",
     "debt_to_asset",
 ]
+FINANCIAL_DIAGNOSTIC_STRATEGIES = {
+    "core_selection_quality_momentum_v1",
+    "low_vol_low_turnover_quality_v1",
+    "multifactor_volume_price_filter_v1",
+    "quality_growth_price_v1",
+    "quality_low_turnover_monthly_v1",
+}
 
 TraceCallback = Callable[[dict[str, Any]], None]
 
@@ -82,6 +89,51 @@ def _resolve_walk_forward_window(wcfg: dict[str, Any]) -> dict[str, Any]:
         "expected_folds": int(wcfg["expected_folds"]) if wcfg.get("expected_folds") is not None else None,
         "description": "Legacy inline train_years/validate_years config.",
     }
+
+
+def describe_walk_forward_preset(wcfg: dict[str, Any], preset_name: str | None = None) -> str:
+    """Return a concise human-readable description of a walk-forward preset."""
+    scoped = copy.deepcopy(wcfg)
+    if preset_name is not None:
+        scoped["preset_name"] = preset_name
+    window = _resolve_walk_forward_window(scoped)
+    train_years = int(window["train_years"])
+    validate_years = int(window["validate_years"])
+    start = window.get("start_date")
+    end = window.get("end_date")
+    expected = window.get("expected_folds")
+    if start and end:
+        window_text = f"固定研究区间 {start.isoformat()} 至 {end.isoformat()}"
+    elif start:
+        window_text = f"固定起点 {start.isoformat()}，终点由可用数据末端决定"
+    elif end:
+        window_text = f"固定终点 {end.isoformat()}，起点由 config years 和可用数据推导"
+    else:
+        window_text = "未固定起止日期，由 config years 和可用数据末端推导"
+    fold_text = f"预计 {expected} 折" if expected is not None else "折数由数据覆盖自动决定"
+    description = str(window.get("description", "")).strip()
+    suffix = f"；{description}" if description else ""
+    return (
+        f"Walk-forward preset `{window['preset_name']}`：每折用 {train_years} 年训练选参，"
+        f"紧随其后 {validate_years} 年做样本外验证；{window_text}；{fold_text}；"
+        f"窗口每次向前滚动 {validate_years} 年{suffix}"
+    )
+
+
+def describe_walk_forward_presets(
+    wcfg: dict[str, Any],
+    preset_names: list[str] | None = None,
+    *,
+    default_all: bool = False,
+) -> list[str]:
+    presets = wcfg.get("presets", {}) or {}
+    if preset_names:
+        names = preset_names
+    elif default_all:
+        names = list(presets.keys())
+    else:
+        names = [str(wcfg.get("preset_name"))] if wcfg.get("preset_name") else list(presets.keys())
+    return [describe_walk_forward_preset(wcfg, str(name)) for name in names]
 
 
 @dataclass
@@ -1712,16 +1764,20 @@ def _build_account_execution_config(
 
 
 def _account_execution_metrics(output: StrategyOutput, account: SimulatedAccountConfig | None, panel_scope: str) -> dict[str, Any]:
-    if account is None or panel_scope != "portfolio":
-        return {}
+    if account is None:
+        return {"account_execution_status": "not_enabled", "account_execution_enabled": False}
+    if panel_scope != "portfolio":
+        return {"account_execution_status": "not_applicable", "account_execution_enabled": False}
     result = run_signal_account_execution(signal_frame=output.signal_frame, account=account)
-    return result.metrics
+    return {"account_execution_status": "enabled", **result.metrics}
 
 
-def _quality_signal_diagnostics(output: StrategyOutput) -> dict[str, Any]:
+def _quality_signal_diagnostics(output: StrategyOutput, strategy_name: str) -> dict[str, Any]:
     signal = output.signal_frame
+    if strategy_name not in FINANCIAL_DIAGNOSTIC_STRATEGIES:
+        return {"financial_diagnostic_status": "not_applicable"}
     if signal is None or signal.empty or "financial_available_fields" not in signal.columns:
-        return {}
+        return {"financial_diagnostic_status": "not_available"}
     total = len(signal)
     selected = signal[pd.to_numeric(signal.get("weight_unshifted", 0.0), errors="coerce").fillna(0.0) > 0].copy()
     financial_fields = pd.to_numeric(signal["financial_available_fields"], errors="coerce")
@@ -1757,6 +1813,7 @@ def _quality_signal_diagnostics(output: StrategyOutput) -> dict[str, Any]:
         announce = selected["financial_announce_date"]
         selected_announce_coverage = float((announce.notna() & announce.astype(str).str.strip().ne("")).mean())
     return {
+        "financial_diagnostic_status": "available",
         "quality_explain_rows": int(total),
         "quality_selected_rows": int(len(selected)),
         "financial_pit_announce_coverage": announce_coverage,
@@ -2011,7 +2068,7 @@ def _run_strategy_on_explicit_fold(
     output = constraint_result.output
     metric = _calc_metrics(output.returns, output.exposure)
     account_metrics = _account_execution_metrics(output, account_execution, strategy.panel_scope)
-    quality_metrics = _quality_signal_diagnostics(output)
+    quality_metrics = _quality_signal_diagnostics(output, strategy_name)
     meta = output.metadata or strategy.build_metadata(params)
     row = {
         "symbol": str(fold_valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
@@ -2129,7 +2186,7 @@ def _run_strategy_on_symbol_panel(
         # 验证窗输出每日收益和持仓暴露，再汇总为年化收益、Sharpe、回撤、胜率和换手等指标。
         metric = _calc_metrics(output.returns, output.exposure)
         account_metrics = _account_execution_metrics(output, account_execution, strategy.panel_scope)
-        quality_metrics = _quality_signal_diagnostics(output)
+        quality_metrics = _quality_signal_diagnostics(output, strategy_name)
         meta = output.metadata or strategy.build_metadata(params)
         trace_summary = _signal_trace_summary(output)
         rows.append(

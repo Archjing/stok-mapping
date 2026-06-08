@@ -81,6 +81,8 @@ def _resolve_admission_gate(wcfg: dict[str, Any]) -> dict[str, Any]:
         "overfit_risk_max": str(configured.get("overfit_risk_max", "medium")),
         "require_parameter_stability": bool(configured.get("require_parameter_stability", True)),
         "require_industry_concentration_check": bool(configured.get("require_industry_concentration_check", True)),
+        "require_factor_diagnostics": bool(configured.get("require_factor_diagnostics", True)),
+        "require_qfq_asof": bool(configured.get("require_qfq_asof", True)),
     }
 
 
@@ -161,6 +163,7 @@ def run_strategy_admission(
     folds_df = pd.concat(all_folds, ignore_index=True) if all_folds else pd.DataFrame()
     failures_df = pd.DataFrame(failure_rows)
     matrix_df = _build_window_matrix(folds_df, failures_df, strategy_names, preset_names, gate_cfg)
+    _attach_price_adjustment_status(matrix_df, config, gate_cfg)
 
     folds_csv = output_dir / "strategy_admission_candidate_folds.csv"
     if folds_df.empty:
@@ -211,6 +214,15 @@ def run_strategy_admission(
         presets=len(preset_names),
         rows=len(matrix_df),
     )
+
+
+def _attach_price_adjustment_status(matrix: pd.DataFrame, config: dict[str, Any], gate_cfg: dict[str, Any]) -> None:
+    local_cfg = config.get("local_history", {}) or {}
+    adjust_type = str(local_cfg.get("adjust_type", "qfq"))
+    mode = str(local_cfg.get("price_adjustment_for_backtest", "qfq_current" if adjust_type == "qfq" else adjust_type))
+    required = bool(gate_cfg.get("require_qfq_asof", True))
+    matrix["price_adjustment_for_backtest"] = mode
+    matrix["price_adjustment_status"] = "qfq_asof" if mode == "qfq_asof" else ("not_required" if not required else "not_qfq_asof")
 
 
 def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], strategy_names: list[str]) -> None:
@@ -296,6 +308,9 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
     turnover = _numeric_column(group, "turnover_annual")
     trades = _numeric_column(group, "trades")
     params = group.get("selected_params", pd.Series(dtype=object)).fillna("").astype(str)
+    account_status = _status_summary(group, "account_execution_status", default="not_enabled")
+    industry_status = _industry_status_summary(group)
+    financial_status = _status_summary(group, "financial_diagnostic_status", default="not_available")
     top_industry_avg = _numeric_column(group, "top_industry_avg_share")
     top_industry_p95 = _numeric_column(group, "top_industry_p95_share")
     top_industry_max = _numeric_column(group, "top_industry_max_share")
@@ -351,6 +366,9 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
         "turnover_annual_max": turnover_annual_max,
         "trades_total": int(trades.sum()) if trades.notna().any() else 0,
         "parameter_unique_count": int(params[params != ""].nunique()),
+        "account_execution_status": account_status,
+        "industry_diagnostic_status": industry_status,
+        "financial_diagnostic_status": financial_status,
         "top_industry_avg_share_mean": float(top_industry_avg.mean()) if top_industry_avg.notna().any() else 0.0,
         "top_industry_p95_share_max": float(top_industry_p95.max()) if top_industry_p95.notna().any() else 0.0,
         "top_industry_max_share_max": float(top_industry_max.max()) if top_industry_max.notna().any() else 0.0,
@@ -380,6 +398,30 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
     }
 
 
+def _status_summary(group: pd.DataFrame, column: str, *, default: str) -> str:
+    if column not in group.columns:
+        return default
+    values = group[column].dropna().astype(str).map(str.strip)
+    values = values[(values != "") & (values.str.lower() != "nan")]
+    if values.empty:
+        return default
+    unique = sorted(set(values))
+    return unique[0] if len(unique) == 1 else "mixed:" + ",".join(unique)
+
+
+def _industry_status_summary(group: pd.DataFrame) -> str:
+    if "industry_constraint_enabled" not in group.columns:
+        return "not_enabled"
+    enabled = group["industry_constraint_enabled"].dropna()
+    if enabled.empty:
+        return "not_enabled"
+    enabled_bool = enabled.astype(bool)
+    if not enabled_bool.any():
+        return "not_enabled"
+    status = _status_summary(group, "constraint_status", default="enabled")
+    return f"enabled:{status}"
+
+
 def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset_names: list[str], gate_cfg: dict[str, Any]) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     overfit_by_strategy = {}
@@ -393,6 +435,9 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         turnover_fail_count = int((pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce") > float(gate_cfg["turnover_annual_mean_max"])).sum())
         missing_window_count = int((group["status"] != "ok").sum())
         industry_concentration_count = _industry_concentration_window_count(ok_windows) if bool(gate_cfg.get("require_industry_concentration_check", True)) else 0
+        industry_missing_count = _industry_missing_window_count(ok_windows) if bool(gate_cfg.get("require_industry_concentration_check", True)) else 0
+        factor_missing_count = _factor_missing_window_count(ok_windows) if bool(gate_cfg.get("require_factor_diagnostics", True)) else 0
+        price_adjustment_fail_count = _price_adjustment_fail_window_count(ok_windows) if bool(gate_cfg.get("require_qfq_asof", True)) else 0
         parameter_unique_total = int(pd.to_numeric(ok_windows.get("parameter_unique_count"), errors="coerce").fillna(0).sum()) if not ok_windows.empty else 0
         parameter_unstable_count = _parameter_unstable_window_count(ok_windows) if bool(gate_cfg.get("require_parameter_stability", True)) else 0
         overfit_row = overfit_by_strategy.get(sid)
@@ -405,6 +450,9 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
             missing_window_count=missing_window_count,
             parameter_unstable_count=parameter_unstable_count,
             industry_concentration_count=industry_concentration_count,
+            industry_missing_count=industry_missing_count,
+            factor_missing_count=factor_missing_count,
+            price_adjustment_fail_count=price_adjustment_fail_count,
             overfit_level=overfit_level,
             group=group,
             gate_cfg=gate_cfg,
@@ -418,6 +466,9 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
                 "turnover_fail_count": turnover_fail_count,
                 "missing_window_count": missing_window_count,
                 "industry_concentration_window_count": industry_concentration_count,
+                "industry_diagnostic_missing_window_count": industry_missing_count,
+                "factor_diagnostic_missing_window_count": factor_missing_count,
+                "price_adjustment_fail_window_count": price_adjustment_fail_count,
                 "overfit_risk_level": overfit_level,
                 "overfit_score": overfit_score,
                 "parameter_unique_total": parameter_unique_total,
@@ -446,10 +497,37 @@ def _overfit_blocks_admission(level: str, gate_cfg: dict[str, Any]) -> bool:
 def _industry_concentration_window_count(ok_windows: pd.DataFrame) -> int:
     if ok_windows.empty:
         return 0
+    status = ok_windows.get("industry_diagnostic_status", pd.Series("not_enabled", index=ok_windows.index)).astype(str)
+    ok_windows = ok_windows[~status.isin({"not_enabled", "not_available"})]
+    if ok_windows.empty:
+        return 0
     top1 = _numeric_column(ok_windows, "top_industry_avg_share_mean").fillna(0.0)
     top3 = _numeric_column(ok_windows, "top3_industries_avg_share_mean").fillna(0.0)
     violations = _numeric_column(ok_windows, "industry_violation_days_total").fillna(0)
     return int(((top1 > 0.35) | (top3 > 0.65) | (violations > 0)).sum())
+
+
+def _industry_missing_window_count(ok_windows: pd.DataFrame) -> int:
+    if ok_windows.empty:
+        return 0
+    status = ok_windows.get("industry_diagnostic_status", pd.Series("not_enabled", index=ok_windows.index)).astype(str)
+    return int(status.isin({"not_enabled", "not_available"}).sum())
+
+
+def _factor_missing_window_count(ok_windows: pd.DataFrame) -> int:
+    if ok_windows.empty:
+        return 0
+    status = ok_windows.get("financial_diagnostic_status", pd.Series("not_available", index=ok_windows.index)).astype(str)
+    requires = ~status.isin({"not_applicable"})
+    missing = status.isin({"not_available", ""})
+    return int((requires & missing).sum())
+
+
+def _price_adjustment_fail_window_count(ok_windows: pd.DataFrame) -> int:
+    if ok_windows.empty:
+        return 0
+    status = ok_windows.get("price_adjustment_status", pd.Series("unknown", index=ok_windows.index)).astype(str)
+    return int((status != "qfq_asof").sum())
 
 
 def _admission_action(
@@ -460,6 +538,9 @@ def _admission_action(
     missing_window_count: int,
     parameter_unstable_count: int,
     industry_concentration_count: int,
+    industry_missing_count: int,
+    factor_missing_count: int,
+    price_adjustment_fail_count: int,
     overfit_level: str,
     group: pd.DataFrame,
     gate_cfg: dict[str, Any],
@@ -474,8 +555,14 @@ def _admission_action(
         reasons.append("annual turnover exceeds threshold in one or more windows")
     if parameter_unstable_count:
         reasons.append("selected parameters change too frequently in one or more windows")
+    if industry_missing_count:
+        reasons.append("industry concentration check is required but not available in one or more windows")
     if industry_concentration_count:
         reasons.append("industry concentration exceeds audit threshold in one or more windows")
+    if factor_missing_count:
+        reasons.append("factor diagnostics are required but not available in one or more windows")
+    if price_adjustment_fail_count:
+        reasons.append("qfq_asof price adjustment is required but not active in one or more windows")
     positive_fail = int((_numeric_column(group, "positive_fold_ratio") < float(gate_cfg["positive_fold_ratio_min"])).sum())
     if positive_fail:
         reasons.append(f"positive fold ratio below {float(gate_cfg['positive_fold_ratio_min']):.0%} in one or more windows")
@@ -484,6 +571,9 @@ def _admission_action(
         and not overfit_blocks
         and turnover_fail_count == 0
         and (parameter_unstable_count == 0 or not bool(gate_cfg.get("require_parameter_stability", True)))
+        and industry_missing_count == 0
+        and factor_missing_count == 0
+        and price_adjustment_fail_count == 0
         and (industry_concentration_count == 0 or not bool(gate_cfg.get("require_industry_concentration_check", True)))
     ):
         return "eligible_for_paper_review", reasons or ["all configured windows pass"]
@@ -531,7 +621,19 @@ def _write_report(
         "## Constraint Review",
         "",
         _md_table(
-            ["strategy_id", "action", "window_pass", "turnover_fail", "param_unstable", "industry_conc", "overfit", "reasons"],
+            [
+                "strategy_id",
+                "action",
+                "window_pass",
+                "turnover_fail",
+                "param_unstable",
+                "industry_missing",
+                "industry_conc",
+                "factor_missing",
+                "price_fail",
+                "overfit",
+                "reasons",
+            ],
             [
                 [
                     str(row["strategy_id"]),
@@ -539,7 +641,10 @@ def _write_report(
                     f"{_safe_int(row['window_pass_count'])}/{_safe_int(row['window_count'])}",
                     str(_safe_int(row["turnover_fail_count"])),
                     str(_safe_int(row["parameter_unstable_window_count"])),
+                    str(_safe_int(row.get("industry_diagnostic_missing_window_count", 0))),
                     str(_safe_int(row.get("industry_concentration_window_count", 0))),
+                    str(_safe_int(row.get("factor_diagnostic_missing_window_count", 0))),
+                    str(_safe_int(row.get("price_adjustment_fail_window_count", 0))),
                     str(row["overfit_risk_level"]),
                     str(row["main_reasons"]),
                 ]
@@ -559,12 +664,15 @@ def _write_report(
                 "expected",
                 "actual",
                 "warning",
+                "price_status",
                 "ann",
                 "sharpe",
                 "mdd",
                 "turnover",
+                "industry_status",
                 "top1_ind",
                 "top3_ind",
+                "account_status",
                 "acct_ann",
                 "acct_sharpe",
                 "acct_orders",
@@ -580,15 +688,18 @@ def _write_report(
                     _safe_str(row.get("walk_forward_expected_folds", "")),
                     _safe_str(row.get("walk_forward_actual_folds", "")),
                     _safe_str(row.get("walk_forward_fold_generation_warning", "")),
+                    _safe_str(row.get("price_adjustment_status", "")),
                     f"{_safe_float(row['annualized_return_mean']):.4f}",
                     f"{_safe_float(row['sharpe_mean']):.4f}",
                     f"{_safe_float(row['max_drawdown_worst']):.4f}",
                     f"{_safe_float(row['turnover_annual_mean']):.2f}",
-                    f"{_safe_float(row.get('top_industry_avg_share_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('top3_industries_avg_share_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('account_annualized_return_mean', 0.0)):.4f}",
-                    f"{_safe_float(row.get('account_sharpe_mean', 0.0)):.4f}",
-                    str(_safe_int(row.get("account_executed_order_count_total", 0))),
+                    _safe_str(row.get("industry_diagnostic_status", "not_enabled")),
+                    _format_status_float(row, "top_industry_avg_share_mean", "industry_diagnostic_status"),
+                    _format_status_float(row, "top3_industries_avg_share_mean", "industry_diagnostic_status"),
+                    _safe_str(row.get("account_execution_status", "not_enabled")),
+                    _format_status_float(row, "account_annualized_return_mean", "account_execution_status"),
+                    _format_status_float(row, "account_sharpe_mean", "account_execution_status"),
+                    _format_status_int(row, "account_executed_order_count_total", "account_execution_status"),
                     str(bool(row["is_window_pass"])),
                 ]
                 for _, row in matrix.iterrows()
@@ -601,6 +712,7 @@ def _write_report(
             [
                 "strategy_id",
                 "preset",
+                "status",
                 "pit_ann",
                 "field_cov",
                 "selected_field_cov",
@@ -613,11 +725,12 @@ def _write_report(
                 [
                     str(row["strategy_id"]),
                     str(row["walk_forward_preset"]),
-                    f"{_safe_float(row.get('financial_pit_announce_coverage_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('financial_field_coverage_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('selected_financial_field_coverage_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('financial_missing_blocked_ratio_mean', 0.0)):.2f}",
-                    f"{_safe_float(row.get('selected_quality_score_lift_mean', 0.0)):.3f}",
+                    _safe_str(row.get("financial_diagnostic_status", "not_available")),
+                    _format_status_float(row, "financial_pit_announce_coverage_mean", "financial_diagnostic_status"),
+                    _format_status_float(row, "financial_field_coverage_mean", "financial_diagnostic_status"),
+                    _format_status_float(row, "selected_financial_field_coverage_mean", "financial_diagnostic_status"),
+                    _format_status_float(row, "financial_missing_blocked_ratio_mean", "financial_diagnostic_status"),
+                    _format_status_float(row, "selected_quality_score_lift_mean", "financial_diagnostic_status", precision=3),
                     _quality_factor_evidence_label(factor_evidence),
                     _quality_failure_attribution(row, factor_evidence),
                 ]
@@ -666,8 +779,11 @@ def _quality_factor_evidence_label(evidence: dict[str, str]) -> str:
 
 def _quality_failure_attribution(row: pd.Series, evidence: dict[str, str]) -> str:
     strategy_id = str(row.get("strategy_id", ""))
-    if strategy_id != "quality_low_turnover_monthly_v1":
+    status = _safe_str(row.get("financial_diagnostic_status", "not_available"))
+    if status == "not_applicable":
         return "not_applicable"
+    if status == "not_available":
+        return "diagnostic_missing: financial factor diagnostics not available"
     if _safe_float(row.get("financial_pit_announce_coverage_mean", 0.0)) < 0.95:
         return "data_quality: PIT announce coverage below 95%"
     if _safe_float(row.get("financial_field_coverage_mean", 0.0)) < 0.80:
@@ -681,6 +797,20 @@ def _quality_failure_attribution(row: pd.Series, evidence: dict[str, str]) -> st
     if not bool(row.get("is_turnover_pass", False)):
         return "construction_invalid: turnover threshold failed"
     return "passed"
+
+
+def _format_status_float(row: pd.Series, value_col: str, status_col: str, *, precision: int = 2) -> str:
+    status = _safe_str(row.get(status_col, ""))
+    if status in {"not_enabled", "not_available", "not_applicable"} or status.startswith("mixed:"):
+        return "n/a"
+    return f"{_safe_float(row.get(value_col, 0.0)):.{precision}f}"
+
+
+def _format_status_int(row: pd.Series, value_col: str, status_col: str) -> str:
+    status = _safe_str(row.get(status_col, ""))
+    if status in {"not_enabled", "not_available", "not_applicable"} or status.startswith("mixed:"):
+        return "n/a"
+    return str(_safe_int(row.get(value_col, 0)))
 
 
 def _md_table(headers: list[str], rows: list[list[str]]) -> str:

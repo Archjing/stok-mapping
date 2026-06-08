@@ -2,7 +2,7 @@
 
 > 父级任务域：`T6` 运维调度与后台任务。  
 > 目标形态：把当前 shell 调度器演进为本地优先、可审计、可恢复的数据治理控制平面。  
-> 当前状态：P3 基础版已完成；短任务调度、状态库、3 shard backfill run/stop/resume 已落地。
+> 当前状态：P3/P4 关键收口已完成；短任务调度、状态库、wrapper 接管、交易日历、3 shard backfill run/stop/resume/supervise、维护 Markdown 报告和 backfill 报告索引已落地。
 > 推荐架构模式：`Control Plane + Command Registry + State Machine + Policy Gate + Supervisor`。
 
 ---
@@ -94,7 +94,8 @@ System Orchestrator（总体编排器）
 ### T6.3.2.2 Command Registry
 
 - [x] 每个维护任务定义为一个 command spec。
-- [ ] command spec 至少包含任务名、命令、时间窗口、交易日历、依赖、前置健康检查、后置健康检查、重试策略、超时和产物规则。
+- [x] command spec 已包含任务名、命令、时间触发、交易日历、前置健康检查、重试策略和日志产物规则。
+- [ ] 后续补齐显式依赖、后置健康检查、超时和短任务报告产物规则。
 - [x] 首批任务映射当前统一调度器已有任务：
   - [x] `daily_brief`
   - [x] `a_share_history`
@@ -124,9 +125,9 @@ cancelled -> pending
 
 ### T6.3.2.4 Policy Gate
 
-- [ ] 运行前统一执行交易日历、锁、状态、依赖、失败次数和 `db-health` 检查。
-- [x] 运行前已执行锁、状态、失败次数和 `db-health` 检查；交易日历仍待接入。
-- [x] 运行后统一记录 exit code、log path 和 error summary；报告路径和关键结论仍待 P4 汇总。
+- [x] 运行前统一执行交易日历、锁、状态、失败次数和 `db-health` 检查。
+- [ ] 后续补显式依赖检查。
+- [x] 运行后统一记录 exit code、log path 和 error summary；长 backfill shard 已登记报告路径和关键结论。
 - [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`。
 - [ ] A 股研究与数据任务默认使用 `db-health --scope cn --fail-on error` 或 `financial/error`。
 
@@ -142,7 +143,7 @@ cancelled -> pending
 - [x] 编排器运行事件只追加，不覆盖。
 - [x] backfill 详细报告继续按 `reports/YYYY-MM-DD/` 输出。
 - [x] backfill 汇总报告继续每次追加 1 行关键结论。
-- [x] 编排器只登记日志/状态路径；报告路径与关键结论待 P4 汇总报告补齐。
+- [x] 编排器登记日志/状态路径；长 backfill 报告路径与关键结论已接入 P4 汇总报告。
 
 ---
 
@@ -364,12 +365,12 @@ maintenance_orchestrator:
 
 ## T6.3.7 验收清单
 
-- [ ] 编排器能替代 shell 内部调度判断。
-- [ ] 每个任务都有可解释状态：未到时间、非交易日、已成功、运行中、阻断、失败、取消。
-- [ ] 所有运行都有 run id、命令、退出码、日志路径和报告路径。
-- [ ] `maintain status` 能用于日常运维巡检。
+- [x] 编排器能替代 shell 内部调度判断。
+- [x] 每个任务都有可解释状态：未到时间、非交易日、已成功、运行中、阻断、失败、取消。
+- [x] 所有运行都有 run id、命令、退出码、日志路径；长 backfill 运行已有报告路径索引。
+- [x] `maintain status` 能用于日常运维巡检。
 - [ ] `db-health` 前置门禁统一由编排器执行。
-- [ ] 长 backfill 能统一启动、停止、恢复和查看 shard 状态。
+- [x] 长 backfill 能统一启动、停止、恢复和查看 shard 状态。
 - [ ] 现有业务命令、报告路径和数据表不被破坏。
 - [ ] 编排器异常退出时不会留下永久锁。
 
@@ -380,4 +381,3 @@ maintenance_orchestrator:
 - [x] A 股调度任务接入本地 `trading_calendar`；HK/US 暂用 weekday fallback 并显式记录原因。
 - [x] backfill shard 状态登记 `report_path`、`error_summary`、`key_conclusion`。
 - [x] 后台进程退出分类采用保守策略：只有日志或 summary audit 明确成功才标记 `succeeded`，明确错误才标记 `failed`，否则保留 `exited_unknown`。
-

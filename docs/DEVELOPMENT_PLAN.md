@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-07（同步 T6.3 维护编排器 supervisor、交易日历、Markdown 报告和 backfill 报告索引）
+> 最后修订：2026-06-09（同步 T2.8 strategy-admission 状态与 T6.3 维护编排器销项）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.10 有效策略重建**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -1082,11 +1082,14 @@ stok-mapping/
 - [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - [x] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
 - [x] 实现 `T2.7` `quality_low_turnover_monthly_v1`
-- [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断、过拟合诊断和执行约束；当前已完成 strategy-admission MVP、全局 admission 配置层、过拟合诊断合并、窗口/约束准入复核和 diagnostics suites 设计输入
+- [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断、过拟合诊断和执行约束；当前已完成 strategy-admission MVP、全局 admission 配置层、过拟合诊断合并、窗口/约束准入复核、diagnostics suites 设计输入、preset 启动说明和诊断状态可信化
 - [x] 在 `T2.8` 中加入 walk-forward 窗口 preset 与窗口稳健性矩阵：保留 `baseline_2y_1y` 为统一可比口径，并为低频质量策略增加 `quality_3y_1y`、`quality_4y_1y` 复核
 - [x] 建立 `T2.8` 回测窗口期配置模块 V1（KISS 收缩版）：先只支持 preset 级 `start_date` / `end_date`、`expected_folds`，新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`，解决 T2.7 折数不足和窗口单一问题
 - [x] 为窗口配置模块补齐最小报告字段：在 `strategy-admission` 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
 - [x] 新增 `walk_forward.admission` 全局准入配置：`default_strategy_set`、`strategy_sets`、`gate`、`diagnostics.suites`；`strategy-admission` 支持 CLI `--strategy-set` 和 `--strategies` 覆盖
+- [x] 将 `strategy-admission` 启动说明改为自然语言输出 preset 训练期、验证期、固定起止日期、预计折数和滚动方式
+- [x] 将 `strategy-admission` 报告改为区分 `not_enabled` / `not_available` / `not_applicable` 与真实数值；新增价格口径、账户执行、行业诊断和财务诊断状态字段
+- [x] 将 admission 默认价格口径收敛到 `qfq_asof`，非 `qfq_asof` 作为准入阻断原因；完整双口径矩阵仍列为后续任务
 - [ ] 使用 T2.7 复测 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
 - [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
@@ -1095,7 +1098,7 @@ stok-mapping/
 - [x] 完成 Tushare 财务因子逐 `ts_code` 历史补齐任务：2016Q1-2018Q1 目标季度末已清空 pending/failed，并复核 `financial-pti` 与 `factor-effectiveness`
 - [ ] 港股数据源质量验证通过后，再推进 `T3.1` 映射策略代码化
 - [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
-- [ ] 启动 `T6.3` 数据治理与维护编排器：以 Python control plane 统一管理任务 registry、状态机、门禁、重试、审计和长 backfill 分片监督
+- [x] 启动 `T6.3` 数据治理与维护编排器：Python control plane 已统一管理内置 task registry、状态机、门禁、重试、审计和长 backfill 分片监督；后续转向 System Orchestrator / TUI 汇总入口
 - [ ] 将 full daily brief 从当前 watchlist 兼容产物中独立出来，形成正式日报产物生成代码
 - [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 

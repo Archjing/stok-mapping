@@ -152,15 +152,19 @@ score =
 - [x] 将 walk-forward 窗口配置模块化为 preset，保留当前 `baseline_2y_1y` 作为 baseline
 - [x] 建立回测窗口期配置模块 V1，优先解决固定研究区间、期望折数和 T2.7 复测问题
 - [x] 新增全局 admission 配置层：`strategy_sets`、`gate`、`diagnostics.suites`
+- [x] 回测 / admission 启动时打印当前 preset 的自然语言说明，包含训练期、验证期、固定起止日期、预计折数和滚动方式
+- [x] 准入报告区分真实数值、`not_enabled`、`not_available`、`not_applicable`，避免把未接入诊断误读为 `0`
 - [x] 给出策略是否可进入观察池 / 模拟账户的明确结论
 
 ### T2.8.2 硬规则
 
-- [ ] `qfq_current` 通过但 `qfq_asof` 失败：拒绝进入模拟账户
+- [x] 当前 admission 默认要求 `qfq_asof`，非 `qfq_asof` 价格口径阻断进入模拟审查
+- [ ] 完整 `qfq_current` / `qfq_asof` 双口径矩阵：`qfq_current` 通过但 `qfq_asof` 失败时拒绝进入模拟账户
 - [x] `overfit_risk_level in {high, critical}`：阻断进入模拟审查，进入 retest / reject
 - [x] 年化换手 `> 3`：第一阶段拒绝作为主候选
 - [x] 正收益折比例不足：拒绝或降级复核
-- [ ] 缺少因子诊断：仅 research-only
+- [x] 缺少必要因子诊断：阻断 `eligible_for_paper_review`，在 constraint review 中显式给出原因
+- [x] 要求行业集中度检查但未接入或超限：阻断 `eligible_for_paper_review`
 - [x] 仅在单一窗口 preset 下通过、但在同类策略推荐窗口下失效：仅 research-only
 - [x] 选中参数在窗口内频繁切换：阻断进入模拟审查，进入 retest
 
@@ -170,6 +174,8 @@ score =
 - [x] `reports/strategy_admission/strategy_admission_report.md`
 - [x] `reports/strategy_admission/strategy_admission_window_matrix.csv`
 - [x] `reports/strategy_admission/strategy_admission_candidate_folds.csv`
+- [x] `strategy_admission_window_matrix.csv` 输出 `price_adjustment_status`、`account_execution_status`、`industry_diagnostic_status`、`financial_diagnostic_status`
+- [x] `strategy_admission_constraint_review.csv` 输出行业诊断缺失、因子诊断缺失和价格口径失败计数
 
 ### T2.8.4 Walk-forward preset 设计
 
@@ -228,7 +234,11 @@ V1 开发任务：
 - [x] 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
 - [x] 新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`
 - [x] `strategy-admission` 支持 `walk_forward.admission.strategy_sets`、CLI `--strategy-set`、CLI `--strategies` 覆盖和 `diagnostics.suites` 报告说明
+- [x] `strategy-admission` 启动阶段输出 preset 说明，避免运行前误解回测窗口
+- [x] `strategy-admission` 报告可信化：账户执行、行业约束和财务 PIT 诊断均有状态字段
+- [x] `quality_4y_1y` 固定 `2020-04-01` 到 `2026-03-31`，作为低频质量近期严格复核窗口
 - [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
+- [ ] 下一日优先：先补 overfit “最后一折拉高”风险标记，再复测 `quality_low_turnover_monthly_v1` 的双 preset 准入报告
 
 V1 不做：
 
@@ -268,8 +278,8 @@ final_score =
 启动条件：
 
 - [ ] T2.5 找到至少 5 个稳定候选因子
-- [ ] T2.6 或 T2.7 至少一个线性 baseline 可跑通
-- [ ] T2.8 策略准入报告可用
+- [x] T2.6 或 T2.7 至少一个线性 baseline 可跑通
+- [x] T2.8 策略准入报告可用
 
 候选模型：
 

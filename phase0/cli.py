@@ -39,7 +39,7 @@ from phase0.throttle import configure_akshare_throttle
 from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
-from phase0.walk_forward import run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
+from phase0.walk_forward import describe_walk_forward_presets, run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
 
 
 def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
@@ -448,6 +448,8 @@ def run_phase0(config_path: Path) -> int:
     )
 
     console.print("3) Running walk-forward backtest baseline...")
+    for line in describe_walk_forward_presets(cfg.get("walk_forward", {})):
+        console.print(f"[cyan]{line}[/cyan]")
     wf = run_walk_forward(cfg)
     folds_df = wf["folds"]
     candidate_folds_df = wf.get("candidate_folds")
@@ -1061,10 +1063,13 @@ def main() -> int:
     if args.cmd == "strategy-admission":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
         console = Console()
         console.print("[bold]Strategy admission review started[/bold]")
+        for line in describe_walk_forward_presets(phase_cfg.get("walk_forward", {}), args.presets, default_all=True):
+            console.print(f"[cyan]{line}[/cyan]")
         result = run_strategy_admission(
-            config=cfg.get("phase0", cfg),
+            config=phase_cfg,
             root=config_path.parent,
             presets=args.presets,
             strategy_set=args.strategy_set,

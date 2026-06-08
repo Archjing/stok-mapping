@@ -588,19 +588,19 @@
 
 ### W2.12.1 交易日判断
 
-- [ ] 当前调度器仍按周一到周五判断，不等同于交易所交易日历。
-- [ ] A 股任务需要读取 `data/manual_history/a_share_history.sqlite` 的 `trading_calendar`。
-- [ ] 港股任务需要独立交易日历或数据源最新交易日判断。
-- [ ] 美股任务需要独立交易日历或数据源最新交易日判断。
-- [ ] 日报任务需要和 A 股下一个盘前检查日绑定。
+- [x] 当前调度入口已由 shell weekday 判断迁移到 `maintain tick`，A 股任务不再只按周一到周五判断。
+- [x] A 股任务已读取 `data/manual_history/a_share_history.sqlite` 的 `trading_calendar`。
+- [ ] 港股任务仍需独立交易日历或数据源最新交易日判断；当前为 weekday fallback，并显式记录 fallback reason。
+- [ ] 美股任务仍需独立交易日历或数据源最新交易日判断；当前为 weekday fallback，并显式记录 fallback reason。
+- [x] 日报任务已绑定 A 股交易日历；watchlist 内的下一个 `07:30` 复核时间也读取 `trading_calendar`。
 
 ### W2.12.2 失败重试
 
-- [ ] 当前任务只有精确分钟触发，失败后实际重试能力不足。
-- [ ] 每个任务需要运行窗口，例如 `07:20-07:40`。
-- [ ] 每个任务需要最大重试次数，例如 `3` 次。
-- [ ] 每个任务需要重试间隔，例如 `5` 分钟。
-- [ ] 失败次数、最后失败时间、最后错误摘要需要写入调度状态文件。
+- [x] 当前任务已由每分钟 cron 调用 `maintain tick`，失败后可在 retry window 内重试，不再只依赖精确分钟触发。
+- [x] 每个任务已通过 `schedule_value + retry_window_minutes` 实现等效运行窗口，例如 `07:20` 加 `20` 分钟 retry window。
+- [x] 每个任务已支持最大重试次数，默认 `3` 次，可通过 `*_MAX_RETRIES` 环境变量覆盖。
+- [x] 每个任务已支持重试间隔，默认 `5` 分钟，可通过 `*_RETRY_INTERVAL_MINUTES` 环境变量覆盖。
+- [x] 失败次数、最后失败时间、最后错误摘要已写入 `logs/scheduler/<task_name>.state`。
 
 ### W2.12.3 正式日报产物后续拆分
 
@@ -650,7 +650,7 @@
 - [x] 计算正收益折占比
 - [x] 计算最差 fold 表现
 - [ ] 标记“只靠最后一折拉高”的风险
-- [ ] 标记 OOS 折数不足的证据风险
+- [x] 标记 OOS 折数不足的证据风险
 
 #### W2.13.4.2 成本敏感性
 
@@ -844,7 +844,7 @@ python -m phase0.cli adjustment-audit \
 
 - [x] 实现 `T2.5` 因子有效性诊断报告 MVP
 - [x] 用 `qfq_asof` / PIT 股票池跑第一批低波、低换手、质量、动量、反转因子诊断
-- [ ] 基于诊断结果确认 `low_vol_low_turnover_quality_v1` 的首版因子权重
+- [x] 基于诊断结果确认 `low_vol_low_turnover_quality_v1` 的首版因子权重
 - [x] 设计 walk-forward 窗口 preset，已落地 `baseline_2y_1y`、`quality_3y_1y` 与 `quality_4y_1y`
 - [x] 建立 `strategy-admission` 报告 MVP，明确实盘模拟准入规则
 
@@ -870,7 +870,12 @@ python -m phase0.cli adjustment-audit \
 - [x] 新增 `quality_3y_1y_4fold`：固定 `2019-04-01` 到 `2026-03-31`，作为低频质量/低估值策略专用窗口
 - [x] `strategy-admission` 报告输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
 - [x] `strategy-admission` 支持默认 `strategy_set`、CLI `--strategy-set`、CLI `--strategies` 覆盖和 `diagnostics.suites`
+- [x] `strategy-admission` 启动时打印 walk-forward preset 自然语言说明：训练期、验证期、固定起止日期、预计折数和滚动方式
+- [x] `strategy-admission` 报告可信化：用 `price_adjustment_status`、`account_execution_status`、`industry_diagnostic_status`、`financial_diagnostic_status` 区分真实数值与未启用/不可用诊断
+- [x] admission 默认要求 `qfq_asof`，并在报告中把非 `qfq_asof` 口径作为准入阻断原因
+- [x] 行业约束默认进入 `audit` 模式，admission 可输出真实行业集中度并在超限时阻断准入
 - [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，复核能否区分折数不足、参数不稳定、收益不达标和组合构造失败
+- [ ] 后续补完整 `qfq_current` / `qfq_asof` 双口径矩阵，不只依赖当前默认 `qfq_asof` 硬阻断
 - [ ] V2 候选暂不实施：`momentum_1y_6m`、`short_horizon_6m_3m`、`event_rolling_n_events`、`ml_purged_walk_forward`、`validation_family`、`strategy_window_policy`
 - [x] 策略准入报告应输出窗口稳健性矩阵，低频质量策略至少比较 `baseline_2y_1y`、`quality_3y_1y` 和 `quality_4y_1y`
 
@@ -1120,9 +1125,9 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.18.1 背景
 
-当前项目已经具备统一 cron 入口、`db-health` 门禁、backfill 审计报告和部分断点任务能力，但调度、重试、跳过原因、长任务分片监督和运行状态仍分散在 shell、日志、`.last` 文件和各业务模块里。
+当前项目已经具备统一 cron 入口、`db-health` 门禁、backfill 审计报告和部分断点任务能力；T6.3 V1 已把调度判断、重试、跳过原因、长任务分片监督和运行状态收敛到 `maintenance_orchestrator`。
 
-下一阶段需要建立本地数据治理控制平面，把维护动作从“脚本按时跑”升级为“任务有状态、失败可解释、长任务可停止和恢复、报告可追溯”。
+后续阶段继续把本地数据治理控制平面从“可用 V1”扩展为“可配置、可巡检、可供 TUI / System Orchestrator 统一调用”的长期维护入口。
 
 ## W2.18.2 本周目标
 
@@ -1288,3 +1293,46 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] `intelligence validate` 可校验正式台账
 - [x] `intelligence import-local --limit 5` 可生成候选 CSV 与 Markdown 报告
 - [x] `intelligence collect --limit 5` 可按配置生成候选 CSV 与 Markdown 报告
+
+# W2.24｜下一日策略准入收口计划（T2.8 / W2.15）
+
+## W2.24.1 选择理由
+
+当前 `T6.3` / `W2.12` 已满足本地调度 V1，继续扩展运维入口的边际收益低于策略研发收口。下一日优先处理 `T2.8` 与 `W2.15` 的策略准入闭环：先补过拟合诊断的最后折风险标记，再用固定双 preset 复测 `quality_low_turnover_monthly_v1`，形成可复查的 reject / retest / research-only 结论。
+
+## W2.24.2 上午任务：过拟合诊断补强
+
+- [ ] 实现 W2.13.4.1 “只靠最后一折拉高”的风险标记
+- [ ] 在 `strategy_overfit_diagnostic.csv` 增加最近折贡献或最后折风险字段
+- [ ] 在 `strategy_overfit_diagnostic.md` 输出最后折拉高的主要风险原因
+- [ ] 增加最小测试或样例，证明最后一折异常拉高会被标记
+
+验收：
+
+- [ ] 最后一折显著高于前序折均值时，报告给出明确风险原因
+- [ ] 正常稳定折序列不被误报为最后折拉高
+
+## W2.24.3 下午前半：T2.7 双窗口复测
+
+- [ ] 用 `quality_low_turnover_monthly_v1` 跑 `baseline_2y_1y_5fold`
+- [ ] 用 `quality_low_turnover_monthly_v1` 跑 `quality_3y_1y_4fold`
+- [ ] 报告输出固定目录，包含 `strategy_admission_report.md`、`strategy_admission_window_matrix.csv`、`strategy_admission_constraint_review.csv`
+- [ ] 复核报告能区分折数不足、参数不稳定、收益不达标、组合构造失败、行业集中度和财务诊断状态
+
+验收：
+
+- [ ] `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold` 都有可读报告
+- [ ] 结论明确落入 `eligible_for_paper_review / research_only / retest / reject` 之一
+
+## W2.24.4 下午后半：结论归档与销项
+
+- [ ] 解读 `quality_low_turnover_monthly_v1` 的双窗口复测结果
+- [ ] 更新 `docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md` 对应 checkbox
+- [ ] 更新本周清单中 `W2.13`、`W2.15`、`W2.24` 对应 checkbox
+- [ ] 明确下一步是继续优化 T2.7、降级 research-only，还是 reject
+
+不做：
+
+- [ ] 不在同一天推进 HK/US 独立交易日历
+- [ ] 不推进 TUI / 桌面 UI / System Orchestrator
+- [ ] 不运行全策略 `qfq_current / qfq_asof` 双口径矩阵

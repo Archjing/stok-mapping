@@ -59,7 +59,7 @@ phase0:
     index_table: "market_index_bars"
     index_meta_table: "market_indices"
     calendar_table: "trading_calendar"
-    price_adjustment_for_backtest: "qfq_current"
+    price_adjustment_for_backtest: "qfq_asof"
     price_adjustment_audit:
       enabled: true
       compare_modes: ["qfq_current", "qfq_asof", "bfq_raw"]
@@ -307,7 +307,10 @@ phase0:
       quality_4y_1y:
         train_years: 4
         validate_years: 1
-        description: "质量/低换手策略严格复核窗口。"
+        start_date: "2020-04-01"
+        end_date: "2026-03-31"
+        expected_folds: 2
+        description: "质量/低换手策略严格复核窗口；自然日期窗口，交易日历过滤。"
     min_samples: 200
     initial_cash: 1000000
     commission: 0.00025
@@ -362,6 +365,8 @@ phase0:
         overfit_risk_max: "medium"
         require_parameter_stability: true
         require_industry_concentration_check: true
+        require_factor_diagnostics: true
+        require_qfq_asof: true
       diagnostics:
         suites:
           - "data_quality_v1"
@@ -390,10 +395,10 @@ phase0:
         min_symbol_count: 20
         min_portfolio_fold_count: 4
       constraints:
-        enabled: false
+        enabled: true
         apply_to: []
         industry:
-          enabled: false
+          enabled: true
           mode: "audit"
           max_names_per_industry: 2
           max_industry_weight: 0.35
