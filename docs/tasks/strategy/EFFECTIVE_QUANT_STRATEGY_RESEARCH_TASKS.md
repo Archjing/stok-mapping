@@ -1,4 +1,4 @@
-# T2.5-T2.10｜有效量化策略研发任务清单
+# T2.5-T2.11｜有效量化策略研发任务清单
 
 父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
 实施方案：[`EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md`](../../EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md)  
@@ -237,8 +237,10 @@ V1 开发任务：
 - [x] `strategy-admission` 启动阶段输出 preset 说明，避免运行前误解回测窗口
 - [x] `strategy-admission` 报告可信化：账户执行、行业约束和财务 PIT 诊断均有状态字段
 - [x] `quality_4y_1y` 固定 `2020-04-01` 到 `2026-03-31`，作为低频质量近期严格复核窗口
-- [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
-- [ ] 下一日优先：先补 overfit “最后一折拉高”风险标记，再复测 `quality_low_turnover_monthly_v1` 的双 preset 准入报告
+- [x] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
+- [x] 下一日优先：先补 overfit “最后一折拉高”风险标记，再复测 `quality_low_turnover_monthly_v1` 的双 preset 准入报告
+
+2026-06-10 复测结论：`quality_low_turnover_monthly_v1` 双 preset 准入报告已生成到 `reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`，最终 action 为 `reject`。主要证据不是“最后一折转好所以失败”，而是正收益折比例不足、均值收益和 Sharpe 未达标、参数频繁变化、行业集中度超审计阈值；“最后一折拉高”作为 regime 依赖风险标记，用于提示结论可能过度依赖最近行情阶段。
 
 V1 不做：
 
@@ -257,9 +259,64 @@ V2 候选：
 
 ---
 
-## T2.9 sleeve 组合与二阶段 rerank
+## T2.9 策略失败归因诊断模块 V1
 
-### T2.9.1 sleeve 组合
+### T2.9.1 目标
+
+`strategy-admission` 已能回答“是否准入”，但研发阶段还需要回答“为什么失败、应该优先改什么”。T2.9 的目标是在不重新回测的前提下，读取已有 admission / overfit / window matrix / fold 明细产物，把 `reject`、`retest` 或 `research_only` 结论拆解成可行动的失败归因。
+
+### T2.9.2 输入
+
+- [ ] `strategy_admission_candidate_folds.csv`
+- [ ] `strategy_admission_window_matrix.csv`
+- [ ] `strategy_admission_constraint_review.csv`
+- [ ] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [ ] 可选：策略配置中的 gate、preset、industry constraint 和 diagnostics suites
+
+### T2.9.3 输出
+
+- [ ] `strategy_failure_attribution.csv`
+- [ ] `strategy_failure_attribution.md`
+- [ ] 每个 `strategy_id + preset` 一行窗口级归因
+- [ ] 每个策略一段自然语言研发建议：继续优化、重构、降级 research-only 或当前 spec reject
+
+### T2.9.4 V1 归因维度
+
+- [ ] `return_failure`：年化收益、Sharpe、最大回撤、正收益折比例未达 gate
+- [ ] `execution_failure`：换手、交易次数、持仓数、账户执行成本暴露异常
+- [ ] `construction_failure`：行业集中度、持仓过少、股票池过窄或组合构造导致暴露失衡
+- [ ] `factor_failure`：财务 PIT / 字段覆盖可用但质量暴露没有转化为收益
+- [ ] `parameter_failure`：不同折选出的参数组合频繁变化
+- [ ] `regime_failure`：最后一折显著拉高、不同市场阶段表现断裂
+- [ ] `data_failure`：价格口径、财务诊断、行业诊断或其他必要诊断缺失
+
+### T2.9.5 开发任务
+
+- [ ] 新增只读归因函数，输入已有 CSV，不重新调用回测
+- [ ] 复用 admission gate 阈值，不在 T2.9 另造一套准入标准
+- [ ] 为每条归因输出 `severity`、`evidence`、`recommended_next_action`
+- [ ] 在 Markdown 报告中按策略输出“主要失败原因 -> 证据 -> 下一步建议”
+- [ ] 用当前 T2.7 双 preset 报告做最小验收样例
+
+### T2.9.6 验收
+
+- [ ] 能解释 `quality_low_turnover_monthly_v1` 为什么不是单纯因为最后一折转好而失败
+- [ ] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
+- [ ] 输出结果可直接指导下一轮策略改造，而不是只重复 admission 的 pass/fail
+- [ ] 不引入新的回测耗时，不修改已有 admission 产物
+
+### T2.9.7 不做
+
+- [ ] 不做自动调参
+- [ ] 不自动重写策略权重
+- [ ] 不把失败归因直接转成交易信号
+- [ ] 不在 V1 中做复杂 SHAP / ML explainability
+
+---
+
+## T2.10 sleeve 组合与二阶段 rerank
+
+### T2.10.1 sleeve 组合
 
 - [ ] 将 `legacy_momentum_low_turnover_v1` 降级为动量 sleeve
 - [ ] 新增 defensive quality sleeve
@@ -273,7 +330,7 @@ final_score =
 + 0.20 * risk_overlay_score
 ```
 
-### T2.9.2 二阶段 ML rerank
+### T2.10.2 二阶段 ML rerank
 
 启动条件：
 
@@ -295,15 +352,15 @@ final_score =
 
 ---
 
-## T2.10 PEAD / 文本 / 跨市场增强
+## T2.11 PEAD / 文本 / 跨市场增强
 
-### T2.10.1 PEAD
+### T2.11.1 PEAD
 
 - [ ] 设计盈利超预期 / ROE 改善 / 公告后漂移因子
 - [ ] 确认公告日 point-in-time 数据可用
 - [ ] 先作为增强因子，不作为主 ranker
 
-### T2.10.2 文本因子
+### T2.11.2 文本因子
 
 - [ ] 依赖 `T1.3` 文本事件数据层先完成 provider probe、去重、as-of 口径和覆盖率诊断
 - [ ] 分析师文本或财报摘要只做解释因子
@@ -313,7 +370,7 @@ final_score =
 - [ ] 先服务 PEAD 解释、关注个股事件时间线和日报风险提示
 - [ ] 不直接生成交易动作
 
-### T2.10.3 跨市场 overlay
+### T2.11.3 跨市场 overlay
 
 - [ ] 保留为风险缩放、隔夜情绪解释、开盘情景推演
 - [ ] 不恢复为主选股 ranker
@@ -326,5 +383,6 @@ final_score =
 2. [x] T2.6 `low_vol_low_turnover_quality_v1`
 3. [x] T2.7 `quality_low_turnover_monthly_v1`
 4. [ ] T2.8 策略准入报告与策略回测窗口期配置模块 V1
-5. [ ] T2.9 sleeve 组合与二阶段 rerank
-6. [ ] T2.10 PEAD / 文本 / 跨市场增强
+5. [ ] T2.9 策略失败归因诊断模块 V1
+6. [ ] T2.10 sleeve 组合与二阶段 rerank
+7. [ ] T2.11 PEAD / 文本 / 跨市场增强

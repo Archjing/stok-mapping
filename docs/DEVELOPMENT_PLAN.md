@@ -3,7 +3,7 @@
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
 > 最后修订：2026-06-09（同步 T2.8 strategy-admission 状态与 T6.3 维护编排器销项）
-> 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.10 有效策略重建**
+> 状态：**Phase 0 工程链路可用；严格 qfq_asof 复核后当前无可用于实盘模拟的合格策略，进入 T2.5-T2.11 有效策略重建**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
 
@@ -42,7 +42,7 @@
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
 - `07:30` 盘前观察池已接入 CLI，按最近交易日信号输出持仓、候选、权重、观察理由、模拟账户快照和风险提示
 - HTML 报表体验已统一：标题右侧显示生成时间，宽表按 `96vw` 横向滚动，长表按 `70vh` 纵向滚动，表头固定
-- 当前主阻塞点是**在 qfq_asof / PIT 股票池 / 成本后口径下重建有效候选策略**，优先路线为 `T2.5` 因子有效性诊断、`T2.6` 低波低换手质量策略、`T2.7` 质量低换手月频策略和 `T2.8` 策略准入报告
+- 当前主阻塞点是**在 qfq_asof / PIT 股票池 / 成本后口径下重建有效候选策略**，优先路线为 `T2.5` 因子有效性诊断、`T2.6` 低波低换手质量策略、`T2.7` 质量低换手月频策略、`T2.8` 策略准入报告和 `T2.9` 策略失败归因诊断
 
 ### 当前主线
 
@@ -166,7 +166,7 @@
 
 - `refdocs/papers/cn/cn_INDEX.md` 索引的中文 A 股论文资料
 - `refdocs/papers/en/INDEX.md` 索引的英文/国际论文资料
-- `refdocs/intelligence/strategy_intelligence_ledger.csv` 维护的投资策略情报台账
+- `refdocs/intelligence/strategy_intelligence_ledger.csv` 维护的投资策略情报台账，以及 T5.2 规划中的近 30 天策略情报月度扫描机制
 - `docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`
 - `reports/phase0_strategy_change_log.md`
 - `reports/phase0_walk_forward_report.md`
@@ -179,6 +179,7 @@
 - 判断哪些 ML / 多因子 / 量价 / 文本思路值得优先进入产品
 - 记录每次策略参数和逻辑调整的理由
 - 维护“情报来源 -> 策略假设 -> 候选任务 -> 实验结果”的可追溯链路
+- 每月复核近 30 天新增量化策略情报，筛出可验证策略假设、数据建设需求和反方证据
 
 ### 1.4 当前交叉结论
 
@@ -417,7 +418,7 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 
 ### 4.1.6 新闻 / 文本摘要因子（辅助）
 
-新闻源作为独立数据源模块推进，不归入 Tiingo EOD 日线适配器。当前规划已从单一新闻 provider 扩展为“文本事件数据层”：统一承接公告、研报、新闻、政策、快讯和后续文本摘要事件，服务盘前解释、关注个股分析工具、PEAD 研究和 `T2.10` 文本因子沙盒。
+新闻源作为独立数据源模块推进，不归入 Tiingo EOD 日线适配器。当前规划已从单一新闻 provider 扩展为“文本事件数据层”：统一承接公告、研报、新闻、政策、快讯和后续文本摘要事件，服务盘前解释、关注个股分析工具、PEAD 研究和 `T2.11` 文本因子沙盒。
 
 - `Tiingo` 只保留为美股个股 / ETF / ADR 的 EOD 日线源；当前 token 对 `/tiingo/news` 返回 `403 permission_denied:news_api`，不继续扩展 Tiingo News。
 - `Alpha Vantage` 作为第一轮低成本新闻源 probe provider，验证 `tickers`、`topics`、`time_from/time_to`、`sort/limit` 和字段结构。
@@ -1042,7 +1043,7 @@ stok-mapping/
 | `T3.1` | 港股映射 A 股候选策略 | [`docs/tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](tasks/cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) | 数据前置部分完成，策略未代码化 |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`docs/tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](tasks/account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) | **文档型任务已完成** |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`docs/tasks/research/STRATEGY_SUMMARY.md`](tasks/research/STRATEGY_SUMMARY.md) | **文档型任务已完成** |
-| `T5.2` | 投资策略情报工作流模块 | [`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md) | **V1 已建立：Markdown + CSV 台账、模板、首批论文情报补录与自动采集器** |
+| `T5.2` | 投资策略情报工作流模块 | [`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md) | **V1 已建立：Markdown + CSV 台账、模板、首批论文情报补录与自动采集器；新增近 30 天月度扫描后续任务** |
 | `T6.1` | 统一调度器与后台 Pipeline | [`docs/tasks/ops/SCHEDULER_PIPELINE_TASKS.md`](tasks/ops/SCHEDULER_PIPELINE_TASKS.md) | 最小统一调度器已接入，交易日历和失败重试仍待增强 |
 | `T6.2` | 数据库健康检查与数据质量门禁 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) | **只读 MVP、调度/研究前置门禁与 OHLC sample rows 已完成，后续补覆盖率口径判断** |
 | `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3/P4 关键收口已完成：真实 tick、wrapper 接管、最小重试、3 shard run/stop/resume、supervise、交易日历、Markdown 报告和 backfill 报告索引已落地** |
@@ -1069,7 +1070,7 @@ stok-mapping/
 - [x] 运行 `qfq_current` / `qfq_asof` 差异报告
 - [x] 运行主策略 `legacy_momentum_low_turnover_v1` 的 `qfq_current` / `qfq_asof` 对照回测，结论：`qfq_current` 降级为兼容口径参考
 - [x] 运行最新版本全候选策略池 `qfq_asof` compare，结论：当前无可用于实盘模拟的合格 candidate
-- [x] 制定 `T2.5-T2.10` 有效量化策略研发实施方案与开发任务清单
+- [x] 制定 `T2.5-T2.11` 有效量化策略研发实施方案与开发任务清单
 - [x] 实现 `T2.5` 因子有效性诊断报告，先验证低波、低换手、质量、动量、反转和估值因子
 - [x] 实现 Tushare 财务回填进度显示：任务选择、处理进度、完成率、速率、耗时和 ETA 可见
 - [x] 将 `tushare_financial_backfill_audit.md` 覆盖率展示改为百分数，CSV 保持 0-1 机器口径
@@ -1090,7 +1091,9 @@ stok-mapping/
 - [x] 将 `strategy-admission` 启动说明改为自然语言输出 preset 训练期、验证期、固定起止日期、预计折数和滚动方式
 - [x] 将 `strategy-admission` 报告改为区分 `not_enabled` / `not_available` / `not_applicable` 与真实数值；新增价格口径、账户执行、行业诊断和财务诊断状态字段
 - [x] 将 admission 默认价格口径收敛到 `qfq_asof`，非 `qfq_asof` 作为准入阻断原因；完整双口径矩阵仍列为后续任务
-- [ ] 使用 T2.7 复测 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
+- [x] 使用 T2.7 复测 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
+  - 2026-06-10 复测 `quality_low_turnover_monthly_v1`：报告目录 `reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`，双 preset 均未通过准入，最终 action 为 `reject`；最后一折拉高已纳入 overfit 诊断，作为行情阶段依赖风险而非单独否定证据。
+- [ ] 实现 `T2.9` 策略失败归因诊断模块 V1：读取已有 admission / overfit / window matrix / fold 明细产物，不重新回测，把 `reject` / `retest` / `research_only` 拆解为收益、执行、组合构造、因子、参数、regime 和数据质量归因
 - [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选

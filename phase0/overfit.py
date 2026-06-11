@@ -91,6 +91,11 @@ def _diagnose(candidates: pd.DataFrame, folds: pd.DataFrame, selected: str) -> p
                 "max_drawdown_worst": metrics["max_drawdown_worst"],
                 "turnover_annual_mean": metrics["turnover_annual_mean"],
                 "parameter_unique_count": metrics["parameter_unique_count"],
+                "last_fold_lift_risk": metrics["last_fold_lift_risk"],
+                "last_fold_lift_preset": metrics["last_fold_lift_preset"],
+                "last_fold_annualized_return": metrics["last_fold_annualized_return"],
+                "prior_fold_annualized_return_mean": metrics["prior_fold_annualized_return_mean"],
+                "last_fold_lift": metrics["last_fold_lift"],
                 "is_oos_pass": metrics["annualized_return_mean"] > 0 and metrics["sharpe_mean"] > 0.5,
                 "is_fold_stable": metrics["positive_fold_ratio"] >= 0.5 and metrics["worst_fold_annualized_return"] > -0.2,
                 "is_parameter_stable": metrics["parameter_unique_count"] <= max(2, metrics["fold_count"] // 2 + 1),
@@ -111,6 +116,7 @@ def _metrics(group: pd.DataFrame) -> dict[str, Any]:
     params = group.get("selected_params", pd.Series(dtype=object)).fillna("").astype(str)
     fold_count = int(len(group))
     positive = float((ann > 0).mean()) if fold_count else 0.0
+    last_fold = _last_fold_lift_metrics(group)
     return {
         "fold_count": fold_count,
         "positive_fold_ratio": positive,
@@ -120,7 +126,58 @@ def _metrics(group: pd.DataFrame) -> dict[str, Any]:
         "max_drawdown_worst": float(mdd.min()) if mdd.notna().any() else 0.0,
         "turnover_annual_mean": float(turnover.mean()) if turnover.notna().any() else 0.0,
         "parameter_unique_count": int(params[params != ""].nunique()),
+        **last_fold,
     }
+
+
+def _last_fold_lift_metrics(group: pd.DataFrame) -> dict[str, Any]:
+    default = {
+        "last_fold_lift_risk": False,
+        "last_fold_lift_preset": "",
+        "last_fold_annualized_return": 0.0,
+        "prior_fold_annualized_return_mean": 0.0,
+        "last_fold_lift": 0.0,
+    }
+    if "annualized_return" not in group.columns or "fold" not in group.columns:
+        return default
+
+    working = group.copy()
+    working["annualized_return"] = pd.to_numeric(working["annualized_return"], errors="coerce")
+    working["fold"] = pd.to_numeric(working["fold"], errors="coerce")
+    working = working.dropna(subset=["annualized_return", "fold"])
+    if working.empty:
+        return default
+
+    preset_col = "walk_forward_preset" if "walk_forward_preset" in working.columns else None
+    groups = working.groupby(preset_col, dropna=False) if preset_col else [("", working)]
+    strongest = default.copy()
+    for preset, preset_group in groups:
+        ordered = preset_group.sort_values("fold")
+        if len(ordered) < 3:
+            continue
+        last = ordered.iloc[-1]
+        prior = ordered.iloc[:-1]
+        prior_mean = float(prior["annualized_return"].mean())
+        last_return = float(last["annualized_return"])
+        lift = last_return - prior_mean
+        risky = bool(lift >= 0.10 and last_return > 0 and prior_mean < 0.03)
+        if lift > float(strongest["last_fold_lift"]):
+            strongest = {
+                "last_fold_lift_risk": risky,
+                "last_fold_lift_preset": "" if preset is None else str(preset),
+                "last_fold_annualized_return": last_return,
+                "prior_fold_annualized_return_mean": prior_mean,
+                "last_fold_lift": lift,
+            }
+        elif risky and not bool(strongest["last_fold_lift_risk"]):
+            strongest = {
+                "last_fold_lift_risk": True,
+                "last_fold_lift_preset": "" if preset is None else str(preset),
+                "last_fold_annualized_return": last_return,
+                "prior_fold_annualized_return_mean": prior_mean,
+                "last_fold_lift": lift,
+            }
+    return strongest
 
 
 def _score(metrics: dict[str, Any]) -> tuple[int, list[str]]:
@@ -150,6 +207,9 @@ def _score(metrics: dict[str, Any]) -> tuple[int, list[str]]:
     if metrics["parameter_unique_count"] > max(2, metrics["fold_count"] // 2 + 1):
         score += 10
         reasons.append("selected parameters change frequently across folds")
+    if metrics["last_fold_lift_risk"]:
+        score += 15
+        reasons.append("last fold materially lifts results")
     return min(score, 100), reasons
 
 
@@ -195,14 +255,15 @@ def _write_md(
         "",
         "## Results",
         "",
-        "| strategy_id | risk | score | action | fold_count | positive_fold_ratio | main_risk_reasons |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| strategy_id | risk | score | action | fold_count | positive_fold_ratio | last_fold_lift_risk | last_fold_lift | main_risk_reasons |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for _, row in diagnostic.iterrows():
         reasons = str(row["main_risk_reasons"]).replace("|", "\\|")
         lines.append(
             f"| {row['strategy_id']} | {row['overfit_risk_level']} | {row['overfit_score']} | "
-            f"{row['recommended_action']} | {row['fold_count']} | {float(row['positive_fold_ratio']):.4f} | {reasons} |"
+            f"{row['recommended_action']} | {row['fold_count']} | {float(row['positive_fold_ratio']):.4f} | "
+            f"{row['last_fold_lift_risk']} | {float(row['last_fold_lift']):.4f} | {reasons} |"
         )
     lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")

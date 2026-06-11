@@ -1,0 +1,24 @@
+{
+  "name": "stok-quant-research",
+  "version": "0.1.0",
+  "description": "Project-specific Codex workflows for Stok Mapping quant research, data governance, strategy admission, and research intelligence.",
+  "author": {
+    "name": "Local developer"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Stok Quant Research",
+    "shortDescription": "Operate Stok Mapping quant research workflows.",
+    "longDescription": "Stok Quant Research packages project-specific Codex skills for data health, Tushare backfill, factor diagnostics, strategy admission, daily brief operations, and investment intelligence workflows.",
+    "developerName": "Local developer",
+    "category": "Finance",
+    "capabilities": [
+      "Data governance",
+      "Quant research",
+      "Strategy admission",
+      "Research intelligence"
+    ],
+    "defaultPrompt": "Use the Stok Quant Research workflows for this repository."
+  },
+  "mcpServers": "./.mcp.json"
+}

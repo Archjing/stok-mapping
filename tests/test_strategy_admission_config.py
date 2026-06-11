@@ -13,6 +13,7 @@ from phase0.strategy_admission import (
     _resolve_strategy_scope,
     _window_metrics,
 )
+from phase0.overfit import _metrics, _score
 from phase0.walk_forward import describe_walk_forward_presets
 
 
@@ -109,6 +110,41 @@ def test_overfit_gate_uses_configured_max_level() -> None:
     assert _overfit_blocks_admission("medium", gate) is False
     assert _overfit_blocks_admission("high", gate) is True
     assert _overfit_blocks_admission("critical", gate) is True
+
+
+def test_overfit_metrics_flag_last_fold_lift_risk() -> None:
+    metrics = _metrics(
+        pd.DataFrame(
+            [
+                {"walk_forward_preset": "baseline", "fold": 1, "annualized_return": -0.08, "sharpe": -0.5, "max_drawdown": -0.1, "turnover_annual": 1.0},
+                {"walk_forward_preset": "baseline", "fold": 2, "annualized_return": -0.04, "sharpe": -0.2, "max_drawdown": -0.1, "turnover_annual": 1.0},
+                {"walk_forward_preset": "baseline", "fold": 3, "annualized_return": 0.12, "sharpe": 0.8, "max_drawdown": -0.1, "turnover_annual": 1.0},
+            ]
+        )
+    )
+    score, reasons = _score(metrics)
+
+    assert metrics["last_fold_lift_risk"] is True
+    assert metrics["last_fold_lift_preset"] == "baseline"
+    assert metrics["last_fold_lift"] == 0.18
+    assert score >= 15
+    assert "last fold materially lifts results" in reasons
+
+
+def test_overfit_metrics_do_not_flag_stable_positive_folds_as_last_fold_lift() -> None:
+    metrics = _metrics(
+        pd.DataFrame(
+            [
+                {"walk_forward_preset": "quality", "fold": 1, "annualized_return": 0.05, "sharpe": 0.7, "max_drawdown": -0.1, "turnover_annual": 1.0},
+                {"walk_forward_preset": "quality", "fold": 2, "annualized_return": 0.07, "sharpe": 0.8, "max_drawdown": -0.1, "turnover_annual": 1.0},
+                {"walk_forward_preset": "quality", "fold": 3, "annualized_return": 0.16, "sharpe": 1.0, "max_drawdown": -0.1, "turnover_annual": 1.0},
+            ]
+        )
+    )
+    _, reasons = _score(metrics)
+
+    assert metrics["last_fold_lift_risk"] is False
+    assert "last fold materially lifts results" not in reasons
 
 
 def test_window_metrics_preserve_diagnostic_statuses_without_fake_zero_meaning() -> None:

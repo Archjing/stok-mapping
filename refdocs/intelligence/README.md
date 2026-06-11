@@ -20,6 +20,8 @@
 | `strategy_intelligence_ledger.csv` | 情报总台账，记录状态、评分、标签、推荐动作和关联任务 |
 | `templates/intelligence_note_template.md` | 单条情报解读模板 |
 | `templates/strategy_translation_template.md` | 情报转候选策略任务模板 |
+| `wiki/` | 已归档情报的 wiki-ingest 风格精炼页、索引和 ingest log |
+| `anki/` | 从已归档情报生成的 Anki 记忆卡片 Markdown 与 `.apkg` 包 |
 
 ## 自动采集器
 

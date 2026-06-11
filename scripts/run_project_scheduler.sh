@@ -16,4 +16,8 @@ if [[ -f "${PROJECT_ROOT}/.env" ]]; then
   set +a
 fi
 
+# Warm the maintenance state DB schema before the real tick so older local
+# SQLite files get migrated instead of crashing inside `maintain tick`.
+"${PYTHON_BIN}" -m phase0.cli maintain status --config "${CONFIG_PATH}" >/dev/null
+
 exec "${PYTHON_BIN}" -m phase0.cli maintain tick --config "${CONFIG_PATH}"

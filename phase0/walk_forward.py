@@ -197,26 +197,49 @@ def _calc_metrics(returns: pd.Series, signals: pd.Series) -> dict[str, float]:
     }
 
 
-def _load_cn_daily(symbol: str, years: int, as_of_date: date | None = None) -> pd.DataFrame:
+def _load_cn_daily(
+    symbol: str,
+    years: int,
+    as_of_date: date | None = None,
+    price_adjustment: str | None = None,
+) -> pd.DataFrame:
     end = date.today()
     start = end - timedelta(days=365 * years + 30)
     if local_history_prefer_daily_for_backtest():
-        local_df = load_daily_from_local_history(symbol, start, end, as_of_date=as_of_date)
+        local_df = load_daily_from_local_history(
+            symbol,
+            start,
+            end,
+            price_adjustment=price_adjustment,
+            as_of_date=as_of_date,
+        )
         if not local_df.empty:
             return local_df
     df = fetch_cn_daily(symbol, years=years, adjust="qfq")
     if not df.empty:
         return df
-    return load_daily_from_local_history(symbol, start, end, as_of_date=as_of_date)
+    return load_daily_from_local_history(
+        symbol,
+        start,
+        end,
+        price_adjustment=price_adjustment,
+        as_of_date=as_of_date,
+    )
 
 
 def _load_hk_daily(symbol: str, years: int) -> pd.DataFrame:
     return fetch_hk_daily(symbol, years=years, adjust="qfq")
 
 
-def _load_symbol(symbol: str, years: int, as_of_date: date | str | None = None) -> pd.DataFrame:
+def _load_symbol(
+    symbol: str,
+    years: int,
+    as_of_date: date | str | None = None,
+    price_adjustment: str | None = None,
+) -> pd.DataFrame:
     as_of_key = "" if as_of_date is None else pd.Timestamp(as_of_date).date().isoformat()
-    return _load_symbol_cached(symbol, years, as_of_key).copy()
+    adjust_key = str(price_adjustment or "")
+    return _load_symbol_cached(symbol, years, as_of_key, adjust_key).copy()
 
 
 def _shadow_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
@@ -224,12 +247,22 @@ def _shadow_ratio(numerator: pd.Series, denominator: pd.Series) -> pd.Series:
 
 
 @lru_cache(maxsize=512)
-def _load_symbol_cached(symbol: str, years: int, as_of_key: str = "") -> pd.DataFrame:
+def _load_symbol_cached(
+    symbol: str,
+    years: int,
+    as_of_key: str = "",
+    price_adjustment: str = "",
+) -> pd.DataFrame:
     as_of_date = pd.Timestamp(as_of_key).date() if as_of_key else None
     if symbol.startswith("HK."):
         df = _load_hk_daily(symbol, years)
     else:
-        df = _load_cn_daily(symbol, years, as_of_date=as_of_date)
+        df = _load_cn_daily(
+            symbol,
+            years,
+            as_of_date=as_of_date,
+            price_adjustment=price_adjustment or None,
+        )
     if df.empty:
         return df
 
@@ -525,11 +558,16 @@ def _format_params(params: dict[str, Any]) -> str:
     )
 
 
-def _load_symbol_map(symbols: list[str], years: int, as_of_date: date | str | None = None) -> dict[str, pd.DataFrame]:
+def _load_symbol_map(
+    symbols: list[str],
+    years: int,
+    as_of_date: date | str | None = None,
+    price_adjustment: str | None = None,
+) -> dict[str, pd.DataFrame]:
     data: dict[str, pd.DataFrame] = {}
     # 回测前逐只加载股票历史行情，模拟实盘研究阶段先准备可观察股票池的数据。
     for sym in symbols:
-        df = _load_symbol(sym, years=years, as_of_date=as_of_date)
+        df = _load_symbol(sym, years=years, as_of_date=as_of_date, price_adjustment=price_adjustment)
         if not df.empty:
             data[sym] = df
     return data

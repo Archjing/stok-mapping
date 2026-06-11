@@ -649,7 +649,7 @@
 - [x] 读取每个候选的 fold 级年化、Sharpe、最大回撤、胜率、换手
 - [x] 计算正收益折占比
 - [x] 计算最差 fold 表现
-- [ ] 标记“只靠最后一折拉高”的风险
+- [x] 标记“只靠最后一折拉高”的风险
 - [x] 标记 OOS 折数不足的证据风险
 
 #### W2.13.4.2 成本敏感性
@@ -874,7 +874,7 @@ python -m phase0.cli adjustment-audit \
 - [x] `strategy-admission` 报告可信化：用 `price_adjustment_status`、`account_execution_status`、`industry_diagnostic_status`、`financial_diagnostic_status` 区分真实数值与未启用/不可用诊断
 - [x] admission 默认要求 `qfq_asof`，并在报告中把非 `qfq_asof` 口径作为准入阻断原因
 - [x] 行业约束默认进入 `audit` 模式，admission 可输出真实行业集中度并在超限时阻断准入
-- [ ] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，复核能否区分折数不足、参数不稳定、收益不达标和组合构造失败
+- [x] 用 T2.7 跑 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，复核能否区分折数不足、参数不稳定、收益不达标和组合构造失败
 - [ ] 后续补完整 `qfq_current` / `qfq_asof` 双口径矩阵，不只依赖当前默认 `qfq_asof` 硬阻断
 - [ ] V2 候选暂不实施：`momentum_1y_6m`、`short_horizon_6m_3m`、`event_rolling_n_events`、`ml_purged_walk_forward`、`validation_family`、`strategy_window_policy`
 - [x] 策略准入报告应输出窗口稳健性矩阵，低频质量策略至少比较 `baseline_2y_1y`、`quality_3y_1y` 和 `quality_4y_1y`
@@ -1081,7 +1081,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] 检查 `logs/scheduler/*.last`
 - [x] 检查 A 股 source audit 最新运行记录
-- [x] 已接入调度器前置门禁：任务实际执行前先跑 `db-health --scope scheduler`
+- [x] 已接入调度器前置门禁：默认任务实际执行前先跑 `db-health --scope scheduler`；`daily_brief` 已收窄为 `cn`
 
 ## W2.17.5 验收结果
 
@@ -1110,7 +1110,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.17.7 后续任务
 
-- [x] 将 `db-health --scope scheduler --fail-on warning` 接入调度器前置检查
+- [x] 将 `db-health --scope scheduler --fail-on warning` 接入调度器前置检查；`daily_brief` 默认改为 `cn`
 - [x] 调度器支持环境变量开关和按任务 scope 配置：`SCHEDULER_HEALTH_ENABLED`、`SCHEDULER_HEALTH_FAIL_ON`、`*_HEALTH_SCOPE`
 - [x] 将 `db-health --scope cn --fail-on error` 接入 `factor-effectiveness` 前置检查
 - [x] 将 `db-health --scope cn --fail-on error` 接入 `run` 前置检查
@@ -1160,7 +1160,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 当前优先 3：接入交易日历和更细的运行窗口口径
 - [x] 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 
-# W2.19｜文本事件数据层后续任务（T1.3 / T2.10）
+# W2.19｜文本事件数据层后续任务（T1.3 / T2.11）
 
 参考专项任务：[`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md)  
 参考调查归档：[`refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md`](../../refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md)
@@ -1177,7 +1177,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 生成 `reports/news_source_probe_report.md`
 - [ ] 生成文本事件覆盖率、抓取延迟、重复率和来源失败原因报告
 - [ ] 为关注个股分析工具输出单股事件时间线输入
-- [ ] 为 `T2.10` PEAD / 文本因子研究提供数据层前置验收，不直接进入主 ranker
+- [ ] 为 `T2.11` PEAD / 文本因子研究提供数据层前置验收，不直接进入主 ranker
 
 ## W2.19.3 暂不做事项
 
@@ -1302,37 +1302,113 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.24.2 上午任务：过拟合诊断补强
 
-- [ ] 实现 W2.13.4.1 “只靠最后一折拉高”的风险标记
-- [ ] 在 `strategy_overfit_diagnostic.csv` 增加最近折贡献或最后折风险字段
-- [ ] 在 `strategy_overfit_diagnostic.md` 输出最后折拉高的主要风险原因
-- [ ] 增加最小测试或样例，证明最后一折异常拉高会被标记
+- [x] 实现 W2.13.4.1 “只靠最后一折拉高”的风险标记
+- [x] 在 `strategy_overfit_diagnostic.csv` 增加最近折贡献或最后折风险字段
+- [x] 在 `strategy_overfit_diagnostic.md` 输出最后折拉高的主要风险原因
+- [x] 增加最小测试或样例，证明最后一折异常拉高会被标记
 
 验收：
 
-- [ ] 最后一折显著高于前序折均值时，报告给出明确风险原因
-- [ ] 正常稳定折序列不被误报为最后折拉高
+- [x] 最后一折显著高于前序折均值时，报告给出明确风险原因
+- [x] 正常稳定折序列不被误报为最后折拉高
 
 ## W2.24.3 下午前半：T2.7 双窗口复测
 
-- [ ] 用 `quality_low_turnover_monthly_v1` 跑 `baseline_2y_1y_5fold`
-- [ ] 用 `quality_low_turnover_monthly_v1` 跑 `quality_3y_1y_4fold`
-- [ ] 报告输出固定目录，包含 `strategy_admission_report.md`、`strategy_admission_window_matrix.csv`、`strategy_admission_constraint_review.csv`
-- [ ] 复核报告能区分折数不足、参数不稳定、收益不达标、组合构造失败、行业集中度和财务诊断状态
+- [x] 用 `quality_low_turnover_monthly_v1` 跑 `baseline_2y_1y_5fold`
+- [x] 用 `quality_low_turnover_monthly_v1` 跑 `quality_3y_1y_4fold`
+- [x] 报告输出固定目录，包含 `strategy_admission_report.md`、`strategy_admission_window_matrix.csv`、`strategy_admission_constraint_review.csv`
+- [x] 复核报告能区分折数不足、参数不稳定、收益不达标、组合构造失败、行业集中度和财务诊断状态
 
 验收：
 
-- [ ] `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold` 都有可读报告
-- [ ] 结论明确落入 `eligible_for_paper_review / research_only / retest / reject` 之一
+- [x] `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold` 都有可读报告
+- [x] 结论明确落入 `eligible_for_paper_review / research_only / retest / reject` 之一
 
 ## W2.24.4 下午后半：结论归档与销项
 
-- [ ] 解读 `quality_low_turnover_monthly_v1` 的双窗口复测结果
-- [ ] 更新 `docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md` 对应 checkbox
-- [ ] 更新本周清单中 `W2.13`、`W2.15`、`W2.24` 对应 checkbox
-- [ ] 明确下一步是继续优化 T2.7、降级 research-only，还是 reject
+- [x] 解读 `quality_low_turnover_monthly_v1` 的双窗口复测结果
+- [x] 更新 `docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md` 对应 checkbox
+- [x] 更新本周清单中 `W2.13`、`W2.15`、`W2.24` 对应 checkbox
+- [x] 明确下一步是继续优化 T2.7、降级 research-only，还是 reject
+
+2026-06-10 结论：`quality_low_turnover_monthly_v1` 双 preset 复测完成，报告目录 `reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`，最终 action 为 `reject`。最近一折转好按“regime 依赖风险”记录，不作为单一否定依据；准入失败由正收益折比例、均值收益、Sharpe、参数稳定性和行业集中度共同触发。
 
 不做：
 
 - [ ] 不在同一天推进 HK/US 独立交易日历
 - [ ] 不推进 TUI / 桌面 UI / System Orchestrator
 - [ ] 不运行全策略 `qfq_current / qfq_asof` 双口径矩阵
+
+# W2.25｜近 30 天策略情报月度扫描（T5.2）
+
+参考专项任务：[`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`](research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md)
+
+## W2.25.1 目标
+
+在 T5.2 情报工作流基础上，建立 `Strategy Intelligence Monthly Scan`，每月搜集近 30 天发布的量化策略情报，并把高价值线索转化为可验证策略假设、数据建设任务或反方证据。
+
+## W2.25.2 范围
+
+- [x] 扫描近 30 天发布的论文、预印本、券商金工、指数公司、交易所/数据源资料和高质量 quant research
+- [x] 输出月度扫描报告：`refdocs/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`
+- [x] 对每条高价值情报记录发布时间、来源链接、核心观点、可验证假设、所需数据、实现成本和主要风险
+- [x] 至少筛出 3 条可进入后续复核的策略或数据建设线索
+- [ ] 将通过人工复核的情报补录到 `refdocs/intelligence/strategy_intelligence_ledger.csv`
+
+2026-06-10 A 股专项扫描完成：报告 `refdocs/intelligence/monthly/strategy_intelligence_scan_2026-06_a_share.md`，候选 CSV `data/intelligence/inbox/a_share_strategy_intelligence_candidates_2026-06-10.csv`。本次仅进入候选 inbox，不自动写入正式台账。
+
+## W2.25.3 边界
+
+- [ ] 不抓取付费研报全文
+- [ ] 不把营销材料、新闻标题或未验证观点直接作为策略有效性证据
+- [ ] 不自动把候选情报转为交易信号
+- [ ] 不绕过 T5.2 评分、偏差风险和策略转化门禁
+
+# W2.26｜策略失败归因诊断模块 V1（T2.9）
+
+参考专项任务：[`docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
+
+## W2.26.1 选择理由
+
+`strategy-admission` 已能给出准入结论，但当前 T2.7 复测显示，仅有 `reject` 结论不足以指导下一轮研发。下一步需要一个只读归因层，把策略失败拆成收益、执行、构造、因子、参数、regime 和数据质量问题，避免继续盲目调参。
+
+## W2.26.2 输入产物
+
+- [ ] `strategy_admission_candidate_folds.csv`
+- [ ] `strategy_admission_window_matrix.csv`
+- [ ] `strategy_admission_constraint_review.csv`
+- [ ] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [ ] 当前 T2.7 双 preset 报告目录：`reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`
+
+## W2.26.3 开发任务
+
+- [ ] 新增只读失败归因模块，输入已有报告 CSV，不重新回测
+- [ ] 复用 admission gate 阈值，避免 T2.9 自定义另一套准入标准
+- [ ] 输出 `strategy_failure_attribution.csv`
+- [ ] 输出 `strategy_failure_attribution.md`
+- [ ] 每个 `strategy_id + preset` 输出归因标签、严重度、证据和建议动作
+- [ ] 为策略级结论输出自然语言摘要，说明应继续优化、重构、降级 research-only 还是当前 spec reject
+
+## W2.26.4 V1 归因标签
+
+- [ ] `return_failure`：收益、Sharpe、回撤或正收益折比例不达标
+- [ ] `execution_failure`：换手、交易次数、持仓数或账户执行成本暴露异常
+- [ ] `construction_failure`：行业集中、持仓过少、股票池过窄或组合构造暴露失衡
+- [ ] `factor_failure`：财务 PIT / 字段覆盖可用，但质量暴露没有转化为收益
+- [ ] `parameter_failure`：不同折参数选择频繁变化
+- [ ] `regime_failure`：最后一折显著拉高或不同市场阶段表现断裂
+- [ ] `data_failure`：价格口径、财务诊断、行业诊断或必要诊断缺失
+
+## W2.26.5 验收标准
+
+- [ ] 能解释 `quality_low_turnover_monthly_v1` 不是单纯因为最后一折转好而失败
+- [ ] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
+- [ ] 报告能给出下一轮研发建议，而不是只重复 admission 的 pass/fail
+- [ ] 不新增回测耗时，不修改已有 admission 产物
+
+## W2.26.6 不做
+
+- [ ] 不自动调参
+- [ ] 不自动重写策略权重
+- [ ] 不直接生成交易信号
+- [ ] 不在 V1 中做复杂 SHAP / ML explainability

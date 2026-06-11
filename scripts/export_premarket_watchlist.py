@@ -238,6 +238,21 @@ def _next_trade_date(db_path: Path, signal_date: pd.Timestamp) -> str:
     return str(row[0]) if row and row[0] else fallback
 
 
+def _latest_trade_date(db_path: Path) -> str:
+    if not db_path.exists():
+        return ""
+    today = pd.Timestamp.today().date().isoformat()
+    try:
+        with sqlite3.connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT MAX(date) FROM trading_calendar WHERE is_open = 1 AND date <= ?",
+                (today,),
+            ).fetchone()
+    except sqlite3.Error:
+        return ""
+    return str(row[0]) if row and row[0] else ""
+
+
 def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path) -> tuple[dict[str, float], str]:
     if ledger_path.exists():
         try:
@@ -656,6 +671,8 @@ def export_premarket_watchlist(
     symbols = _parse_symbol_list(config, root)
     history_years = int(config["years"])
     cache_path = _resolve_path(root, panel_cache)
+    db_path = _resolve_path(root, config.get("local_history", {}).get("path", ""))
+    panel_as_of_date = _latest_trade_date(db_path)
     panel = _load_or_build_panel(
         cache_path=cache_path,
         refresh_cache=bool(refresh_cache),
@@ -667,10 +684,16 @@ def export_premarket_watchlist(
             symbols=symbols,
             history_years=history_years,
             strategy_cfg=strategy_cfg,
+            as_of_date=panel_as_of_date,
+            use_strict_asof=False,
+            price_adjustment="qfq_current",
         ),
         symbols=symbols,
         history_years=history_years,
         strategy_cfg=strategy_cfg,
+        as_of_date=panel_as_of_date,
+        use_strict_asof=False,
+        price_adjustment="qfq_current",
     )
     if panel.empty:
         raise ValueError("market panel is empty; cannot export premarket watchlist")
@@ -716,7 +739,6 @@ def export_premarket_watchlist(
         prices = prices.sort_values(["symbol", "date"])
         prices["previous_close"] = prices.groupby("symbol")["close"].shift(1)
     latest = latest.merge(prices, on=["date", "symbol"], how="left")
-    db_path = _resolve_path(root, config.get("local_history", {}).get("path", ""))
     check_time = f"{_next_trade_date(db_path, signal_date)} 07:30"
     brief_date = check_time[:10]
     ledger_path = _resolve_path(root, simulation_ledger)

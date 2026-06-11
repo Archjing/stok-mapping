@@ -206,7 +206,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             schedule_value=_env_value("DAILY_BRIEF_TIME", "07:20"),
             log_path="logs/daily_brief_pipeline.log",
             command=[str(python_bin), "-m", "phase0.cli", "brief", "watchlist", "--config", config_arg],
-            health_scope=_env_value("DAILY_BRIEF_HEALTH_SCOPE", "scheduler"),
+            health_scope=_env_value("DAILY_BRIEF_HEALTH_SCOPE", "cn"),
             description="Premarket watchlist and brief pipeline",
             tags=["scheduler", "brief"],
             market_calendar="cn",

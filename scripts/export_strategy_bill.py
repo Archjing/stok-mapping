@@ -311,6 +311,9 @@ def _panel_cache_key(
     symbols: list[str],
     history_years: int,
     strategy_cfg: dict[str, Any],
+    as_of_date: str | None = None,
+    use_strict_asof: bool = True,
+    price_adjustment: str | None = None,
 ) -> dict[str, Any]:
     source_paths = [
         config_path,
@@ -324,6 +327,9 @@ def _panel_cache_key(
     return {
         "symbols": list(symbols),
         "history_years": int(history_years),
+        "as_of_date": str(as_of_date or ""),
+        "use_strict_asof": bool(use_strict_asof),
+        "price_adjustment": str(price_adjustment or ""),
         "source_mtimes": {_path_label(path, root): _path_mtime(path) for path in source_paths},
     }
 
@@ -337,6 +343,9 @@ def _load_or_build_panel(
     symbols: list[str],
     history_years: int,
     strategy_cfg: dict[str, Any],
+    as_of_date: str | None = None,
+    use_strict_asof: bool = True,
+    price_adjustment: str | None = None,
 ) -> pd.DataFrame:
     if not no_panel_cache and cache_path.exists() and not refresh_cache:
         try:
@@ -355,7 +364,15 @@ def _load_or_build_panel(
     else:
         print(f"panel_cache=miss path={cache_path}")
 
-    panel = _align_symbol_map(_load_symbol_map(symbols, history_years))
+    panel_as_of = as_of_date if use_strict_asof else None
+    panel = _align_symbol_map(
+        _load_symbol_map(
+            symbols,
+            history_years,
+            as_of_date=panel_as_of,
+            price_adjustment=price_adjustment,
+        )
+    )
     panel = _add_cross_market_to_panel(panel, history_years, strategy_cfg, None)
     if not no_panel_cache:
         cache_path.parent.mkdir(parents=True, exist_ok=True)

@@ -128,7 +128,7 @@ cancelled -> pending
 - [x] 运行前统一执行交易日历、锁、状态、失败次数和 `db-health` 检查。
 - [ ] 后续补显式依赖检查。
 - [x] 运行后统一记录 exit code、log path 和 error summary；长 backfill shard 已登记报告路径和关键结论。
-- [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`。
+- [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`；`daily_brief` 例外收窄为 `cn`，避免 HK/US freshness 误伤 A 股盘前简报。
 - [ ] A 股研究与数据任务默认使用 `db-health --scope cn --fail-on error` 或 `financial/error`。
 
 ### T6.3.2.5 Supervisor
