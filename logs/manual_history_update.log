@@ -340,3 +340,243 @@ Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 16:48:04 ] block a_share_history: health gate failed
+[2026-06-12 16:30:03 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-12 16:30:05 ] block a_share_history: health gate failed
+[2026-06-12 16:36:03 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-12 16:36:04 ] block a_share_history: health gate failed
+[2026-06-12 16:42:03 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-12 16:42:05 ] block a_share_history: health gate failed
+[2026-06-12 16:48:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-12 16:48:06 ] block a_share_history: health gate failed
+[2026-06-16 16:30:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 16:30:06 ] block a_share_history: health gate failed
+[2026-06-16 16:36:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 16:36:06 ] block a_share_history: health gate failed
+[2026-06-16 16:42:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 16:42:06 ] block a_share_history: health gate failed
+[2026-06-16 16:48:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 16:48:06 ] block a_share_history: health gate failed
+[2026-06-17 16:30:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 16:30:05 ] block a_share_history: health gate failed
+[2026-06-17 16:35:05 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 16:35:06 ] block a_share_history: health gate failed
+[2026-06-17 16:41:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 16:41:06 ] block a_share_history: health gate failed
+[2026-06-17 16:47:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 16:47:05 ] block a_share_history: health gate failed
+[2026-06-18 16:30:04 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 16:30:06 ] block a_share_history: health gate failed
+[2026-06-18 16:36:05 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 16:36:06 ] block a_share_history: health gate failed
+[2026-06-18 16:41:06 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 16:41:09 ] block a_share_history: health gate failed
+[2026-06-18 16:47:05 ] start a_share_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 16:47:07 ] block a_share_history: health gate failed

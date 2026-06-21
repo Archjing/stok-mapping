@@ -580,13 +580,24 @@ def _check_cn_market_data(
     if daily_columns:
         where_sql, params = _condition_for_daily(daily_columns, market, adjust_type, as_of)
         latest = _latest_date(conn, table=daily_table, where_sql=where_sql, params=params)
-        total_symbols = int(
-            _scalar(conn, f"SELECT COUNT(DISTINCT symbol) FROM {_safe_identifier(daily_table)} WHERE {where_sql}", params)
-            or 0
-        )
         latest_symbols = 0
         coverage = 0.0
+        total_symbols = 0
         if latest:
+            total_symbols = int(
+                _scalar(
+                    conn,
+                    f"""
+                    SELECT COUNT(DISTINCT symbol)
+                    FROM {_safe_identifier(meta_table)}
+                    WHERE market = ?
+                      AND (COALESCE(list_date, '') = '' OR list_date <= ?)
+                      AND (COALESCE(delist_date, '') = '' OR delist_date > ?)
+                    """,
+                    (market, latest, latest),
+                )
+                or 0
+            )
             latest_symbols = int(
                 _scalar(
                     conn,

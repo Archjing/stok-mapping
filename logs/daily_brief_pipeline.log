@@ -370,3 +370,302 @@ Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 07:38:20 ] block daily_brief: health gate failed
+[2026-06-12 07:20:05 ] start daily_brief
+Database health check started
+Database health status: pass
+Summary rows: 24
+Findings: errors=0, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+Phase 0 watchlist pipeline started
+1) Updating A-share history...
+Manual history update status: up_to_date
+Database: 
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite
+Calendar latest trade date: 2026-06-12
+Target trade date: 2026-06-11
+Before latest: 2026-06-11 coverage=0.9967
+After latest: 2026-06-11 coverage=0.9967
+Fetched rows: 0
+Inserted rows: 0
+Metadata updated rows: 0
+Primary source: N/A
+Metadata coverage: market_cap=1.0000, pe=1.0000, pb=1.0000, turnover=1.0000
+2) Generating premarket watchlist...
+sending incremental file list
+index.html
+
+sent 2,808 bytes  received 185 bytes  1,995.33 bytes/sec
+total size is 18,958  speedup is 6.33
+panel_cache=stale path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+panel_cache=miss path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+panel_cache=saved path=/home/zj/workspace/stok-mapping/reports/cache/low_turnover_panel.pkl
+Watchlist ECS: root@39.105.102.5:/brief/
+Watchlist pipeline complete
+Watchlist: 
+/home/zj/workspace/stok-mapping/reports/2026-06-12/phase0_premarket_watchlist_20
+26-06-12.csv
+Report: 
+/home/zj/workspace/stok-mapping/reports/2026-06-12/phase0_watchlist_report_2026-
+06-12.html
+Watchlist today: 
+/home/zj/workspace/stok-mapping/reports/watchlist_today/index.html
+Watchlist today: /mnt/d/ZJ/Dev/brief_today/index.html
+Simulation ledger: 
+/home/zj/workspace/stok-mapping/data/simulated_trading/phase0_daily_brief_ledger
+.csv
+Account ledger: 
+/home/zj/workspace/stok-mapping/data/simulated_trading/phase0_daily_account_ledg
+er.csv
+Account bill: .
+Rows: 27
+Signal date: 2026-06-11
+Check time: 2026-06-12 07:30
+[2026-06-12 07:22:21 ] finish daily_brief
+[2026-06-15 07:20:03 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 07:21:03 ] block daily_brief: health gate failed
+[2026-06-15 07:27:02 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 07:27:16 ] block daily_brief: health gate failed
+[2026-06-15 07:33:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 07:33:17 ] block daily_brief: health gate failed
+[2026-06-15 07:39:03 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 07:39:16 ] block daily_brief: health gate failed
+[2026-06-16 07:20:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 07:21:04 ] block daily_brief: health gate failed
+[2026-06-16 07:27:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 07:27:21 ] block daily_brief: health gate failed
+[2026-06-16 07:33:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 07:33:18 ] block daily_brief: health gate failed
+[2026-06-16 07:39:03 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-16 07:39:17 ] block daily_brief: health gate failed
+[2026-06-17 07:20:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 07:20:41 ] block daily_brief: health gate failed
+[2026-06-17 07:26:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 07:26:22 ] block daily_brief: health gate failed
+[2026-06-17 07:32:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 07:32:22 ] block daily_brief: health gate failed
+[2026-06-17 07:38:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-17 07:38:21 ] block daily_brief: health gate failed
+[2026-06-18 07:20:03 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 07:21:14 ] block daily_brief: health gate failed
+[2026-06-18 07:27:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 07:27:20 ] block daily_brief: health gate failed
+[2026-06-18 07:33:04 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 07:33:20 ] block daily_brief: health gate failed
+[2026-06-18 07:39:03 ] start daily_brief
+Database health check started
+Database health status: fail
+Summary rows: 24
+Findings: errors=1, warnings=0, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-18 07:39:19 ] block daily_brief: health gate failed

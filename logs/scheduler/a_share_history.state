@@ -1,6 +1,6 @@
 {
   "last_status": "blocked",
-  "last_failure_at": "2026-06-11T16:48:04",
+  "last_failure_at": "2026-06-18T16:47:07",
   "retry_count": 0,
   "last_error": "health_gate_failed"
 }

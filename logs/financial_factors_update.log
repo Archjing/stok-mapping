@@ -84,3 +84,123 @@ Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-08 03:48:03 ] block financial_factors: health gate failed
+[2026-06-15 03:30:02 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 03:30:03 ] block financial_factors: health gate failed
+[2026-06-15 03:36:04 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 03:36:05 ] block financial_factors: health gate failed
+[2026-06-15 03:42:03 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 03:42:04 ] block financial_factors: health gate failed
+[2026-06-15 03:48:02 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-15 03:48:03 ] block financial_factors: health gate failed
+[2026-06-22 03:30:03 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 03:30:05 ] block financial_factors: health gate failed
+[2026-06-22 03:36:04 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 03:36:05 ] block financial_factors: health gate failed
+[2026-06-22 03:42:02 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 03:42:03 ] block financial_factors: health gate failed
+[2026-06-22 03:47:03 ] start financial_factors
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown: 
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 03:47:04 ] block financial_factors: health gate failed

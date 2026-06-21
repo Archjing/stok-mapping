@@ -109,11 +109,13 @@ def _latest_stats(
     conn: sqlite3.Connection,
     *,
     daily_table: str,
+    meta_table: str,
     market: str,
     adjust_type: str,
     date_override: date | None = None,
 ) -> tuple[date | None, float, int, int]:
     table = _safe_identifier(daily_table)
+    meta = _safe_identifier(meta_table)
     latest_value = pd.read_sql_query(
         f"""
         SELECT MAX(date) AS latest_date
@@ -133,13 +135,26 @@ def _latest_stats(
         f"""
         SELECT
             COUNT(DISTINCT CASE WHEN date = ? THEN symbol END) AS latest_symbols,
-            COUNT(DISTINCT symbol) AS total_symbols
+            (
+                SELECT COUNT(DISTINCT m.symbol)
+                FROM {meta} m
+                WHERE m.market = ?
+                  AND (COALESCE(m.list_date, '') = '' OR m.list_date <= ?)
+                  AND (COALESCE(m.delist_date, '') = '' OR m.delist_date > ?)
+            ) AS total_symbols
         FROM {table}
         WHERE market = ?
           AND adjust_type = ?
         """,
         conn,
-        params=(coverage_date.isoformat(), market, adjust_type),
+        params=(
+            coverage_date.isoformat(),
+            market,
+            coverage_date.isoformat(),
+            coverage_date.isoformat(),
+            market,
+            adjust_type,
+        ),
     ).iloc[0]
     latest_symbols = int(row["latest_symbols"] or 0)
     total_symbols = int(row["total_symbols"] or 0)
@@ -815,12 +830,14 @@ def update_manual_history_from_config(
         before_latest, before_coverage, _, _ = _latest_stats(
             conn,
             daily_table=daily_table,
+            meta_table=meta_table,
             market=market,
             adjust_type=primary_adjust,
         )
         before_target_coverage = _latest_stats(
             conn,
             daily_table=daily_table,
+            meta_table=meta_table,
             market=market,
             adjust_type=primary_adjust,
             date_override=target_trade_date,
@@ -905,6 +922,7 @@ def update_manual_history_from_config(
         _, _, _, total_symbols = _latest_stats(
             conn,
             daily_table=daily_table,
+            meta_table=meta_table,
             market=market,
             adjust_type=primary_adjust,
         )
@@ -1020,6 +1038,7 @@ def update_manual_history_from_config(
             after_latest, after_coverage, _, _ = _latest_stats(
                 conn,
                 daily_table=daily_table,
+                meta_table=meta_table,
                 market=market,
                 adjust_type=primary_adjust,
             )
@@ -1110,6 +1129,7 @@ def update_manual_history_from_config(
         after_latest, after_coverage, _, _ = _latest_stats(
             conn,
             daily_table=daily_table,
+            meta_table=meta_table,
             market=market,
             adjust_type=primary_adjust,
         )

@@ -2,5 +2,5 @@ section,check_id,status,metric,value,threshold
 scheduler,scheduler.a_share_history.last_file,warning,mtime,2026-06-05,<= 3 days
 scheduler,scheduler.us_market_history.last_file,warning,mtime,2026-06-05,<= 3 days
 scheduler,scheduler.hk_market_history.last_file,warning,mtime,2026-06-04,<= 3 days
-scheduler,scheduler.daily_brief.last_file,pass,mtime,2026-06-09,<= 3 days
-scheduler,scheduler.market_data_source_runs.audit,pass,latest_fetched_at,2026-06-09T06:33:32,<= 3 days
+scheduler,scheduler.daily_brief.last_file,warning,mtime,2026-06-12,<= 3 days
+scheduler,scheduler.market_data_source_runs.audit,warning,latest_fetched_at,2026-06-12T03:40:35,<= 3 days

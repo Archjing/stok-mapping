@@ -2,3 +2,5 @@ severity,check_id,table_name,symbol,date,field,message,sample_value,expected_rul
 warning,scheduler.a_share_history.last_file,,,,,scheduler last-run marker is stale,2026-06-05,mtime within 3 days
 warning,scheduler.us_market_history.last_file,,,,,scheduler last-run marker is stale,2026-06-05,mtime within 3 days
 warning,scheduler.hk_market_history.last_file,,,,,scheduler last-run marker is stale,2026-06-04,mtime within 3 days
+warning,scheduler.daily_brief.last_file,,,,,scheduler last-run marker is stale,2026-06-12,mtime within 3 days
+warning,scheduler.market_data_source_runs.audit,market_data_source_runs,,,,source audit table has no recent run record,2026-06-12T03:40:35,latest fetched_at within 3 days
