@@ -10,12 +10,12 @@
 - ~~当前 Phase 0 胜出的候选是 `legacy_momentum`~~
 - ~~`legacy_momentum` 当前均值：`ann=0.3360`，`sharpe=0.3358`，`mdd=-0.3074`~~
 - ~~现有效果门槛未通过，主要问题是：**夏普不够、回撤偏大**~~
-- 当前 Phase 0 selected candidate 已更新为 `legacy_momentum_low_turnover_v1`
-- 当前总 verdict 为 `PASS`
+- 当前无 Phase 0 selected candidate；`legacy_momentum_low_turnover_v1` 仅保留为旧 `qfq_current` 口径下的兼容基线 / 研究样本
+- 当前总 verdict 为：Phase 0 工程链路可用，但严格 `qfq_asof` 策略门禁未通过
 - 当前主测试口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
-- 当前通过指标：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`
+- 旧 `qfq_current` 兼容参考指标：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`
 - 跨市场主导策略当前表现弱，不适合继续做主 ranker
-- 当前策略开发重心已从“冲 Phase 0 gate”转为“保持低换手 baseline、补数据源、做解释层和调仓建议链路”
+- 当前策略开发重心是：在严格 `qfq_asof` / PIT / 成本口径下重建有效 candidate；旧低换手 baseline 只保留兼容参考、解释层和调仓建议链路样本价值
 
 ---
 

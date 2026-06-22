@@ -52,7 +52,8 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 ## 当前状态
 
-- Phase 0 基础设施验证已完成，当前结论为 **PASS**，已确认可进入策略收口与 Phase 1 准备。
+- `docs/DEVELOPMENT_PLAN.md` 是当前主线状态事实源；若其他文档与其冲突，以该文件为准。
+- Phase 0 工程链路已验证可运行：数据链路、本地历史库、股票池、walk-forward、compare、报告与治理命令可闭环执行。
 - 已创建本地 A 股研究主库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池、数据新鲜度保护和相关数据审计。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
 - 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`，当前本地库覆盖 2018-06-30 至 2026-03-31 共 32 个季度。
@@ -60,12 +61,14 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
 - 已增加开发期统一调度器：交易日 `07:20` 生成阶段试用观察池，`16:20` 更新港股库，`16:30` 更新 A 股库，`17:10` 更新 US market 库，每周一 `03:30` 更新财务因子。
-- 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，账单导出和策略解释性输出已补齐基础版本。
+- 严格 `qfq_asof` + point-in-time 股票池复核后，当前**无可用于实盘模拟的合格策略**，当前**没有 selected candidate**。
+- `legacy_momentum_low_turnover_v1` 已降级为兼容基线和研究参考样本；旧 `qfq_current` / 旧 gate 结果不能视作当前准入结论。
+- 账单导出和策略解释性输出已补齐基础版本，但这些产物不代表策略已通过实盘模拟门禁。
 - 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
 - 历史 walk-forward / execution-gate 已默认使用 point-in-time 股票池：每一折按训练窗口结束日从本地历史库只读生成股票池，避免用当前股票池回测过去；日报 / watchlist / 模拟账户仍使用当前每日更新股票池。
-- 当前主阻塞点不是数据管线或 Sharpe 门槛，而是更长期稳定性验证、数据源升级和日常研判自动化。
+- 当前主阻塞点是：在 `qfq_asof`、PIT 股票池、成本后和执行约束口径下重建可复现、可解释、可审计的合格策略。
 
-最新报告以 `reports/phase0_effectiveness_report.md` 为准。当前最新一次结果已统一为 portfolio 口径并扩大到 7 年窗口，selected candidate 为 `legacy_momentum_low_turnover_v1`，总体 verdict 为 `PASS`：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`。主测试成本口径为 `slippage = 0.00246`。
+旧 `reports/phase0_effectiveness_report.md` 中的 `PASS` 与旧 selected candidate 结论，只能作为兼容口径/研究参考，不得解释为当前可进入实盘模拟。当前准入判断应以 `docs/DEVELOPMENT_PLAN.md` 与后续 `strategy-admission`、`qfq_asof`、过拟合诊断、执行约束复核结论为准。
 
 ## 架构层次
 
@@ -481,6 +484,8 @@ reports/phase0_strategy_change_log.md
 
 Agent 只做研究辅助与代码审查辅助，不进入主信号链路。
 
+`Harness`、Codex MCP、Agents SDK、DeepSeek MCP 和外部 agent 工作流，只是开发、验证、复核与文档同步工具；它们的可执行性需要随当前仓库状态复核，不应被视作策略准入结果或门禁替代。
+
 Codex 侧 Claude provider 配置放在 `.codex/`，不写入 `.claude/`，避免影响其他以 Claude 为主控模型的 agent 工具。
 
 `Claude_Analyst_agent` 用于量化研究分析、风险提示和样本外稳健性评估：
@@ -545,7 +550,7 @@ scripts/cloe_risk_agent.sh "请从最新回测与执行报告提炼风险告警�
 scripts/cloe_premarket_agent.sh "请基于 phase0_premarket_watchlist.csv 生成盘前要点和情景提示。"
 ```
 
-MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易指令。
+MCP 与外部 agent 不得绕过 effectiveness gate、`qfq_asof`、PIT、过拟合诊断、`strategy-admission`、`execution-gate` 或人工 review，不得直接生成交易指令。
 
 ## 计划文档
 
@@ -583,4 +588,4 @@ MCP 与外部 agent 不得绕过 effectiveness gate，不得直接生成交易�
 - 本地 fallback 不会静默使用过期快照：若本地最新交易日超过配置允许滞后，当前股票池 fallback 返回空并告警。
 - 财务因子进入正式历史回测前，必须完成公告日 point-in-time 校验，避免未来函数。
 - `yfinance` 和 `AkShare` 仅作为开发/研究辅助或 fallback，长期正式主源按 Tushare / Tiingo / FRED 分层推进。
-- Claude / DeepSeek 等 LLM agent 仅做报告阅读、研究摘要、风险提示和第二意见，不直接生成交易信号，不修改策略参数，不跳过 gate。
+- Claude / DeepSeek 等 LLM agent 仅做报告阅读、研究摘要、风险提示和第二意见，不直接生成交易信号，不修改策略参数，不跳过 gate，不把工作流执行结果解释为策略准入通过。

@@ -96,13 +96,13 @@ Database health check started
 Database health status: pass
 Summary rows: 5
 Findings: errors=0, warnings=0, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-05 16:20:02 +0800] pass hk_market_history health gate
@@ -157,13 +157,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=1, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-08 16:20:03 ] block hk_market_history: health gate failed
@@ -172,13 +172,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=1, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-08 16:26:03 ] block hk_market_history: health gate failed
@@ -187,13 +187,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=1, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-08 16:32:03 ] block hk_market_history: health gate failed
@@ -202,13 +202,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=1, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-08 16:38:03 ] block hk_market_history: health gate failed
@@ -217,13 +217,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-09 16:20:05 ] block hk_market_history: health gate failed
@@ -232,13 +232,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-09 16:26:04 ] block hk_market_history: health gate failed
@@ -247,13 +247,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-09 16:32:04 ] block hk_market_history: health gate failed
@@ -262,13 +262,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-09 16:38:04 ] block hk_market_history: health gate failed
@@ -277,13 +277,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-10 16:20:04 ] block hk_market_history: health gate failed
@@ -292,13 +292,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-10 16:26:04 ] block hk_market_history: health gate failed
@@ -307,13 +307,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-10 16:32:03 ] block hk_market_history: health gate failed
@@ -322,13 +322,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-10 16:38:03 ] block hk_market_history: health gate failed
@@ -337,13 +337,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 16:20:04 ] block hk_market_history: health gate failed
@@ -352,13 +352,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 16:26:04 ] block hk_market_history: health gate failed
@@ -367,13 +367,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 16:32:04 ] block hk_market_history: health gate failed
@@ -382,13 +382,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-11 16:38:05 ] block hk_market_history: health gate failed
@@ -397,13 +397,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-12 16:20:10 ] block hk_market_history: health gate failed
@@ -412,13 +412,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-12 16:26:05 ] block hk_market_history: health gate failed
@@ -427,13 +427,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-12 16:32:05 ] block hk_market_history: health gate failed
@@ -442,13 +442,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=3, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-12 16:38:05 ] block hk_market_history: health gate failed
@@ -457,13 +457,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-16 16:20:06 ] block hk_market_history: health gate failed
@@ -472,13 +472,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-16 16:26:05 ] block hk_market_history: health gate failed
@@ -487,13 +487,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-16 16:32:06 ] block hk_market_history: health gate failed
@@ -502,13 +502,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-16 16:38:06 ] block hk_market_history: health gate failed
@@ -517,13 +517,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-17 16:20:07 ] block hk_market_history: health gate failed
@@ -532,13 +532,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-17 16:26:05 ] block hk_market_history: health gate failed
@@ -547,13 +547,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-17 16:32:06 ] block hk_market_history: health gate failed
@@ -562,13 +562,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-17 16:38:06 ] block hk_market_history: health gate failed
@@ -577,13 +577,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-18 16:20:07 ] block hk_market_history: health gate failed
@@ -592,13 +592,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-18 16:26:06 ] block hk_market_history: health gate failed
@@ -607,13 +607,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-18 16:32:06 ] block hk_market_history: health gate failed
@@ -622,13 +622,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-18 16:38:07 ] block hk_market_history: health gate failed
@@ -637,13 +637,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-19 16:20:06 ] block hk_market_history: health gate failed
@@ -652,13 +652,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-19 16:26:06 ] block hk_market_history: health gate failed
@@ -667,13 +667,13 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-19 16:32:06 ] block hk_market_history: health gate failed
@@ -682,13 +682,73 @@ Database health check started
 Database health status: warning
 Summary rows: 5
 Findings: errors=0, warnings=5, info=0
-Summary CSV: 
+Summary CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
 csv
-Findings CSV: 
+Findings CSV:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
 .csv
-Markdown: 
+Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-19 16:38:05 ] block hk_market_history: health gate failed
+[2026-06-22 16:20:02 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 16:20:03 ] block hk_market_history: health gate failed
+[2026-06-22 16:25:03 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 16:25:04 ] block hk_market_history: health gate failed
+[2026-06-22 16:31:03 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 16:31:04 ] block hk_market_history: health gate failed
+[2026-06-22 16:37:03 ] start hk_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=5, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-22 16:37:04 ] block hk_market_history: health gate failed

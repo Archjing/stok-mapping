@@ -42,7 +42,7 @@
 
 - 策略研发复核
 - 候选策略淘汰
-- selected candidate 长期观察
+- 若未来产生 selected candidate，则纳入长期观察
 - 盘前观察池上线前检查
 - 模拟账户试运行前检查
 
@@ -193,7 +193,7 @@
 - 本轮 compare 候选数量
 - 同一策略家族参数组合数量
 - 失败候选数量
-- selected candidate 是否来自大规模调参
+- 若未来产生 selected candidate，记录其是否来自大规模调参
 - 是否存在人工反复调参记录
 
 初始规则：
@@ -358,7 +358,7 @@ reports/
 
 - [ ] `phase0 run` 可选生成过拟合诊断报告
 - [ ] `execution-gate` 读取 overfit risk
-- [ ] `brief watchlist` 展示 selected candidate 的过拟合风险摘要
+- [ ] 若未来产生 selected candidate，`brief watchlist` 展示其过拟合风险摘要
 - [ ] 模拟账户试运行前检查 overfit risk 是否超过阈值
 
 ---
@@ -369,7 +369,7 @@ reports/
 
 - [x] CLI 可生成 `strategy_overfit_diagnostic.csv`
 - [x] CLI 可生成 `strategy_overfit_diagnostic.md`
-- [x] 报告能覆盖当前 selected candidate
+- [x] 报告能覆盖当时旧 `qfq_current` 主候选 / 当前兼容基线；若未来重新产生 selected candidate，再纳入覆盖
 - [x] 报告能解释主要风险来源，而不是只给分数
 - [x] 当 OOS 失败、fold 不稳定或成本敏感时，风险等级会自动上调
 - [x] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
@@ -377,7 +377,7 @@ reports/
 长期验收：
 
 - [x] 每个候选策略都有过拟合风险记录
-- [ ] selected candidate 进入观察池前必须有诊断报告
+- [ ] 若未来产生 selected candidate，其进入观察池前必须有诊断报告
 - [ ] 失败实验和参数搜索过程可追踪
 - [ ] 能识别“回测漂亮但样本外/成本/参数扰动脆弱”的策略
 
@@ -385,7 +385,7 @@ reports/
 
 ## T2.4.11 当前结论
 
-本模块应进入 `T2` 策略治理主线，但优先级低于当前 selected strategy 的账单、盘前观察池和模拟账户链路稳定性。
+本模块应进入 `T2` 策略治理主线，但优先级低于当前兼容基线相关账单、盘前观察池链路维护，以及严格 `qfq_asof` 门禁下新 candidate 重建工作。
 
 建议实施顺序：
 

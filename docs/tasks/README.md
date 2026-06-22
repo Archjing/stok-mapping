@@ -19,8 +19,8 @@
 
 | 层级编号 | 基线项 | 当前状态 |
 | --- | --- | --- |
-| `B1` | 主策略基线 | `legacy_momentum_low_turnover_v1` |
-| `B2` | Phase 0 gate | `PASS` |
+| `B1` | 兼容基线 | 旧 `qfq_current` 研究样本：`legacy_momentum_low_turnover_v1` |
+| `B2` | Phase 0 gate | 严格 `qfq_asof` 口径未通过；当前仅确认工程链路可用 |
 | `B3` | 主线定位 | A 股本土因子为主，跨市场信号只做风险/情绪 overlay |
 | `B4` | 产品边界 | 个人自用量化研究、盘前研判与交易计划辅助，不自动下单 |
 | `B5` | 下一主线 | `Signal & Rebalance Engine`：可交易信号、调仓建议单、模拟订单、阻断原因 |

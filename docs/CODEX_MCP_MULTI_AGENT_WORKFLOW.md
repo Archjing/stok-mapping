@@ -1,8 +1,10 @@
 # `stok-mapping` Codex MCP 多 Agent 开发团队工作流
 
-目标：把 `/home/zj/workspace/codex-mcp-server-demo` 中的 Codex MCP + Agents SDK team 用到 `stok-mapping`，形成可复查、可验证、可持续推进的量化研发工作流。
+目标：把 `/home/zj/workspace/codex-harness-runner` 中的 Codex MCP + Agents SDK team 用到 `stok-mapping`，形成可复查、可验证、可持续推进的量化研发工作流。
 
 本工作流不替代 `AGENTS.md`、`CLAUDE.md`、`docs/DEVELOPMENT_PLAN.md` 和 `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`。这些文件仍是项目主线规则。本工作流只定义如何用多 Agent 团队执行项目任务。
+
+状态冲突时，以 `docs/DEVELOPMENT_PLAN.md` 为准。Codex MCP、Agents SDK、Harness 与其他 agent workflow 仅代表开发/验证/复核能力，不代表任何策略已经通过准入、可以进入实盘模拟或可以绕过人工 review。
 
 ---
 
@@ -20,6 +22,7 @@
 
 - 自动下单、券商接口执行、实盘资金操作。
 - 绕过 effectiveness gate 生成交易结论。
+- 把 workflow 跑通、报告生成成功或 agent review 通过，解释为策略准入通过。
 - 让 LLM 直接决定买卖、仓位或清仓。
 - 未经用户明确确认的大规模重构、删除数据、重建长期数据库。
 - 把 `yfinance`、新闻或文本事件直接升为主 ranker。
@@ -28,10 +31,10 @@
 
 ## 2. 启动方式
 
-在 `codex-mcp-server-demo` 中运行 team，并把 workspace 指向 `stok-mapping`：
+在 `codex-harness-runner` 中运行 team，并把 workspace 指向 `stok-mapping`：
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping \
 CODEX_MCP_MODEL=gpt-5.4 \
 CODEX_MCP_SANDBOX=workspace-write \
@@ -42,7 +45,7 @@ python3 main.py "在 stok-mapping 中执行：<任务描述>"
 先做 MCP 连接 smoke test：
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 smoke_test.py
 ```
 
@@ -217,7 +220,7 @@ Reviewer 最后做审查：
 ### 5.1 策略候选开发
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 在 stok-mapping 中开发一个策略候选。
 先读取 AGENTS.md、CLAUDE.md、docs/DEVELOPMENT_PLAN.md 和 docs/STRATEGY_DEVELOPMENT_GUIDELINES.md。
@@ -234,7 +237,7 @@ CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 ### 5.2 数据治理修复
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 在 stok-mapping 中处理数据治理任务。
 任务：<数据问题>
@@ -249,7 +252,7 @@ CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 ### 5.3 报告链路修复
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 在 stok-mapping 中修复报告链路。
 任务：<报告问题>
@@ -264,7 +267,7 @@ CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 ### 5.4 代码审查
 
 ```bash
-cd /home/zj/workspace/codex-mcp-server-demo
+cd /home/zj/workspace/codex-harness-runner
 CODEX_MCP_CWD=/home/zj/workspace/stok-mapping python3 main.py "
 请作为 Reviewer 审查 stok-mapping 当前改动。
 重点检查：
@@ -323,6 +326,16 @@ Team Lead -> Planner -> Implementer -> Reviewer
 2. 检查 `.env` 的 `OPENAI_BASE_URL` 和网关状态。
 3. 把任务拆小，先让 Codex 只读检查，再执行修改。
 4. 必要时提高 `CODEX_MCP_TIMEOUT_SECONDS`。
+
+如果直接在 `stok-mapping` 中运行 Agents SDK heredoc、README 示例或临时脚本，必须先核对仓库实际文件是否存在，再决定是否可以照文档执行。
+
+当前仓库不存在 `scripts/agents_sdk_bootstrap.py` 和 `scripts/agents_sdk_readme_smoke.py`，因此不能按依赖这些脚本的说明直接执行。遇到这类说明时，以仓库当前可见文件、`pyproject.toml`、锁文件和实际环境配置为准，不要假设文档中提到的辅助脚本已经落库。
+
+如需做 smoke test，应优先使用仓库中已存在的最小验证方式，例如：
+
+- 先确认依赖环境可以导入目标 SDK 或模块。
+- 再用仓库中真实存在的入口、命令或最小 heredoc 进行验证。
+- 如果某个 README 或外部示例要求额外 bootstrap/辅助脚本，而仓库内没有对应文件，则应把该命令视为可选外部示例，而不是项目内可直接执行步骤。
 
 ---
 
