@@ -8,6 +8,7 @@ from phase0.strategies.quality_growth_price import QualityGrowthPriceStrategy
 from phase0.strategies.quality_low_turnover_monthly import QualityLowTurnoverMonthlyStrategy
 from phase0.strategies.residual_momentum_reversal import ResidualMomentumReversalStrategy
 from phase0.strategies.residual_momentum_reversal_v2 import ResidualMomentumReversalV2Strategy
+from phase0.strategies.sleeve_composite import SleeveCompositeStrategy
 from phase0.strategies.theme_exposure_momentum import ThemeExposureMomentumStrategy
 from phase0.strategies.registry import available_strategies, get_strategy, register
 
@@ -22,6 +23,7 @@ __all__ = [
     "QualityLowTurnoverMonthlyStrategy",
     "ResidualMomentumReversalStrategy",
     "ResidualMomentumReversalV2Strategy",
+    "SleeveCompositeStrategy",
     "ThemeExposureMomentumStrategy",
     "available_strategies",
     "get_strategy",

@@ -176,6 +176,7 @@ score =
 - [x] `reports/strategy_admission/strategy_admission_candidate_folds.csv`
 - [x] `strategy_admission_window_matrix.csv` 输出 `price_adjustment_status`、`account_execution_status`、`industry_diagnostic_status`、`financial_diagnostic_status`
 - [x] `strategy_admission_constraint_review.csv` 输出行业诊断缺失、因子诊断缺失和价格口径失败计数
+- [x] 每次 `compare` / `strategy-admission` 代码验证通过后，必须生成带日期、运行背景、命令口径、验证结果、候选结论和下一步动作的策略治理报告
 
 ### T2.8.4 Walk-forward preset 设计
 
@@ -267,43 +268,43 @@ V2 候选：
 
 ### T2.9.2 输入
 
-- [ ] `strategy_admission_candidate_folds.csv`
-- [ ] `strategy_admission_window_matrix.csv`
-- [ ] `strategy_admission_constraint_review.csv`
-- [ ] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
-- [ ] 可选：策略配置中的 gate、preset、industry constraint 和 diagnostics suites
+- [x] `strategy_admission_candidate_folds.csv`
+- [x] `strategy_admission_window_matrix.csv`
+- [x] `strategy_admission_constraint_review.csv`
+- [x] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [x] 可选：策略配置中的 gate、preset、industry constraint 和 diagnostics suites
 
 ### T2.9.3 输出
 
-- [ ] `strategy_failure_attribution.csv`
-- [ ] `strategy_failure_attribution.md`
-- [ ] 每个 `strategy_id + preset` 一行窗口级归因
-- [ ] 每个策略一段自然语言研发建议：继续优化、重构、降级 research-only 或当前 spec reject
+- [x] `strategy_failure_attribution.csv`
+- [x] `strategy_failure_attribution.md`
+- [x] 每个 `strategy_id + preset` 一行窗口级归因
+- [x] 每个策略一段自然语言研发建议：继续优化、重构、降级 research-only 或当前 spec reject
 
 ### T2.9.4 V1 归因维度
 
-- [ ] `return_failure`：年化收益、Sharpe、最大回撤、正收益折比例未达 gate
-- [ ] `execution_failure`：换手、交易次数、持仓数、账户执行成本暴露异常
-- [ ] `construction_failure`：行业集中度、持仓过少、股票池过窄或组合构造导致暴露失衡
-- [ ] `factor_failure`：财务 PIT / 字段覆盖可用但质量暴露没有转化为收益
-- [ ] `parameter_failure`：不同折选出的参数组合频繁变化
-- [ ] `regime_failure`：最后一折显著拉高、不同市场阶段表现断裂
-- [ ] `data_failure`：价格口径、财务诊断、行业诊断或其他必要诊断缺失
+- [x] `return_failure`：年化收益、Sharpe、最大回撤、正收益折比例未达 gate
+- [x] `execution_failure`：换手、交易次数、持仓数、账户执行成本暴露异常
+- [x] `construction_failure`：行业集中度、持仓过少、股票池过窄或组合构造导致暴露失衡
+- [x] `factor_failure`：财务 PIT / 字段覆盖可用但质量暴露没有转化为收益
+- [x] `parameter_failure`：不同折选出的参数组合频繁变化
+- [x] `regime_failure`：最后一折显著拉高、不同市场阶段表现断裂
+- [x] `data_failure`：价格口径、财务诊断、行业诊断或其他必要诊断缺失
 
 ### T2.9.5 开发任务
 
-- [ ] 新增只读归因函数，输入已有 CSV，不重新调用回测
-- [ ] 复用 admission gate 阈值，不在 T2.9 另造一套准入标准
-- [ ] 为每条归因输出 `severity`、`evidence`、`recommended_next_action`
-- [ ] 在 Markdown 报告中按策略输出“主要失败原因 -> 证据 -> 下一步建议”
-- [ ] 用当前 T2.7 双 preset 报告做最小验收样例
+- [x] 新增只读归因函数，输入已有 CSV，不重新调用回测
+- [x] 复用 admission gate 阈值，不在 T2.9 另造一套准入标准
+- [x] 为每条归因输出 `severity`、`evidence`、`recommended_next_action`
+- [x] 在 Markdown 报告中按策略输出“主要失败原因 -> 证据 -> 下一步建议”
+- [x] 用当前 T2.7 双 preset 报告做最小验收样例
 
 ### T2.9.6 验收
 
-- [ ] 能解释 `quality_low_turnover_monthly_v1` 为什么不是单纯因为最后一折转好而失败
-- [ ] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
-- [ ] 输出结果可直接指导下一轮策略改造，而不是只重复 admission 的 pass/fail
-- [ ] 不引入新的回测耗时，不修改已有 admission 产物
+- [x] 能解释 `quality_low_turnover_monthly_v1` 为什么不是单纯因为最后一折转好而失败
+- [x] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
+- [x] 输出结果可直接指导下一轮策略改造，而不是只重复 admission 的 pass/fail
+- [x] 不引入新的回测耗时，不修改已有 admission 产物
 
 ### T2.9.7 不做
 
@@ -318,10 +319,10 @@ V2 候选：
 
 ### T2.10.1 sleeve 组合
 
-- [ ] 将 `legacy_momentum_low_turnover_v1` 降级为动量 sleeve
-- [ ] 新增 defensive quality sleeve
-- [ ] 新增 risk overlay sleeve
-- [ ] 支持组合打分：
+- [x] 将 `legacy_momentum_low_turnover_v1` 降级为动量 sleeve
+- [x] 新增 defensive quality sleeve
+- [x] 新增 risk overlay sleeve
+- [x] 支持组合打分：
 
 ```text
 final_score =
@@ -329,6 +330,8 @@ final_score =
 + 0.25 * low_turnover_momentum_score
 + 0.20 * risk_overlay_score
 ```
+
+实现状态：`sleeve_composite_v1` 已作为 research-only / compare / admission 候选接入，输出三段 sleeve 分数、`final_score`、排名、权重和降级原因；不进入模拟账户或日报主线。
 
 ### T2.10.2 二阶段 ML rerank
 

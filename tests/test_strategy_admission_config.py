@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from phase0.strategy_admission import (
+    _admission_action,
     _attach_price_adjustment_status,
     _force_strategy_set_enabled_for_admission,
     _industry_missing_window_count,
@@ -96,12 +97,14 @@ def test_strategy_set_forces_legacy_enabled_switches_in_runtime_copy() -> None:
             "core_selection_quality_momentum_v1",
             "theme_exposure_momentum_v1",
             "quality_low_turnover_monthly_v1",
+            "sleeve_composite_v1",
         ],
     )
 
     assert strategy_cfg["core_selection_quality_momentum"]["enabled"] is True
     assert strategy_cfg["theme_exposure_momentum"]["enabled"] is True
     assert strategy_cfg["local_factor"]["quality_low_turnover_monthly"]["enabled"] is True
+    assert strategy_cfg["sleeve_composite"]["enabled"] is True
 
 
 def test_overfit_gate_uses_configured_max_level() -> None:
@@ -194,6 +197,31 @@ def test_required_industry_check_counts_missing_status() -> None:
     )
 
     assert _industry_missing_window_count(ok_windows) == 1
+
+
+def test_research_only_strategy_cannot_be_eligible_for_paper_review() -> None:
+    action, reasons = _admission_action(
+        pass_count=2,
+        preset_count=2,
+        turnover_fail_count=0,
+        missing_window_count=0,
+        parameter_unstable_count=0,
+        industry_concentration_count=0,
+        industry_missing_count=0,
+        factor_missing_count=0,
+        price_adjustment_fail_count=0,
+        overfit_level="low",
+        supports_paper_trade=False,
+        group=pd.DataFrame([{"positive_fold_ratio": 1.0}, {"positive_fold_ratio": 1.0}]),
+        gate_cfg={
+            "positive_fold_ratio_min": 0.75,
+            "require_parameter_stability": True,
+            "require_industry_concentration_check": True,
+        },
+    )
+
+    assert action == "research_only"
+    assert "strategy does not support paper trade review" in reasons
 
 
 def test_admission_marks_non_qfq_asof_price_adjustment_as_gate_failure() -> None:

@@ -35,6 +35,7 @@ from phase0.reporting import (
     write_walk_forward_report,
 )
 from phase0.strategy_admission import run_strategy_admission
+from phase0.strategy_failure_attribution import run_strategy_failure_attribution
 from phase0.throttle import configure_akshare_throttle
 from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
@@ -723,6 +724,14 @@ def main() -> int:
     admission_parser.add_argument("--strategies", nargs="+", default=None, help="Strategy IDs to evaluate")
     admission_parser.add_argument("--output-dir", default=None, help="Output directory for admission reports")
     admission_parser.add_argument("--trace-run", action="store_true", help="Print fold-level walk-forward trace while running")
+    attribution_parser = sub.add_parser("strategy-failure-attribution", help="Attribute failed strategy admission decisions from existing CSV artifacts")
+    attribution_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    attribution_parser.add_argument("--admission-dir", default=None, help="Directory containing existing strategy admission CSV artifacts")
+    attribution_parser.add_argument("--folds", default=None, help="Path to strategy_admission_candidate_folds.csv")
+    attribution_parser.add_argument("--matrix", default=None, help="Path to strategy_admission_window_matrix.csv")
+    attribution_parser.add_argument("--constraints", default=None, help="Path to strategy_admission_constraint_review.csv")
+    attribution_parser.add_argument("--overfit", default=None, help="Path to overfit_diagnostic/strategy_overfit_diagnostic.csv")
+    attribution_parser.add_argument("--output-dir", default=None, help="Output directory for failure attribution artifacts")
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
@@ -1086,6 +1095,27 @@ def main() -> int:
         console.print(f"Candidate folds CSV: {result.folds_csv}")
         console.print(f"Overfit CSV: {result.overfit_csv}")
         console.print(f"Markdown: {result.report_md}")
+        return 0
+    if args.cmd == "strategy-failure-attribution":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        console = Console()
+        console.print("[bold]Strategy failure attribution started[/bold]")
+        result = run_strategy_failure_attribution(
+            config=cfg.get("phase0", cfg),
+            root=config_path.parent,
+            admission_dir=Path(args.admission_dir).resolve() if args.admission_dir else None,
+            folds_path=Path(args.folds).resolve() if args.folds else None,
+            matrix_path=Path(args.matrix).resolve() if args.matrix else None,
+            constraint_path=Path(args.constraints).resolve() if args.constraints else None,
+            overfit_path=Path(args.overfit).resolve() if args.overfit else None,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+        )
+        console.print("[green]Strategy failure attribution complete[/green]")
+        console.print(f"Strategies: {result.strategies}")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"CSV: {result.csv_path}")
+        console.print(f"Markdown: {result.md_path}")
         return 0
     if args.cmd == "factor-effectiveness":
         config_path = Path(args.config).resolve()

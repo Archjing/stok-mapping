@@ -236,6 +236,7 @@ def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], stra
         "low_vol_low_turnover_quality_v1": ("local_factor", "low_vol_low_turnover_quality"),
         "quality_low_turnover_monthly_v1": ("local_factor", "quality_low_turnover_monthly"),
         "multifactor_volume_price_filter_v1": ("local_factor", "multifactor_filter"),
+        "sleeve_composite_v1": ("sleeve_composite",),
     }
     for strategy_name in strategy_names:
         path = legacy_switches.get(str(strategy_name))
@@ -443,6 +444,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         overfit_row = overfit_by_strategy.get(sid)
         overfit_level = str(overfit_row["overfit_risk_level"]) if overfit_row is not None and "overfit_risk_level" in overfit_row else "unknown"
         overfit_score = int(overfit_row["overfit_score"]) if overfit_row is not None and "overfit_score" in overfit_row else 0
+        supports_paper_trade = bool(pd.Series(group.get("supports_paper_trade", True)).fillna(True).astype(bool).all())
         action, reasons = _admission_action(
             pass_count=pass_count,
             preset_count=len(preset_names),
@@ -454,6 +456,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
             factor_missing_count=factor_missing_count,
             price_adjustment_fail_count=price_adjustment_fail_count,
             overfit_level=overfit_level,
+            supports_paper_trade=supports_paper_trade,
             group=group,
             gate_cfg=gate_cfg,
         )
@@ -473,6 +476,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
                 "overfit_score": overfit_score,
                 "parameter_unique_total": parameter_unique_total,
                 "parameter_unstable_window_count": parameter_unstable_count,
+                "supports_paper_trade": supports_paper_trade,
                 "main_reasons": "; ".join(reasons),
             }
         )
@@ -542,6 +546,7 @@ def _admission_action(
     factor_missing_count: int,
     price_adjustment_fail_count: int,
     overfit_level: str,
+    supports_paper_trade: bool,
     group: pd.DataFrame,
     gate_cfg: dict[str, Any],
 ) -> tuple[str, list[str]]:
@@ -563,6 +568,8 @@ def _admission_action(
         reasons.append("factor diagnostics are required but not available in one or more windows")
     if price_adjustment_fail_count:
         reasons.append("qfq_asof price adjustment is required but not active in one or more windows")
+    if not supports_paper_trade:
+        reasons.append("strategy does not support paper trade review")
     positive_fail = int((_numeric_column(group, "positive_fold_ratio") < float(gate_cfg["positive_fold_ratio_min"])).sum())
     if positive_fail:
         reasons.append(f"positive fold ratio below {float(gate_cfg['positive_fold_ratio_min']):.0%} in one or more windows")
@@ -574,9 +581,12 @@ def _admission_action(
         and industry_missing_count == 0
         and factor_missing_count == 0
         and price_adjustment_fail_count == 0
+        and supports_paper_trade
         and (industry_concentration_count == 0 or not bool(gate_cfg.get("require_industry_concentration_check", True)))
     ):
         return "eligible_for_paper_review", reasons or ["all configured windows pass"]
+    if pass_count == preset_count and not supports_paper_trade:
+        return "research_only", reasons
     if pass_count == 1:
         reasons.append("only one preset passed; classify as research-only")
         return "research_only", reasons

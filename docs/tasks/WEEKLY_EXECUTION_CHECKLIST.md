@@ -16,13 +16,13 @@
 ## W1.0.2 当前基线与门槛缺口
 
 ### W1.0.2.1 当前基线
-- 当前 selected candidate：`legacy_momentum_low_turnover_v1`
-- 当前 gate：`PASS`
+- 当前 selected candidate：无；`legacy_momentum_low_turnover_v1` 仅保留为旧 `qfq_current` 兼容基线
+- 当前 gate：严格 `qfq_asof` 口径未通过
 - 当前口径：portfolio-scope
 - 当前样本：7 年窗口，4 个 portfolio fold
 
 ### W1.0.2.2 当前缺口
-- 当前 gate 已无硬性缺口
+- 严格 `qfq_asof` 口径下当前仍有门禁缺口；以下数值仅作为旧 `qfq_current` 兼容参考
 - `annualized_return_mean = 0.1331`
 - `sharpe_mean = 1.0083`
 - `max_drawdown_mean = -0.1042`
@@ -30,9 +30,9 @@
 - 当前主测试成本口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
 
 ### W1.0.2.3 当前判断
-- 低换手改造已经替代旧 `legacy_momentum` 成为当前主候选。
-- 当前主要工作从“修复 Sharpe”切换为“收口解释链路、补齐账户仿真约束、接入日常输出”。
-- 成本敏感性已改为单独 CLI 路径，显示新候选在 `main_personal_execution` 下仍可通过 gate，后续不需要再靠零成本结论证明有效。
+- 低换手改造曾在旧 `qfq_current` 口径下替代旧 `legacy_momentum` 成为主候选，但已被严格 `qfq_asof` 复核降级。
+- 当前主要工作已回到“在严格口径下重建有效 candidate，同时维护解释链路、账户仿真约束和日常输出”。
+- 成本敏感性仍保留单独 CLI 路径；旧 `qfq_current` / `main_personal_execution` 结论只能作为兼容参考，不能替代当前准入判断。
 
 ## W1.0.3 本周候选范围
 
@@ -181,7 +181,7 @@
 ## W1.0.11 本周结束后的决策规则
 
 ### W1.0.11.1 如果有候选通过 gate
-- [x] 提升为新的主候选
+- [x] 当时在旧 `qfq_current` 口径下曾提升为主候选，后经严格 `qfq_asof` 复核已降级
 - [x] 在变更日志中记录晋级原因
 - [x] 进入下一轮更细的参数与稳定性验证
 
@@ -197,14 +197,14 @@
 
 ## W1.5.1 本周目标
 
-- [x] 在 current-cost 假设下将 selected candidate 的 `sharpe_mean` 提升到 `> 0.5`
+- [x] 在当时旧 `qfq_current` / current-cost 假设下将候选 `sharpe_mean` 提升到 `> 0.5`
 - [x] 保持 `max_drawdown_mean > -0.25`
 - [x] 保持 `win_rate_mean > 0.45`
 - [x] 降低 current-cost 与 low-slippage 场景之间的表现差距
 
 ## W1.5.2 当前基线
 
-- selected candidate：`legacy_momentum_low_turnover_v1`
+- 旧 `qfq_current` 兼容基线：`legacy_momentum_low_turnover_v1`（当前无 selected candidate）
 - annualized_return_mean：`0.1331`
 - sharpe_mean：`1.0083`
 - max_drawdown_mean：`-0.1042`
@@ -256,7 +256,7 @@
 - [x] 将账单导出纳入标准 CLI / report 链路
 - [x] 在账户仿真中补齐 A 股整手成交、现金约束和撮合细节
 - [x] 完成财务因子公告日 point-in-time 校验方案
-- [x] 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出
+- [x] 为未来通过严格 `qfq_asof` 门禁的 candidate 预留接入 `07:30` 盘前日报 / 观察池输出的链路
 - [x] 补连续样本外资金曲线验证，避免把 walk-forward 分折重置误读成长期横盘
 - [x] 生成“连续 OOS 资金曲线 + 基准对比 + 各 fold 收益分解”HTML 报表
 - [x] 补行情分段验证，区分顺风行情与更普遍的策略有效性
@@ -266,8 +266,8 @@
 
 ## W1.6.2 当前状态
 
-- [x] 当前 selected candidate：`legacy_momentum_low_turnover_v1`
-- [x] current-cost gate：PASS
+- [x] 当时旧 `qfq_current` selected candidate：`legacy_momentum_low_turnover_v1`；现已降级为兼容基线
+- [x] 当时旧 `qfq_current` / current-cost gate：PASS；现不能作为当前准入依据
 - [x] 策略账单导出脚本：`scripts/export_strategy_bill.py`（旧 `scripts/export_low_turnover_bill.py` 保留兼容）
 - [x] 账单导出缓存：默认 `reports/cache/low_turnover_panel.pkl`
 - [x] 预览产物：`reports/phase0_low_turnover_bill_preview.html`
@@ -292,7 +292,7 @@
 - [x] 再补账户级交易约束，优先 A 股 `100` 股 / `1` 手整手买入与现金检查
 - [x] 然后做行情分段验证，回答策略是否依赖顺风行情
 - [x] 接着做公告日 PTI 校验，给质量成长类候选扫清后续回测前提
-- [x] 最后把 selected strategy 输出接入日报 / 观察池
+- [x] 最后把未来通过严格 `qfq_asof` 门禁的 candidate 输出接入日报 / 观察池
 
 ## W1.6.4 通过后执行优先级表
 
@@ -303,7 +303,7 @@
 | `P1` | 连续 OOS 与基准对比报表 | 纠正 fold 重置带来的阅读偏差，直接回答“是否只是跟上行情”。 | 有连续拼接后的样本外资金曲线、基准曲线和 fold 收益分解表。 |
 | `P1` | 行情分段验证 | 识别策略是不是只在顺风阶段有效。 | 能按顺风 / 震荡 / 回撤等阶段输出分段表现。 |
 | `P1` | 财务因子 PTI 校验 | 为后续质量成长 / 多因子扩展建立可信时间线。 | 明确公告日可见性规则，并形成校验结论。 |
-| `P1` | 日报 / 观察池接入 | 让已通过策略进入日常使用链路。 | `07:30` 输出可直接引用当前 selected strategy 的候选、权重和理由。 |
+| `P1` | 日报 / 观察池接入 | 仅在严格 `qfq_asof` 门禁通过后，让候选进入日常使用链路。 | 当前无 selected candidate；`07:30` 输出现阶段只可引用旧 `qfq_current` 兼容基线或留空，待未来重新产生合格 candidate 后再恢复正式接入。 |
 | `P1` | profile 化实盘仿真与 OOS 报告 | 避免策略研究口径和实盘仿真口径混用。 | `execution-gate` 与 `oos-report` 均支持 `research` / `live` profile，并由 `config.yaml` 管理参数。 |
 | `P1` | HTML 报表可读性收口 | 长表和宽表需要适合人工检查。 | 所有 HTML 标题显示生成时间，表格支持横纵滚动和固定表头。 |
 | `P2` | 备选策略继续精修 | 避免主线未收口前重新发散。 | 仅在前四项完成后，再恢复 residual / multifactor 迭代。 |
@@ -624,7 +624,7 @@
 - [x] 实现只读现有产物的 MVP，不触发重新回测
 - [x] 新增 `phase0.cli overfit-diagnostic`
 - [x] 输出 CSV / Markdown 诊断报告
-- [x] 至少覆盖当前 selected candidate：`legacy_momentum_low_turnover_v1`
+- [x] 至少覆盖当时旧 `qfq_current` 主候选 / 当前兼容基线：`legacy_momentum_low_turnover_v1`
 - [x] 报告结论能解释风险来源，而不是只给分数
 - [x] 不改变现有 `phase0 run`、walk-forward、effectiveness gate 的默认行为
 
@@ -711,19 +711,19 @@ python -m phase0.cli overfit-diagnostic \
 ### W2.13.8 验收标准
 
 - [x] 命令可运行并生成 CSV / Markdown
-- [x] 当前 selected candidate 出现在报告中
+- [x] 当时旧 `qfq_current` 主候选 / 当前兼容基线出现在报告中
 - [x] 所有 compare 候选都有风险等级
 - [x] 报告展示每个候选的主要风险原因
 - [x] 对 OOS 折数不足、负收益折、最差 fold 超阈值、高换手、高成本敏感性给出明确标记
 - [x] 不破坏 `phase0 run`
-- [x] 不改变 selected candidate
+- [x] 不改变当时旧 `qfq_current` 主候选的历史归档结论
 - [x] 不把过拟合分数当成交易信号
 
 ### W2.13.9 后续集成规则
 
 - [ ] `execution-gate` 后续读取 overfit report，作为附加治理结论
-- [ ] `brief watchlist` 后续展示 selected candidate 的 overfit risk 摘要
-- [ ] `overfit_risk_level = high / critical` 时，不允许新策略直接进入观察池长期试用
+- [ ] `brief watchlist` 后续展示当前兼容基线或未来新 candidate 的 overfit risk 摘要
+- [ ] `overfit_risk_level = high / critical` 时，不允许新策略直接作为准入候选进入观察池长期试用
 - [ ] 新增策略进入 compare 前，必须保存完整候选结果，避免只记录 winner
 
 ## W2.14 A 股历史 as-of 前复权与复权因子治理（T1.4）
@@ -1374,41 +1374,60 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.26.2 输入产物
 
-- [ ] `strategy_admission_candidate_folds.csv`
-- [ ] `strategy_admission_window_matrix.csv`
-- [ ] `strategy_admission_constraint_review.csv`
-- [ ] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
-- [ ] 当前 T2.7 双 preset 报告目录：`reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`
+- [x] `strategy_admission_candidate_folds.csv`
+- [x] `strategy_admission_window_matrix.csv`
+- [x] `strategy_admission_constraint_review.csv`
+- [x] `overfit_diagnostic/strategy_overfit_diagnostic.csv`
+- [x] 当前 T2.7 双 preset 报告目录：`reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`
 
 ## W2.26.3 开发任务
 
-- [ ] 新增只读失败归因模块，输入已有报告 CSV，不重新回测
-- [ ] 复用 admission gate 阈值，避免 T2.9 自定义另一套准入标准
-- [ ] 输出 `strategy_failure_attribution.csv`
-- [ ] 输出 `strategy_failure_attribution.md`
-- [ ] 每个 `strategy_id + preset` 输出归因标签、严重度、证据和建议动作
-- [ ] 为策略级结论输出自然语言摘要，说明应继续优化、重构、降级 research-only 还是当前 spec reject
+- [x] 新增只读失败归因模块，输入已有报告 CSV，不重新回测
+- [x] 复用 admission gate 阈值，避免 T2.9 自定义另一套准入标准
+- [x] 输出 `strategy_failure_attribution.csv`
+- [x] 输出 `strategy_failure_attribution.md`
+- [x] 每个 `strategy_id + preset` 输出归因标签、严重度、证据和建议动作
+- [x] 为策略级结论输出自然语言摘要，说明应继续优化、重构、降级 research-only 还是当前 spec reject
 
 ## W2.26.4 V1 归因标签
 
-- [ ] `return_failure`：收益、Sharpe、回撤或正收益折比例不达标
-- [ ] `execution_failure`：换手、交易次数、持仓数或账户执行成本暴露异常
-- [ ] `construction_failure`：行业集中、持仓过少、股票池过窄或组合构造暴露失衡
-- [ ] `factor_failure`：财务 PIT / 字段覆盖可用，但质量暴露没有转化为收益
-- [ ] `parameter_failure`：不同折参数选择频繁变化
-- [ ] `regime_failure`：最后一折显著拉高或不同市场阶段表现断裂
-- [ ] `data_failure`：价格口径、财务诊断、行业诊断或必要诊断缺失
+- [x] `return_failure`：收益、Sharpe、回撤或正收益折比例不达标
+- [x] `execution_failure`：换手、交易次数、持仓数或账户执行成本暴露异常
+- [x] `construction_failure`：行业集中、持仓过少、股票池过窄或组合构造暴露失衡
+- [x] `factor_failure`：财务 PIT / 字段覆盖可用，但质量暴露没有转化为收益
+- [x] `parameter_failure`：不同折参数选择频繁变化
+- [x] `regime_failure`：最后一折显著拉高或不同市场阶段表现断裂
+- [x] `data_failure`：价格口径、财务诊断、行业诊断或必要诊断缺失
 
 ## W2.26.5 验收标准
 
-- [ ] 能解释 `quality_low_turnover_monthly_v1` 不是单纯因为最后一折转好而失败
-- [ ] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
-- [ ] 报告能给出下一轮研发建议，而不是只重复 admission 的 pass/fail
-- [ ] 不新增回测耗时，不修改已有 admission 产物
+- [x] 能解释 `quality_low_turnover_monthly_v1` 不是单纯因为最后一折转好而失败
+- [x] 能区分收益不达标、参数不稳、行业集中、构造失效和 regime 依赖
+- [x] 报告能给出下一轮研发建议，而不是只重复 admission 的 pass/fail
+- [x] 不新增回测耗时，不修改已有 admission 产物
 
 ## W2.26.6 不做
 
-- [ ] 不自动调参
-- [ ] 不自动重写策略权重
-- [ ] 不直接生成交易信号
-- [ ] 不在 V1 中做复杂 SHAP / ML explainability
+- [x] 不自动调参
+- [x] 不自动重写策略权重
+- [x] 不直接生成交易信号
+- [x] 不在 V1 中做复杂 SHAP / ML explainability
+
+# W2.27｜规则型 sleeve 组合 V1（T2.10.1）
+
+参考专项任务：[`docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)
+
+## W2.27.1 范围
+
+- [x] 新增 `sleeve_composite_v1` 作为 research-only / compare / admission 候选
+- [x] 将 `legacy_momentum_low_turnover_v1` 的动量口径降级为 low-turnover momentum sleeve 输入
+- [x] 新增 defensive quality sleeve 分数
+- [x] 新增 risk overlay sleeve 分数
+- [x] 输出 `defensive_quality_score`、`low_turnover_momentum_score`、`risk_overlay_score`、`final_score` 和降级原因字段
+
+## W2.27.2 不做
+
+- [x] 不做二阶段 ML rerank
+- [x] 不新增 sklearn / xgboost 依赖
+- [x] 不接入模拟账户或 `07:30` 正式输出
+- [x] 不把组合分数直接解释为交易信号

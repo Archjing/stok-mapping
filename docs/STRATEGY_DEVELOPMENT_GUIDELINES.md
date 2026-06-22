@@ -203,6 +203,71 @@ walk-forward 分折账本不等于连续复利资金曲线。
 - `reports/phase0_effectiveness_report.md`
 - `reports/phase0_strategy_change_log.md`
 
+每次策略治理运行 `compare` 或 `strategy-admission` 后，如果代码验证、测试和 smoke check 没有阻塞问题，必须额外生成一份当次治理报告，不能只留下 CSV 或控制台输出。报告必须放入 `reports/strategy_governance/YYYY-MM-DD/` 或本次 admission 输出目录，文件名建议：
+
+```text
+strategy_governance_report_YYYY-MM-DD_<short_context>.md
+```
+
+报告至少包含：
+
+1. 报告日期和生成时间；
+2. 本次回测 / admission 背景：为什么跑、对应任务编号、变更范围、是否为新策略 / 参数复核 / 口径复核；
+3. 运行命令和关键配置：price mode、universe 口径、walk-forward preset、strategy set、成本参数、数据截止日期；
+4. 输入产物和输出产物路径；
+5. 代码验证结果：测试命令、smoke check、`git diff --check` 或等价检查；
+6. compare/admission 摘要：候选列表、selected candidate、窗口通过数、主要指标、准入 action；
+7. 失败或降级原因：收益、换手、参数稳定性、行业集中、因子诊断、价格口径、过拟合、数据质量；
+8. 结论边界：是否允许进入下一轮研究、是否允许 paper review、是否禁止进入模拟账户 / 日报；
+9. 下一步动作：继续优化、重构、降级 research-only、reject 或补数据 / 补诊断。
+
+模板：
+
+```markdown
+# Strategy Governance Report - YYYY-MM-DD - <context>
+
+## Background
+- Task:
+- Reason:
+- Code changes under validation:
+- Backtest/admission scope:
+
+## Run Context
+- Command:
+- Price mode:
+- Universe:
+- Presets:
+- Strategy set / strategies:
+- Cost assumptions:
+- Data as-of:
+
+## Code Verification
+- Tests:
+- Smoke checks:
+- Static checks:
+- Known warnings:
+
+## Results
+- Selected candidate:
+- Overall verdict / admission action:
+- Key metrics:
+- Candidate comparison:
+
+## Diagnostics
+- Return:
+- Execution / turnover:
+- Construction / industry:
+- Factor / PIT:
+- Parameter stability:
+- Regime / overfit:
+- Data quality:
+
+## Decision
+- Decision:
+- Boundary:
+- Next action:
+```
+
 如果是当前主候选，还应尽量补：
 
 - 账单导出；
@@ -269,7 +334,7 @@ walk-forward 分折账本不等于连续复利资金曲线。
 
 ## 5. 当前推荐执行顺序
 
-对于已经通过 Phase 0 的主候选，默认按这个顺序继续开发：
+对于未来通过 Phase 0 严格门禁的主候选，默认按这个顺序继续开发；当前无已通过候选：
 
 1. 固化账单、OOS、报表输出；
 2. 补账户级执行现实性；

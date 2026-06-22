@@ -57,30 +57,30 @@
 
 ### 当前选中候选与门槛状态
 
-根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-31 18:59:23，主测试 `slippage = 0.00246`）：
+根据 `reports/phase0_effectiveness_report.md`（生成时间：2026-05-31 18:59:23，主测试 `slippage = 0.00246`）及后续严格 `qfq_asof` 复核：
 
-- 当前 selected candidate：`legacy_momentum_low_turnover_v1`
-- 当前总 verdict：`PASS`
-- 样本治理状态：`selected_candidate_eligible = True`
+- 当前 selected candidate：无
+- 当前总 verdict：Phase 0 工程链路可用，但严格策略门禁未通过
+- 样本治理状态：旧 `qfq_current` 口径下曾出现 `selected_candidate_eligible = True`，现仅保留为历史兼容参考
 - 样本覆盖：`4` 个 portfolio fold
-- 关键变化：低换手改造后，Sharpe、回撤、胜率和样本外衰减全部过线
+- 关键变化：旧 `qfq_current` 口径下低换手改造曾全部过线；经严格 `qfq_asof` 复核后，`legacy_momentum_low_turnover_v1` 已降级为兼容基线与研究样本
 
 当前 gate 结果：
 
 | 指标 | 当前值 | 门槛 | 状态 |
 |------|--------|------|------|
-| `selected_candidate_eligible` | `True` | `True` | PASS |
-| `annualized_return_mean` | `0.1331` | `> 0` | PASS |
-| `sharpe_mean` | `1.0083` | `> 0.5` | PASS |
-| `max_drawdown_mean` | `-0.1042` | `> -0.25` | PASS |
-| `win_rate_mean` | `0.5110` | `> 0.45` | PASS |
-| `oos_return_decay_ratio` | `-2.4116` | `< 0.30` | PASS |
+| `selected_candidate_eligible` | 旧 `qfq_current` 为 `True`；当前严格口径不适用 | `True` | 历史兼容参考 |
+| `annualized_return_mean` | `0.1331`（旧 `qfq_current`） | `> 0` | 历史兼容参考 |
+| `sharpe_mean` | `1.0083`（旧 `qfq_current`） | `> 0.5` | 历史兼容参考 |
+| `max_drawdown_mean` | `-0.1042`（旧 `qfq_current`） | `> -0.25` | 历史兼容参考 |
+| `win_rate_mean` | `0.5110`（旧 `qfq_current`） | `> 0.45` | 历史兼容参考 |
+| `oos_return_decay_ratio` | `-2.4116`（旧 `qfq_current`） | `< 0.30` | 历史兼容参考 |
 
 解释：
 
 - 所有候选已统一为 `portfolio` 口径，避免 symbol-scope 与 portfolio-scope 混排。
 - 回测窗口已扩大到 7 年，使 portfolio 候选均达到 `4` 个 fold 的最低治理门槛。
-- `legacy_momentum_low_turnover_v1` 已替代旧 `legacy_momentum` 成为当前主候选。
+- `legacy_momentum_low_turnover_v1` 曾在旧 `qfq_current` 口径下替代旧 `legacy_momentum` 成为主候选；经严格 `qfq_asof` 复核后已降级为兼容基线。
 - 低换手、宽持有区间、较慢调仓与换手惩罚显著降低了年化换手：`13.48 -> 1.50`。
 - 在 `base_research_cost`、`main_personal_execution`、`stress_slippage_0_003`、`stress_slippage_0_005` 等场景下，低换手候选仍是主要有效候选；但成本敏感性属于单独验证路径，不再混入每次主测试。
 
@@ -111,9 +111,9 @@
 - 因为策略已通过 effectiveness gate 就跳过过拟合诊断、参数稳定性和收益集中度检查
 - 在未完成 `T1.4` 审计前，把当前全历史前复权 `qfq_current` 结果解释为严格 point-in-time 价格结果
 
-### 通过后四步执行顺序
+### 严格门禁通过后的执行顺序
 
-这是当前 Phase 0 通过后的正式开发顺序，后续任务默认按这条线推进：
+这是待 Phase 0 严格门禁通过后的条件性开发顺序；在出现新的合格 candidate 之前，不预设当前已通过：
 
 | 优先级 | 任务 | 现在做它的理由 | 完成标准 |
 |------|------|------|------|
@@ -123,14 +123,14 @@
 | `P1` | 区分策略研究与实盘仿真 profile | 同一策略在研究口径和接近实盘口径下参数不同，混用会导致报告不可比较。 | 已完成。`execution-gate` 与 `oos-report` 支持 `--profile research/live`，并从 `config.yaml` 读取参数组合。 |
 | `P1` | 统一 HTML 报表展示规范 | 报表需要适合人工复核，长表和宽表必须可读、可滚动、可定位生成时间。 | 已完成。所有现有 HTML 与生成脚本已补生成时间、横纵滚动和固定表头。 |
 | `P1` | 完成财务因子公告日 point-in-time 校验方案 | 后续质量成长、多因子扩展都依赖财务字段，必须先封住未来函数争议。 | 已完成。`reports/phase0_financial_pti_report.html` 当前结论为 `PASS`。 |
-| `P1` | 将当前 selected strategy 接入 `07:30` 盘前日报 / 观察池输出 | 策略通过后，需要进入日常使用链路，而不是只停留在回测报告。 | 已完成。`brief daily` / `brief watchlist` 输出候选、权重、理由、模拟账户快照和 HTML 报告。 |
+| `P1` | 将未来通过严格门禁的 candidate 接入 `07:30` 盘前日报 / 观察池输出 | 只有在严格 `qfq_asof` 门禁通过后，候选才应进入日常使用链路，而不是只停留在回测报告。 | 当前无 selected candidate；现有 `brief daily` / `brief watchlist` 仅保留旧 `qfq_current` 兼容基线输出能力，待未来重新产生合格 candidate 后再切入正式日常链路。 |
 | `P1` | 策略过拟合诊断工具 MVP | gate 通过只能说明当前指标达标，不能说明参数、样本、成本和收益来源稳定。必须把过拟合风险作为策略准入治理项。 | MVP 已完成。`phase0.cli overfit-diagnostic` 可基于现有 walk-forward 产物输出 CSV 和 Markdown 诊断报告；HTML 和流程集成待做。 |
 | `P1` | A 股历史 as-of 前复权与复权因子治理 | 当前默认 `qfq_current` 价格可能使用全历史复权因子，需确认价格特征是否受到未来分红送转信息污染。 | 因子治理 MVP 已完成。当前库有 `bfq/qfq/market_adj_factors`，审计为 `PASS`；2026-06-04 已执行 Tushare 历史补全，`market_adj_factors` 覆盖 2016-01-04 到 2026-06-04，`market_daily_basic` 覆盖 2016-01-04 到 2026-06-03。 |
 
 补充约束：
 
 - 在上述四步完成前，不把 residual / multifactor 等备选策略重新拉回主线。
-- `FRED` / `Tiingo` 数据源升级继续保留，但优先级低于当前通过策略的收口工作。
+- `FRED` / `Tiingo` 数据源升级继续保留，但优先级低于当前策略重建与准入治理工作。
 - 新闻源扩展作为 `T1.3` 独立任务，不归入 Tiingo EOD 接入；后续重点转为公告、研报、新闻、政策和快讯的统一文本事件数据层，不直接生成交易信号。
 
 ---
@@ -692,12 +692,12 @@ Phase 0 已完成基础闭环验证：
 
 - 数据链路、股票池、策略注册表、compare、walk-forward、effectiveness gate 和报告输出均可运行。
 - 候选样本治理已固化：低样本组合候选不会再因 raw score 高而直接晋级。
-- 当前 selected candidate 为 `legacy_momentum_low_turnover_v1`，样本治理通过。
-- 当前总 verdict 为 `PASS`，因此 Phase 0 结论是 **基础设施完成、主策略通过、可进入下一阶段收口**。
+- 严格 `qfq_asof` 复核与最新全候选 compare 后，当前无可用于实盘模拟的合格 candidate，也没有 selected candidate。
+- Phase 0 当前结论应解释为 **基础设施完成、工程链路可用，但策略门禁未通过，不能据此进入实盘模拟**。
 
-#### 当前通过结果
+#### 当前兼容参考结果
 
-最新 gate 中：
+旧 `qfq_current` 兼容口径 gate 中：
 
 - `legacy_momentum_low_turnover_v1`：`annualized_return_mean = 0.1331`
 - `legacy_momentum_low_turnover_v1`：`sharpe_mean = 1.0083`
@@ -706,7 +706,7 @@ Phase 0 已完成基础闭环验证：
 - `legacy_momentum_low_turnover_v1`：`turnover_annual_mean = 1.50`
 - 主测试成本口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
 
-因此当前真实缺口变为：
+这些结果只能作为兼容参考和研究基线，不能作为当前准入结论。当前真实缺口变为：
 
 1. 把账单导出从独立脚本进一步沉淀为标准 CLI / report 链路。
 2. 在账户仿真层补齐 A 股整手成交、现金约束和更贴近实盘的执行假设。
@@ -714,14 +714,14 @@ Phase 0 已完成基础闭环验证：
 
 #### 当前核心任务
 
-1. 保留 `legacy_momentum_low_turnover_v1` 作为当前正式 portfolio baseline。
+1. 保留 `legacy_momentum_low_turnover_v1` 作为兼容 baseline 与研究样本，而非实盘模拟合格候选。
 2. 将账单导出、资产日表、HTML 预览和买卖原因说明纳入标准研究产物。
 3. 为 Phase 1 的盘前研判和模拟交易补齐账户级执行约束。
-4. 在变更日志和主计划中沉淀本轮晋级结论。
+4. 在变更日志和主计划中沉淀本轮 `qfq_asof` 复核与降级结论 / 候选重建结论。
 
 #### 当前候选方向
 
-- `legacy_momentum_low_turnover_v1`：当前主候选与正式 baseline
+- `legacy_momentum_low_turnover_v1`：当前兼容 baseline 与动量 sleeve 研究样本，不是已通过严格门禁的主候选
 - `legacy_momentum`：保留为旧 baseline，用于衡量低换手改造收益
 - residual / multifactor / quality-growth：保留为后续备选，不再占据当前主线
 
@@ -909,8 +909,8 @@ stok-mapping/
 |--------|---------|------|
 | 产品定位 | 量化研究与风险提示工具 | 避免误导为自动交易系统 |
 | 当前主线 | 本土因子主导，跨市场 overlay | 回测与文献共同支持 |
-| 当前领先候选 | `legacy_momentum_low_turnover_v1` | 当前 Phase 0 selected candidate，effectiveness gate 已通过 |
-| 当前 baseline | `legacy_momentum_low_turnover_v1` | 低换手 portfolio baseline，便于后续模拟账单和账户仿真 |
+| 当前领先候选 | 无 | 严格 `qfq_asof` 复核后当前没有 selected candidate |
+| 当前 baseline | `legacy_momentum_low_turnover_v1` | 兼容 baseline 与研究样本，不代表已通过实盘模拟门禁 |
 | 跨市场映射 | 仅做 overlay | 直接做 ranker 效果弱 |
 | 国内股票主源 | Tushare | 已正式采纳 |
 | 国内 fallback 基座 | 本地 SQLite / AkShare / 新浪 | 最稳、可控、可补位 |
@@ -921,7 +921,7 @@ stok-mapping/
 | yfinance | 仅 fallback | 保留低摩擦备用价值 |
 | 财务因子 | 已接入，但历史回测前需 PTI 校验 | 防未来函数 |
 | LLM | 仅研究辅助，不直接产出交易信号 | 保持可解释和可控 |
-| 当前优先事项 | 完成策略收口、账户仿真约束与 PTI 校验 | 当前 gate 已通过，下一步是把策略变成稳定的研究与模拟产物 |
+| 当前优先事项 | 重建有效策略、完善准入治理与执行约束 | 工程链路可用，但当前策略门禁未通过，不能把旧结果解释为可用模拟产物 |
 
 ---
 
@@ -1093,7 +1093,8 @@ stok-mapping/
 - [x] 将 admission 默认价格口径收敛到 `qfq_asof`，非 `qfq_asof` 作为准入阻断原因；完整双口径矩阵仍列为后续任务
 - [x] 使用 T2.7 复测 `baseline_2y_1y_5fold` + `quality_3y_1y_4fold`，验证报告能区分折数不足、参数不稳定、收益不达标和组合构造失败
   - 2026-06-10 复测 `quality_low_turnover_monthly_v1`：报告目录 `reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`，双 preset 均未通过准入，最终 action 为 `reject`；最后一折拉高已纳入 overfit 诊断，作为行情阶段依赖风险而非单独否定证据。
-- [ ] 实现 `T2.9` 策略失败归因诊断模块 V1：读取已有 admission / overfit / window matrix / fold 明细产物，不重新回测，把 `reject` / `retest` / `research_only` 拆解为收益、执行、组合构造、因子、参数、regime 和数据质量归因
+- [x] 实现 `T2.9` 策略失败归因诊断模块 V1：读取已有 admission / overfit / window matrix / fold 明细产物，不重新回测，把 `reject` / `retest` / `research_only` 拆解为收益、执行、组合构造、因子、参数、regime 和数据质量归因
+- [x] 实现 `T2.10.1` 规则型 sleeve 组合 V1：新增 `sleeve_composite_v1`，按 `0.55/0.25/0.20` 输出 defensive quality、low-turnover momentum、risk overlay 和 `final_score`；仅作为 research-only / compare / admission 候选，不进入模拟账户或日报主线
 - [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [ ] 后续运行全候选策略池 `qfq_current` / `qfq_asof` 双口径对照回测
 - [ ] 精修映射标的池与行业层分析，服务调仓建议和观察池筛选
