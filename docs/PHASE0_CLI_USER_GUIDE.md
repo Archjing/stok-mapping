@@ -4,6 +4,8 @@
 默认配置文件：`config.yaml`。  
 说明口径：以 [phase0/cli.py](/home/zj/workspace/stok-mapping/phase0/cli.py) 实际参数为准。
 
+项目根目录快捷入口：`./runit`。它等价于 `./.venv/bin/python -m phase0.cli`。
+
 ---
 
 ## 1. 快速开始
@@ -18,6 +20,7 @@ uv sync
 
 ```bash
 ./.venv/bin/python -m phase0.cli -h
+./runit -h
 ```
 
 最常用的三个命令：

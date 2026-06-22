@@ -664,7 +664,62 @@ def run_daily_brief_pipeline(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run Phase 0 pipeline")
+    top_level_groups = {
+        "Data Import & Update": [
+            "backfill-adjustment-factors",
+            "backfill-daily-basic",
+            "backfill-tushare-financials",
+            "backfill-tushare-history",
+            "build-universe",
+            "import-history",
+            "import-index-history",
+            "update-financials",
+            "update-hk-market-history",
+            "update-history",
+            "update-us-market-history",
+        ],
+        "Delivery & Reports": [
+            "bill",
+            "brief",
+            "daily-brief",
+            "market-regime",
+            "oos-report",
+            "premarket",
+        ],
+        "Governance & Research": [
+            "adjustment-audit",
+            "cost-sensitivity",
+            "db-health",
+            "execution-gate",
+            "factor-effectiveness",
+            "financial-pti",
+            "intelligence",
+            "overfit-diagnostic",
+            "run",
+            "strategy-admission",
+            "strategy-failure-attribution",
+            "universe-pti",
+        ],
+        "Operations": [
+            "maintain",
+        ],
+    }
+    grouped_help_lines = ["Top-level command index by category:"]
+    for group_name in sorted(top_level_groups):
+        grouped_help_lines.append(f"  {group_name}:")
+        grouped_help_lines.extend([f"    - {name}" for name in sorted(top_level_groups[group_name])])
+    parser = argparse.ArgumentParser(
+        description="Run Phase 0 pipeline",
+        formatter_class=argparse.RawTextHelpFormatter,
+        epilog=(
+            "\n".join(grouped_help_lines)
+            + "\n\n"
+            "Nested command groups:\n"
+            "  brief: daily, daily-brief, watchlist, premarket, account-bill\n"
+            "  intelligence: collect, import-local, validate\n"
+            "  maintain: run, resume, status, stop, supervise, tick\n"
+        ),
+    )
     sub = parser.add_subparsers(dest="cmd")
     run_parser = sub.add_parser("run", help="Run phase0 pipeline")
     run_parser.add_argument("--config", default="config.yaml", help="Path to config file")

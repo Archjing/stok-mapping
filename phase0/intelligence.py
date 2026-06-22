@@ -601,7 +601,7 @@ def collect_intelligence(
 def _read_ledger(path: Path) -> list[dict[str, str]]:
     if not path.exists():
         raise FileNotFoundError(str(path))
-    with path.open(newline="", encoding="utf-8") as f:
+    with path.open(newline="", encoding="utf-8-sig") as f:
         return [dict(row) for row in csv.DictReader(f)]
 
 
@@ -619,7 +619,7 @@ def validate_intelligence_ledger(
         intel_cfg=intel_cfg,
         override=ledger,
         config_key="ledger",
-        fallback="refdocs/intelligence/strategy_intelligence_ledger.csv",
+        fallback="knowledge/intelligence/strategy_intelligence_ledger.csv",
     )
     report = _configured_path(
         root=root,

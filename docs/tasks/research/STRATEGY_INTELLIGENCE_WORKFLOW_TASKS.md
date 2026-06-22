@@ -34,11 +34,14 @@
 
 | 产物 | 路径 | 状态 |
 | --- | --- | --- |
-| 情报库说明 | `refdocs/intelligence/README.md` | 已创建 |
-| 情报总台账 | `refdocs/intelligence/strategy_intelligence_ledger.csv` | 已创建 |
-| 情报解读模板 | `refdocs/intelligence/templates/intelligence_note_template.md` | 已创建 |
-| 情报转策略模板 | `refdocs/intelligence/templates/strategy_translation_template.md` | 已创建 |
+| 情报库说明 | `knowledge/intelligence/README.md` | 已创建 |
+| 情报总台账 | `knowledge/intelligence/strategy_intelligence_ledger.csv` | 已创建 |
+| 情报解读模板 | `knowledge/intelligence/templates/intelligence_note_template.md` | 已创建 |
+| 情报转策略模板 | `knowledge/intelligence/templates/strategy_translation_template.md` | 已创建 |
 | 自动采集器 V1 | `phase0.cli intelligence` / `phase0/intelligence.py` | 已创建 |
+| RAG-ready 语料规范 | `knowledge/intelligence/rag_corpus_spec.md` | 已创建 |
+| RAG manifest | `knowledge/intelligence/rag_manifest.csv` | 已创建 |
+| 月度扫描索引 | `knowledge/intelligence/monthly/index.md` | 已创建 |
 
 ## T5.2.4 情报来源范围
 
@@ -171,7 +174,7 @@ external_required
 
 ## T5.2.10 后续任务
 
-- [x] 创建 `refdocs/intelligence/` 情报库目录
+- [x] 创建项目内部情报知识库目录 `knowledge/intelligence/`
 - [x] 创建情报总台账 CSV
 - [x] 创建情报解读模板
 - [x] 创建情报转候选策略模板
@@ -179,12 +182,13 @@ external_required
 - [x] 新增自动采集器 V1：搜索/抓取元数据/导入候选情报
 - [x] 新增情报台账校验命令
 - [x] 默认只启用本地论文目录扫描，在线源以配置方式预留但关闭
-- [ ] 为 `INT-CN-007` 生成完整情报解读 note
-- [ ] 为 `INT-CN-005` 生成完整情报解读 note
-- [ ] 为 `INT-CN-008` 生成完整情报解读 note
-- [ ] 建立 `Strategy Intelligence Monthly Scan`：每月搜集近 30 天发表/发布的量化策略情报，并输出月度扫描报告
-- [ ] 建立情报台账的定期维护流程：新增、复评、归档、淘汰
-- [ ] 将通过门禁的情报转入 `docs/STRATEGY_DEV_CHECKLIST.md` 风格的候选策略任务单
+- [x] 为 `INT-CN-007` 生成完整情报解读 note：`knowledge/intelligence/notes/INT-CN-007_lasso_pricing_factors_china.md`
+- [x] 为 `INT-CN-005` 生成完整情报解读 note：`knowledge/intelligence/notes/INT-CN-005_ml_asset_characteristics_portfolio.md`
+- [x] 为 `INT-CN-008` 生成完整情报解读 note：`knowledge/intelligence/notes/INT-CN-008_analyst_text_quant_strategy.md`
+- [x] 建立 `Strategy Intelligence Monthly Scan`：每月搜集近 30 天发表/发布的量化策略情报，并输出月度扫描报告
+- [x] 建立情报台账的定期维护流程：新增、复评、归档、淘汰，当前规则见 `knowledge/intelligence/monthly/README.md`
+- [x] 将通过门禁的情报转入候选策略/诊断任务草案，当前样例为 `knowledge/intelligence/strategy_translations/INT-CN-007_factor_effectiveness_strategy_task.md`
+- [x] 建立 RAG-ready Markdown / CSV 语料边界：`knowledge/intelligence/rag_corpus_spec.md` 与 `knowledge/intelligence/rag_manifest.csv`
 - [ ] 后续评估是否需要 SQLite / 知识图谱 / 双链同步
 
 ## T5.2.11 验收标准
@@ -197,9 +201,18 @@ external_required
 - [x] `phase0.cli intelligence import-local` 可把本地资料导入候选 CSV
 - [x] `phase0.cli intelligence collect` 可按配置采集候选 CSV
 - [x] `phase0.cli intelligence validate` 可校验正式台账
-- [ ] 至少 3 条核心情报完成完整 Markdown 解读 note
-- [ ] 至少 1 条情报完成“转候选策略任务”模板填充
+- [x] 至少 3 条核心情报完成完整 Markdown 解读 note
+- [x] 至少 1 条情报完成“转候选策略任务”模板填充
 - [x] 至少 1 次近 30 天月度策略情报扫描完成归档，并对高价值情报给出策略假设、数据需求和风险判断
+
+## T5.2.11.1 RAG-ready 验收补充
+
+- [x] RAG 语料规范明确 Source / Ledger / Note / Translation / Monthly / Wiki 层级。
+- [x] RAG manifest 记录当前可索引语料、信任等级、来源路径、标签和关联任务。
+- [x] 核心 note 明确数据可用性、偏差风险、策略转化判断和下一步。
+- [x] 月度扫描有 `README.md` 和 `index.md`，可持续追加新月扫。
+- [x] wiki ingest log 记录本次 RAG-ready foundation 的来源范围和边界。
+- [x] 文档明确 RAG 不直接生成交易信号、不绕过 PIT、回测、过拟合诊断和 strategy-admission。
 
 ## T5.2.12 自动采集器 V1
 
@@ -218,7 +231,7 @@ external_required
 - 本地导入报告：`reports/intelligence/intelligence_import_local_report_YYYY-MM-DD.md`
 - 台账校验报告：`reports/intelligence/intelligence_validate_report_YYYY-MM-DD.md`
 
-候选 CSV 不是正式台账。人工筛选、评分、补充偏差风险后，才可并入 `refdocs/intelligence/strategy_intelligence_ledger.csv`。
+候选 CSV 不是正式台账。人工筛选、评分、补充偏差风险后，才可并入 `knowledge/intelligence/strategy_intelligence_ledger.csv`。
 
 ### T5.2.12.3 边界
 
@@ -245,7 +258,7 @@ external_required
 
 ### T5.2.13.3 输出
 
-- 月度扫描报告：`refdocs/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`
+- 月度扫描报告：`knowledge/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`
 - 候选情报清单：可先进入 `data/intelligence/inbox/`，人工筛选后再写入正式台账。
 - 对每条高价值情报至少记录：
   - 发布时间
@@ -259,7 +272,7 @@ external_required
 
 ### T5.2.13.4 验收标准
 
-- [x] 报告明确扫描窗口，例如 `2026-05-09` 到 `2026-06-09`。
+- [x] 报告明确扫描窗口，例如本次 A 股专项扫描为 `2026-05-11` 到 `2026-06-10`。
 - [x] 每条入选情报都有来源链接、发布时间和项目内用途判断。
 - [x] 至少筛出 3 条可转化为策略假设或数据建设任务的高价值情报。
 - [x] 不把新闻、博客或营销材料直接当作策略有效性证据。

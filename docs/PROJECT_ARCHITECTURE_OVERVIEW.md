@@ -399,7 +399,7 @@ Tushare 财务历史回填当前状态：
 核心资料：
 
 - `refdocs/papers/`
-- `refdocs/intelligence/strategy_intelligence_ledger.csv`
+- `knowledge/intelligence/strategy_intelligence_ledger.csv`
 - `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
 
 职责：

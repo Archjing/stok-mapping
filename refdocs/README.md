@@ -24,7 +24,7 @@
 
 ## 研究资料与归档
 
-- [投资策略情报库](./intelligence/README.md)
+- [项目内部投资策略情报知识库](../knowledge/intelligence/README.md)
 - [中文 A 股量化投资策略参考文献](./papers/cn/cn_INDEX.md)
 - [英文量化投资策略参考文献](./papers/en/INDEX.md)
 - [Berkshire Hathaway 年会字幕经济知识提炼与当下宏观理解](./berkshire_hathaway_economic_knowledge_note_2026-06-05.md)

@@ -101,7 +101,7 @@
 - [x] 原 baseline 已落地并证明 MA/K 线 current-cost 表现弱
 - [x] residual v2 可复用现有实现，但成本敏感性偏高
 - [x] multifactor v1 已进入 compare，但 current-cost 下仍不胜出
-- [x] 当前不再优先加因子复杂度，先完成低换手策略收口与执行约束
+- [x] 当前不再优先加因子复杂度，先完成低换手策略收口、执行诊断与账户约束
 
 ## W1.0.7 Day 1 - Day 7 节奏
 
@@ -1183,6 +1183,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [ ] 不把网页抓取结果绕过标准化直接接入策略因子
 - [ ] 不让 LLM 直接对文本事件生成买卖评分
+- [x] 不在没有 as-of 口径和覆盖率诊断前做文本因子回测
 
 # W2.20｜Tushare 财务回填目标外任务清理 / 重分类
 
@@ -1194,11 +1195,20 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.20.2 目标
 
-- [ ] 盘点 `tushare_financial_backfill_tasks` 中所有目标外 period，区分季度末、非季度末和误生成 period
-- [ ] 明确目标外任务处置策略：保留重试、标记 skipped、归档迁移或删除重建
-- [ ] 不影响 2016Q1-2018Q1 已验收任务状态和审计报告
+- [x] 本地盘点 `tushare_financial_backfill_tasks` 中所有目标外 period，区分季度末、非季度末和误生成 period
+- [x] 明确目标外任务处置策略：保留重试、标记 skipped、归档迁移或删除重建
+- [x] 不影响 2016Q1-2018Q1 已验收任务状态和审计报告
 - [ ] 调整 `db-health` 对财务回填任务队列的检查口径，避免目标外历史任务阻塞 `scope all`
 - [ ] 输出清理前后任务状态审计报告
+
+2026-06-23 审核记录：
+
+- `tushare_financial_backfill_tasks` 当前全表状态：`fetched=26477`、`empty=8803`、`failed=3850`、`pending=3036`。
+- T1.5 原始目标季度末 `2016-03-31` 至 `2018-03-31` 均已确认 `pending=0`、`failed=0`，不需要重开 T1.5。
+- 主要误生成 / 非季度末 period 为 `2017-07-01`、`2017-08-01`、`2017-09-01`、`2017-10-01`、`2017-11-01`；其中 failed 任务集中在 `2017-07-01/2017-08-01/2017-09-01`，pending 任务集中在 `2017-09-01/2017-10-01/2017-11-01`。
+- 少量目标外季度末 pending 仅为每期 `1` 个左右，例如 `2018-06-30`、`2018-12-31`、`2019-12-31`、`2020-03-31`、`2021-03-31`、`2021-09-30`、`2022-06-30`、`2023-03-31`、`2025-12-31`。
+- 处置策略：误生成非季度末任务应重分类为 skipped / archived 或迁移到清理审计表；少量合法季度末 pending 不应删除，应保留给后续 backfill 或字段缺失补录模式处理。
+- W2.20 仍有必要保留：2026-06-23 `db-health` 仍报告 `financial.backfill_tasks.failed=3850`、`financial.backfill_tasks.pending=3036`，说明本地盘点已完成，但检查口径调整和可追溯清理报告尚未完成。
 
 ## W2.20.3 验收标准
 
@@ -1206,7 +1216,6 @@ python -m phase0.cli backfill-tushare-financials \
 - [ ] 保留需要继续补录的合法任务，且能被后续 backfill / 字段缺失补录模式继续选择
 - [ ] 清理动作可追溯，报告记录 period、status、task_count、处置方式和原因
 - [ ] 若采用重分类而非删除，任务表状态语义需补充到项目文档
-- [ ] 不在没有 as-of 口径和覆盖率诊断前做文本因子回测
 
 # W2.21｜Tushare 财务因子字段缺失补录模式
 
@@ -1246,12 +1255,13 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] 先将 T5.2 计划写入开发计划和周任务清单
 - [x] 新建 `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
-- [x] 新建 `refdocs/intelligence/README.md`
-- [x] 新建 `refdocs/intelligence/strategy_intelligence_ledger.csv`
+- [x] 新建 `knowledge/intelligence/README.md`
+- [x] 新建 `knowledge/intelligence/strategy_intelligence_ledger.csv`
 - [x] 新建情报解读模板与情报转候选策略模板
 - [x] 从现有 `refdocs/papers/` 补录首批 20 条情报
-- [ ] 为至少 3 条核心情报生成完整 Markdown 解读 note
-- [ ] 为至少 1 条情报生成候选策略转化任务草案
+- [x] 为至少 3 条核心情报生成完整 Markdown 解读 note
+- [x] 为至少 1 条情报生成候选策略转化任务草案
+- [x] 建立 RAG-ready 语料规范与 manifest，不引入向量库或自动交易信号
 
 ## W2.22.3 边界
 
@@ -1350,19 +1360,22 @@ python -m phase0.cli backfill-tushare-financials \
 ## W2.25.2 范围
 
 - [x] 扫描近 30 天发布的论文、预印本、券商金工、指数公司、交易所/数据源资料和高质量 quant research
-- [x] 输出月度扫描报告：`refdocs/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`
+- [x] 输出月度扫描报告：`knowledge/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`
+- [x] 建立月度扫描索引和运行规约：`knowledge/intelligence/monthly/index.md`、`knowledge/intelligence/monthly/README.md`
 - [x] 对每条高价值情报记录发布时间、来源链接、核心观点、可验证假设、所需数据、实现成本和主要风险
 - [x] 至少筛出 3 条可进入后续复核的策略或数据建设线索
-- [ ] 将通过人工复核的情报补录到 `refdocs/intelligence/strategy_intelligence_ledger.csv`
+- [ ] 将通过人工复核的情报补录到 `knowledge/intelligence/strategy_intelligence_ledger.csv`
 
-2026-06-10 A 股专项扫描完成：报告 `refdocs/intelligence/monthly/strategy_intelligence_scan_2026-06_a_share.md`，候选 CSV `data/intelligence/inbox/a_share_strategy_intelligence_candidates_2026-06-10.csv`。本次仅进入候选 inbox，不自动写入正式台账。
+2026-06-10 A 股专项扫描完成：报告 `knowledge/intelligence/monthly/strategy_intelligence_scan_2026-06_a_share.md`，候选 CSV `data/intelligence/inbox/a_share_strategy_intelligence_candidates_2026-06-10.csv`。本次仅进入候选 inbox，不自动写入正式台账。
+
+2026-06-23 RAG-ready foundation 完成：新增三篇核心情报 note、一个因子冗余诊断转化草案、RAG 语料规范、RAG manifest、月度扫描索引和 wiki ingest log。当前仍不自动入账月扫候选，正式入账必须逐条人工评分和风险复核。
 
 ## W2.25.3 边界
 
-- [ ] 不抓取付费研报全文
-- [ ] 不把营销材料、新闻标题或未验证观点直接作为策略有效性证据
-- [ ] 不自动把候选情报转为交易信号
-- [ ] 不绕过 T5.2 评分、偏差风险和策略转化门禁
+- [x] 不抓取付费研报全文
+- [x] 不把营销材料、新闻标题或未验证观点直接作为策略有效性证据
+- [x] 不自动把候选情报转为交易信号
+- [x] 不绕过 T5.2 评分、偏差风险和策略转化门禁
 
 # W2.26｜策略失败归因诊断模块 V1（T2.9）
 

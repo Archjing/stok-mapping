@@ -246,7 +246,7 @@ phase0:
         - "HK.00700"
         - "HK.09988"
   intelligence:
-    ledger: "refdocs/intelligence/strategy_intelligence_ledger.csv"
+    ledger: "knowledge/intelligence/strategy_intelligence_ledger.csv"
     inbox_dir: "data/intelligence/inbox"
     report_dir: "reports/intelligence"
     sources:
@@ -256,20 +256,20 @@ phase0:
         path: "refdocs/papers"
       - name: "arxiv_quant_finance"
         type: "arxiv"
-        enabled: false
+        enabled: true
         query: "all:quantitative finance stock trading strategy"
       - name: "openalex_quant_strategy"
         type: "openalex"
-        enabled: false
+        enabled: true
         query: "quantitative investment stock strategy"
       - name: "crossref_quant_strategy"
         type: "crossref"
-        enabled: false
+        enabled: true
         query: "quantitative investment stock strategy"
-      - name: "rss_manual"
+      - name: "rss_quantocracy"
         type: "rss"
-        enabled: false
-        url: ""
+        enabled: true
+        url: "https://feeds.feedburner.com/Quantocracy"
   maintenance_orchestrator:
     enabled: true
     state_db: "data/maintenance/maintenance.sqlite"

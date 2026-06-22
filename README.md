@@ -14,11 +14,16 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 核心输出是观察池、风险暴露说明、信号等级、盘前情景推演和候选策略对比结果，不输出自动下单指令。
 
+项目根目录还提供了一个短命令 wrapper：`./runit` 等价于 `./.venv/bin/python -m phase0.cli`。
+
 ## 常用补跑 / 维护命令
 
 下面命令默认在项目根目录执行。涉及外部数据源时需确保 `.env` 中的 token 已配置，且当前环境具备联网能力。
 
 ```bash
+# 项目内快捷入口，等价于 ./.venv/bin/python -m phase0.cli
+./runit --help
+
 # 重跑当前日报主入口：先更新 A 股日线历史库，再生成阶段试用观察池页面
 ./.venv/bin/python -m phase0.cli brief daily
 
@@ -46,8 +51,19 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 # 重建本地因子股票池报告
 ./.venv/bin/python -m phase0.cli build-universe --config config.yaml
 
+# 运行数据库健康检查门禁
+./.venv/bin/python -m phase0.cli db-health --config config.yaml --scope cn --fail-on error
+
 # 运行完整 Phase 0 主流程
 ./.venv/bin/python -m phase0.cli run --config config.yaml
+
+# 运行当前全候选策略准入复核
+./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
+  --presets baseline_2y_1y_5fold \
+  --strategy-set baseline_admission_all_v1
+
+# 校验投资策略情报台账
+./.venv/bin/python -m phase0.cli intelligence validate --config config.yaml
 ```
 
 ## 当前状态
@@ -60,15 +76,17 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
 - 已实现股票池构建、walk-forward 回测、候选策略 compare、effectiveness gate 和报告输出。
 - 策略层已拆分为 `phase0/strategies/` 注册表结构，便于新增候选策略。
-- 已增加开发期统一调度器：交易日 `07:20` 生成阶段试用观察池，`16:20` 更新港股库，`16:30` 更新 A 股库，`17:10` 更新 US market 库，每周一 `03:30` 更新财务因子。
-- 严格 `qfq_asof` + point-in-time 股票池复核后，当前**无可用于实盘模拟的合格策略**，当前**没有 selected candidate**。
+- 已增加开发期统一调度入口：系统 cron 只调用 `scripts/run_project_scheduler.sh`，当前由 `phase0.cli maintain tick` 负责交易日历、运行窗口、重试和状态记录。
+- 严格 `qfq_asof` + point-in-time 股票池 + `strategy-admission` 复核后，当前**无可用于 paper review 或实盘模拟的合格策略**，当前**没有 selected candidate**。
 - `legacy_momentum_low_turnover_v1` 已降级为兼容基线和研究参考样本；旧 `qfq_current` / 旧 gate 结果不能视作当前准入结论。
+- `baseline_admission_all_v1` 配置层已包含 12 个候选；main 上仍需重跑全候选 admission 以纳入 `sleeve_composite_v1`，当前 sleeve 证据来自 scoped admission 且结论为 `reject`。
+- T5.2 投资策略情报工作流已建立 RAG-ready Markdown / CSV 语料基础：核心情报 note、策略转化草案、月度扫描索引、RAG 语料规范和 manifest 已落地；该层现位于 `knowledge/intelligence/`，只服务检索、摘要、反方审查和任务规划，不直接生成交易信号。
 - 账单导出和策略解释性输出已补齐基础版本，但这些产物不代表策略已通过实盘模拟门禁。
 - 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
 - 历史 walk-forward / execution-gate 已默认使用 point-in-time 股票池：每一折按训练窗口结束日从本地历史库只读生成股票池，避免用当前股票池回测过去；日报 / watchlist / 模拟账户仍使用当前每日更新股票池。
-- 当前主阻塞点是：在 `qfq_asof`、PIT 股票池、成本后和执行约束口径下重建可复现、可解释、可审计的合格策略。
+- 当前主阻塞点是：在 `qfq_asof`、PIT 股票池、成本后和 admission 口径下完善策略池，优先复核低波低换手质量主线、参数稳定性、行业集中和换手/churn。
 
-旧 `reports/phase0_effectiveness_report.md` 中的 `PASS` 与旧 selected candidate 结论，只能作为兼容口径/研究参考，不得解释为当前可进入实盘模拟。当前准入判断应以 `docs/DEVELOPMENT_PLAN.md` 与后续 `strategy-admission`、`qfq_asof`、过拟合诊断、执行约束复核结论为准。
+旧 `reports/phase0_effectiveness_report.md` 中的 `PASS` 与旧 selected candidate 结论，只能作为兼容口径/研究参考，不得解释为当前可进入实盘模拟。当前准入判断应以 `docs/DEVELOPMENT_PLAN.md` 与后续 `strategy-admission`、`qfq_asof`、过拟合诊断、行业集中和执行诊断结论为准。
 
 ## 架构层次
 
@@ -101,7 +119,7 @@ docs/strategy_explanations/INDEX.md
 - 国内股票主源：`Tushare`
 - 国内 fallback：`AkShare` / 新浪快照 / 本地 A 股研究主库
 - 美股/ETF/VIX/CNH 当前库：`data/us_market_history.sqlite`，现阶段 provider 为 `yfinance`，后续美股个股与 ETF 计划主源升级为 `Tiingo`
-- 港股库：`data/hk_market_history.sqlite` 为预留结构，当前 `enabled: false`，等港股数据源进入可生产状态后再挂到应用链路；截至 2026-06-02，Tiingo 对 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式实测均返回 `404 Ticker not found`，暂不适合作为港股正式源
+- 港股库：`data/hk_market_history.sqlite` 已启用并完成 30 标的初始观察池批量落库，当前 provider 为 `yfinance`；策略主链路仍未挂载，需等覆盖率、新鲜度、复权口径和交易日历稳定后再接入应用链路。截至 2026-06-02，Tiingo 对 `HK.00700`、`HK.09988`、`0700.HK`、`9988.HK` 等格式实测均返回 `404 Ticker not found`，暂不适合作为港股正式源
 - 宏观 / 利率 / VIX 计划主源：`FRED`
 - `yfinance`：保留为 fallback，不再作为长期正式主源
 
@@ -137,6 +155,7 @@ Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` �
 ```text
 data/manual_history/a_share_history.sqlite
 data/us_market_history.sqlite
+data/hk_market_history.sqlite
 ```
 
 数据库不进入 Git。目录说明见：
@@ -163,7 +182,7 @@ data/manual_history/README.md
 - `us_daily_bars`: `^NDX`, `^SOX`, `NVDA`, `KWEB`, `^VIX`, `CNY=X` 的日线数据。
 - `us_data_source_runs`: US market 数据源更新审计记录，记录 `source`, `fetched_at`, `latest_trade_date`, `coverage` 和写入行数。
 
-`hk_market_history.sqlite` 目前只是预留库名和 CLI 结构，不挂到策略或报告链路。等港股数据源接入、覆盖率与新鲜度验证稳定后，再启用 `hk_market_history.enabled` 并接入应用。
+`hk_market_history.sqlite` 当前已启用并完成 30 标的初始观察池批量落库，仍处于独立数据层验证阶段，不挂到策略或报告链路。等港股覆盖率、新鲜度、复权口径和交易日历稳定后，再接入应用。
 
 ### 数据目录边界
 
@@ -173,6 +192,7 @@ data/manual_history/README.md
 
 - `data/manual_history/a_share_history.sqlite`：A 股本地研究数据库，承载日线、股票元数据、交易日历、退市清单、指数数据和财务因子。
 - `data/us_market_history.sqlite`：美股 / ETF / VIX / CNH 跨市场 overlay 本地库。
+- `data/hk_market_history.sqlite`：港股观察池历史库，当前用于独立数据层验证，不参与主策略链路。
 - `data/universe/`：股票池和横截面快照产物，包括 `local_factor_universe.csv`、`a_share_snapshot.csv` 以及对应说明报告。
 
 当前 `reports/` 主要用于：
@@ -418,7 +438,7 @@ data/simulated_trading/phase0_daily_account_ledger.csv
 ./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml --check-only
 ```
 
-港股历史库当前默认不启用。命令已预留，但在 `hk_market_history.enabled: false` 时只返回 `disabled`：
+港股历史库当前已启用但仍处于独立数据层验证阶段，不挂到主策略链路。可用以下命令检查覆盖率与新鲜度：
 
 ```bash
 ./.venv/bin/python -m phase0.cli update-hk-market-history --config config.yaml --check-only
@@ -436,7 +456,7 @@ bash scripts/install_dev_cron.sh
 * * * * * bash scripts/run_project_scheduler.sh
 ```
 
-具体任务由 `scripts/run_project_scheduler.sh` 统一管理，当前默认包含：
+`scripts/run_project_scheduler.sh` 当前是 wrapper：加载 `.env`、预热维护状态库后调用 `phase0.cli maintain tick`。具体任务由维护编排器判断运行窗口、交易日历、重试状态和健康门禁，当前默认包含：
 
 - 每周一 `03:30`：更新 A 股季度财务因子，日志写入 `logs/financial_factors_update.log`。
 - 交易日 `07:20`：运行 `brief watchlist`，生成阶段试用观察池页面 `reports/watchlist_today/index.html`，并同步到 ECS 远端目录 `BRIEF_SYNC_REMOTE_DIR`，日志写入 `logs/daily_brief_pipeline.log`。
@@ -450,29 +470,38 @@ bash scripts/install_dev_cron.sh
 logs/project_scheduler.log
 ```
 
-后续新增定时任务时，应优先扩展 `scripts/run_project_scheduler.sh`，保持系统 cron 里只有一个项目入口。
+后续新增定时任务时，应优先扩展 `phase0/maintenance_orchestrator.py` 的任务 registry，保持系统 cron 里只有一个项目入口。
 
 ## 策略开发
 
 当前策略候选通过 `phase0/strategies/` 注册：
 
 - `legacy_momentum`
+- `legacy_momentum_low_turnover_v1`
 - `ma_kline_baseline_v1`
 - `residual_momentum_reversal_v1`
 - `residual_momentum_reversal_v2`
 - `quality_growth_price_v1`
+- `low_vol_low_turnover_quality_v1`
+- `quality_low_turnover_monthly_v1`
 - `multifactor_volume_price_filter_v1`
+- `core_selection_quality_momentum_v1`
+- `theme_exposure_momentum_v1`
+- `sleeve_composite_v1`
 
-`strategy-admission` 默认使用 `config.yaml` 中的 `walk_forward.admission.default_strategy_set` 和
-`walk_forward.admission.strategy_sets` 控制本轮候选集合；临时缩小范围优先用 CLI `--strategies` 覆盖，
+`strategy-admission` 默认使用 `config.yaml` 中的 `phase0.walk_forward.admission.default_strategy_set` 和
+`phase0.walk_forward.admission.strategy_sets` 控制本轮候选集合；临时缩小范围优先用 CLI `--strategies` 覆盖，
 避免把临时实验状态写回配置。若长期不希望某个策略参与默认准入，可以在 `strategy_sets` 中注释对应策略行；
-该变更是持久设计变更，不会自动恢复。`walk_forward.strategy_v2.compare_strategies` 仅保留为向后兼容入口。
+该变更是持久设计变更，不会自动恢复。`phase0.walk_forward.strategy_v2.compare_strategies` 仅保留为向后兼容入口。
+
+当前默认准入集合 `baseline_admission_all_v1` 已包含上述 12 个候选。main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1`；`sleeve_composite_v1` 当前仅有 scoped admission 证据，结论为 `reject`，保持 research-only，不进入 paper review、模拟账户、日报或 watchlist。
 
 策略变更要求：
 
 - 每次修改策略逻辑或参数，必须记录理由、参考信息和验证结果。
 - 不以单次高收益作为晋级依据，必须看 `annualized_return_mean`, `sharpe_mean`, `max_drawdown_mean`, `win_rate_mean`, `oos_return_decay_ratio`。
 - 对 fold 数过少或 symbol 覆盖过窄的候选，要谨慎解释，不应直接晋级。
+- 每次 compare / strategy-admission 代码验证通过后，必须生成带日期、运行背景、命令口径、验证结果、候选结论和下一步动作的策略治理报告。
 
 策略变更日志：
 
@@ -555,6 +584,7 @@ MCP 与外部 agent 不得绕过 effectiveness gate、`qfq_asof`、PIT、过拟�
 ## 计划文档
 
 - 主计划：`docs/DEVELOPMENT_PLAN.md`
+- 任务索引：`docs/tasks/README.md`
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 策略开发标准：`docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
 - 当前统一周执行附件：`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`
@@ -563,6 +593,8 @@ MCP 与外部 agent 不得绕过 effectiveness gate、`qfq_asof`、PIT、过拟�
 - 策略开发检查清单：`docs/STRATEGY_DEV_CHECKLIST.md`
 - FRED 接入任务单：`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
 - Tiingo 接入任务单：`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
+- 有效量化策略研发任务清单：`docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`
+- 数据治理与维护编排器任务单：`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`
 - 远期展望：`refdocs/OUTLOOK/`
 
 ## 输出文件
@@ -576,6 +608,9 @@ MCP 与外部 agent 不得绕过 effectiveness gate、`qfq_asof`、PIT、过拟�
 - `reports/phase0_cost_sensitivity.csv`
 - `reports/phase0_effectiveness_report.md`
 - `reports/phase0_strategy_change_log.md`
+- `reports/strategy_admission*/strategy_admission_report.md`
+- `reports/strategy_governance/<date>/strategy_governance_report_*.md`
+- `reports/database_health/<date-or-scope>/database_health_report.md`
 - `data/universe/local_factor_universe.csv`
 - `data/universe/a_share_snapshot.csv`
 - `data/universe/local_factor_universe_report.md`
@@ -585,7 +620,8 @@ MCP 与外部 agent 不得绕过 effectiveness gate、`qfq_asof`、PIT、过拟�
 - 本工具仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。
 - 所有输出属于观察池、风险暴露、信号等级、情景推演和策略验证结果，不构成投资建议。
 - 所有策略参数变更必须记录理由、参考信息和验证结果。
+- 当前无 selected candidate；任何进入 paper review、模拟账户正式链路或日报主线的候选，必须先通过严格 `qfq_asof`、PIT 股票池、成本后、过拟合、行业集中、因子诊断和 `strategy-admission` 门禁。
 - 本地 fallback 不会静默使用过期快照：若本地最新交易日超过配置允许滞后，当前股票池 fallback 返回空并告警。
-- 财务因子进入正式历史回测前，必须完成公告日 point-in-time 校验，避免未来函数。
+- 财务因子历史回测必须使用公告日 point-in-time 口径，避免未来函数。
 - `yfinance` 和 `AkShare` 仅作为开发/研究辅助或 fallback，长期正式主源按 Tushare / Tiingo / FRED 分层推进。
 - Claude / DeepSeek 等 LLM agent 仅做报告阅读、研究摘要、风险提示和第二意见，不直接生成交易信号，不修改策略参数，不跳过 gate，不把工作流执行结果解释为策略准入通过。
