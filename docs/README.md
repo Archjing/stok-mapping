@@ -19,6 +19,7 @@
 
 ## 相关入口
 
+- [Codex MCP 多 Agent 开发团队工作流](./CODEX_MCP_MULTI_AGENT_WORKFLOW.md)
 - [任务清单索引](tasks/README.md)
 - [文档归档](archive/)
 - [参考资料索引](../refdocs/README.md)
