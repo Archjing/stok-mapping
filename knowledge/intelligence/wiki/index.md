@@ -11,6 +11,9 @@
 - `knowledge/intelligence/notes/INT-CN-005_ml_asset_characteristics_portfolio.md`
 - `knowledge/intelligence/notes/INT-CN-007_lasso_pricing_factors_china.md`
 - `knowledge/intelligence/notes/INT-CN-008_analyst_text_quant_strategy.md`
+- `knowledge/intelligence/notes/INT-KMS-001_a_share_factor_panorama.md`
+- `knowledge/intelligence/wiki/a_share_factor_data_interface_knowledge_asset.md`
+- `knowledge/intelligence/wiki/a_share_factor_data_interface_index.csv`
 - `knowledge/intelligence/strategy_translations/INT-CN-007_factor_effectiveness_strategy_task.md`
 
 ## Monthly Scans
@@ -26,6 +29,8 @@
 - [[LASSO 因子筛选]]
 - [[SVM 多因子选股]]
 - [[分析师文本因子]]
+- [[A 股行情影响因子全景图]]
+- [[A 股因子数据接口知识资产]]
 - [[策略准入]]
 
 ## Related Project Files

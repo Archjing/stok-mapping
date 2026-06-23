@@ -11,6 +11,7 @@ import pandas as pd
 
 from phase0.external_market_history import configure_hk_market_history, configure_us_market_history
 from phase0.local_history import _safe_identifier, configure_local_history, local_history_path
+from phase0.report_paths import create_report_run
 from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds
 
 
@@ -531,13 +532,22 @@ def run_factor_effectiveness_report(
     configure_us_market_history(cfg.get("us_market_history", {}), root)
     configure_hk_market_history(cfg.get("hk_market_history", {}), root)
 
-    output = output_dir or (root / "reports" / "factor_effectiveness")
+    if output_dir is None:
+        report_run = create_report_run(root=root, command="factor-effectiveness", scope="qfq_asof")
+        output = report_run.run_dir
+        summary_csv = report_run.artifact("factor_effectiveness", "summary", "csv")
+        summary_md = report_run.artifact("factor_effectiveness", "report", "md")
+        group_returns_csv = report_run.artifact("factor_effectiveness", "group_returns", "csv")
+        ic_by_year_csv = report_run.artifact("factor_effectiveness", "ic_by_year", "csv")
+        correlation_csv = report_run.artifact("factor_effectiveness", "correlation", "csv")
+    else:
+        output = output_dir
+        summary_csv = output / "factor_effectiveness.csv"
+        summary_md = output / "factor_effectiveness.md"
+        group_returns_csv = output / "factor_group_returns.csv"
+        ic_by_year_csv = output / "factor_ic_by_year.csv"
+        correlation_csv = output / "factor_correlation.csv"
     output.mkdir(parents=True, exist_ok=True)
-    summary_csv = output / "factor_effectiveness.csv"
-    summary_md = output / "factor_effectiveness.md"
-    group_returns_csv = output / "factor_group_returns.csv"
-    ic_by_year_csv = output / "factor_ic_by_year.csv"
-    correlation_csv = output / "factor_correlation.csv"
 
     walk_cfg = cfg.get("walk_forward", {})
     strategy_cfg = _configured_strategy_cfg(cfg)

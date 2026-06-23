@@ -24,13 +24,18 @@ def run_overfit_diagnostic(
     candidates_path: Path | None = None,
     folds_path: Path | None = None,
     output_dir: Path | None = None,
+    standard_names: bool = False,
 ) -> OverfitDiagnosticResult:
     candidates_path = candidates_path or root / "reports" / "phase0_walk_forward_candidates.csv"
     folds_path = folds_path or root / "reports" / "phase0_walk_forward_folds.csv"
     output_dir = output_dir or root / "reports" / "overfit_diagnostic"
     output_dir.mkdir(parents=True, exist_ok=True)
-    csv_path = output_dir / "strategy_overfit_diagnostic.csv"
-    md_path = output_dir / "strategy_overfit_diagnostic.md"
+    if standard_names:
+        csv_path = output_dir / "overfit__diagnostic.csv"
+        md_path = output_dir / "overfit__diagnostic.md"
+    else:
+        csv_path = output_dir / "strategy_overfit_diagnostic.csv"
+        md_path = output_dir / "strategy_overfit_diagnostic.md"
 
     if not candidates_path.exists():
         raise FileNotFoundError(f"missing candidates CSV: {candidates_path}")

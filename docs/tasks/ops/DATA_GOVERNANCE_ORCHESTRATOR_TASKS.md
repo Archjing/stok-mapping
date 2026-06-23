@@ -46,7 +46,7 @@ System Orchestrator（总体编排器）
 - [x] 统一维护 run id、状态查询、日志和报告索引基础能力。
 - [ ] 统一 TUI / 桌面 UI 后端接口。
 - [ ] 统一危险操作边界，例如停止长任务、覆盖数据、触发远端同步。
-- [ ] 汇总“今天系统状态如何”，但不承载具体业务规则。
+- [x] 汇总“今天系统状态如何”，但不承载具体业务规则；当前 MVP 为只读 `phase0.cli system status`，复用 Maintenance 状态摘要。
 
 领域子编排器负责各自状态机：
 
@@ -71,6 +71,7 @@ System Orchestrator（总体编排器）
 - [x] `System Orchestrator = thin shell + registry + shared state` 的 Maintenance 子域已先行落地。
 - [x] 各领域子编排器拥有自己的业务状态机，不把所有逻辑塞进一个模块。
 - [x] 第一阶段先实现 `Maintenance Orchestrator`，再补 `system status` 汇总入口。
+- [x] `system status` 只读 MVP 已落地：输出 maintenance state DB、生成时间、任务状态分布、决策分布和 running shard 数。
 - [ ] TUI / 桌面 UI 连接总体编排器，不直接散连每个业务模块。
 
 ### T6.3.1.3 架构边界
@@ -162,19 +163,18 @@ data/maintenance/maintenance.sqlite
 - [x] `maintenance_runs`
   - `run_id`
   - `task_name`
-  - `planned_date`
-  - `schedule_window`
   - `status`
-  - `attempt`
+  - `trigger_source`
   - `started_at`
   - `finished_at`
   - `exit_code`
-  - `pid`
-  - `command`
-  - `health_scope`
-  - `health_status`
   - `error_summary`
+  - `log_path`
+  - `report_path`
+  - `command_json`
   - `key_conclusion`
+
+当前 schema 核验（2026-06-23）：`maintenance_runs` 已落库字段为 `run_id/task_name/status/trigger_source/started_at/finished_at/exit_code/error_summary/log_path/report_path/command_json/key_conclusion`。`health_scope`、`health_fail_on`、`retry_window_minutes`、`retry_interval_minutes`、`max_retries` 等策略字段位于 `maintenance_registry`，不是 `maintenance_runs` 字段。后续如需记录每次 run 的 health gate 快照，应新增显式迁移，而不是在文档中假设字段已存在。
 
 - [x] `maintenance_events`
   - `event_id`
@@ -336,11 +336,12 @@ maintenance_orchestrator:
 3. [x] **P2.1 交易日历判断**：A 股任务读取 `trading_calendar`；HK/US 任务先用 weekday fallback 并显式记录 fallback reason。
 4. [x] **P3.2 shard 报告索引**：从 backfill audit summary 和当次报告中提取 report path、error summary、key conclusion，写入维护状态。
 5. [x] **P4.2 日常巡检命令最小版**：`maintain status` 支持 `--write-report` 和 `--output-md`，供每日运维复盘和未来 TUI 使用。
+6. [x] **P5.1 System status 只读入口**：新增 `phase0.cli system status`，以只读方式汇总 Maintenance Orchestrator 状态，不启动任务、不写维护报告。
 
 暂缓事项：
 
 - [ ] 暂缓实现 `maintenance_artifacts` 独立表，等 P4 报告索引稳定后再抽表，避免早建复杂 schema。
-- [ ] 暂缓接入 System Orchestrator / TUI，先让 Maintenance Orchestrator 自身状态可靠。
+- [ ] 暂缓接入 System Orchestrator 的 `run/tui` 能力和桌面 UI；当前只保留 `system status` 只读状态汇总入口。
 - [ ] 暂缓把所有任务配置迁入 `config.yaml`，当前内置 registry 已能支撑本地运维，配置化等交易日历和报告索引稳定后再做。
 
 ---

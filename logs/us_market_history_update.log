@@ -669,3 +669,63 @@ Markdown:
 /home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
 d
 [2026-06-22 17:28:04 ] block us_market_history: health gate failed
+[2026-06-23 17:10:02 ] start us_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-23 17:10:03 ] block us_market_history: health gate failed
+[2026-06-23 17:15:03 ] start us_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-23 17:15:04 ] block us_market_history: health gate failed
+[2026-06-23 17:21:03 ] start us_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-23 17:21:04 ] block us_market_history: health gate failed
+[2026-06-23 17:27:03 ] start us_market_history
+Database health check started
+Database health status: warning
+Summary rows: 5
+Findings: errors=0, warnings=3, info=0
+Summary CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_summary.
+csv
+Findings CSV:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_findings
+.csv
+Markdown:
+/home/zj/workspace/stok-mapping/reports/database_health/database_health_report.m
+d
+[2026-06-23 17:27:04 ] block us_market_history: health gate failed

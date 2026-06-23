@@ -4,6 +4,7 @@ import argparse
 import os
 import shutil
 import subprocess
+from collections import Counter
 from pathlib import Path
 
 from rich.console import Console
@@ -34,6 +35,8 @@ from phase0.reporting import (
     write_effectiveness_gate_report,
     write_walk_forward_report,
 )
+from phase0.report_paths import latest_dir
+from phase0.report_registry import scan_report_artifacts, write_report_manifest
 from phase0.strategy_admission import run_strategy_admission
 from phase0.strategy_failure_attribution import run_strategy_failure_attribution
 from phase0.throttle import configure_akshare_throttle
@@ -41,6 +44,25 @@ from phase0.tushare_history_backfill import backfill_tushare_financials_from_con
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import describe_walk_forward_presets, run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
+
+
+def summarize_system_maintenance_status(result) -> dict[str, object]:
+    last_run_status_counts = Counter(row.last_run_status or "not_available" for row in result.rows)
+    last_decision_counts = Counter(row.last_decision or "not_available" for row in result.rows)
+    shard_status_counts = Counter(shard.status or "not_available" for shard in result.shards)
+    return {
+        "task_count": len(result.rows),
+        "last_run_status_counts": dict(sorted(last_run_status_counts.items())),
+        "last_decision_counts": dict(sorted(last_decision_counts.items())),
+        "running_shard_count": int(shard_status_counts.get("running", 0)),
+        "shard_status_counts": dict(sorted(shard_status_counts.items())),
+    }
+
+
+def _format_counts(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
 
 
 def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
@@ -607,6 +629,7 @@ def run_watchlist_pipeline(
     )
     report_path = Path(result["report"])
     watchlist_today_paths = [
+        latest_dir(root=config_path.parent, channel="watchlist") / "index.html",
         config_path.parent / "reports" / "watchlist_today" / "index.html",
         Path("/mnt/d/ZJ/Dev/brief_today/index.html"),
     ]
@@ -701,7 +724,9 @@ def main() -> int:
             "universe-pti",
         ],
         "Operations": [
+            "dashboard",
             "maintain",
+            "system",
         ],
     }
     grouped_help_lines = ["Top-level command index by category:"]
@@ -715,9 +740,11 @@ def main() -> int:
             "\n".join(grouped_help_lines)
             + "\n\n"
             "Nested command groups:\n"
+            "  dashboard: scan\n"
             "  brief: daily, daily-brief, watchlist, premarket, account-bill\n"
             "  intelligence: collect, import-local, validate\n"
             "  maintain: run, resume, status, stop, supervise, tick\n"
+            "  system: status\n"
         ),
     )
     sub = parser.add_subparsers(dest="cmd")
@@ -806,6 +833,11 @@ def main() -> int:
         default="never",
         help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
     )
+    dashboard_parser = sub.add_parser("dashboard", help="Report dashboard commands")
+    dashboard_sub = dashboard_parser.add_subparsers(dest="dashboard_cmd")
+    dashboard_scan_parser = dashboard_sub.add_parser("scan", help="Scan reports and write dashboard manifest")
+    dashboard_scan_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    dashboard_scan_parser.add_argument("--manifest", default=None, help="Optional manifest output path")
     intelligence_parser = sub.add_parser("intelligence", help="Collect, import, and validate strategy intelligence metadata")
     intelligence_sub = intelligence_parser.add_subparsers(dest="intelligence_cmd")
     intelligence_collect_parser = intelligence_sub.add_parser("collect", help="Collect configured intelligence metadata into an inbox CSV")
@@ -859,6 +891,10 @@ def main() -> int:
     maintain_resume_parser.add_argument("--task", choices=["tushare_financial_backfill"], default="tushare_financial_backfill", help="Task name")
     maintain_resume_parser.add_argument("--run-id", type=int, default=None, help="Optional run id")
     maintain_resume_parser.add_argument("--dry-run", action="store_true", help="Show matched shards without restarting them")
+    system_parser = sub.add_parser("system", help="System orchestrator commands")
+    system_sub = system_parser.add_subparsers(dest="system_cmd")
+    system_status_parser = system_sub.add_parser("status", help="Show read-only system status summary")
+    system_status_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -1150,6 +1186,7 @@ def main() -> int:
         console.print(f"Candidate folds CSV: {result.folds_csv}")
         console.print(f"Overfit CSV: {result.overfit_csv}")
         console.print(f"Markdown: {result.report_md}")
+        console.print(f"Governance Markdown: {result.governance_md}")
         return 0
     if args.cmd == "strategy-failure-attribution":
         config_path = Path(args.config).resolve()
@@ -1229,6 +1266,26 @@ def main() -> int:
         if args.fail_on == "warning" and (result.error_count > 0 or result.warning_count > 0):
             return 2
         return 0
+    if args.cmd == "dashboard":
+        console = Console()
+        if args.dashboard_cmd == "scan":
+            config_path = Path(args.config).resolve()
+            root = config_path.parent
+            manifest_path = Path(args.manifest).resolve() if args.manifest else None
+            console.print("[bold]Report dashboard scan started[/bold]")
+            manifest = write_report_manifest(root=root, manifest_path=manifest_path)
+            artifacts = scan_report_artifacts(root)
+            run_count = len({artifact.run_id for artifact in artifacts})
+            type_counts = Counter(artifact.type for artifact in artifacts)
+            category_counts = Counter(artifact.legacy_category for artifact in artifacts)
+            console.print("[green]Report dashboard scan complete[/green]")
+            console.print(f"Manifest: {manifest}")
+            console.print(f"Runs: {run_count}")
+            console.print(f"Artifacts: {len(artifacts)}")
+            console.print(f"Artifact types: {_format_counts(dict(type_counts))}")
+            console.print(f"Categories: {_format_counts(dict(category_counts))}")
+            return 0
+        parser.error("dashboard requires a subcommand: scan")
     if args.cmd == "intelligence":
         console = Console()
         if args.intelligence_cmd == "collect":
@@ -1425,6 +1482,23 @@ def main() -> int:
                 )
             return 0
         parser.error("maintain requires a subcommand: tick, status, supervise, run, stop, or resume")
+    if args.cmd == "system":
+        console = Console()
+        if args.system_cmd == "status":
+            config_path = Path(args.config).resolve()
+            console.print("[bold]System status started[/bold]")
+            maintenance_result = maintenance_status(config_path, refresh_state=False, read_only=True)
+            summary = summarize_system_maintenance_status(maintenance_result)
+            console.print("[green]System status complete[/green]")
+            console.print(f"Maintenance state DB: {maintenance_result.state_db}")
+            console.print(f"Maintenance generated at: {maintenance_result.generated_at}")
+            console.print(f"Maintenance tasks: {summary['task_count']}")
+            console.print(f"Maintenance last_run_status: {_format_counts(summary['last_run_status_counts'])}")
+            console.print(f"Maintenance last_decision: {_format_counts(summary['last_decision_counts'])}")
+            console.print(f"Maintenance running shards: {summary['running_shard_count']}")
+            console.print(f"Maintenance shard_status: {_format_counts(summary['shard_status_counts'])}")
+            return 0
+        parser.error("system requires a subcommand: status")
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
             return run_daily_brief_pipeline(

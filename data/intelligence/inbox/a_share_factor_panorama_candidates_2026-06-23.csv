@@ -1,0 +1,2 @@
+intelligence_id,title,source_type,source_path_or_url,published_at,collected_at,market_scope,topic_tags,strategy_tags,evidence_type,quality_score,novelty_score,actionability_score,data_availability,bias_risk,recommended_action,status,linked_strategy_task,reviewed_at
+INT-AUTO-0be1e4002752,A股个股行情影响因子全景图,manual_note,/home/zj/workspace/KMS/My_logseq/pages/A股个股行情影响因子全景图.md,,2026-06-23,A股,multifactor;macro;industry;style;fund-flow;text-event,factor-taxonomy;market-regime;data-source-mapping,local_markdown,,,,,,screen,collected,T1.3;T2.5;T2.10;T5.2,

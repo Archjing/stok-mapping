@@ -13,7 +13,15 @@
 - [x] 明确区分不复权真实交易价格、当前全历史前复权价格、历史 as-of 前复权价格
 - [x] 为 walk-forward 回测提供 `qfq_asof` 价格读取能力
 - [x] 输出复权未来函数风险审计报告
-- [ ] 后续将策略研究回测逐步从 `qfq_current` 切到 `qfq_asof`
+- [x] 策略研究回测默认价格口径已切到 `qfq_asof`；`qfq_current` 仅保留为兼容和审计对照
+
+当前核验状态（2026-06-23）：
+
+- `config.yaml` 当前为 `local_history.price_adjustment_for_backtest: "qfq_asof"`。
+- `market_adj_factors` 已覆盖 `2016-01-04` 至 `2026-06-22`，共 `11,197,436` 行。
+- `market_daily_basic` 已覆盖 `2016-01-04` 至 `2026-06-22`，共 `10,699,948` 行。
+- `market_financial_factors` 已覆盖 `2016-03-31` 至 `2026-03-31`，共 `193,817` 行。
+- 仍待增强：验证期按信号日滚动 `as_of_date`、缺因子 / 停牌 / 退市边界覆盖、HTML 审计报告。
 
 ---
 
@@ -130,8 +138,8 @@ load_daily_from_local_history(
 ### T1.4.4.4 扩展 walk-forward
 
 - [x] 新增配置 `local_history.price_adjustment_for_backtest`
-- [x] 默认先保留现状 `qfq_current`
-- [x] 增加对照模式 `qfq_asof`
+- [x] 默认策略研究口径已切换为 `qfq_asof`
+- [x] 保留对照模式 `qfq_current`
 - [x] 在每个 fold 中将训练窗口 `as_of_date` 设为 `train_end`
 - [ ] 后续增强为验证期按信号日滚动 `as_of_date`，默认不启用以避免运行时间大幅增加
 
@@ -143,18 +151,18 @@ load_daily_from_local_history(
 
 ```yaml
 local_history:
-  price_adjustment_for_backtest: "qfq_current"
+  price_adjustment_for_backtest: "qfq_asof"
   price_adjustment_audit:
     enabled: true
-    compare_modes: ["qfq_current", "qfq_asof", "bfq"]
+    compare_modes: ["qfq_current", "qfq_asof", "bfq_raw"]
     feature_checks: ["mom20", "ma20", "vol20", "breakout20"]
 ```
 
-后续切换目标：
+兼容对照口径：
 
 ```yaml
 local_history:
-  price_adjustment_for_backtest: "qfq_asof"
+  price_adjustment_for_backtest: "qfq_current"
 ```
 
 ---
@@ -228,8 +236,8 @@ python -m phase0.cli adjustment-audit --config config.yaml
 - [x] 交易执行价格仍使用不复权价格
 - [x] 审计报告能列出当前回测价格口径
 - [x] 审计报告能列出 `qfq_current` 与 `qfq_asof` 的主要差异
-- [x] `phase0 run` 默认行为不被静默改变
-- [x] 切换 `qfq_asof` 必须通过配置显式开启
+- [x] `phase0 run` 默认行为已通过配置显式切到 `qfq_asof`，不是代码静默切换
+- [x] 切回 `qfq_current` 必须通过配置显式开启，仅用于兼容和审计对照
 
 ---
 

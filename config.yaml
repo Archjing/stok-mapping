@@ -254,6 +254,10 @@ phase0:
         type: "local_dir"
         enabled: true
         path: "refdocs/papers"
+      - name: "logseq_pages"
+        type: "local_dir"
+        enabled: false
+        path: "/home/zj/workspace/KMS/My_logseq/pages"
       - name: "arxiv_quant_finance"
         type: "arxiv"
         enabled: true

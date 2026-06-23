@@ -170,13 +170,20 @@ score =
 
 ### T2.8.3 输出
 
-- [x] `reports/strategy_admission/strategy_admission_constraint_review.csv`
-- [x] `reports/strategy_admission/strategy_admission_report.md`
-- [x] `reports/strategy_admission/strategy_admission_window_matrix.csv`
-- [x] `reports/strategy_admission/strategy_admission_candidate_folds.csv`
+- [x] admission 默认可输出到 `reports/strategy_admission/`；治理或专项复核运行可使用日期 / 范围目录，例如 `reports/strategy_admission_t2_7_quality_low_turnover_dual_preset_20260610/`、`reports/strategy_admission_sleeve_composite_v1_20260623/`
+- [x] `strategy_admission_constraint_review.csv`
+- [x] `strategy_admission_report.md`
+- [x] `strategy_admission_window_matrix.csv`
+- [x] `strategy_admission_candidate_folds.csv`
 - [x] `strategy_admission_window_matrix.csv` 输出 `price_adjustment_status`、`account_execution_status`、`industry_diagnostic_status`、`financial_diagnostic_status`
 - [x] `strategy_admission_constraint_review.csv` 输出行业诊断缺失、因子诊断缺失和价格口径失败计数
 - [x] 每次 `compare` / `strategy-admission` 代码验证通过后，必须生成带日期、运行背景、命令口径、验证结果、候选结论和下一步动作的策略治理报告
+
+2026-06-23 口径校验：
+
+- `config.yaml` 中 `baseline_admission_all_v1` 已包含 12 个候选策略。
+- main 上已落盘的全候选 admission 报告仍需重跑以纳入 `sleeve_composite_v1`；当前 sleeve 证据来自 `reports/strategy_admission_sleeve_composite_v1_20260623/` 的 scoped admission。
+- `sleeve_composite_v1` 的代码和策略声明保持 research-only，不进入 paper review、模拟账户、日报或 watchlist。若历史 `constraint_review` 中出现 `supports_paper_trade=True`，以策略源码、candidate folds 和治理报告的 research-only 边界为准，后续重跑全量 admission 时需校正该字段。
 
 ### T2.8.4 Walk-forward preset 设计
 
@@ -331,7 +338,7 @@ final_score =
 + 0.20 * risk_overlay_score
 ```
 
-实现状态：`sleeve_composite_v1` 已作为 research-only / compare / admission 候选接入，输出三段 sleeve 分数、`final_score`、排名、权重和降级原因；不进入模拟账户或日报主线。
+实现状态：`sleeve_composite_v1` 已作为 research-only / compare / scoped admission 候选接入，输出三段 sleeve 分数、`final_score`、排名、权重和降级原因；2026-06-23 scoped admission 结论为 `reject`，不进入 paper review、模拟账户或日报主线。main 上仍需重跑全候选 admission，确保 `baseline_admission_all_v1` 的 12 策略配置与落盘报告一致。
 
 ### T2.10.2 二阶段 ML rerank
 
@@ -385,7 +392,7 @@ final_score =
 1. [x] T2.5 因子有效性诊断报告
 2. [x] T2.6 `low_vol_low_turnover_quality_v1`
 3. [x] T2.7 `quality_low_turnover_monthly_v1`
-4. [ ] T2.8 策略准入报告与策略回测窗口期配置模块 V1
-5. [ ] T2.9 策略失败归因诊断模块 V1
-6. [ ] T2.10 sleeve 组合与二阶段 rerank
+4. [x] T2.8 策略准入报告与策略回测窗口期配置模块 V1（MVP 已完成；全候选 12 策略报告需重跑校准）
+5. [x] T2.9 策略失败归因诊断模块 V1
+6. [x] T2.10 sleeve 组合 V1（`sleeve_composite_v1` scoped admission 已拒绝；二阶段 ML rerank 未启动）
 7. [ ] T2.11 PEAD / 文本 / 跨市场增强

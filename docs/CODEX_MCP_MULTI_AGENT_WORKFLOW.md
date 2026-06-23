@@ -67,14 +67,18 @@ tools=codex,codex-reply
 
 - `Team Lead`：入口 agent，负责路由任务，决定是否交给 Planner、Implementer 或 Reviewer。
 - `Planner`：只做计划，不改文件。用于目标不清、范围较大、需要拆任务树的场景。
+- `Quant Research Expert`：股票量化投资研究专家，负责策略假设、因子证据、回测口径、`qfq_asof` / PIT、成本、过拟合、行业集中、Tushare 数据口径和 admission 边界审查。
 - `Codex Implementer`：通过 Codex MCP 调用 `codex` / `codex-reply` 做 repo 内检查和实现。
 - `Reviewer`：通过 Codex MCP 做验证、diff 审查、测试风险和数据口径审查。
 
 `stok-mapping` 任务中的角色使用建议：
 
 - `Planner` 对应项目技术负责人 / 研究负责人：先确认任务是否符合当前 `DEVELOPMENT_PLAN.md` 主线。
+- `Quant Research Expert` 对应股票量化投资专家：做研究第二意见和策略治理审查。遇到量化策略、回测、组合构造或风险指标任务，必须使用或显式套用 `quant-analyst` skill；遇到 A 股数据源、Tushare 字段、权限、覆盖率和源审计问题，必须使用或显式套用 `tushare` skill；解释策略实验、回测结果或 admission 结论时，必须使用或显式套用“策略实验解读”skill。
 - `Codex Implementer` 对应实现工程师：只在明确任务、边界、验收标准后改代码。
 - `Reviewer` 对应量化审查 + 代码审查：重点看未来函数、PIT、成本口径、样本治理、报告一致性。
+
+`Quant Research Expert` 不提供投资建议，不生成买卖指令，不替代 `strategy-admission`、`execution-gate` 或人工 review。若 Harness 环境无法直接调用 Codex skills，该角色必须在输出中说明适用的 skill，并按项目上下文中的对应规则执行分析。
 
 ---
 

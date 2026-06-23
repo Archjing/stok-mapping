@@ -1,309 +1,181 @@
-# T2.1｜Phase 0 候选策略清单（贴合当前项目）
+# T2.1｜Phase 0 候选策略池治理清单
 
-目标：只列出**适合当前 `stok-mapping` Phase 0 状态**、能和现有数据/回测框架衔接的候选策略。
-
-父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)  
+父级计划：[`DEVELOPMENT_PLAN.md`](../../DEVELOPMENT_PLAN.md)
+架构约束：[`PROJECT_ARCHITECTURE_OVERVIEW.md`](../../PROJECT_ARCHITECTURE_OVERVIEW.md)
 任务索引：[`docs/tasks/README.md`](../README.md)
 
-当前事实基线：
-
-- ~~当前 Phase 0 胜出的候选是 `legacy_momentum`~~
-- ~~`legacy_momentum` 当前均值：`ann=0.3360`，`sharpe=0.3358`，`mdd=-0.3074`~~
-- ~~现有效果门槛未通过，主要问题是：**夏普不够、回撤偏大**~~
-- 当前无 Phase 0 selected candidate；`legacy_momentum_low_turnover_v1` 仅保留为旧 `qfq_current` 口径下的兼容基线 / 研究样本
-- 当前总 verdict 为：Phase 0 工程链路可用，但严格 `qfq_asof` 策略门禁未通过
-- 当前主测试口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
-- 旧 `qfq_current` 兼容参考指标：`annualized_return_mean = 0.1331`，`sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`，`turnover_annual_mean = 1.50`
-- 跨市场主导策略当前表现弱，不适合继续做主 ranker
-- 当前策略开发重心是：在严格 `qfq_asof` / PIT / 成本口径下重建有效 candidate；旧低换手 baseline 只保留兼容参考、解释层和调仓建议链路样本价值
-
----
-
-## T2.1.1 建议优先级
-
-### T2.1.1.1 P0：立刻可测
-1. ~~**短周期残差动量 + 反转增强**~~
-2. ~~**多因子 + 量价二次筛选**~~
-3. ~~**规则型均线/K线 baseline**~~
-4. **低换手 baseline 稳定性复核与解释链路维护**
-5. **港股 / 美股 / FRED overlay 解释力测试**
-
-### T2.1.1.2 P1：补少量字段后可测
-4. **多因子 + SVM 选股**
-5. **高维特征直接映射组合权重（轻量版 ML-AC）**
-6. **规则型 / 因子型信号稳定后，再引入 sklearn 基线研究对照**
-
-### T2.1.1.3 P2：补较多数据后再测
-6. **网络因子四因子扩展**
-7. **文本情绪股票池过滤**
-8. **融资融券/LSTM 双边策略**
-
----
-
-## T2.1.2 候选策略明细
-
-## T2.1.2.1 短周期残差动量 + 反转增强
-
-**定位**
-- 最贴近当前主线
-- 也是当前配置里已经出现过但结果尚不理想的方向
-- 适合先做“简化重构”，而不是直接放弃
-
-**为什么适合当前项目**
-- 当前已有日线 OHLCV、本地历史库、股票池、walk-forward 框架
-- 不依赖财务数据、不依赖额外文本数据
-- 和 README 中“本土主因子优先”完全一致
-
-**最小实现**
-- 残差动量窗口：`10 / 20`
-- 短反转窗口：`3`
-- 先做横截面标准化
-- 用简单线性打分：`score = a * residual_mom - b * short_reversal`
-- 每期选 `top_n`
-
-**想解决的问题**
-- 相比 `legacy_momentum`，希望降低追高后的回撤
-- 减少单纯趋势策略在 A 股震荡环境下的失真
-
-**进入主线的条件**
-- 夏普明显高于 `legacy_momentum`
-- 最大回撤明显优于当前 `-0.3074`
-
----
-
-## T2.1.2.2 多因子 + 量价二次筛选
-
-**对应论文启发**
-- `基于支持向量机的多因子融合量价数据的选股策略的研究`
-
-**定位**
-- 最适合当前项目做的论文映射策略之一
-- 适合做成 Phase 0.1 候选
-
-**为什么适合当前项目**
-- 当前已经有价格、开收高低、成交相关数据
-- 不要求先接入完整财务报表也能做一个“价格行为版多因子”
-
-**最小实现**
-- 先构建轻量多因子：
-  - 动量因子
-  - 波动率因子
-  - 换手/成交活跃度因子
-  - 均线偏离因子
-- 再做量价二次过滤：
-  - 最近 N 日放量确认
-  - 避免极端放量后的追涨
-  - 缩掉高波动劣质信号
-
-**实现方式建议**
-- Phase 0 不必立刻上 SVM
-- 先做**规则版二次筛选**
-- 如果规则版有效，再升级为分类模型版
-
-**想解决的问题**
-- 提高纯 momentum 候选中的信号质量
-- 降低错误突破带来的回撤
-
----
-
-## T2.1.2.3 规则型均线/K线 baseline
+## T2.1.0 当前结论
+
+Phase 0 的基础工程闭环已经完成，但策略池当前没有严格 `qfq_asof` / PIT / 成本后 / admission 口径下可进入 paper review、模拟账户、日报或 watchlist 正式链路的合格候选。
 
-**对应论文启发**
-- `基于均线与K线指标的量化投资策略`
+当前 T2.1 的职责不再是继续扩大候选数量，而是把候选池改为可治理、可复核、可降级的策略研究清单：
+
+- 当前 selected candidate：无
+- 当前正式 baseline：无严格准入合格 baseline
+- 当前兼容 baseline：`legacy_momentum_low_turnover_v1`，仅作旧 `qfq_current` 口径兼容参考、动量 sleeve 输入和失败对照样本
+- 当前全局准入集合：`baseline_admission_all_v1`，包含 12 个候选策略
+- 当前重点研发集合：低波、低换手、质量主线与 `sleeve_composite_v1` 降换手重构
+- 当前禁止动作：不凭 compare 排名、旧 `qfq_current` 结果或单次 scoped admission 相对最优结论进入模拟账户或日报
 
-**定位**
-- 不是最终主策略
-- 但非常适合拿来做一个低复杂度 baseline
+旧 `qfq_current` 兼容指标只能作为历史参考：
 
-**为什么适合当前项目**
-- 完全依赖现有日线数据
-- 逻辑非常透明，便于和跨市场 overlay 结合解释
+| 指标 | `legacy_momentum_low_turnover_v1` 旧兼容结果 | 当前解释 |
+| --- | ---: | --- |
+| `annualized_return_mean` | `0.1331` | 兼容参考，不代表严格准入 |
+| `sharpe_mean` | `1.0083` | 兼容参考，不代表严格准入 |
+| `max_drawdown_mean` | `-0.1042` | 兼容参考，不代表严格准入 |
+| `win_rate_mean` | `0.5110` | 兼容参考，不代表严格准入 |
+| `turnover_annual_mean` | `1.50` | 兼容参考，不代表严格准入 |
 
-**最小实现**
-- 买入：
-  - 收盘价低于 `MA5 * 0.95`
-  - 同时满足一个上涨 K 线模式或短期反包条件
-- 卖出：
-  - 收盘价高于 `MA5 * 1.05`
-  - 或出现转弱 K 线
+## T2.1.1 策略池治理边界
 
-**想解决的问题**
-- 提供一个非机器学习基线
-- 验证“简单规则是否已经足够”
+### 必须遵守
 
-**适合用途**
-- baseline
-- 盘前日报中的解释层信号
-- 和 momentum 信号求交集
+- 历史回测默认使用 `qfq_asof`，`qfq_current` 只允许作为兼容对照。
+- 历史股票池必须使用每折 point-in-time universe。
+- 交易成本必须包含当前主测试口径：`slippage = 0.00246`、`commission = 0.00025`、`stamp_duty_sell = 0.0005`。
+- 任何候选进入 paper review、模拟账户、日报或 watchlist 正式链路前，必须通过 `strategy-admission`。
+- compare 只能给出相对排序和研究线索，不能替代 admission。
+- research-only 策略可以参与 compare / scoped admission / 失败归因，但不能输出为交易信号。
+- 行业集中度 100% universe 实验只作为分支研究证据；主线仍保留 universe 分散约束与策略层行业审计。
+- T2.13 因子传导图只作为本体、特征注册和失败归因元数据，不直接给策略权重。
 
----
+### 当前 admission 门槛
 
-## T2.1.2.4 多因子 + SVM 选股
+| 维度 | 当前门槛 |
+| --- | --- |
+| 收益 | `annualized_return_mean > 0` |
+| 风险收益 | `sharpe_mean > 0.5` |
+| 回撤 | `max_drawdown_mean > -0.25` |
+| 正收益折比例 | `positive_fold_ratio >= 0.75` |
+| 换手 | `turnover_annual_mean <= 3.0`，`turnover_annual_max <= 5.0` |
+| 过拟合 | `overfit_risk <= medium` |
+| 参数 | 要求参数稳定性检查 |
+| 行业 | 要求行业集中度检查 |
+| 因子 | 要求因子诊断 |
+| 价格口径 | 要求 `qfq_asof` |
+| 样本治理 | symbol-scope 至少 `20` 个 fold 与 `20` 个 symbol；portfolio-scope 至少 `4` 个 portfolio fold |
 
-**对应论文启发**
-- `基于支持向量机模型的多因子量化选股策略`
+## T2.1.2 当前策略集合
 
-**定位**
-- 是较强的正统 A 股机器学习选股候选
-- 但比上面三类更依赖“像样的因子矩阵”
+配置层当前以 `baseline_admission_all_v1` 作为全局治理集合，包含 12 个策略：
 
-**当前阻塞点**
-- 目前 Phase 0 的财务/基本面字段还不完整
-- 若只用技术因子，容易退化成“技术指标分类器”
+| 策略 | 当前角色 | 当前动作 | 进入正式链路条件 |
+| --- | --- | --- | --- |
+| `legacy_momentum` | 历史 baseline / 失败样本 | 保留对照，不再优化为主线 | 仅作回归对照，不直接进入 |
+| `legacy_momentum_low_turnover_v1` | 兼容 baseline / 动量 sleeve 输入 | 保留为研究样本与解释链路兼容输入 | 必须重新通过严格 admission；当前未通过 |
+| `ma_kline_baseline_v1` | 透明规则 baseline / 失败样本 | 保留地板策略，用于判断复杂策略是否真有增益 | 必须重新通过严格 admission；当前不作为主线 |
+| `residual_momentum_reversal_v1` | 高换手价格行为失败样本 | 降级，不继续作为当前主线 | 除非新增低换手重构证据，否则不重启 |
+| `residual_momentum_reversal_v2` | 高换手价格行为失败样本 | 降级，不继续作为当前主线 | 除非新增低换手重构证据，否则不重启 |
+| `quality_growth_price_v1` | 质量成长早期候选 | 保留为质量因子诊断输入 | 必须证明质量暴露可稳定转化为收益 |
+| `low_vol_low_turnover_quality_v1` | 当前 active research 主线 | 优先失败归因、组合构造修正和行业集中复核 | 通过全量 admission，且核心失败项明显改善 |
+| `quality_low_turnover_monthly_v1` | 低频质量对照候选 | 优先复核最后一折 regime 依赖、参数稳定性和行业集中 | 通过双 preset admission，且不是单折驱动 |
+| `multifactor_volume_price_filter_v1` | 多因子量价失败样本 | 保留为诊断，不继续堆叠参数 | 需先证明低换手和因子域覆盖改善 |
+| `core_selection_quality_momentum_v1` | 质量 + 动量复合候选 | 保留为组合构造对照 | 需证明复合后降低而非放大 churn |
+| `theme_exposure_momentum_v1` | 主题暴露候选 / 失败样本 | 保留研究，不作为主 ranker | 需先补齐主题/行业轮动 as-of 数据 |
+| `sleeve_composite_v1` | research-only 组合诊断候选 | 优先降换手、降 churn、降行业集中，再 scoped admission | 当前 scoped admission 为 `reject`；二次研发后仍需全量 admission |
 
-**建议落地顺序**
-1. 先做轻量多因子规则版
-2. 再补财务因子
-3. 最后再上 SVM
+## T2.1.3 当前优先级
 
-**优先保留因子**
-- 市值
-- ROE
-- PE / E/P
-- 换手率
-- 股本 / 流动性代理
+### P0：当前必须优先处理
 
-**想解决的问题**
-- 让 ranker 从“单纯动量”升级为“多维特征分类”
+1. **全候选 admission 治理报告补齐**
 
----
+   - 覆盖 `baseline_admission_all_v1` 的 12 个候选。
+   - 报告必须标注运行日期、数据口径、preset、策略集合、是否 scoped、是否 research-only。
+   - 报告必须输出 action：`reject`、`retest`、`research_only` 或 `admission_pass_candidate`。
 
-## T2.1.2.5 高维特征直接映射组合权重（轻量版 ML-AC）
+2. **低波低换手质量主线失败归因**
 
-**对应论文启发**
-- `基于机器学习和资产特征的投资组合选择研究`
+   - 重点策略：`low_vol_low_turnover_quality_v1`、`quality_low_turnover_monthly_v1`。
+   - 优先解释质量暴露为何没有稳定转化为收益。
+   - 重点复核正收益折比例、参数漂移、最后一折 regime 依赖、行业集中和换手。
 
-**定位**
-- 长期最有潜力
-- 但当前 Phase 0 更适合做“轻量版”而不是完整复现
+3. **`sleeve_composite_v1` 降换手重构**
 
-**为什么值得做**
-- 当前 `legacy_momentum` 的主要问题是回撤大
-- 直接学权重比只学排名更有机会做风险约束
+   - 当前 scoped admission 为 `reject`，不能进入正式链路。
+   - 下一轮不直接调收益权重，先处理持仓保留、risk overlay churn、行业集中和 turnover。
+   - 二次研发后必须重新 scoped admission，再决定是否进入全量 admission。
 
-**轻量版做法**
-- 不做 95 个特征
-- 先用 6~12 个稳定特征：
-  - 短中期动量
-  - 波动率
-  - 均线偏离
-  - 成交活跃度
-  - 最大回撤代理
-  - 横截面强弱排名
-- 先用线性权重映射
-- 再尝试小型树模型 / MLP
+4. **T2.13 因子域元数据接入策略诊断**
 
-**想解决的问题**
-- 从“选股”走向“组合构造”
-- 主动控制回撤和集中度
+   - 把六域因子传导框架先用于失败归因和 admission 报告解释。
+   - 不把因子域矩阵直接转成策略权重。
+   - 用于区分策略失效、因子域缺失、市场环境未覆盖和外部事件未建模。
 
----
+### P1：有前置条件后再处理
 
-## T2.1.2.6 网络因子四因子扩展
+1. **质量因子组合构造重写**
 
-**对应论文启发**
-- `考虑股市网络因子的多因子选股策略研究`
+   - 前置条件：T2.9 失败归因能明确收益、参数、行业或数据缺口。
+   - 目标：降低行业集中，降低换手，增强 fold 稳定性。
 
-**定位**
-- 有研究价值
-- 不建议当前就进 Phase 0 主线
+2. **主题/行业轮动数据层补齐**
 
-**原因**
-- 需要构建股票间网络关系
-- 计算复杂度、数据准备和解释成本都更高
-- 当前项目更紧迫的问题是先把基础 ranker 的夏普和回撤做对
+   - 前置条件：有 point-in-time 行业、主题或板块轮动数据。
+   - 目标：解释 `theme_exposure_momentum_v1` 与质量策略在不同市场风格下的表现断裂。
 
-**建议**
-- 放到 Phase 1.5 以后
-- 先确保行业/板块结构和股票共振矩阵可稳定生成
+3. **文本事件与 PEAD 沙盒**
 
----
+   - 前置条件：T2.11 文本事件数据层具备 as-of 时间线、覆盖率和去重规则。
+   - 目标：仅作为过滤、解释或候选假设，不直接进入主 ranker。
 
-## T2.1.2.7 文本情绪股票池过滤
+### P2：延后研究
 
-**对应论文启发**
-- `分析师前瞻性信息对股票投资收益的影响——基于文本分析的量化研究`
+1. **SVM / 轻量 ML-AC**
 
-**定位**
-- 很适合未来做增强层
-- 不适合当前直接做主线
+   - 延后原因：当前不是缺少模型复杂度，而是策略暴露、换手、参数稳定性和 regime 覆盖不足。
+   - 重启条件：已有稳定因子注册表、足够样本、严格 OOS 评估和模型过拟合审计。
 
-**原因**
-- 当前项目没有稳定接入研报/标题文本数据源
-- 文本处理链路还不存在
+2. **网络因子**
 
-**更合适的形态**
-- 不是主 ranker
-- 而是候选池过滤器 / 解释层标签
+   - 延后原因：需要股票网络、行业/主题共振矩阵和较高计算/解释成本。
+   - 重启条件：T2.13 因子本体和行业/主题 as-of 数据层可用。
 
----
+3. **融资融券 / LSTM 双边策略**
 
-## T2.1.2.8 融资融券/LSTM 双边策略
+   - 延后原因：当前项目仍是普通 A 股单边研究框架，融资融券执行、保证金和做空约束未工程化。
+   - 重启条件：账户与执行仿真层支持融资融券约束，且产品边界重新确认。
 
-**对应论文启发**
-- `基于LSTM预测信息的在线融资融券组合交易策略`
+## T2.1.4 开发任务清单
 
-**定位**
-- 研究价值高
-- 当前不适合 Phase 0
+### 已完成
 
-**原因**
-- 当前项目明确还是 A 股普通单边研究框架
-- 融资融券约束、做空执行、保证金逻辑都还没工程化
-- 会明显偏离当前项目主线
+- [x] 将策略层拆为 `phase0/strategies/` 注册表结构。
+- [x] 建立 `baseline_admission_all_v1` 作为全局 admission 策略集合。
+- [x] 完成 `low_vol_low_turnover_quality_v1` 和 `quality_low_turnover_monthly_v1` 的初始研发与 admission 复核。
+- [x] 完成 `sleeve_composite_v1` 规则型组合 V1，并明确为 research-only。
+- [x] 完成 `sleeve_composite_v1` scoped admission，结论为 `reject`。
+- [x] 完成行业集中度 100% universe 专项实验，结论为 research-only，主线不放宽策略层行业审计。
+- [x] 建立策略失败归因诊断模块 V1，用于解释 reject / retest / research-only。
 
----
+### 下一步
 
-## T2.1.3 最推荐的实际推进顺序
+- [ ] 重跑 main 全候选 admission，覆盖 `baseline_admission_all_v1` 12 个候选并纳入 `sleeve_composite_v1`。
+- [ ] 为全候选 admission 生成策略池治理报告，输出策略状态、主要失败原因、研究边界和下一步动作。
+- [ ] 对 `low_vol_low_turnover_quality_v1` 做 paired compare / admission，重点验证行业集中、质量暴露和参数稳定性修正是否有效。
+- [ ] 对 `quality_low_turnover_monthly_v1` 做最后一折 regime 依赖复核，避免用单折转好解释长期有效。
+- [ ] 对 `sleeve_composite_v1` 设计降换手方案，先降低 turnover / churn / industry concentration，再做二次 scoped admission。
+- [ ] 将 T2.13 因子域、影响通道和外部市场环境字段接入失败归因报告设计，不进入主策略权重。
+- [ ] 明确每个候选的状态枚举：`active_research`、`baseline`、`failure_sample`、`research_only`、`deferred`、`admission_pass_candidate`。
 
-### T2.1.3.1 第一步：马上做
-- ~~**A. 短周期残差动量 + 反转增强**~~
-- ~~**B. 多因子 + 量价二次筛选**~~
-- ~~**C. 均线/K线 baseline**~~
-- **A. 维护 `legacy_momentum_low_turnover_v1` 作为当前正式 baseline**
-- **B. 保持账单 / gate / premarket / report 链路口径一致**
-- **C. 先做 FRED / Tiingo / 港股历史库的解释层数据验证**
+## T2.1.5 不做清单
 
-### T2.1.3.2 第二步：补少量字段后做
-- **D. 多因子 + SVM 选股**
-- **E. 轻量版 ML-AC 权重映射**
-- **F. 港股映射 A 股解释力测试通过后，再进入 T3.1 策略代码化**
+- [x] 不把旧 `qfq_current` selected candidate 解释为当前可用策略。
+- [x] 不因为 admission 过严就降低门槛。
+- [x] 不用单次 compare 相对最优替代 admission。
+- [x] 不把 `sleeve_composite_v1` scoped admission 的相对表现解释为正式候选。
+- [x] 不继续堆叠高换手价格行为策略参数。
+- [x] 不在没有 as-of 数据和覆盖率诊断前启动文本、主题、政策或新闻因子回测。
+- [x] 不把 LLM / 知识图谱输出直接转成交易信号。
 
-### T2.1.3.3 第三步：延后
-- **F. 网络因子**
-- **G. 文本情绪**
-- **H. 融资融券双边策略**
+## T2.1.6 简短结论
 
----
+T2.1 当前不是“挑一个马上上线的策略”，而是“把策略池治理成可复查的研究资产”。
 
-## T2.1.4 建议直接写进当前项目待办的 5 项任务
+短期唯一合理主线是：
 
-- [x] ~~重做 `residual_momentum_reversal_v1`，先用更简单的线性打分和更少参数验证方向是否有效~~
-- [x] ~~在 `phase0/walk_forward.py` 增加“多因子 + 量价二次筛选”的候选策略版本~~
-- [x] ~~新增一个 `ma_kline_baseline_v1` 候选策略，作为非 ML 基线~~
-- [x] 给当前候选策略统一增加：夏普、最大回撤、换手、行业集中度对比输出
-- [x] ~~若上述任一候选优于 `legacy_momentum`，再决定是否推进到 SVM 或轻量 ML-AC 版本~~
-- [x] 当前已由 `legacy_momentum_low_turnover_v1` 替代旧 `legacy_momentum`
-- [ ] 继续维护当前 baseline 的日报解释、调仓建议和账户仿真口径
-- [ ] 在数据源稳定后，重新评估 SVM / ML-AC 是否作为研究对照进入 Phase 1.5
-
----
-
-## T2.1.5 简短结论
-
-~~如果目标是**最短路径提升当前 Phase 0 表现**，优先做：~~
-
-1. ~~**短周期残差动量 + 反转增强**~~
-2. ~~**多因子 + 量价二次筛选**~~
-3. ~~**均线/K线 baseline**~~
-
-如果目标是**中期打造更像正式选股系统的主 ranker**，优先做：
-
-4. **多因子 + SVM**
-5. **轻量版 ML-AC**
-
-当前结论：
-
-1. `legacy_momentum_low_turnover_v1` 已经完成 Phase 0 晋级并成为当前正式 baseline。
-2. residual / multifactor / MA-K 线候选保留为历史诊断和后续备选，不再占据当前最高优先级。
-3. 当前优先级是把通过策略稳定接入日报、调仓建议、账户仿真和跨市场 overlay 解释层。
+1. 用 `baseline_admission_all_v1` 统一治理 12 个候选。
+2. 优先修正低波、低换手、质量策略的失败原因。
+3. 把 `sleeve_composite_v1` 保持为 research-only，先降换手和行业集中。
+4. 用 T2.13 的因子传导框架增强归因和报告解释，而不是绕过 admission 生成新信号。

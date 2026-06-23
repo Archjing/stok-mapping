@@ -150,7 +150,7 @@
 - [x] `reports/phase0_effectiveness_report.md`
 - [x] `reports/phase0_walk_forward_candidates.csv`
 - [x] `reports/phase0_strategy_change_log.md`
-- [x] `reports/phase0_cost_sensitivity_report.md`
+- [x] `reports/phase0/phase0_cost_sensitivity_report.md`
 
 ## W1.0.9 本周成功标准
 
@@ -186,10 +186,10 @@
 - [x] 进入下一轮更细的参数与稳定性验证
 
 ### W1.0.11.2 如果没有候选通过 gate
-- [ ] 保留 `ma_kline_baseline_v1` 作为诊断地板
-- [ ] 保留 `legacy_momentum` 作为 portfolio baseline
-- [ ] 在 residual / multifactor 中只保留低换手改造版本继续 compare
-- [ ] 下一轮重点转向：**持有期、换手、滑点敏感性控制**，而不是继续加大因子复杂度
+- [x] 保留 `ma_kline_baseline_v1` 作为诊断地板
+- [x] 保留 `legacy_momentum` 作为 portfolio baseline
+- [x] residual / multifactor 不再作为 W1.5 主线继续补研发，仅保留低换手改造方向作为后续备选
+- [x] 下一轮重点转向：**持有期、换手、滑点敏感性控制**，而不是继续加大因子复杂度
 
 ---
 
@@ -223,13 +223,13 @@
 - [x] 在参数选择阶段加入 cost-aware score
 
 ### W1.5.3.2 residual momentum 低换手版本
-- [ ] 降低交易频率
-- [ ] 避免短周期反转信号导致频繁换仓
+- [x] 降低交易频率方向已归档为后续备选，不在 W1.5 继续补研发
+- [x] 避免短周期反转信号导致频繁换仓的要求已转入后续备选研发约束
 - [x] 已确认不进入当前主线，只保留为后续备选
 
 ### W1.5.3.3 multifactor slippage-aware 版本
-- [ ] 对 `amount_ratio20`、波动率、上影线等交易质量过滤重新设定
-- [ ] 增加持有期或调仓频率限制
+- [x] 对 `amount_ratio20`、波动率、上影线等交易质量过滤的重设已归档为后续备选，不在 W1.5 继续补研发
+- [x] 增加持有期或调仓频率限制的要求已转入后续备选研发约束
 - [x] 已确认 current-cost 下未胜出，暂不继续占用当前主线
 
 ## W1.5.4 验收要求
@@ -239,6 +239,13 @@
 - [x] 不用零成本结果替代 current-cost gate
 - [x] 不因单个 fold 表现好直接晋级
 - [x] 变更写入 `reports/phase0_strategy_change_log.md`
+
+## W1.5.5 归档结论
+
+- [x] W1.5 在当时旧 `qfq_current` / current-cost 口径下完成：`legacy_momentum_low_turnover_v1` 的 `sharpe_mean = 1.0083`，`max_drawdown_mean = -0.1042`，`win_rate_mean = 0.5110`。
+- [x] 成本敏感性证据见 `reports/phase0/phase0_cost_sensitivity_report.md`：`main_personal_execution` Sharpe `1.0083`，`low_slippage` Sharpe `1.0094`，二者差距可解释。
+- [x] residual / multifactor 在 current-cost 下未胜出，不作为 W1.5 继续研发范围；后续若重开，必须以低换手、持有期和滑点敏感性为硬约束。
+- [x] 后续严格 `qfq_asof` 复核已推翻旧口径 selected candidate 解释；`legacy_momentum_low_turnover_v1` 当前只作为兼容 baseline 与研究样本，不代表可进入模拟或实盘。
 
 ---
 
@@ -633,7 +640,7 @@
 - [x] `reports/phase0_walk_forward_candidates.csv`
 - [x] `reports/phase0_walk_forward_folds.csv`
 - [x] `reports/phase0_effectiveness_report.md`
-- [ ] `reports/phase0_cost_sensitivity.csv`，若存在则读取
+- [x] `reports/phase0/phase0_cost_sensitivity.csv`，若存在则读取
 - [x] `config.yaml`
 
 ### W2.13.3 输出产物
@@ -1140,6 +1147,51 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 实现 `maintain status`
 - [x] 将当前 shell 调度任务映射为内置 registry，但不立即替换 cron 行为
 
+# W2.28｜Report Dashboard Astro 静态报表门户专项（T6.4）
+
+参考专项任务：[`docs/tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](ops/REPORT_DASHBOARD_ASTRO_TASKS.md)
+
+## W2.28.1 背景
+
+当前 `reports/` 下已经有 Markdown、HTML、CSV 等多种产物，但分散在日期目录、策略目录、维护目录和专项目录中。继续让每个命令各自输出路径会增加复盘成本，也不利于把 `compare`、`strategy-admission`、`brief`、`maintenance`、`db-health` 的运行结果统一展示。
+
+## W2.28.2 本周目标
+
+- [x] 草拟 T6.4 模块开发计划，明确 Python 报表登记层与 Astro 静态渲染层边界
+- [x] 实现 P0 manifest MVP：扫描 Markdown / HTML / CSV 并生成 `reports/report_dashboard/manifest.json`
+- [x] 新增 `dashboard scan` CLI
+- [x] 用现有 `reports/strategy_admission/`、`reports/2026-06-23/`、`reports/database_health/` 做扫描验收
+
+## W2.28.3 第一版验收标准
+
+- [x] `./.venv/bin/python -m pytest tests/test_report_registry.py -q` 通过
+- [x] `./.venv/bin/python -m phase0.cli dashboard scan --config config.yaml` 能生成 manifest
+- [x] manifest 至少包含 Markdown、HTML、CSV 三类产物
+- [ ] P1 Astro 站点不直接扫描业务目录，只消费 manifest
+
+# W2.29｜Report Output Path Standardization（T6.5）
+
+参考专项计划：[`docs/superpowers/plans/2026-06-23-report-output-path-standardization.md`](../superpowers/plans/2026-06-23-report-output-path-standardization.md)
+
+## W2.29.1 本周目标
+
+- [x] 实现 `phase0/report_paths.py`，统一 run / latest / scratch 路径 helper
+- [x] 默认新产物采用 `reports/runs/YYYY-MM-DD/YYYYMMDD_HHMMSS__<command>__<scope>/`
+- [x] 文件名采用 `<family>__<artifact>.<ext>`，不再在文件名中重复 timestamp
+- [x] 迁移 `strategy-admission` 默认输出，并保留显式 `--output-dir` 兼容
+- [x] 迁移 `db-health` 默认输出，并保留显式 `--output-dir` 兼容
+- [x] 迁移 `factor-effectiveness` 默认输出，并保留显式输出目录兼容
+- [x] watchlist latest 新增 `reports/latest/watchlist/index.html`，旧 `reports/watchlist_today/index.html` 继续作为兼容镜像
+- [x] `dashboard scan` 识别 `standard_run`、legacy module/date/experiment/latest/scratch/root-flat 分类
+
+## W2.29.2 验收标准
+
+- [x] `./.venv/bin/python -m pytest tests/test_report_paths.py tests/test_report_registry.py tests/test_strategy_admission_config.py tests/test_daily_coverage_eligibility.py -q` 通过
+- [x] `./.venv/bin/python -m phase0.cli dashboard scan --config config.yaml` 通过，并在 manifest 中显示 `standard_run`
+- [x] `db-health --scope scheduler --fail-on never` 可生成标准 run 目录下的 `database_health__summary.csv`、`database_health__findings.csv`、`database_health__report.md`
+- [ ] 未批量移动历史 `reports/` 文件；历史产物继续通过 scanner 兼容索引
+- [ ] 尚未实现 Astro 前端、`dashboard build`、`dashboard serve`
+
 ## W2.18.3 第一版验收标准
 
 - [x] `maintain tick --dry-run` 能输出当前时刻每个任务的 `will_run / skipped / blocked` 判断和原因
@@ -1159,6 +1211,8 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md` 输出能力
 - [x] 当前优先 3：接入交易日历和更细的运行窗口口径
 - [x] 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
+- [x] 当前优先 5：新增 `phase0.cli system status` 只读入口，汇总 maintenance state DB、任务状态分布、决策分布和 running shard 数
+- [x] `system status` 默认不启动任务、不生成维护 Markdown 报告，作为 System Orchestrator 的最小只读汇总 MVP
 
 # W2.19｜文本事件数据层后续任务（T1.3 / T2.11）
 
@@ -1444,3 +1498,61 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 不新增 sklearn / xgboost 依赖
 - [x] 不接入模拟账户或 `07:30` 正式输出
 - [x] 不把组合分数直接解释为交易信号
+
+# W2.30｜因子传导图工程化与市场环境诊断（T2.13 / T5.2）
+
+参考架构文档：[`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`](../PROJECT_ARCHITECTURE_OVERVIEW.md)
+
+## W2.30.1 背景结论
+
+`INT-KMS-001` A 股个股行情影响因子全景图已通过情报采集器入库，并已与 marklogseq HTML 结构化接口知识整合为项目知识资产。其第二部分“因子传导逻辑图（从定价公式到六域关系矩阵）”可以作为项目因子体系设计的理论框架，但只能作为因子本体、特征注册、市场环境归因和报告解释的基础，不可直接作为交易 alpha、因果证明或准入豁免。
+
+核心分解：
+
+- [x] 股价变化拆解为未来现金流预期、折现率/风险溢价、资金供需、信息事件冲击、交易制度与微观结构放大
+- [x] 六域矩阵覆盖宏观制度、行业主题、公司价值、风格风险溢价、资金交易、信息事件
+- [x] 工程角色定位为研究情报层到策略治理层之间的只读元数据和诊断框架
+- [x] 具体因子进入主 ranker 前仍必须经过 as-of 可见性、覆盖率、样本外、成本后和 admission 验证
+
+## W2.30.2 本周目标
+
+- [x] 将 Logseq 全景图和 marklogseq HTML 结构化知识资产纳入 T5.2 情报库
+- [x] 复核“因子传导逻辑图”是否适合作为代码设计基础理论依据
+- [x] 在开发计划书中新增 T2.13，并引用项目架构总览约束模块边界
+- [ ] 设计第一版因子本体 schema，明确因子域、影响通道、数据来源、可见时间、使用位置和验证状态
+- [ ] 设计 feature registry 草案，先把现有低波、低换手、质量、成长、估值、动量、反转因子映射到六域传导框架
+- [ ] 设计 market regime / strategy failure attribution 的扩展字段，用于解释策略失败是否与市场风格切换、板块轮动、资金结构或外部事件相关
+- [ ] 设计 admission 报告扩展字段，使报告能区分“策略本身失效”“因子域缺失”“当前市场环境未覆盖”“外部事件未建模”
+
+## W2.30.3 架构边界
+
+- [x] 研究情报层保存来源、摘要、六域分类、可验证假设和反方风险
+- [x] 股票池与特征层负责把可落地字段注册为 factor / feature spec，并记录数据源、频率、覆盖率、as-of 可见性和缺失处理
+- [x] 策略治理层负责把因子域和影响通道用于 `factor-effectiveness`、`strategy-admission`、失败归因和 regime 解释
+- [x] 交付与运维层只展示诊断结果、报告和知识资产，不直接重写策略结论
+- [x] LLM / Agent 只能做摘要、标签、反方审查和计划生成，不能越过策略治理层生成交易动作
+
+## W2.30.4 开发任务拆解
+
+- [ ] 新增只读因子本体模块计划：`phase0/factor_ontology.py` 或等价模块，先定义数据结构和校验函数，不接入策略打分
+- [ ] 新增因子注册表草案：记录因子中文名、内部字段、六域分类、影响通道、数据源、频率、可见时间、缺失处理、当前验证状态
+- [ ] 从 `knowledge/intelligence/wiki/a_share_factor_data_interface_index.csv` 抽取可用接口候选，标记哪些可进入数据建设，哪些仅保留研究线索
+- [ ] 为 `factor-effectiveness` 规划按因子域和影响通道聚合的诊断输出，避免只看单字段 IC 或分组收益
+- [ ] 为 `strategy_failure_attribution` 规划外部市场、新闻、政策、行业轮动和资金结构缺失归因标签
+- [ ] 为 `strategy-admission` 规划 regime coverage / factor domain coverage 段落，作为 reject 后研发方向输入
+- [ ] 补充最小测试计划：schema 校验、未知因子域拒绝、缺失 as-of 字段阻断、registry CSV round-trip、报告字段稳定性
+
+## W2.30.5 第一版验收标准
+
+- [ ] 每个注册因子必须至少具备：因子域、影响通道、数据来源、可见时间、使用位置、验证状态
+- [ ] registry 不允许缺失 as-of 可见性字段的因子进入历史回测候选
+- [ ] 报告能把当前策略失败原因映射到收益、执行、构造、因子、参数、regime、数据质量以及外部因子覆盖缺口
+- [ ] 计划能明确哪些数据来自 Tushare，哪些来自情报库，哪些来自公告新闻或后续文本事件层
+- [ ] 不改变任何现有候选策略排序、权重、admission gate 或日报输出
+
+## W2.30.6 不做
+
+- [x] 不把六域矩阵直接转成主 ranker 权重
+- [x] 不在没有数据覆盖率和 as-of 审计前启动外部因子回测
+- [x] 不把新闻、政策或情绪材料直接当作已验证交易信号
+- [x] 不因为策略 admission 过严就降低门槛；优先补齐缺失解释变量、市场环境诊断和反方证据

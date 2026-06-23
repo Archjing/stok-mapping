@@ -22,3 +22,29 @@
 - Source scope: `INT-CN-005`, `INT-CN-007`, `INT-CN-008`, existing June 2026 A-share monthly scan.
 - Notes: 本次只建立 RAG-ready Markdown / CSV 语料边界，不引入向量库、SQLite、知识图谱或自动交易信号。
 - Open question: 后续是否把 `factor_effectiveness_redundancy_diagnostic_v1` 纳入 T2.5 只读诊断工具，需等待全 12 候选 qfq_asof admission 复跑结果。
+
+## 2026-06-23 ingest | Logseq A股个股行情影响因子全景图
+
+- Source: `/home/zj/workspace/KMS/My_logseq/pages/A股个股行情影响因子全景图.md`
+- Candidate CSV: `data/intelligence/inbox/a_share_factor_panorama_candidates_2026-06-23.csv`
+- Import report: `reports/intelligence/intelligence_import_local_report_2026-06-23_a_share_factor_panorama.md`
+- Created: `knowledge/intelligence/notes/INT-KMS-001_a_share_factor_panorama.md`
+- Updated: `knowledge/intelligence/strategy_intelligence_ledger.csv`
+- Updated: `knowledge/intelligence/rag_manifest.csv`
+- Updated: `knowledge/intelligence/wiki/index.md`
+- Notes: Logseq pages path is an accepted intelligence source, but `config.yaml` keeps `logseq_pages` disabled by default to avoid bulk-importing the whole personal graph.
+- Open question: 是否为 Logseq 情报采集器增加 `include_globs` / `exclude_globs`，支持只扫描指定知识页而不是全量 `pages/`。
+
+## 2026-06-23 ingest | marklogseq 数据接口结构化知识资产
+
+- Source HTML: `/home/zj/workspace/brainstorm/modules/marklogseq/html-site/index.html`
+- Linked intelligence: `INT-KMS-001`
+- Created: `knowledge/intelligence/wiki/a_share_factor_data_interface_knowledge_asset.md`
+- Created: `knowledge/intelligence/wiki/a_share_factor_data_interface_index.csv`
+- Updated: `knowledge/intelligence/notes/INT-KMS-001_a_share_factor_panorama.md`
+- Updated: `knowledge/intelligence/rag_manifest.csv`
+- Updated: `knowledge/intelligence/wiki/index.md`
+- Parsed categories: 11
+- Parsed navigation interfaces: 70
+- Parsed content pages: 71
+- Notes: 该资产把 Logseq 六域因子框架与 marklogseq HTML 接口手册整合为项目可用的数据接口地图；它用于数据接入和诊断规划，不作为策略有效性证据。

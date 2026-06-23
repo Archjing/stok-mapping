@@ -208,3 +208,22 @@ Week 2 任务清单中 `W2.4.2` 仍缺“明确 FRED 数据缓存策略”。为
 
 - 本次完成的是港股历史库数据层验证与报告化，不代表港股数据已接入策略主链路。
 - `hk_market_history` 仍作为独立数据资产，后续需通过解释力与策略回测验证后再决定是否挂载。
+
+## 2026-06-23｜W1.5 Sharpe 修复与成本敏感性归档收口
+
+### 变更原因
+
+W1.5 的剩余 checkbox 主要是 residual / multifactor 方向的低换手补研发项。后续复盘已确认：W1.5 在当时旧 `qfq_current` / current-cost 口径下已经达成目标；但严格 `qfq_asof` 复核后，旧 selected candidate 不能再解释为当前可进入模拟或实盘的合格候选。因此本次只做归档收口，不重开策略研发，不重新运行回测。
+
+### 归档证据
+
+- `reports/phase0/phase0_effectiveness_report.md`：旧 `qfq_current` / current-cost 口径下，`legacy_momentum_low_turnover_v1` 达到 `sharpe_mean = 1.0083`、`max_drawdown_mean = -0.1042`、`win_rate_mean = 0.5110`。
+- `reports/phase0/phase0_cost_sensitivity_report.md`：`main_personal_execution` Sharpe 为 `1.0083`，`low_slippage` Sharpe 为 `1.0094`，current-cost 与 low-slippage 差距可解释。
+- `reports/phase0/phase0_cost_sensitivity.csv`：成本敏感性已覆盖 `base_research_cost`、`main_personal_execution`、`stress_slippage_0_003`、`stress_slippage_0_005`、`low_slippage`、`zero_cost`。
+
+### 收口结论
+
+- residual momentum 低换手版本不在 W1.5 继续补研发；降低交易频率与避免短周期反转频繁换仓的要求转入后续备选研发约束。
+- multifactor slippage-aware 版本不在 W1.5 继续补研发；交易质量过滤、持有期和调仓频率限制转入后续备选研发约束。
+- `legacy_momentum_low_turnover_v1` 当前仅作为兼容 baseline 与研究样本保留，不作为当前 selected candidate。
+- 后续若重新打开 residual / multifactor 方向，必须以低换手、持有期、滑点敏感性和严格 `qfq_asof` admission 为硬门槛。

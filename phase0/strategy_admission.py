@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phase0.overfit import run_overfit_diagnostic
+from phase0.report_paths import create_report_run
 from phase0.walk_forward import run_walk_forward
 
 
@@ -19,6 +20,7 @@ class StrategyAdmissionResult:
     matrix_csv: Path
     constraint_csv: Path
     report_md: Path
+    governance_md: Path
     folds_csv: Path
     overfit_csv: Path
     strategies: int
@@ -101,9 +103,6 @@ def run_strategy_admission(
     output_dir: Path | None = None,
     trace_callback: Any | None = None,
 ) -> StrategyAdmissionResult:
-    output_dir = output_dir or root / "reports" / "strategy_admission"
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     wcfg = config.get("walk_forward", {})
     available_presets = wcfg.get("presets", {}) or {}
     preset_names = presets or list(available_presets.keys())
@@ -121,6 +120,15 @@ def run_strategy_admission(
     strategy_names = strategy_scope["strategies"]
     if not strategy_names:
         raise ValueError("strategy-admission requires at least one strategy")
+
+    explicit_output_dir = output_dir is not None
+    if output_dir is None:
+        scope_name = strategy_scope.get("strategy_set") or "_".join(strategy_names[:3]) or "default"
+        report_run = create_report_run(root=root, command="strategy-admission", scope=str(scope_name))
+        output_dir = report_run.run_dir
+    else:
+        report_run = None
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     all_folds: list[pd.DataFrame] = []
     failure_rows: list[dict[str, Any]] = []
@@ -165,13 +173,22 @@ def run_strategy_admission(
     matrix_df = _build_window_matrix(folds_df, failures_df, strategy_names, preset_names, gate_cfg)
     _attach_price_adjustment_status(matrix_df, config, gate_cfg)
 
-    folds_csv = output_dir / "strategy_admission_candidate_folds.csv"
+    folds_csv = (
+        output_dir / "strategy_admission_candidate_folds.csv"
+        if explicit_output_dir
+        else report_run.artifact("strategy_admission", "candidate_folds", "csv")
+    )
     if folds_df.empty:
         pd.DataFrame().to_csv(folds_csv, index=False)
     else:
         folds_df.to_csv(folds_csv, index=False)
 
-    overfit_csv = output_dir / "overfit_diagnostic" / "strategy_overfit_diagnostic.csv"
+    overfit_output_dir = output_dir / "overfit_diagnostic" if explicit_output_dir else output_dir
+    overfit_csv = (
+        overfit_output_dir / "strategy_overfit_diagnostic.csv"
+        if explicit_output_dir
+        else report_run.artifact("overfit", "diagnostic", "csv")
+    )
     overfit_df = pd.DataFrame()
     if not folds_df.empty:
         overfit_result = run_overfit_diagnostic(
@@ -179,16 +196,24 @@ def run_strategy_admission(
             root=root,
             candidates_path=folds_csv,
             folds_path=folds_csv,
-            output_dir=output_dir / "overfit_diagnostic",
+            output_dir=overfit_output_dir,
+            standard_names=not explicit_output_dir,
         )
         overfit_csv = overfit_result.csv_path
         overfit_df = pd.read_csv(overfit_csv)
 
     constraint_df = _build_constraint_review(matrix_df, overfit_df, preset_names, gate_cfg)
 
-    matrix_csv = output_dir / "strategy_admission_window_matrix.csv"
-    constraint_csv = output_dir / "strategy_admission_constraint_review.csv"
-    report_md = output_dir / "strategy_admission_report.md"
+    if explicit_output_dir:
+        matrix_csv = output_dir / "strategy_admission_window_matrix.csv"
+        constraint_csv = output_dir / "strategy_admission_constraint_review.csv"
+        report_md = output_dir / "strategy_admission_report.md"
+        governance_md = output_dir / "strategy_admission_governance_report.md"
+    else:
+        matrix_csv = report_run.artifact("strategy_admission", "window_matrix", "csv")
+        constraint_csv = report_run.artifact("strategy_admission", "constraint_review", "csv")
+        report_md = report_run.artifact("strategy_admission", "report", "md")
+        governance_md = report_run.artifact("strategy_admission", "governance", "md")
     matrix_df.to_csv(matrix_csv, index=False)
     constraint_df.to_csv(constraint_csv, index=False)
     _write_report(
@@ -202,12 +227,36 @@ def run_strategy_admission(
         gate_cfg=gate_cfg,
         diagnostics_suites=diagnostics_suites,
     )
+    _write_governance_report(
+        governance_md,
+        matrix_df,
+        constraint_df,
+        preset_names,
+        strategy_names,
+        strategy_scope=strategy_scope,
+        gate_cfg=gate_cfg,
+        diagnostics_suites=diagnostics_suites,
+        required_artifacts=_required_artifact_names(
+            output_dir=output_dir,
+            folds_csv=folds_csv,
+            matrix_csv=matrix_csv,
+            constraint_csv=constraint_csv,
+            report_md=report_md,
+            overfit_csv=overfit_csv,
+        ),
+        command_hint=_admission_command_hint(
+            presets=preset_names,
+            strategy_scope=strategy_scope,
+            output_dir=output_dir if explicit_output_dir else None,
+        ),
+    )
 
     return StrategyAdmissionResult(
         output_dir=output_dir,
         matrix_csv=matrix_csv,
         constraint_csv=constraint_csv,
         report_md=report_md,
+        governance_md=governance_md,
         folds_csv=folds_csv,
         overfit_csv=overfit_csv,
         strategies=len(strategy_names),
@@ -750,6 +799,164 @@ def _write_report(
         "",
     ]
     path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _admission_command_hint(
+    *,
+    presets: list[str],
+    strategy_scope: dict[str, Any],
+    output_dir: Path | None,
+) -> str:
+    parts = [
+        "phase0.cli",
+        "strategy-admission",
+        "--config config.yaml",
+        "--presets " + " ".join(presets),
+    ]
+    strategy_set = _safe_str(strategy_scope.get("strategy_set", ""))
+    strategies = [str(item) for item in strategy_scope.get("strategies", [])]
+    if strategy_set:
+        parts.append(f"--strategy-set {strategy_set}")
+    elif strategies:
+        parts.append("--strategies " + " ".join(strategies))
+    if output_dir is not None:
+        parts.append(f"--output-dir {output_dir}")
+    return " ".join(parts)
+
+
+def _required_artifact_names(
+    *,
+    output_dir: Path,
+    folds_csv: Path,
+    matrix_csv: Path,
+    constraint_csv: Path,
+    report_md: Path,
+    overfit_csv: Path,
+) -> list[str]:
+    artifacts = [folds_csv, matrix_csv, constraint_csv, report_md, overfit_csv]
+    names: list[str] = []
+    for artifact in artifacts:
+        try:
+            names.append(artifact.relative_to(output_dir).as_posix())
+        except ValueError:
+            names.append(artifact.name)
+    return names
+
+
+def _write_governance_report(
+    path: Path,
+    matrix: pd.DataFrame,
+    review: pd.DataFrame,
+    presets: list[str],
+    strategies: list[str],
+    *,
+    strategy_scope: dict[str, Any],
+    gate_cfg: dict[str, Any],
+    diagnostics_suites: list[str],
+    required_artifacts: list[str] | None = None,
+    command_hint: str,
+) -> None:
+    action_counts = _value_counts(review, "admission_action")
+    price_counts = _value_counts(matrix, "price_adjustment_status")
+    industry_counts = _value_counts(matrix, "industry_diagnostic_status")
+    financial_counts = _value_counts(matrix, "financial_diagnostic_status")
+    account_counts = _value_counts(matrix, "account_execution_status")
+    research_or_reject = review[
+        review.get("admission_action", pd.Series(dtype=object)).astype(str).isin(
+            {"reject", "retest", "research_only"}
+        )
+    ] if not review.empty and "admission_action" in review.columns else pd.DataFrame()
+
+    lines = [
+        "# Strategy Admission Governance Report",
+        "",
+        f"Generated at: {datetime.now().isoformat(timespec='seconds')}",
+        "",
+        "## Run Context",
+        "",
+        f"- Command: `{command_hint}`",
+        f"- Strategy scope source: `{_safe_str(strategy_scope.get('source', ''))}`",
+        f"- Strategy set: `{_safe_str(strategy_scope.get('strategy_set', ''))}`",
+        f"- Strategy set description: {_safe_str(strategy_scope.get('description', '')) or 'n/a'}",
+        f"- Presets: `{', '.join(presets)}`",
+        f"- Strategies: `{', '.join(strategies)}`",
+        f"- Diagnostics suites: `{', '.join(diagnostics_suites) if diagnostics_suites else 'none'}`",
+        "",
+        "## Governance Boundary",
+        "",
+        f"- Required price口径: `qfq_asof` = `{bool(gate_cfg.get('require_qfq_asof', True))}`",
+        f"- Max overfit risk: `{_safe_str(gate_cfg.get('overfit_risk_max', 'medium'))}`",
+        "- Agent、compare、admission 报告和 workflow 成功都不等于策略准入通过。",
+        "- `reject`、`retest`、`research_only` 不得进入 paper review / 模拟账户 / 日报 / watchlist。",
+        "- 只有 `eligible_for_paper_review` 且 qfq_asof、PIT、成本、overfit、行业和因子诊断均满足门禁时，才允许进入下一阶段人工复核。",
+        "",
+        "## Required Artifacts",
+        "",
+        *[
+            f"- `{artifact}`"
+            for artifact in (
+                required_artifacts
+                or [
+                    "strategy_admission_candidate_folds.csv",
+                    "strategy_admission_window_matrix.csv",
+                    "strategy_admission_constraint_review.csv",
+                    "strategy_admission_report.md",
+                    "overfit_diagnostic/strategy_overfit_diagnostic.csv",
+                ]
+            )
+        ],
+        "",
+        "## Summary",
+        "",
+        f"- Strategy count: `{len(strategies)}`",
+        f"- Preset count: `{len(presets)}`",
+        f"- Matrix rows: `{len(matrix)}`",
+        f"- Action counts: `{_format_count_map(action_counts)}`",
+        f"- Price adjustment status: `{_format_count_map(price_counts)}`",
+        f"- Industry diagnostic status: `{_format_count_map(industry_counts)}`",
+        f"- Financial diagnostic status: `{_format_count_map(financial_counts)}`",
+        f"- Account execution status: `{_format_count_map(account_counts)}`",
+        "",
+        "## Candidate Actions",
+        "",
+        _md_table(
+            ["strategy_id", "action", "window_pass", "reasons"],
+            [
+                [
+                    _safe_str(row.get("strategy_id", "")),
+                    _safe_str(row.get("admission_action", "")),
+                    f"{_safe_int(row.get('window_pass_count', 0))}/{_safe_int(row.get('window_count', 0))}",
+                    _safe_str(row.get("main_reasons", "")),
+                ]
+                for _, row in review.iterrows()
+            ],
+        ),
+        "",
+    ]
+    if not research_or_reject.empty:
+        lines.extend(
+            [
+                "## Next Research Actions",
+                "",
+                "- 对 `reject` / `research_only` 候选先运行或复用 `strategy-failure-attribution`，再决定是否进入 T2.12 组合构造修正。",
+                "- 不新增高换手价格行为策略作为绕行路径；优先处理收益、Sharpe、正收益折比例、换手、行业集中、参数稳定性和 overfit risk。",
+                "",
+            ]
+        )
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _value_counts(df: pd.DataFrame, column: str) -> dict[str, int]:
+    if df.empty or column not in df.columns:
+        return {}
+    values = df[column].fillna("not_available").astype(str)
+    return {str(key): int(value) for key, value in values.value_counts().sort_index().items()}
+
+
+def _format_count_map(counts: dict[str, int]) -> str:
+    if not counts:
+        return "none"
+    return ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
 
 
 def _load_quality_factor_evidence(root: Path) -> dict[str, str]:

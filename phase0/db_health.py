@@ -8,6 +8,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from phase0.report_paths import create_report_run
+
 
 VALID_SCOPES = {"all", "cn", "financial", "cross_market", "scheduler"}
 SEVERITY_ORDER = {"info": 0, "warning": 1, "error": 2}
@@ -1395,10 +1397,17 @@ def run_database_health_check(
     if scope not in VALID_SCOPES:
         raise ValueError(f"unsupported db-health scope: {scope}")
     as_of = _parse_date(as_of_date)
-    output = output_dir or (root / "reports" / "database_health")
-    summary_csv = output / "database_health_summary.csv"
-    findings_csv = output / "database_health_findings.csv"
-    summary_md = output / "database_health_report.md"
+    if output_dir is None:
+        report_run = create_report_run(root=root, command="db-health", scope=scope)
+        output = report_run.run_dir
+        summary_csv = report_run.artifact("database_health", "summary", "csv")
+        findings_csv = report_run.artifact("database_health", "findings", "csv")
+        summary_md = report_run.artifact("database_health", "report", "md")
+    else:
+        output = output_dir
+        summary_csv = output / "database_health_summary.csv"
+        findings_csv = output / "database_health_findings.csv"
+        summary_md = output / "database_health_report.md"
     findings: list[HealthFinding] = []
     summary: list[HealthSummaryRow] = []
 

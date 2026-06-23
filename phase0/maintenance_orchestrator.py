@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from phase0.config import load_config
 
@@ -249,6 +250,16 @@ def _connect(path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(path))
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def _connect_read_only(path: Path) -> sqlite3.Connection:
+    conn = sqlite3.connect(f"file:{quote(str(path))}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _table_columns(conn: sqlite3.Connection, table: str) -> set[str]:
+    return {str(row["name"]) for row in conn.execute(f"PRAGMA table_info({table})").fetchall()}
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
@@ -939,6 +950,53 @@ def _shard_rows(conn: sqlite3.Connection, root: Path, *, run_id: int | None = No
     ]
 
 
+def _shard_rows_read_only(conn: sqlite3.Connection, root: Path, *, run_id: int | None = None) -> list[MaintenanceShardStatusRow]:
+    shard_columns = _table_columns(conn, "maintenance_shards")
+    required = {"run_id", "task_name", "shard_index", "shard_count", "status", "pid", "started_at", "log_path"}
+    if not required.issubset(shard_columns):
+        return []
+    select_columns = [
+        "run_id",
+        "task_name",
+        "shard_index",
+        "shard_count",
+        "status",
+        "pid",
+        "started_at",
+        "COALESCE(finished_at, '') AS finished_at" if "finished_at" in shard_columns else "'' AS finished_at",
+        "exit_code" if "exit_code" in shard_columns else "NULL AS exit_code",
+        "log_path",
+        "report_path" if "report_path" in shard_columns else "'' AS report_path",
+        "error_summary" if "error_summary" in shard_columns else "'' AS error_summary",
+        "key_conclusion" if "key_conclusion" in shard_columns else "'' AS key_conclusion",
+    ]
+    query = f"SELECT {', '.join(select_columns)} FROM maintenance_shards"
+    params: tuple[Any, ...] = ()
+    if run_id is not None:
+        query += " WHERE run_id = ?"
+        params = (run_id,)
+    query += " ORDER BY run_id DESC, shard_index ASC"
+    rows = conn.execute(query, params).fetchall()
+    return [
+        MaintenanceShardStatusRow(
+            run_id=int(row["run_id"]),
+            task_name=str(row["task_name"]),
+            shard_index=int(row["shard_index"]),
+            shard_count=int(row["shard_count"]),
+            status=str(row["status"]),
+            pid=int(row["pid"]) if row["pid"] is not None else None,
+            started_at=str(row["started_at"]),
+            finished_at=str(row["finished_at"]),
+            exit_code=int(row["exit_code"]) if row["exit_code"] is not None else None,
+            log_path=_resolve_path(root, str(row["log_path"])),
+            report_path=_resolve_path(root, str(row["report_path"])) if str(row["report_path"] or "") else None,
+            error_summary=str(row["error_summary"] or ""),
+            key_conclusion=str(row["key_conclusion"] or ""),
+        )
+        for row in rows
+    ]
+
+
 def _build_financial_backfill_command(
     *,
     config_path: Path,
@@ -1394,6 +1452,148 @@ def _configured_state_db(root: Path, orchestrator_cfg: dict[str, Any]) -> Path:
     return _resolve_path(root, orchestrator_cfg.get("state_db", "data/maintenance/maintenance.sqlite"))
 
 
+def _registry_rows_from_specs(root: Path, specs: list[MaintenanceTaskSpec]) -> list[MaintenanceStatusRow]:
+    rows: list[MaintenanceStatusRow] = []
+    for spec in specs:
+        state_path_value = spec.state_path or f"logs/scheduler/{spec.name}.state"
+        state_path = _resolve_path(root, state_path_value)
+        task_state = _parse_task_state(state_path)
+        rows.append(
+            MaintenanceStatusRow(
+                task_name=spec.name,
+                enabled=bool(spec.enabled),
+                schedule_type=spec.schedule_type,
+                schedule_value=spec.schedule_value,
+                last_decision="unknown",
+                last_reason="",
+                last_tick_at="",
+                last_success_at="",
+                last_run_status="unknown",
+                last_error=str(task_state.get("last_error") or ""),
+                retry_count=int(task_state.get("retry_count") or 0),
+                log_path=_resolve_path(root, spec.log_path),
+                state_path=state_path,
+            )
+        )
+    return rows
+
+
+def _read_only_status(
+    config_path: Path,
+    *,
+    root: Path,
+    state_db: Path,
+    now_iso: str,
+) -> MaintenanceStatusResult:
+    specs = _default_registry(config_path)
+    rows = _registry_rows_from_specs(root, specs)
+    if not state_db.exists():
+        return MaintenanceStatusResult(state_db=state_db, generated_at=now_iso, rows=rows, shards=[])
+
+    row_map = {row.task_name: row for row in rows}
+    shards: list[MaintenanceShardStatusRow] = []
+    try:
+        with _connect_read_only(state_db) as conn:
+            registry_columns = _table_columns(conn, "maintenance_registry")
+            if registry_columns:
+                select_columns = ["task_name", "enabled", "schedule_type", "schedule_value", "log_path"]
+                if "state_path" in registry_columns:
+                    select_columns.append("state_path")
+                registry_rows = conn.execute(
+                    f"SELECT {', '.join(select_columns)} FROM maintenance_registry ORDER BY task_name"
+                ).fetchall()
+                for item in registry_rows:
+                    task_name = str(item["task_name"])
+                    base_row = row_map.get(task_name)
+                    if base_row is None:
+                        state_path_value = str(item["state_path"]) if "state_path" in registry_columns else f"logs/scheduler/{task_name}.state"
+                        state_path = _resolve_path(root, state_path_value)
+                        task_state = _parse_task_state(state_path)
+                        base_row = MaintenanceStatusRow(
+                            task_name=task_name,
+                            enabled=bool(item["enabled"]) if "enabled" in registry_columns else True,
+                            schedule_type=str(item["schedule_type"]) if "schedule_type" in registry_columns else "time",
+                            schedule_value=str(item["schedule_value"]) if "schedule_value" in registry_columns else "",
+                            last_decision="unknown",
+                            last_reason="",
+                            last_tick_at="",
+                            last_success_at="",
+                            last_run_status="unknown",
+                            last_error=str(task_state.get("last_error") or ""),
+                            retry_count=int(task_state.get("retry_count") or 0),
+                            log_path=_resolve_path(root, str(item["log_path"])) if "log_path" in registry_columns else root / "logs" / f"{task_name}.log",
+                            state_path=state_path,
+                        )
+                    event = None
+                    event_columns = _table_columns(conn, "maintenance_events")
+                    if {"task_name", "decision", "reason", "created_at"}.issubset(event_columns):
+                        event = conn.execute(
+                            """
+                            SELECT decision, reason, created_at
+                            FROM maintenance_events
+                            WHERE task_name = ?
+                            ORDER BY event_id DESC
+                            LIMIT 1
+                            """,
+                            (task_name,),
+                        ).fetchone()
+                    run = None
+                    success_run = None
+                    run_columns = _table_columns(conn, "maintenance_runs")
+                    if {"task_name", "status", "started_at"}.issubset(run_columns):
+                        error_expr = "error_summary" if "error_summary" in run_columns else "'' AS error_summary"
+                        run = conn.execute(
+                            f"""
+                            SELECT status, started_at, {error_expr}
+                            FROM maintenance_runs
+                            WHERE task_name = ?
+                            ORDER BY run_id DESC
+                            LIMIT 1
+                            """,
+                            (task_name,),
+                        ).fetchone()
+                    if {"task_name", "status", "finished_at"}.issubset(run_columns):
+                        success_run = conn.execute(
+                            """
+                            SELECT finished_at
+                            FROM maintenance_runs
+                            WHERE task_name = ? AND status = 'succeeded'
+                            ORDER BY run_id DESC
+                            LIMIT 1
+                            """,
+                            (task_name,),
+                        ).fetchone()
+                    row_map[task_name] = MaintenanceStatusRow(
+                        task_name=base_row.task_name,
+                        enabled=bool(item["enabled"]) if "enabled" in registry_columns else base_row.enabled,
+                        schedule_type=str(item["schedule_type"]) if "schedule_type" in registry_columns else base_row.schedule_type,
+                        schedule_value=str(item["schedule_value"]) if "schedule_value" in registry_columns else base_row.schedule_value,
+                        last_decision=str(event["decision"]) if event else base_row.last_decision,
+                        last_reason=str(event["reason"]) if event else base_row.last_reason,
+                        last_tick_at=str(event["created_at"]) if event else base_row.last_tick_at,
+                        last_success_at=str(success_run["finished_at"]) if success_run else base_row.last_success_at,
+                        last_run_status=str(run["status"]) if run else base_row.last_run_status,
+                        last_error=str(run["error_summary"]) if run and "error_summary" in run.keys() else base_row.last_error,
+                        retry_count=base_row.retry_count,
+                        log_path=_resolve_path(root, str(item["log_path"])) if "log_path" in registry_columns else base_row.log_path,
+                        state_path=_resolve_path(root, str(item["state_path"])) if "state_path" in registry_columns else base_row.state_path,
+                    )
+            shards = _shard_rows_read_only(conn, root)
+    except sqlite3.Error:
+        return MaintenanceStatusResult(
+            state_db=state_db,
+            generated_at=now_iso,
+            rows=sorted(row_map.values(), key=lambda row: row.task_name),
+            shards=[],
+        )
+    return MaintenanceStatusResult(
+        state_db=state_db,
+        generated_at=now_iso,
+        rows=sorted(row_map.values(), key=lambda row: row.task_name),
+        shards=shards,
+    )
+
+
 def _relative_display(root: Path, path: Path | None) -> str:
     if path is None:
         return ""
@@ -1532,15 +1732,26 @@ def maintenance_status(
     *,
     output_md: Path | None = None,
     write_report: bool = False,
+    refresh_state: bool = True,
+    read_only: bool = False,
 ) -> MaintenanceStatusResult:
     root, orchestrator_cfg = _load_maintenance_cfg(config_path)
     state_db = _configured_state_db(root, orchestrator_cfg)
     now_iso = datetime.now().isoformat(timespec="seconds")
 
+    if read_only:
+        return _read_only_status(
+            config_path,
+            root=root,
+            state_db=state_db,
+            now_iso=now_iso,
+        )
+
     with _connect(state_db) as conn:
         _ensure_schema(conn)
-        _refresh_shards(conn, root)
-        _sync_registry(conn, _default_registry(config_path), now_iso=now_iso)
+        if refresh_state:
+            _refresh_shards(conn, root)
+            _sync_registry(conn, _default_registry(config_path), now_iso=now_iso)
         registry_rows = conn.execute(
             """
             SELECT task_name, enabled, schedule_type, schedule_value, log_path, state_path

@@ -23,7 +23,7 @@
 | `B2` | Phase 0 gate | 严格 `qfq_asof` 口径未通过；当前仅确认工程链路可用 |
 | `B3` | 主线定位 | A 股本土因子为主，跨市场信号只做风险/情绪 overlay |
 | `B4` | 产品边界 | 个人自用量化研究、盘前研判与交易计划辅助，不自动下单 |
-| `B5` | 下一主线 | `Signal & Rebalance Engine`：可交易信号、调仓建议单、模拟订单、阻断原因 |
+| `B5` | 下一主线 | T5.2 RAG-ready 情报基础与策略池 admission 治理并行：先让研究情报可持续检索、复核和转任务，再用严格 `qfq_asof` admission 重建合格候选 |
 
 ## T0.3 子任务索引
 
@@ -37,7 +37,7 @@
 | `T2.1` | Phase 0 候选策略池 | [`strategy/PHASE0_CANDIDATE_STRATEGIES.md`](./strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |
 | `T2.4` | 策略过拟合诊断工具 | [`strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](./strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) |
-| `T2.5-T2.10` | 有效量化策略研发任务清单 | [`strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](./strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md) |
+| `T2.5-T2.11` | 有效量化策略研发任务清单 | [`strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`](./strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md) |
 | `T3.1` | 港股映射 A 股候选策略 | [`cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md`](./cross-market/HK_A_SHARE_MAPPING_STRATEGIES.md) |
 | `T4.1` | 真实账户对账 CSV 预留格式 | [`account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md`](./account/ACCOUNT_RECONCILIATION_CSV_SCHEMA.md) |
 | `T5.1` | 中文 A 股量化策略论文提炼 | [`research/STRATEGY_SUMMARY.md`](./research/STRATEGY_SUMMARY.md) |
@@ -45,6 +45,8 @@
 | `T6.1` | 统一调度器与后台 Pipeline | [`ops/SCHEDULER_PIPELINE_TASKS.md`](./ops/SCHEDULER_PIPELINE_TASKS.md) |
 | `T6.2` | 数据库健康检查与数据质量门禁 | [`WEEKLY_EXECUTION_CHECKLIST.md`](./WEEKLY_EXECUTION_CHECKLIST.md#W217数据库健康检查与数据质量门禁t62) |
 | `T6.3` | 数据治理与维护编排器 | [`ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](./ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) |
+| `T6.4` | Report Dashboard Astro 静态报表门户 | [`ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](./ops/REPORT_DASHBOARD_ASTRO_TASKS.md) |
+| `T6.5` | Report Output Path Standardization | [`../superpowers/plans/2026-06-23-report-output-path-standardization.md`](../superpowers/plans/2026-06-23-report-output-path-standardization.md) |
 
 ## T0.4 维护规则
 
