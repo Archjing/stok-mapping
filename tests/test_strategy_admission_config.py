@@ -825,6 +825,14 @@ def test_force_strategy_set_enabled_supports_strong_market_liquid_breadth_strate
     assert strategy_cfg["local_factor"]["strong_market_liquid_breadth_participation"]["enabled"] is True
 
 
+def test_force_strategy_set_enabled_supports_strong_market_stable_core_base_strategy() -> None:
+    strategy_cfg = {"local_factor": {"strong_market_stable_core_base": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["strong_market_stable_core_base_v1"])
+
+    assert strategy_cfg["local_factor"]["strong_market_stable_core_base"]["enabled"] is True
+
+
 def test_force_strategy_set_enabled_supports_sleeve_low_churn_strategy() -> None:
     strategy_cfg = {"sleeve_composite_low_churn": {"enabled": False}}
 

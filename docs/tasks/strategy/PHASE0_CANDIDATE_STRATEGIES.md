@@ -27,6 +27,7 @@ Phase 0 的基础工程闭环已经完成，但策略池当前没有严格 `qfq_
 - 当前强市场核心可达性结论：I40 已完成完整基准核心权重只读诊断；五折 as-of 覆盖均为 `100%`，平均可达核心权重约 `53%` 到 `58%`，完整 Top20 可达约 `31%` 到 `34%`。这说明本地 PIT 数据不是主要障碍，I37 失败主要来自过窄 alpha / hard filters 把核心权重从约 `55%` 砍到约 `9%`
 - 当前 Top 权重缺口结论：I44 已完成 `csi300_core_seed_panel` 只读实验，并修正 I39/I43 的 Top20 门槛口径。Top20 绝对权重是沪深300当期集中度，不应固定要求超过 `35%`；可达性应看覆盖率。显式保留 as-of 可见的沪深300核心成分后，五折均为 `pass`：平均核心可达权重 `59.45%`，平均核心覆盖率 `99.28%`，平均 Top20 覆盖率 `99.95%`。下一步可以预注册新的强市场核心参与候选，但不能把 I44 解释为交易策略通过或固定买沪深300前20只。
 - 当前强市场新候选设计：I45 已预注册 `strong_market_core_participation_v1`。新候选基于 I44 的 core seed panel，不复制沪深300、不固定买前20只；先保证核心股进入候选池，再用趋势、流动性、风险和行业约束决定实际持仓。下一步 I46 可做最小实现，并必须跑 scoped admission、holdings exposure、CSI300 attribution 和 failure attribution。
+- 当前强市场稳定底仓结论：I47 已实现 `strong_market_stable_core_base_v1`，把强市场参与机制拆成稳定核心底仓和小比例 alpha 卫星。结论仍为 `reject`，但它把平均实盘暴露从 I46 的约 `3.93%` 提高到约 `36.58%`，把 Top20 覆盖率从约 `3.66%` 提高到约 `58.16%`，并把平均年化换手从 `4.08` 降到 `0.68`。这说明稳定底仓机制有效，但收益、Sharpe、正收益折、行业偏离和 overfit 仍未过关。
 - 当前新增专项探索：盘中行情信号择时买卖已立项为 `T2.14`，仅作为后续数据与验证框架探索，不属于当前已研究候选策略
 - 当前禁止动作：不凭 compare 排名、旧 `qfq_current` 结果或单次 scoped admission 相对最优结论进入模拟账户或日报
 
@@ -210,6 +211,7 @@ I10/I11 对 `price_volume_low_turnover_v1` 的最新约束：
    - I43 已完成强市场 panel 上限实验：`walk_forward_limit=200/300` 明显改善核心权重可达性，平均可达核心权重最高到 `58.55%`。I44 随后确认，原 `Top20 >= 35%` 绝对权重门槛不合理，因为 Top20 自身权重会随年份变化；改用 Top20 覆盖率后，CSI300 core seed panel 五折均通过可达性诊断。下一步应预注册新的强市场核心参与候选，验证“能看见核心股”能否转化成“真实持仓能有效参与强市场”。
    - I45 已预注册 `strong_market_core_participation_v1`：它不是指数复制，也不是固定买沪深300前20只；它把 I44 的可达性结果转为下一策略候选的候选池和组合构造边界。若 I46 实现，必须验证强市场平均仓位、持有沪深300权重、Top20 持仓覆盖、换手、回撤和 admission。
    - I46 已实现 `strong_market_core_participation_v1` 并完成 scoped admission、failure attribution、market context、holdings exposure 和 CSI300 attribution。结论仍为 `reject`：年化收益均值 `-3.30%`，Sharpe `-0.43`，正收益折比例 `0%`，正超额折比例 `60%`，平均年化换手 `4.08`，最大年化换手 `16.04`，overfit risk `high`。本轮已修正核心逻辑：趋势、流动性、风险、行业约束不再作为沪深300核心股硬筛选器，而是作为排序、降权和审计依据。失败主因从“核心股不可达”推进为“强行情参与触发太窄、全折平均仓位和沪深300权重覆盖不足”。
+   - I47 已实现 `strong_market_stable_core_base_v1` 并完成 scoped admission、failure attribution、market context、holdings exposure 和 CSI300 attribution。结论仍为 `reject`：年化收益均值 `-1.74%`，Sharpe `-0.34`，正收益折比例 `40%`，正超额折比例 `40%`，平均年化换手 `0.68`，最大年化换手 `1.85`，overfit risk `high`。本轮证明稳定核心底仓能显著改善参与度和换手，但仍跑不赢强沪深300环境，且行业偏离更明显。
 
 ### P1：有前置条件后再处理
 
@@ -296,6 +298,7 @@ I10/I11 对 `price_volume_low_turnover_v1` 的最新约束：
 - [x] 完成 I43 强市场 panel 上限实验，确认扩大到 `200` / `300` 能减少截断并改善核心权重可达性，但仍不能让完整 Top20 可达权重稳定超过 `35%`。
 - [x] 完成 I44 `csi300_core_seed_panel` 只读实验，修正 Top20 绝对权重门槛为覆盖率门槛，并确认显式保留 as-of 可见核心成分后五折可达性均为 `pass`。
 - [x] 完成 I45 `strong_market_core_participation_v1` 预注册设计，明确新候选不复制沪深300、不固定买前20只，下一步必须用 admission 和持仓级 CSI300 归因验证真实参与度。
+- [x] 完成 I47 `strong_market_stable_core_base_v1` 最小实现和 scoped admission，确认稳定核心底仓显著降低换手并提高沪深300核心覆盖，但首版仍未通过 admission。
 - [x] 立项 T2.14 盘中行情信号择时买卖专项探索计划，明确它不是当前候选策略，而是后续分钟级数据、执行模型和盘中信号验证框架的探索入口。
 
 ### 下一步
@@ -313,7 +316,8 @@ I10/I11 对 `price_volume_low_turnover_v1` 的最新约束：
 - [x] 设计并运行 I44 `csi300_core_seed_panel` 只读实验：在常规 PIT universe 外显式保留 as-of 可见的沪深300 Top 权重核心成分，基础过滤只剔除不可交易 / 数据不可用标的；结果证明核心覆盖率和 Top20 覆盖率达标。
 - [x] 预注册 I45 `strong_market_core_participation_v1`：基于 I44 的 core seed panel 思路设计新的强市场参与候选，不复制沪深300、不固定买前20只，并保留 PIT、`qfq_asof`、成本、行业约束、持仓暴露和 admission 验证。
 - [x] 实现 I46 `strong_market_core_participation_v1` 最小版本，跑 scoped admission，并立即用 holdings exposure + CSI300 attribution + failure attribution 验证强市场折真实参与度是否达标；结论为 `reject`，主因是强行情参与持续性不足。
-- [ ] 预注册 I47 强市场稳定核心底仓候选：把“最低有效参与仓位”与“主动 alpha 卫星”分层，先验证强市时能否稳定保持核心底仓，再评估选股增强，不继续微调 I46 小参数。
+- [x] 预注册并实现 I47 强市场稳定核心底仓候选：把“最低有效参与仓位”与“主动 alpha 卫星”分层，先验证强市时能否稳定保持核心底仓，再评估选股增强，不继续微调 I46 小参数。
+- [ ] I48 做核心-only / 核心+卫星 / 卫星-only 拆分归因，验证 I47 的 alpha 卫星到底是贡献收益，还是增加行业偏离和噪声。
 - [ ] 等数据源治理优先级允许后，按 T2.14 先做分钟级行情数据源可用性 spike，而不是直接实现盘中策略。
 - [x] 启动 `sleeve_composite_v1` 降换手、降 churn、降行业集中修复，已完成诊断，结论是不直接修原权重。
 - [ ] 对 `quality_low_turnover_monthly_v1` 做最后一折 regime 依赖复核，避免用单折转好解释长期有效。
@@ -348,5 +352,5 @@ T2.1 当前不是“挑一个马上上线的策略”，而是“把策略池治
 2. 优先修正低波、低换手、质量策略的失败原因。
 3. 把 `sleeve_composite_v1` 和 `sleeve_composite_low_churn_v1` 保持为 research-only；低 churn 构造可复用，但当前 sleeve alpha 不再继续小参数调优。
 4. 把 `price_volume_low_turnover_v1` 作为防守 / 选择性研究候选观察，不强行改成强指数参与策略。
-5. 单独补强“强沪深300行情参与型”策略角色；当前 I15/I18/I20、I37 `strong_market_effective_participation_v1` 和 I46 `strong_market_core_participation_v1` 均为 `reject`。I44 已证明如果显式保留沪深300核心成分，候选池可达性可以过关；I46 进一步证明，仅补核心候选池还不够，强市场策略还需要更稳定的参与机制。下一步是 I47 预注册“核心底仓 + alpha 卫星”的分层候选。
+5. 单独补强“强沪深300行情参与型”策略角色；当前 I15/I18/I20、I37 `strong_market_effective_participation_v1`、I46 `strong_market_core_participation_v1` 和 I47 `strong_market_stable_core_base_v1` 均为 `reject`。I44 已证明如果显式保留沪深300核心成分，候选池可达性可以过关；I46 证明仅补核心候选池还不够；I47 证明稳定核心底仓可以改善参与度和换手，但收益质量和行业偏离仍未解决。下一步是 I48 拆分核心底仓与 alpha 卫星的真实贡献。
 6. 用 T2.13 的因子传导框架增强归因和报告解释，而不是绕过 admission 生成新信号。

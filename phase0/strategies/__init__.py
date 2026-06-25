@@ -14,6 +14,7 @@ from phase0.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, 
 from phase0.strategies.strong_market_core_participation import StrongMarketCoreParticipationStrategy
 from phase0.strategies.strong_market_effective_participation import StrongMarketEffectiveParticipationStrategy
 from phase0.strategies.strong_market_liquid_breadth_participation import StrongMarketLiquidBreadthParticipationStrategy
+from phase0.strategies.strong_market_stable_core_base import StrongMarketStableCoreBaseStrategy
 from phase0.strategies.strong_index_participation import (
     StrongIndexParticipationDynamicTriggerStrategy,
     StrongIndexParticipationStrategy,
@@ -39,6 +40,7 @@ __all__ = [
     "StrongMarketCoreParticipationStrategy",
     "StrongMarketEffectiveParticipationStrategy",
     "StrongMarketLiquidBreadthParticipationStrategy",
+    "StrongMarketStableCoreBaseStrategy",
     "StrongIndexParticipationDynamicTriggerStrategy",
     "StrongIndexParticipationStrategy",
     "ThemeExposureMomentumStrategy",
