@@ -148,9 +148,10 @@ class StrongMarketStableCoreBaseStrategy(BaseStrategy):
         for _, day in d.groupby("date", sort=True):
             day = day.copy()
             context_is_strong = bool(day["strong_index_context"].any())
-            if current_weights:
+            if days_since_rebalance < 10**8:
                 days_since_rebalance += 1
             should_rebalance = days_since_rebalance >= int(params.get("rebalance_days", 20))
+            should_rebalance = should_rebalance or (context_is_strong and not current_weights)
             missing_holdings = bool(current_weights) and not set(current_weights).intersection(set(day["symbol"].astype(str)))
             if should_rebalance or missing_holdings:
                 current_weights = _target_weights_for_day(
@@ -243,6 +244,65 @@ class StrongMarketStableCoreBaseStrategy(BaseStrategy):
             f"max_w={params.get('max_symbol_weight', '')},"
             f"threshold_status={params.get('threshold_status', '')}"
         )
+
+
+@register
+class StrongMarketStableCoreOnlyStrategy(StrongMarketStableCoreBaseStrategy):
+    name = "strong_market_stable_core_only_v1"
+    candidate_name = "strong_market_stable_core_only_v1"
+    display_name = "Strong Market Stable Core Only"
+
+    def select_params(
+        self,
+        train: pd.DataFrame,
+        strategy_cfg: dict[str, Any],
+        *,
+        slippage: float,
+        commission: float,
+        stamp_duty_sell: float,
+    ) -> dict[str, Any]:
+        params = super().select_params(
+            train,
+            strategy_cfg,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        params["threshold_status"] = "i48_core_only_attribution"
+        params["core_budget_ratio"] = 1.0
+        params["satellite_budget_ratio"] = 0.0
+        params["satellite_top_n"] = 0
+        return params
+
+
+@register
+class StrongMarketStableSatelliteOnlyStrategy(StrongMarketStableCoreBaseStrategy):
+    name = "strong_market_stable_satellite_only_v1"
+    candidate_name = "strong_market_stable_satellite_only_v1"
+    display_name = "Strong Market Stable Satellite Only"
+
+    def select_params(
+        self,
+        train: pd.DataFrame,
+        strategy_cfg: dict[str, Any],
+        *,
+        slippage: float,
+        commission: float,
+        stamp_duty_sell: float,
+    ) -> dict[str, Any]:
+        params = super().select_params(
+            train,
+            strategy_cfg,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+        )
+        params["threshold_status"] = "i48_satellite_only_attribution"
+        params["base_exposure"] = 0.0
+        params["core_budget_ratio"] = 0.0
+        params["satellite_budget_ratio"] = 1.0
+        params["satellite_top_n"] = max(1, int(params.get("satellite_top_n", 6)))
+        return params
 
 
 def _strategy_cfg(strategy_cfg: dict[str, Any]) -> dict[str, Any]:

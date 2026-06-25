@@ -833,6 +833,17 @@ def test_force_strategy_set_enabled_supports_strong_market_stable_core_base_stra
     assert strategy_cfg["local_factor"]["strong_market_stable_core_base"]["enabled"] is True
 
 
+def test_force_strategy_set_enabled_supports_i48_stable_core_attribution_variants() -> None:
+    strategy_cfg = {"local_factor": {"strong_market_stable_core_base": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(
+        strategy_cfg,
+        ["strong_market_stable_core_only_v1", "strong_market_stable_satellite_only_v1"],
+    )
+
+    assert strategy_cfg["local_factor"]["strong_market_stable_core_base"]["enabled"] is True
+
+
 def test_force_strategy_set_enabled_supports_sleeve_low_churn_strategy() -> None:
     strategy_cfg = {"sleeve_composite_low_churn": {"enabled": False}}
 

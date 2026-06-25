@@ -4,7 +4,11 @@ import pandas as pd
 import pytest
 
 from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.strong_market_stable_core_base import StrongMarketStableCoreBaseStrategy
+from phase0.strategies.strong_market_stable_core_base import (
+    StrongMarketStableCoreBaseStrategy,
+    StrongMarketStableCoreOnlyStrategy,
+    StrongMarketStableSatelliteOnlyStrategy,
+)
 
 
 def _panel(dates: pd.DatetimeIndex | None = None) -> pd.DataFrame:
@@ -88,6 +92,9 @@ def test_stable_core_base_is_registered_research_only() -> None:
     assert strategy.supports_brief is False
     assert strategy.supports_paper_trade is False
 
+    assert isinstance(get_strategy("strong_market_stable_core_only_v1"), StrongMarketStableCoreOnlyStrategy)
+    assert isinstance(get_strategy("strong_market_stable_satellite_only_v1"), StrongMarketStableSatelliteOnlyStrategy)
+
 
 def test_stable_core_base_keeps_base_core_exposure_when_context_is_weak() -> None:
     strategy = StrongMarketStableCoreBaseStrategy()
@@ -141,3 +148,55 @@ def test_stable_core_base_does_not_hard_filter_benchmark_core_by_industry() -> N
     selected_core = first_day[(first_day["benchmark_weight"] > 0) & (first_day["weight_unshifted"] > 0)]
     assert set(selected_core.loc[selected_core["industry"] == "Bank", "symbol"]) == {"B1", "B2"}
     assert selected_core["weight_unshifted"].sum() >= 0.50
+
+
+def test_stable_core_only_removes_satellite_budget() -> None:
+    strategy = StrongMarketStableCoreOnlyStrategy()
+    params = strategy.select_params(_panel(), {"local_factor": {"strong_market_stable_core_base": {"enabled": True}}}, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+    params.update(_params(core_budget_ratio=params["core_budget_ratio"], satellite_budget_ratio=params["satellite_budget_ratio"]))
+
+    output = strategy.apply(_panel(), params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+
+    first_day = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-10")]
+    selected = first_day[first_day["weight_unshifted"] > 0]
+    assert selected["weight_unshifted"].sum() == pytest.approx(0.70)
+    assert selected.loc[selected["benchmark_weight"] <= 0, "weight_unshifted"].sum() == pytest.approx(0.0)
+
+
+def test_stable_satellite_only_uses_satellite_only_in_strong_context_and_cash_otherwise() -> None:
+    strategy = StrongMarketStableSatelliteOnlyStrategy()
+    params = strategy.select_params(_panel(), {"local_factor": {"strong_market_stable_core_base": {"enabled": True}}}, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+    params.update(_params(base_exposure=params["base_exposure"], core_budget_ratio=params["core_budget_ratio"], satellite_budget_ratio=params["satellite_budget_ratio"]))
+
+    output = strategy.apply(_panel(), params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+
+    first_day = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-10")]
+    selected = first_day[first_day["weight_unshifted"] > 0]
+    assert selected["weight_unshifted"].sum() == pytest.approx(0.70)
+    assert selected.loc[selected["benchmark_weight"] > 0, "weight_unshifted"].sum() == pytest.approx(0.0)
+
+    weak_panel = _panel()
+    weak_panel["strong_index_context"] = False
+    weak_output = strategy.apply(weak_panel, params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+    assert weak_output.signal_frame["weight_unshifted"].sum() == pytest.approx(0.0)
+
+
+def test_stable_satellite_only_retries_after_empty_rebalance() -> None:
+    strategy = StrongMarketStableSatelliteOnlyStrategy()
+    params = _params(
+        base_exposure=0.0,
+        core_budget_ratio=0.0,
+        satellite_budget_ratio=1.0,
+        rebalance_days=20,
+    )
+    panel = _panel(pd.date_range("2024-01-10", periods=5, freq="D"))
+    panel["strong_index_context"] = False
+    panel.loc[panel["date"] >= pd.Timestamp("2024-01-11"), "strong_index_context"] = True
+
+    output = strategy.apply(panel, params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+
+    day1 = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-10")]
+    day2 = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-11")]
+    assert day1["weight_unshifted"].sum() == pytest.approx(0.0)
+    assert day2["weight_unshifted"].sum() == pytest.approx(0.70)
+    assert day2.loc[day2["benchmark_weight"] > 0, "weight_unshifted"].sum() == pytest.approx(0.0)

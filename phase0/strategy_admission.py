@@ -302,6 +302,14 @@ def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], stra
             "local_factor",
             "strong_market_stable_core_base",
         ),
+        "strong_market_stable_core_only_v1": (
+            "local_factor",
+            "strong_market_stable_core_base",
+        ),
+        "strong_market_stable_satellite_only_v1": (
+            "local_factor",
+            "strong_market_stable_core_base",
+        ),
         "multifactor_volume_price_filter_v1": ("local_factor", "multifactor_filter"),
         "sleeve_composite_v1": ("sleeve_composite",),
         "sleeve_composite_low_churn_v1": ("sleeve_composite_low_churn",),
