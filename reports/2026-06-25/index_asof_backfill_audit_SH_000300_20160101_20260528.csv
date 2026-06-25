@@ -1,0 +1,2 @@
+db_path,index_code,vendor_index_code,start_date,end_date,status,source,fetched_rows,inserted_weight_rows,inserted_constituent_rows,distinct_trade_dates,min_trade_date,max_trade_date,warnings
+/home/zj/workspace/stok-mapping/data/manual_history/a_share_history.sqlite,SH.000300,000300.SH,2016-01-01,2026-05-28,ok,tushare.index_weight,60900,60900,60900,203,2016-01-29,2026-05-06,

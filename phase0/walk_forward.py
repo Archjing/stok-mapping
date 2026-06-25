@@ -22,6 +22,7 @@ from phase0.external_market_history import (
 from phase0.local_history import (
     configure_local_history,
     load_daily_from_local_history,
+    load_index_daily_from_local_history,
     load_trading_dates_from_local_history,
     local_history_path,
     local_history_prefer_daily_for_backtest,
@@ -47,6 +48,7 @@ FINANCIAL_DIAGNOSTIC_STRATEGIES = {
     "multifactor_volume_price_filter_v1",
     "quality_growth_price_v1",
     "quality_low_turnover_monthly_v1",
+    "quality_low_turnover_regime_gate_v1",
     "sleeve_composite_v1",
 }
 
@@ -196,6 +198,93 @@ def _calc_metrics(returns: pd.Series, signals: pd.Series) -> dict[str, float]:
         "turnover_annual": turnover,
         "trades": int((signals.diff().abs() > 0).sum()),
     }
+
+
+def _benchmark_fold_metrics(config: dict[str, Any], valid_start: Any, valid_end: Any) -> dict[str, Any]:
+    symbol = str(config.get("benchmark_symbol", "SH.000300"))
+    try:
+        start = pd.Timestamp(valid_start).date()
+        end = pd.Timestamp(valid_end).date()
+    except Exception:
+        return {
+            "benchmark_symbol": symbol,
+            "benchmark_status": "invalid_window",
+            "benchmark_annualized_return": np.nan,
+            "benchmark_sharpe": np.nan,
+            "benchmark_max_drawdown": np.nan,
+        }
+    if end < start:
+        return {
+            "benchmark_symbol": symbol,
+            "benchmark_status": "invalid_window",
+            "benchmark_annualized_return": np.nan,
+            "benchmark_sharpe": np.nan,
+            "benchmark_max_drawdown": np.nan,
+        }
+    index_df = load_index_daily_from_local_history(symbol, start, end)
+    if index_df.empty or "close" not in index_df.columns:
+        return {
+            "benchmark_symbol": symbol,
+            "benchmark_status": "not_available",
+            "benchmark_annualized_return": np.nan,
+            "benchmark_sharpe": np.nan,
+            "benchmark_max_drawdown": np.nan,
+        }
+    close = pd.to_numeric(index_df.sort_values("date")["close"], errors="coerce")
+    returns = close.pct_change().fillna(0.0)
+    return {
+        "benchmark_symbol": symbol,
+        "benchmark_status": "available",
+        "benchmark_annualized_return": _annualized_return(returns),
+        "benchmark_sharpe": _sharpe(returns),
+        "benchmark_max_drawdown": _max_drawdown(returns),
+    }
+
+
+def _attach_benchmark_fold_metrics(
+    row: dict[str, Any],
+    *,
+    config: dict[str, Any],
+    valid_start: Any,
+    valid_end: Any,
+) -> dict[str, Any]:
+    benchmark = _benchmark_fold_metrics(config, valid_start, valid_end)
+    ann = float(row.get("annualized_return", 0.0))
+    benchmark_ann = pd.to_numeric(pd.Series([benchmark.get("benchmark_annualized_return")]), errors="coerce").iloc[0]
+    if pd.isna(benchmark_ann):
+        excess_ann = np.nan
+        is_positive_excess = False
+    else:
+        excess_ann = float(ann - benchmark_ann)
+        is_positive_excess = bool(excess_ann > 0)
+    return {
+        **row,
+        **benchmark,
+        "excess_annualized_return": excess_ann,
+        "is_positive_excess_fold": is_positive_excess,
+        "negative_fold_attribution": _negative_fold_attribution(
+            annualized_return=ann,
+            benchmark_annualized_return=benchmark_ann,
+            excess_annualized_return=excess_ann,
+            benchmark_status=str(benchmark.get("benchmark_status", "")),
+        ),
+    }
+
+
+def _negative_fold_attribution(
+    *,
+    annualized_return: float,
+    benchmark_annualized_return: Any,
+    excess_annualized_return: Any,
+    benchmark_status: str,
+) -> str:
+    if annualized_return >= 0:
+        return "positive_fold"
+    if benchmark_status != "available" or pd.isna(benchmark_annualized_return) or pd.isna(excess_annualized_return):
+        return "negative_absolute: benchmark_unavailable"
+    if float(excess_annualized_return) > 0:
+        return "negative_absolute_but_positive_excess: market_down_or_benchmark_weaker"
+    return "negative_absolute_and_negative_excess: strategy_specific_underperformance"
 
 
 def _load_cn_daily(
@@ -1921,6 +2010,7 @@ def iter_point_in_time_universe_folds(
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
     window_cfg: dict[str, Any] | None = None,
+    include_folds: set[int] | None = None,
 ) -> tuple[list[dict[str, Any]], pd.DataFrame]:
     """Build read-only, fold-local panels from historical point-in-time universes."""
     window_cfg = window_cfg or {}
@@ -1946,8 +2036,11 @@ def iter_point_in_time_universe_folds(
     universe_cfg = config.get("universe", {})
     min_usable = int(universe_cfg.get("min_usable_size", min(100, universe_cfg.get("target_size", 500))))
     use_strict_asof = _strict_qfq_asof_enabled(config)
+    include_folds = {int(item) for item in include_folds} if include_folds is not None else None
 
     for fold_idx, train_dates, valid_dates in fold_windows:
+        if include_folds is not None and int(fold_idx) not in include_folds:
+            continue
         train_end_date = pd.Timestamp(max(train_dates)).date()
         train_start_date = pd.Timestamp(min(train_dates)).date()
         valid_start_date = pd.Timestamp(min(valid_dates)).date()
@@ -2022,6 +2115,7 @@ def iter_point_in_time_universe_folds(
 
 
 def _run_strategy_on_explicit_fold(
+    config: dict[str, Any],
     strategy_name: str,
     *,
     fold: int,
@@ -2041,12 +2135,17 @@ def _run_strategy_on_explicit_fold(
     if train.empty or valid.empty:
         return []
 
-    prepared = strategy.prepare_panel(pd.concat([train, valid], ignore_index=True), strategy_cfg)
+    train_dates = set(pd.to_datetime(train["date"]).dt.normalize().unique())
+    valid_dates = set(pd.to_datetime(valid["date"]).dt.normalize().unique())
+    strategy_cfg_for_prepare = _with_fold_prepare_context(
+        strategy_cfg,
+        train_dates=train_dates,
+        valid_dates=valid_dates,
+    )
+    prepared = strategy.prepare_panel(pd.concat([train, valid], ignore_index=True), strategy_cfg_for_prepare)
     if prepared.empty:
         return []
     prepared["date"] = pd.to_datetime(prepared["date"]).dt.normalize()
-    train_dates = set(pd.to_datetime(train["date"]).dt.normalize().unique())
-    valid_dates = set(pd.to_datetime(valid["date"]).dt.normalize().unique())
     fold_train = prepared[prepared["date"].isin(train_dates)].copy()
     fold_valid = prepared[prepared["date"].isin(valid_dates)].copy()
     if fold_train.empty or fold_valid.empty:
@@ -2155,10 +2254,35 @@ def _run_strategy_on_explicit_fold(
     )
     if extra:
         row.update(extra)
+    row = _attach_benchmark_fold_metrics(
+        row,
+        config=config,
+        valid_start=fold_valid["date"].min(),
+        valid_end=fold_valid["date"].max(),
+    )
     return [row]
 
 
+def _with_fold_prepare_context(
+    strategy_cfg: dict[str, Any],
+    *,
+    train_dates: set[pd.Timestamp],
+    valid_dates: set[pd.Timestamp],
+) -> dict[str, Any]:
+    out = dict(strategy_cfg)
+    train_sorted = sorted(pd.Timestamp(item).normalize() for item in train_dates)
+    valid_sorted = sorted(pd.Timestamp(item).normalize() for item in valid_dates)
+    out["_fold_prepare_context"] = {
+        "train_start": train_sorted[0].date().isoformat() if train_sorted else "",
+        "train_end": train_sorted[-1].date().isoformat() if train_sorted else "",
+        "valid_start": valid_sorted[0].date().isoformat() if valid_sorted else "",
+        "valid_end": valid_sorted[-1].date().isoformat() if valid_sorted else "",
+    }
+    return out
+
+
 def _run_strategy_on_symbol_panel(
+    config: dict[str, Any],
     strategy_name: str,
     panel: pd.DataFrame,
     *,
@@ -2228,35 +2352,40 @@ def _run_strategy_on_symbol_panel(
         quality_metrics = _quality_signal_diagnostics(output, strategy_name)
         meta = output.metadata or strategy.build_metadata(params)
         trace_summary = _signal_trace_summary(output)
-        rows.append(
-            {
-                "symbol": str(valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
-                "fold": fold_idx,
-                "train_start": str(pd.Timestamp(min(train_dates)).date()),
-                "train_end": str(pd.Timestamp(max(train_dates)).date()),
-                "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
-                "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
-                "annualized_return": metric["annualized_return"],
-                "sharpe": metric["sharpe"],
-                "max_drawdown": metric["max_drawdown"],
-                "win_rate": metric["win_rate"],
-                "turnover_annual": metric["turnover_annual"],
-                "trades": metric["trades"],
-                "passed_min_samples": True,
-                "selected_params": meta.get("formatted_params", strategy.format_params(params)),
-                "candidate": strategy.candidate_name,
-                "strategy_id": meta.get("strategy_id", strategy.name),
-                "strategy_display_name": meta.get("display_name", strategy.name),
-                "strategy_category": meta.get("category", "generic"),
-                "panel_scope": meta.get("panel_scope", strategy.panel_scope),
-                "supports_brief": meta.get("supports_brief", True),
-                "supports_paper_trade": meta.get("supports_paper_trade", True),
-                **constraint_result.metrics,
-                **account_metrics,
-                **quality_metrics,
-                **trace_summary,
-            }
+        row = {
+            "symbol": str(valid["symbol"].iloc[0]) if strategy.panel_scope == "symbol" else "PORTFOLIO",
+            "fold": fold_idx,
+            "train_start": str(pd.Timestamp(min(train_dates)).date()),
+            "train_end": str(pd.Timestamp(max(train_dates)).date()),
+            "valid_start": str(pd.Timestamp(min(valid_dates)).date()),
+            "valid_end": str(pd.Timestamp(max(valid_dates)).date()),
+            "annualized_return": metric["annualized_return"],
+            "sharpe": metric["sharpe"],
+            "max_drawdown": metric["max_drawdown"],
+            "win_rate": metric["win_rate"],
+            "turnover_annual": metric["turnover_annual"],
+            "trades": metric["trades"],
+            "passed_min_samples": True,
+            "selected_params": meta.get("formatted_params", strategy.format_params(params)),
+            "candidate": strategy.candidate_name,
+            "strategy_id": meta.get("strategy_id", strategy.name),
+            "strategy_display_name": meta.get("display_name", strategy.name),
+            "strategy_category": meta.get("category", "generic"),
+            "panel_scope": meta.get("panel_scope", strategy.panel_scope),
+            "supports_brief": meta.get("supports_brief", True),
+            "supports_paper_trade": meta.get("supports_paper_trade", True),
+            **constraint_result.metrics,
+            **account_metrics,
+            **quality_metrics,
+            **trace_summary,
+        }
+        row = _attach_benchmark_fold_metrics(
+            row,
+            config=config,
+            valid_start=min(valid_dates),
+            valid_end=max(valid_dates),
         )
+        rows.append(row)
         _emit_trace(
             trace_callback,
             {
@@ -2278,6 +2407,7 @@ def _run_strategy_on_symbol_panel(
 
 
 def _run_compare(
+    config: dict[str, Any],
     symbols: list[str],
     years: int,
     train_years: int,
@@ -2312,6 +2442,7 @@ def _run_compare(
                 panel = panel.assign(symbol=sym)
                 strategy_rows.extend(
                     _run_strategy_on_symbol_panel(
+                        config,
                         strategy_name,
                         panel,
                         years=years,
@@ -2339,6 +2470,7 @@ def _run_compare(
                 continue
             strategy_rows.extend(
                 _run_strategy_on_symbol_panel(
+                    config,
                     strategy_name,
                     combined_panel,
                     years=years,
@@ -2497,6 +2629,7 @@ def _run_compare_qfq_asof_static(
                     valid = valid_panel[valid_panel["symbol"] == sym].copy()
                     candidates[strategy.candidate_name].extend(
                         _run_strategy_on_explicit_fold(
+                            config,
                             strategy_name,
                             fold=fold_idx,
                             train=train,
@@ -2513,6 +2646,7 @@ def _run_compare_qfq_asof_static(
             else:
                 candidates[strategy.candidate_name].extend(
                     _run_strategy_on_explicit_fold(
+                        config,
                         strategy_name,
                         fold=fold_idx,
                         train=train_panel,
@@ -2619,6 +2753,7 @@ def _run_compare_point_in_time(
                     valid = ctx["valid"][ctx["valid"]["symbol"] == sym].copy()
                     strategy_rows.extend(
                         _run_strategy_on_explicit_fold(
+                            config,
                             strategy_name,
                             fold=int(ctx["fold"]),
                             train=train,
@@ -2635,6 +2770,7 @@ def _run_compare_point_in_time(
             else:
                 strategy_rows.extend(
                     _run_strategy_on_explicit_fold(
+                        config,
                         strategy_name,
                         fold=int(ctx["fold"]),
                         train=ctx["train"],
@@ -2914,6 +3050,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
             )
         else:
             all_rows, candidate_rows, candidate_summary_rows = _run_compare(
+                config=config,
                 symbols=symbols,
                 years=years,
                 train_years=train_years,

@@ -97,6 +97,7 @@ def run_strategy_admission(
     *,
     config: dict[str, Any],
     root: Path,
+    config_path: Path | None = None,
     presets: list[str] | None = None,
     strategy_set: str | None = None,
     strategies: list[str] | None = None,
@@ -245,6 +246,7 @@ def run_strategy_admission(
             overfit_csv=overfit_csv,
         ),
         command_hint=_admission_command_hint(
+            config_arg=_config_command_arg(config_path, root),
             presets=preset_names,
             strategy_scope=strategy_scope,
             output_dir=output_dir if explicit_output_dir else None,
@@ -284,8 +286,21 @@ def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], stra
         "quality_growth_price_v1": ("local_factor", "quality_growth"),
         "low_vol_low_turnover_quality_v1": ("local_factor", "low_vol_low_turnover_quality"),
         "quality_low_turnover_monthly_v1": ("local_factor", "quality_low_turnover_monthly"),
+        "quality_low_turnover_regime_gate_v1": ("local_factor", "quality_low_turnover_regime_gate"),
+        "price_volume_low_turnover_v1": ("local_factor", "price_volume_low_turnover"),
+        "strong_index_participation_v1": ("local_factor", "strong_index_participation"),
+        "strong_index_participation_dynamic_trigger_v1": ("local_factor", "strong_index_participation"),
+        "strong_market_liquid_breadth_participation_v1": (
+            "local_factor",
+            "strong_market_liquid_breadth_participation",
+        ),
+        "strong_market_effective_participation_v1": (
+            "local_factor",
+            "strong_market_effective_participation",
+        ),
         "multifactor_volume_price_filter_v1": ("local_factor", "multifactor_filter"),
         "sleeve_composite_v1": ("sleeve_composite",),
+        "sleeve_composite_low_churn_v1": ("sleeve_composite_low_churn",),
     }
     for strategy_name in strategy_names:
         path = legacy_switches.get(str(strategy_name))
@@ -331,6 +346,16 @@ def _build_window_matrix(
                         "walk_forward_actual_folds": 0,
                         "walk_forward_fold_generation_warning": failure_reason,
                         "positive_fold_ratio": 0.0,
+                        "benchmark_status": "not_available",
+                        "benchmark_available_fold_count": 0,
+                        "benchmark_annualized_return_mean": np.nan,
+                        "excess_annualized_return_mean": np.nan,
+                        "excess_annualized_return_min": np.nan,
+                        "positive_excess_fold_ratio": np.nan,
+                        "negative_absolute_fold_count": 0,
+                        "negative_absolute_positive_excess_count": 0,
+                        "negative_absolute_negative_excess_count": 0,
+                        "negative_absolute_benchmark_unavailable_count": 0,
                         "annualized_return_mean": 0.0,
                         "sharpe_mean": 0.0,
                         "max_drawdown_worst": 0.0,
@@ -381,8 +406,19 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
     missing_blocked = _numeric_column(group, "financial_missing_blocked_ratio")
     quality_lift = _numeric_column(group, "selected_quality_score_lift")
     cash_flow_component = _numeric_column(group, "selected_quality_cash_flow_component_mean")
+    supports_paper_trade = _bool_all(group, "supports_paper_trade", default=True)
+    benchmark_status = _status_summary(group, "benchmark_status", default="not_available")
+    benchmark_ann = _numeric_column(group, "benchmark_annualized_return")
+    excess_ann = _numeric_column(group, "excess_annualized_return")
+    valid_excess = excess_ann.dropna()
+    benchmark_statuses = group.get("benchmark_status", pd.Series("not_available", index=group.index)).fillna("not_available").astype(str)
+    attribution = group.get("negative_fold_attribution", pd.Series("", index=group.index)).fillna("").astype(str)
     positive_fold_ratio = float((ann > 0).mean()) if len(group) else 0.0
+    positive_excess_fold_ratio = float((valid_excess > 0).mean()) if len(valid_excess) else np.nan
     annualized_return_mean = float(ann.mean()) if ann.notna().any() else 0.0
+    benchmark_annualized_return_mean = float(benchmark_ann.mean()) if benchmark_ann.notna().any() else np.nan
+    excess_annualized_return_mean = float(excess_ann.mean()) if excess_ann.notna().any() else np.nan
+    excess_annualized_return_min = float(excess_ann.min()) if excess_ann.notna().any() else np.nan
     sharpe_mean = float(sharpe.mean()) if sharpe.notna().any() else 0.0
     max_drawdown_worst = float(mdd.min()) if mdd.notna().any() else 0.0
     turnover_annual_mean = float(turnover.mean()) if turnover.notna().any() else 0.0
@@ -409,6 +445,16 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
         "walk_forward_actual_folds": actual_folds_value,
         "walk_forward_fold_generation_warning": str(group["walk_forward_fold_generation_warning"].iloc[0]) if "walk_forward_fold_generation_warning" in group.columns else "",
         "positive_fold_ratio": positive_fold_ratio,
+        "benchmark_status": benchmark_status,
+        "benchmark_available_fold_count": int((benchmark_statuses == "available").sum()),
+        "benchmark_annualized_return_mean": benchmark_annualized_return_mean,
+        "excess_annualized_return_mean": excess_annualized_return_mean,
+        "excess_annualized_return_min": excess_annualized_return_min,
+        "positive_excess_fold_ratio": positive_excess_fold_ratio,
+        "negative_absolute_fold_count": int((ann < 0).sum()) if ann.notna().any() else 0,
+        "negative_absolute_positive_excess_count": int((attribution == "negative_absolute_but_positive_excess: market_down_or_benchmark_weaker").sum()),
+        "negative_absolute_negative_excess_count": int((attribution == "negative_absolute_and_negative_excess: strategy_specific_underperformance").sum()),
+        "negative_absolute_benchmark_unavailable_count": int((attribution == "negative_absolute: benchmark_unavailable").sum()),
         "annualized_return_mean": annualized_return_mean,
         "sharpe_mean": sharpe_mean,
         "max_drawdown_worst": max_drawdown_worst,
@@ -439,6 +485,7 @@ def _window_metrics(strategy_id: str, preset_name: str, group: pd.DataFrame, gat
         "financial_missing_blocked_ratio_mean": float(missing_blocked.mean()) if missing_blocked.notna().any() else 0.0,
         "selected_quality_score_lift_mean": float(quality_lift.mean()) if quality_lift.notna().any() else 0.0,
         "selected_cash_flow_quality_component_mean": float(cash_flow_component.mean()) if cash_flow_component.notna().any() else 0.0,
+        "supports_paper_trade": supports_paper_trade,
         "is_return_pass": is_return_pass,
         "is_sharpe_pass": is_sharpe_pass,
         "is_drawdown_pass": is_drawdown_pass,
@@ -457,6 +504,27 @@ def _status_summary(group: pd.DataFrame, column: str, *, default: str) -> str:
         return default
     unique = sorted(set(values))
     return unique[0] if len(unique) == 1 else "mixed:" + ",".join(unique)
+
+
+def _bool_all(group: pd.DataFrame, column: str, *, default: bool = True) -> bool:
+    if column not in group.columns:
+        return default
+    values = group[column]
+    if values is None:
+        return default
+    normalized = values.fillna(default).map(
+        lambda value: str(value).strip().lower() if isinstance(value, str) else value
+    )
+    parsed = normalized.map(
+        lambda value: (
+            False
+            if value in {False, 0, "0", "false", "no", "n", "off"}
+            else True
+            if value in {True, 1, "1", "true", "yes", "y", "on"}
+            else default
+        )
+    )
+    return bool(parsed.all())
 
 
 def _industry_status_summary(group: pd.DataFrame) -> str:
@@ -482,7 +550,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         sid = str(strategy_id)
         ok_windows = group[group["status"] == "ok"]
         pass_count = int(pd.Series(group.get("is_window_pass", False)).astype(bool).sum())
-        turnover_fail_count = int((pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce") > float(gate_cfg["turnover_annual_mean_max"])).sum())
+        turnover_fail_count = _turnover_fail_window_count(group, gate_cfg)
         missing_window_count = int((group["status"] != "ok").sum())
         industry_concentration_count = _industry_concentration_window_count(ok_windows) if bool(gate_cfg.get("require_industry_concentration_check", True)) else 0
         industry_missing_count = _industry_missing_window_count(ok_windows) if bool(gate_cfg.get("require_industry_concentration_check", True)) else 0
@@ -493,7 +561,7 @@ def _build_constraint_review(matrix: pd.DataFrame, overfit: pd.DataFrame, preset
         overfit_row = overfit_by_strategy.get(sid)
         overfit_level = str(overfit_row["overfit_risk_level"]) if overfit_row is not None and "overfit_risk_level" in overfit_row else "unknown"
         overfit_score = int(overfit_row["overfit_score"]) if overfit_row is not None and "overfit_score" in overfit_row else 0
-        supports_paper_trade = bool(pd.Series(group.get("supports_paper_trade", True)).fillna(True).astype(bool).all())
+        supports_paper_trade = _bool_all(group, "supports_paper_trade", default=True)
         action, reasons = _admission_action(
             pass_count=pass_count,
             preset_count=len(preset_names),
@@ -644,6 +712,16 @@ def _admission_action(
     return "retest", reasons or ["window robustness incomplete"]
 
 
+def _turnover_fail_window_count(group: pd.DataFrame, gate_cfg: dict[str, Any]) -> int:
+    if group.empty:
+        return 0
+    mean_turnover = pd.to_numeric(group.get("turnover_annual_mean"), errors="coerce")
+    max_turnover = pd.to_numeric(group.get("turnover_annual_max"), errors="coerce")
+    mean_fail = mean_turnover > float(gate_cfg["turnover_annual_mean_max"])
+    max_fail = max_turnover > float(gate_cfg["turnover_annual_max_max"])
+    return int((mean_fail.fillna(False) | max_fail.fillna(False)).sum())
+
+
 def _write_report(
     path: Path,
     matrix: pd.DataFrame,
@@ -690,6 +768,7 @@ def _write_report(
                 "industry_conc",
                 "factor_missing",
                 "price_fail",
+                "paper_trade",
                 "overfit",
                 "reasons",
             ],
@@ -704,6 +783,7 @@ def _write_report(
                     str(_safe_int(row.get("industry_concentration_window_count", 0))),
                     str(_safe_int(row.get("factor_diagnostic_missing_window_count", 0))),
                     str(_safe_int(row.get("price_adjustment_fail_window_count", 0))),
+                    str(bool(row.get("supports_paper_trade", True))),
                     str(row["overfit_risk_level"]),
                     str(row["main_reasons"]),
                 ]
@@ -765,6 +845,46 @@ def _write_report(
             ],
         ),
         "",
+        "## Benchmark / Excess Diagnostics",
+        "",
+        "Supplemental only: these relative benchmark fields explain regime-adjusted behavior and do not change `is_window_pass` or `admission_action` in this run.",
+        "",
+        _md_table(
+            [
+                "strategy_id",
+                "preset",
+                "benchmark_status",
+                "bench_folds",
+                "bench_ann",
+                "excess_ann",
+                "excess_min",
+                "pos_abs",
+                "pos_excess",
+                "neg_abs",
+                "neg_pos_excess",
+                "neg_neg_excess",
+                "neg_bench_na",
+            ],
+            [
+                [
+                    str(row["strategy_id"]),
+                    str(row["walk_forward_preset"]),
+                    _safe_str(row.get("benchmark_status", "not_available")),
+                    str(_safe_int(row.get("benchmark_available_fold_count", 0))),
+                    _format_benchmark_float(row, "benchmark_annualized_return_mean", precision=4),
+                    _format_benchmark_float(row, "excess_annualized_return_mean", precision=4),
+                    _format_benchmark_float(row, "excess_annualized_return_min", precision=4),
+                    f"{_safe_float(row.get('positive_fold_ratio', 0.0)):.2f}",
+                    _format_benchmark_float(row, "positive_excess_fold_ratio", precision=2),
+                    str(_safe_int(row.get("negative_absolute_fold_count", 0))),
+                    str(_safe_int(row.get("negative_absolute_positive_excess_count", 0))),
+                    str(_safe_int(row.get("negative_absolute_negative_excess_count", 0))),
+                    str(_safe_int(row.get("negative_absolute_benchmark_unavailable_count", 0))),
+                ]
+                for _, row in matrix.iterrows()
+            ],
+        ),
+        "",
         "## Strategy Quality Diagnostics",
         "",
         _md_table(
@@ -803,6 +923,7 @@ def _write_report(
 
 def _admission_command_hint(
     *,
+    config_arg: str = "config.yaml",
     presets: list[str],
     strategy_scope: dict[str, Any],
     output_dir: Path | None,
@@ -810,7 +931,7 @@ def _admission_command_hint(
     parts = [
         "phase0.cli",
         "strategy-admission",
-        "--config config.yaml",
+        f"--config {config_arg}",
         "--presets " + " ".join(presets),
     ]
     strategy_set = _safe_str(strategy_scope.get("strategy_set", ""))
@@ -822,6 +943,15 @@ def _admission_command_hint(
     if output_dir is not None:
         parts.append(f"--output-dir {output_dir}")
     return " ".join(parts)
+
+
+def _config_command_arg(config_path: Path | None, root: Path) -> str:
+    if config_path is None:
+        return "config.yaml"
+    try:
+        return config_path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return config_path.as_posix()
 
 
 def _required_artifact_names(
@@ -1021,6 +1151,13 @@ def _format_status_float(row: pd.Series, value_col: str, status_col: str, *, pre
     if status in {"not_enabled", "not_available", "not_applicable"} or status.startswith("mixed:"):
         return "n/a"
     return f"{_safe_float(row.get(value_col, 0.0)):.{precision}f}"
+
+
+def _format_benchmark_float(row: pd.Series, value_col: str, *, precision: int = 4) -> str:
+    parsed = pd.to_numeric(pd.Series([row.get(value_col, np.nan)]), errors="coerce").iloc[0]
+    if pd.isna(parsed):
+        return "n/a"
+    return f"{float(parsed):.{precision}f}"
 
 
 def _format_status_int(row: pd.Series, value_col: str, status_col: str) -> str:

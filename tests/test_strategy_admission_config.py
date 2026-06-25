@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 from types import SimpleNamespace
 
 import phase0.strategy_admission as admission
 from phase0.strategy_admission import (
     _admission_action,
+    _admission_command_hint,
     _attach_price_adjustment_status,
+    _config_command_arg,
     _force_strategy_set_enabled_for_admission,
+    _write_report,
     _write_governance_report,
     _industry_missing_window_count,
     _overfit_blocks_admission,
@@ -15,6 +19,7 @@ from phase0.strategy_admission import (
     _resolve_admission_gate,
     _resolve_diagnostic_suites,
     _resolve_strategy_scope,
+    _turnover_fail_window_count,
     _window_metrics,
     run_strategy_admission,
 )
@@ -64,6 +69,25 @@ def test_strategy_scope_falls_back_to_legacy_compare_strategies() -> None:
 
     assert scope["source"] == "legacy_compare_strategies"
     assert scope["strategies"] == ["legacy"]
+
+
+def test_admission_command_hint_records_actual_config_path(tmp_path) -> None:
+    config_path = tmp_path / "config.main_strategy_i7_price_volume_industry_relative_20260624.yaml"
+    config_path.write_text("phase0: {}\n", encoding="utf-8")
+
+    hint = _admission_command_hint(
+        config_arg=_config_command_arg(config_path, tmp_path),
+        presets=["baseline_2y_1y_5fold", "quality_4y_1y"],
+        strategy_scope={
+            "source": "cli_strategies",
+            "strategy_set": "",
+            "strategies": ["price_volume_low_turnover_v1"],
+        },
+        output_dir=tmp_path / "admission",
+    )
+
+    assert "--config config.main_strategy_i7_price_volume_industry_relative_20260624.yaml" in hint
+    assert "--config config.yaml" not in hint
 
 
 def test_admission_gate_prefers_admission_config_and_falls_back_to_legacy_gate() -> None:
@@ -234,6 +258,28 @@ def test_required_industry_check_counts_missing_status() -> None:
     assert _industry_missing_window_count(ok_windows) == 1
 
 
+def test_turnover_fail_counts_max_turnover_gate() -> None:
+    group = pd.DataFrame(
+        [
+            {
+                "turnover_annual_mean": 1.56,
+                "turnover_annual_max": 5.73,
+            }
+        ]
+    )
+
+    assert (
+        _turnover_fail_window_count(
+            group,
+            {
+                "turnover_annual_mean_max": 3.0,
+                "turnover_annual_max_max": 5.0,
+            },
+        )
+        == 1
+    )
+
+
 def test_research_only_strategy_cannot_be_eligible_for_paper_review() -> None:
     action, reasons = _admission_action(
         pass_count=2,
@@ -257,6 +303,254 @@ def test_research_only_strategy_cannot_be_eligible_for_paper_review() -> None:
 
     assert action == "research_only"
     assert "strategy does not support paper trade review" in reasons
+
+
+def test_window_metrics_preserves_research_only_strategy_metadata() -> None:
+    metrics = _window_metrics(
+        "demo_strategy",
+        "baseline",
+        pd.DataFrame(
+            [
+                {
+                    "fold": 1,
+                    "annualized_return": 0.10,
+                    "sharpe": 1.0,
+                    "max_drawdown": -0.05,
+                    "turnover_annual": 1.0,
+                    "trades": 5,
+                    "selected_params": "p1",
+                    "supports_paper_trade": False,
+                    "walk_forward_start_date": "2020-04-01",
+                    "walk_forward_end_date": "2021-03-31",
+                }
+            ]
+        ),
+        {
+            "annualized_return_min": 0.0,
+            "sharpe_min": 0.5,
+            "max_drawdown_min": -0.25,
+            "positive_fold_ratio_min": 0.75,
+            "turnover_annual_mean_max": 3.0,
+            "turnover_annual_max_max": 5.0,
+        },
+    )
+
+    assert metrics["is_window_pass"] is True
+    assert metrics["supports_paper_trade"] is False
+
+
+def test_window_metrics_summarizes_positive_excess_and_negative_fold_attribution() -> None:
+    group = pd.DataFrame(
+        [
+            {
+                "fold": 1,
+                "annualized_return": -0.05,
+                "benchmark_status": "available",
+                "benchmark_annualized_return": -0.10,
+                "excess_annualized_return": 0.05,
+                "negative_fold_attribution": "negative_absolute_but_positive_excess: market_down_or_benchmark_weaker",
+                "sharpe": 0.2,
+                "max_drawdown": -0.10,
+                "turnover_annual": 1.0,
+                "trades": 3,
+                "selected_params": "p1",
+            },
+            {
+                "fold": 2,
+                "annualized_return": 0.02,
+                "benchmark_status": "available",
+                "benchmark_annualized_return": 0.03,
+                "excess_annualized_return": -0.01,
+                "negative_fold_attribution": "positive_fold",
+                "sharpe": 0.8,
+                "max_drawdown": -0.04,
+                "turnover_annual": 1.1,
+                "trades": 4,
+                "selected_params": "p1",
+            },
+            {
+                "fold": 3,
+                "annualized_return": -0.04,
+                "benchmark_status": "available",
+                "benchmark_annualized_return": 0.01,
+                "excess_annualized_return": -0.05,
+                "negative_fold_attribution": "negative_absolute_and_negative_excess: strategy_specific_underperformance",
+                "sharpe": -0.3,
+                "max_drawdown": -0.11,
+                "turnover_annual": 0.9,
+                "trades": 2,
+                "selected_params": "p2",
+            },
+        ]
+    )
+    gate = {
+        "annualized_return_min": -0.10,
+        "sharpe_min": -1.0,
+        "max_drawdown_min": -0.25,
+        "positive_fold_ratio_min": 0.25,
+        "turnover_annual_mean_max": 3.0,
+        "turnover_annual_max_max": 5.0,
+    }
+
+    metrics = _window_metrics("demo_strategy", "baseline", group, gate)
+
+    assert metrics["benchmark_status"] == "available"
+    assert metrics["benchmark_available_fold_count"] == 3
+    assert metrics["positive_fold_ratio"] == pytest.approx(1 / 3)
+    assert metrics["positive_excess_fold_ratio"] == pytest.approx(1 / 3)
+    assert metrics["excess_annualized_return_mean"] == pytest.approx((-0.01) / 3)
+    assert metrics["negative_absolute_fold_count"] == 2
+    assert metrics["negative_absolute_positive_excess_count"] == 1
+    assert metrics["negative_absolute_negative_excess_count"] == 1
+    assert metrics["negative_absolute_benchmark_unavailable_count"] == 0
+
+
+def test_positive_excess_ratio_does_not_override_absolute_admission_gate() -> None:
+    group = pd.DataFrame(
+        [
+            {
+                "fold": 1,
+                "annualized_return": -0.02,
+                "benchmark_status": "available",
+                "benchmark_annualized_return": -0.10,
+                "excess_annualized_return": 0.08,
+                "negative_fold_attribution": "negative_absolute_but_positive_excess: market_down_or_benchmark_weaker",
+                "sharpe": 1.0,
+                "max_drawdown": -0.05,
+                "turnover_annual": 1.0,
+                "trades": 3,
+                "selected_params": "p1",
+            },
+            {
+                "fold": 2,
+                "annualized_return": -0.01,
+                "benchmark_status": "available",
+                "benchmark_annualized_return": -0.08,
+                "excess_annualized_return": 0.07,
+                "negative_fold_attribution": "negative_absolute_but_positive_excess: market_down_or_benchmark_weaker",
+                "sharpe": 1.1,
+                "max_drawdown": -0.04,
+                "turnover_annual": 1.0,
+                "trades": 4,
+                "selected_params": "p1",
+            },
+        ]
+    )
+    gate = {
+        "annualized_return_min": -0.10,
+        "sharpe_min": 0.5,
+        "max_drawdown_min": -0.25,
+        "positive_fold_ratio_min": 0.75,
+        "turnover_annual_mean_max": 3.0,
+        "turnover_annual_max_max": 5.0,
+        "require_parameter_stability": True,
+        "require_industry_concentration_check": True,
+    }
+
+    metrics = _window_metrics("demo_strategy", "baseline", group, gate)
+    action, reasons = _admission_action(
+        pass_count=0,
+        preset_count=1,
+        turnover_fail_count=0,
+        missing_window_count=0,
+        parameter_unstable_count=0,
+        industry_concentration_count=0,
+        industry_missing_count=0,
+        factor_missing_count=0,
+        price_adjustment_fail_count=0,
+        overfit_level="low",
+        supports_paper_trade=True,
+        group=pd.DataFrame([metrics]),
+        gate_cfg=gate,
+    )
+
+    assert metrics["positive_excess_fold_ratio"] == pytest.approx(1.0)
+    assert metrics["positive_fold_ratio"] == pytest.approx(0.0)
+    assert metrics["is_positive_fold_pass"] is False
+    assert metrics["is_window_pass"] is False
+    assert action == "reject"
+    assert "positive fold ratio below 75% in one or more windows" in reasons
+
+
+def test_admission_report_shows_paper_trade_capability(tmp_path) -> None:
+    report_path = tmp_path / "strategy_admission_report.md"
+    matrix = pd.DataFrame(
+        [
+            {
+                "strategy_id": "demo_strategy",
+                "walk_forward_preset": "baseline",
+                "status": "ok",
+                "fold_count": 1,
+                "walk_forward_start_date": "2020-04-01",
+                "walk_forward_end_date": "2021-03-31",
+                "walk_forward_expected_folds": 1,
+                "walk_forward_actual_folds": 1,
+                "walk_forward_fold_generation_warning": "",
+                "price_adjustment_status": "qfq_asof",
+                "annualized_return_mean": 0.10,
+                "sharpe_mean": 1.0,
+                "max_drawdown_worst": -0.05,
+                "turnover_annual_mean": 1.0,
+                "industry_diagnostic_status": "enabled:audited",
+                "top_industry_avg_share_mean": 0.10,
+                "top3_industries_avg_share_mean": 0.30,
+                "account_execution_status": "not_enabled",
+                "account_annualized_return_mean": 0.0,
+                "account_sharpe_mean": 0.0,
+                "account_executed_order_count_total": 0,
+                "financial_diagnostic_status": "not_applicable",
+                "benchmark_status": "available",
+                "benchmark_available_fold_count": 1,
+                "benchmark_annualized_return_mean": 0.05,
+                "excess_annualized_return_mean": 0.05,
+                "excess_annualized_return_min": 0.05,
+                "positive_fold_ratio": 1.0,
+                "positive_excess_fold_ratio": 1.0,
+                "negative_absolute_fold_count": 0,
+                "negative_absolute_positive_excess_count": 0,
+                "negative_absolute_negative_excess_count": 0,
+                "negative_absolute_benchmark_unavailable_count": 0,
+                "is_window_pass": True,
+            }
+        ]
+    )
+    review = pd.DataFrame(
+        [
+            {
+                "strategy_id": "demo_strategy",
+                "admission_action": "research_only",
+                "window_pass_count": 1,
+                "window_count": 1,
+                "turnover_fail_count": 0,
+                "parameter_unstable_window_count": 0,
+                "industry_diagnostic_missing_window_count": 0,
+                "industry_concentration_window_count": 0,
+                "factor_diagnostic_missing_window_count": 0,
+                "price_adjustment_fail_window_count": 0,
+                "supports_paper_trade": False,
+                "overfit_risk_level": "low",
+                "main_reasons": "strategy does not support paper trade review",
+            }
+        ]
+    )
+
+    _write_report(
+        report_path,
+        matrix,
+        review,
+        ["baseline"],
+        ["demo_strategy"],
+        root=tmp_path,
+        strategy_scope={"source": "cli_strategies", "strategy_set": ""},
+        gate_cfg={"require_qfq_asof": True},
+        diagnostics_suites=[],
+    )
+
+    text = report_path.read_text(encoding="utf-8")
+    assert "paper_trade" in text
+    assert "Benchmark / Excess Diagnostics" in text
+    assert "Supplemental only" in text
+    assert "| demo_strategy | research_only | 1/1 | 0 | 0 | 0 | 0 | 0 | 0 | False | low |" in text
 
 
 def test_admission_marks_non_qfq_asof_price_adjustment_as_gate_failure() -> None:
@@ -489,3 +783,51 @@ def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_fo
 
     assert result.overfit_csv.name == "overfit__diagnostic.csv"
     assert "overfit__diagnostic.csv" in result.governance_md.read_text(encoding="utf-8")
+
+
+def test_force_strategy_set_enabled_supports_regime_gate_strategy() -> None:
+    strategy_cfg = {"local_factor": {"quality_low_turnover_regime_gate": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["quality_low_turnover_regime_gate_v1"])
+
+    assert strategy_cfg["local_factor"]["quality_low_turnover_regime_gate"]["enabled"] is True
+
+
+def test_force_strategy_set_enabled_supports_price_volume_low_turnover_strategy() -> None:
+    strategy_cfg = {"local_factor": {"price_volume_low_turnover": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["price_volume_low_turnover_v1"])
+
+    assert strategy_cfg["local_factor"]["price_volume_low_turnover"]["enabled"] is True
+
+
+def test_force_strategy_set_enabled_supports_strong_index_participation_strategy() -> None:
+    strategy_cfg = {"local_factor": {"strong_index_participation": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["strong_index_participation_v1"])
+
+    assert strategy_cfg["local_factor"]["strong_index_participation"]["enabled"] is True
+
+
+def test_force_strategy_set_enabled_supports_strong_index_dynamic_trigger_strategy() -> None:
+    strategy_cfg = {"local_factor": {"strong_index_participation": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["strong_index_participation_dynamic_trigger_v1"])
+
+    assert strategy_cfg["local_factor"]["strong_index_participation"]["enabled"] is True
+
+
+def test_force_strategy_set_enabled_supports_strong_market_liquid_breadth_strategy() -> None:
+    strategy_cfg = {"local_factor": {"strong_market_liquid_breadth_participation": {"enabled": False}}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["strong_market_liquid_breadth_participation_v1"])
+
+    assert strategy_cfg["local_factor"]["strong_market_liquid_breadth_participation"]["enabled"] is True
+
+
+def test_force_strategy_set_enabled_supports_sleeve_low_churn_strategy() -> None:
+    strategy_cfg = {"sleeve_composite_low_churn": {"enabled": False}}
+
+    _force_strategy_set_enabled_for_admission(strategy_cfg, ["sleeve_composite_low_churn_v1"])
+
+    assert strategy_cfg["sleeve_composite_low_churn"]["enabled"] is True

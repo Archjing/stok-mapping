@@ -1,0 +1,8 @@
+artifact,status,rows,note
+strategy_daily_holdings,available,1871,daily target/live holdings rebuilt from fold-local strategy signal_frame
+strategy_daily_exposure,available,164,daily strategy industry concentration summary
+fold_point_in_time_universe,available,5,industry metadata comes from fold-local PIT universe snapshots
+benchmark_index_price,available,164,SH.000300 price context can be joined by date; this is not constituent exposure
+benchmark_constituents,available,60900,cn_index_weights_asof is available for follow-up CSI300 constituent weight attribution
+benchmark_style_exposure,not_available,0,cannot claim full holdings-vs-CSI300 style attribution without constituent weights or style factors
+fold_metrics,available,5,fold metrics rebuilt for audit only; no admission action is changed

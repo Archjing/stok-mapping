@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 
 from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.sleeve_composite import SleeveCompositeStrategy
+from phase0.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, SleeveCompositeStrategy
 
 
 def _sample_panel() -> pd.DataFrame:
@@ -52,6 +52,8 @@ def _sample_panel() -> pd.DataFrame:
 def test_sleeve_composite_strategy_is_registered() -> None:
     assert "sleeve_composite_v1" in available_strategies()
     assert isinstance(get_strategy("sleeve_composite_v1"), SleeveCompositeStrategy)
+    assert "sleeve_composite_low_churn_v1" in available_strategies()
+    assert isinstance(get_strategy("sleeve_composite_low_churn_v1"), SleeveCompositeLowChurnStrategy)
 
 
 def test_sleeve_composite_scores_rank_and_shift_weights() -> None:
@@ -209,3 +211,56 @@ def test_sleeve_composite_empty_input_returns_empty_output() -> None:
     assert output.returns.empty
     assert output.exposure.empty
     assert output.signal_frame.empty
+
+
+def test_sleeve_composite_low_churn_holds_between_rebalance_days() -> None:
+    strategy = SleeveCompositeLowChurnStrategy()
+    panel = _sample_panel()
+    panel.loc[panel["date"] == pd.Timestamp("2024-01-03"), "quality_growth_score"] = [0.10, 0.95, 0.30]
+    params = {
+        "defensive_quality_weight": 1.0,
+        "low_turnover_momentum_weight": 0.0,
+        "risk_overlay_weight": 0.0,
+        "momentum_window": 20,
+        "top_n": 1,
+        "buy_top_n": 1,
+        "hold_top_n": 2,
+        "rebalance_days": 3,
+        "min_hold_days": 3,
+        "max_symbol_weight": 0.10,
+        "max_names_per_industry": None,
+    }
+
+    output = strategy.apply(panel, params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+
+    first_day = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-02")]
+    second_day = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-03")]
+    assert set(first_day.loc[first_day["weight_unshifted"] > 0, "symbol"]) == {"AAA"}
+    assert set(second_day.loc[second_day["weight_unshifted"] > 0, "symbol"]) == {"AAA"}
+    assert second_day["review_reason"].eq("").all()
+    assert second_day.set_index("symbol").loc["AAA", "held_days"] == 1
+
+
+def test_sleeve_composite_low_churn_respects_industry_slots() -> None:
+    strategy = SleeveCompositeLowChurnStrategy()
+    panel = _sample_panel().assign(industry=["Tech", "Tech", "Health"] * 3)
+    params = {
+        "defensive_quality_weight": 1.0,
+        "low_turnover_momentum_weight": 0.0,
+        "risk_overlay_weight": 0.0,
+        "momentum_window": 20,
+        "top_n": 2,
+        "buy_top_n": 2,
+        "hold_top_n": 4,
+        "rebalance_days": 3,
+        "min_hold_days": 3,
+        "max_symbol_weight": 0.50,
+        "max_names_per_industry": 1,
+    }
+
+    output = strategy.apply(panel, params, slippage=0.0, commission=0.0, stamp_duty_sell=0.0)
+
+    first_day = output.signal_frame[output.signal_frame["date"] == pd.Timestamp("2024-01-02")]
+    selected = set(first_day.loc[first_day["weight_unshifted"] > 0, "symbol"])
+    assert selected == {"AAA", "CCC"}
+    assert "BBB" not in selected
