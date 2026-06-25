@@ -302,6 +302,9 @@ def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], stra
             "local_factor",
             "strong_market_stable_core_base",
         ),
+        # I48/I49 attribution-only variants. They may run scoped admission
+        # evidence to compare mechanics, but must not be added to default
+        # candidate pools or promoted to paper-review flows.
         "strong_market_stable_core_only_v1": (
             "local_factor",
             "strong_market_stable_core_base",

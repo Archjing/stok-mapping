@@ -96,6 +96,17 @@ def test_stable_core_base_is_registered_research_only() -> None:
     assert isinstance(get_strategy("strong_market_stable_satellite_only_v1"), StrongMarketStableSatelliteOnlyStrategy)
 
 
+def test_i48_split_variants_are_attribution_only_not_candidate_pool_members() -> None:
+    for strategy_id in ["strong_market_stable_core_only_v1", "strong_market_stable_satellite_only_v1"]:
+        strategy = get_strategy(strategy_id)
+        metadata = strategy.build_metadata(_params())
+        assert metadata["category"] == "attribution_diagnostic"
+        assert metadata["strategy_role"] == "attribution_only"
+        assert "do not add to baseline_admission_all_v1" in metadata["promotion_boundary"]
+        assert metadata["supports_brief"] is False
+        assert metadata["supports_paper_trade"] is False
+
+
 def test_stable_core_base_keeps_base_core_exposure_when_context_is_weak() -> None:
     strategy = StrongMarketStableCoreBaseStrategy()
     panel = _panel()

@@ -391,7 +391,7 @@ phase0:
           - quality_low_turnover_monthly_v1
           - sleeve_composite_v1
         i48_stable_core_attribution_v1:
-          description: I48 scoped admission for research-only stable core attribution variants.
+          description: I48 scoped admission for attribution-only evidence; core-only/satellite-only are not candidate-pool members.
           strategies:
           - strong_market_stable_core_only_v1
           - strong_market_stable_core_base_v1

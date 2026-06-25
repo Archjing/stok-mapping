@@ -28,7 +28,7 @@ Phase 0 的基础工程闭环已经完成，但策略池当前没有严格 `qfq_
 - 当前 Top 权重缺口结论：I44 已完成 `csi300_core_seed_panel` 只读实验，并修正 I39/I43 的 Top20 门槛口径。Top20 绝对权重是沪深300当期集中度，不应固定要求超过 `35%`；可达性应看覆盖率。显式保留 as-of 可见的沪深300核心成分后，五折均为 `pass`：平均核心可达权重 `59.45%`，平均核心覆盖率 `99.28%`，平均 Top20 覆盖率 `99.95%`。下一步可以预注册新的强市场核心参与候选，但不能把 I44 解释为交易策略通过或固定买沪深300前20只。
 - 当前强市场新候选设计：I45 已预注册 `strong_market_core_participation_v1`。新候选基于 I44 的 core seed panel，不复制沪深300、不固定买前20只；先保证核心股进入候选池，再用趋势、流动性、风险和行业约束决定实际持仓。下一步 I46 可做最小实现，并必须跑 scoped admission、holdings exposure、CSI300 attribution 和 failure attribution。
 - 当前强市场稳定底仓结论：I47 已实现 `strong_market_stable_core_base_v1`，把强市场参与机制拆成稳定核心底仓和小比例 alpha 卫星。结论仍为 `reject`，但它把平均实盘暴露从 I46 的约 `3.93%` 提高到约 `36.58%`，把 Top20 覆盖率从约 `3.66%` 提高到约 `58.16%`，并把平均年化换手从 `4.08` 降到 `0.68`。这说明稳定底仓机制有效，但收益、Sharpe、正收益折、行业偏离和 overfit 仍未过关。
-- 当前强市场稳定底仓拆分结论：I48 已完成 `core-only` / `core+satellite` / `satellite-only` 拆分归因。短窗口 `baseline_2y_1y_5fold` 仅作为策略横向比较；长窗口 `quality_3y_1y_4fold` 和 `quality_4y_1y` 用于稳定性复核。结论是 I47 的改善主要来自稳定核心底仓，不来自卫星增强；卫星增强在短窗口里有少数阶段性交易，但长窗口下基本没有稳定贡献。`core-only` 与 `core+satellite` 长窗口最终为 `research_only`，`satellite-only` 为 `reject`。
+- 当前强市场稳定底仓拆分结论：I48 已完成 `core-only` / `core+satellite` / `satellite-only` 拆分归因。短窗口 `baseline_2y_1y_5fold` 仅作为策略横向比较；长窗口 `quality_3y_1y_4fold` 和 `quality_4y_1y` 用于稳定性复核。结论是 I47 的改善主要来自稳定核心底仓，不来自卫星增强；卫星增强在短窗口里有少数阶段性交易，但长窗口下基本没有稳定贡献。`core-only` / `satellite-only` 是 attribution-only 归因变体，`core+satellite` 只是 I47 `strong_market_stable_core_base_v1` 的归因对照口径；三者均不得作为新增正式候选进入 `baseline_admission_all_v1`、paper review、模拟账户、日报或 watchlist。
 - 当前新增专项探索：盘中行情信号择时买卖已立项为 `T2.14`，仅作为后续数据与验证框架探索，不属于当前已研究候选策略
 - 当前禁止动作：不凭 compare 排名、旧 `qfq_current` 结果或单次 scoped admission 相对最优结论进入模拟账户或日报
 
@@ -213,7 +213,7 @@ I10/I11 对 `price_volume_low_turnover_v1` 的最新约束：
    - I45 已预注册 `strong_market_core_participation_v1`：它不是指数复制，也不是固定买沪深300前20只；它把 I44 的可达性结果转为下一策略候选的候选池和组合构造边界。若 I46 实现，必须验证强市场平均仓位、持有沪深300权重、Top20 持仓覆盖、换手、回撤和 admission。
    - I46 已实现 `strong_market_core_participation_v1` 并完成 scoped admission、failure attribution、market context、holdings exposure 和 CSI300 attribution。结论仍为 `reject`：年化收益均值 `-3.30%`，Sharpe `-0.43`，正收益折比例 `0%`，正超额折比例 `60%`，平均年化换手 `4.08`，最大年化换手 `16.04`，overfit risk `high`。本轮已修正核心逻辑：趋势、流动性、风险、行业约束不再作为沪深300核心股硬筛选器，而是作为排序、降权和审计依据。失败主因从“核心股不可达”推进为“强行情参与触发太窄、全折平均仓位和沪深300权重覆盖不足”。
    - I47 已实现 `strong_market_stable_core_base_v1` 并完成 scoped admission、failure attribution、market context、holdings exposure 和 CSI300 attribution。结论仍为 `reject`：年化收益均值 `-1.74%`，Sharpe `-0.34`，正收益折比例 `40%`，正超额折比例 `40%`，平均年化换手 `0.68`，最大年化换手 `1.85`，overfit risk `high`。本轮证明稳定核心底仓能显著改善参与度和换手，但仍跑不赢强沪深300环境，且行业偏离更明显。
-   - I48 已实现 `strong_market_stable_core_only_v1` 和 `strong_market_stable_satellite_only_v1` 两个归因变体，并复核 `strong_market_stable_core_base_v1`。短窗口 `baseline_2y_1y_5fold` 下三者均为 `reject`；长窗口下 `core-only` 与 `core+satellite` 仅为 `research_only`，`satellite-only` 为 `reject`。结论是短窗口只适合横向比较，不能单独支撑稳定性判断；I47 的主要有效部分是稳定核心底仓，卫星增强不应继续小参数调优。
+   - I48 已实现 `strong_market_stable_core_only_v1` 和 `strong_market_stable_satellite_only_v1` 两个 attribution-only 归因变体，并复核 `strong_market_stable_core_base_v1`。短窗口 `baseline_2y_1y_5fold` 下三者均为 `reject`；长窗口下 `core-only` 与 `core+satellite` 仅为 `research_only`，`satellite-only` 为 `reject`。结论是短窗口只适合横向比较，不能单独支撑稳定性判断；I47 的主要有效部分是稳定核心底仓，卫星增强不应继续小参数调优。`core+satellite` 不是新策略 id，而是 I47 base 在拆分实验中的对照标签。
 
 ### P1：有前置条件后再处理
 
@@ -301,7 +301,7 @@ I10/I11 对 `price_volume_low_turnover_v1` 的最新约束：
 - [x] 完成 I44 `csi300_core_seed_panel` 只读实验，修正 Top20 绝对权重门槛为覆盖率门槛，并确认显式保留 as-of 可见核心成分后五折可达性均为 `pass`。
 - [x] 完成 I45 `strong_market_core_participation_v1` 预注册设计，明确新候选不复制沪深300、不固定买前20只，下一步必须用 admission 和持仓级 CSI300 归因验证真实参与度。
 - [x] 完成 I47 `strong_market_stable_core_base_v1` 最小实现和 scoped admission，确认稳定核心底仓显著降低换手并提高沪深300核心覆盖，但首版仍未通过 admission。
-- [x] 完成 I48 稳定核心底仓拆分归因：新增 `strong_market_stable_core_only_v1` 和 `strong_market_stable_satellite_only_v1`，并用短窗口横向比较、长窗口稳定性复核确认卫星增强没有稳定贡献。
+- [x] 完成 I48 稳定核心底仓拆分归因：新增 `strong_market_stable_core_only_v1` 和 `strong_market_stable_satellite_only_v1` 作为 attribution-only 诊断变体，并用短窗口横向比较、长窗口稳定性复核确认卫星增强没有稳定贡献；这些变体不进入正式候选策略池。
 - [x] 立项 T2.14 盘中行情信号择时买卖专项探索计划，明确它不是当前候选策略，而是后续分钟级数据、执行模型和盘中信号验证框架的探索入口。
 
 ### 下一步
@@ -355,5 +355,5 @@ T2.1 当前不是“挑一个马上上线的策略”，而是“把策略池治
 2. 优先修正低波、低换手、质量策略的失败原因。
 3. 把 `sleeve_composite_v1` 和 `sleeve_composite_low_churn_v1` 保持为 research-only；低 churn 构造可复用，但当前 sleeve alpha 不再继续小参数调优。
 4. 把 `price_volume_low_turnover_v1` 作为防守 / 选择性研究候选观察，不强行改成强指数参与策略。
-5. 单独补强“强沪深300行情参与型”策略角色；当前 I15/I18/I20、I37 `strong_market_effective_participation_v1`、I46 `strong_market_core_participation_v1` 和 I47 `strong_market_stable_core_base_v1` 均为 `reject`。I44 已证明如果显式保留沪深300核心成分，候选池可达性可以过关；I46 证明仅补核心候选池还不够；I47 证明稳定核心底仓可以改善参与度和换手；I48 进一步证明主要贡献来自核心底仓，卫星增强没有稳定贡献。下一步应做核心底仓相对沪深300跑输归因，而不是继续调卫星增强参数。
+5. 单独补强“强沪深300行情参与型”策略角色；当前 I15/I18/I20、I37 `strong_market_effective_participation_v1`、I46 `strong_market_core_participation_v1` 和 I47 `strong_market_stable_core_base_v1` 均为 `reject`。I44 已证明如果显式保留沪深300核心成分，候选池可达性可以过关；I46 证明仅补核心候选池还不够；I47 证明稳定核心底仓可以改善参与度和换手；I48 进一步证明主要贡献来自核心底仓，卫星增强没有稳定贡献。下一步应做核心底仓相对沪深300跑输归因，而不是继续调卫星增强参数；I48 的 `core-only` / `satellite-only` 不得被解释为候选池扩容。
 6. 用 T2.13 的因子传导框架增强归因和报告解释，而不是绕过 admission 生成新信号。

@@ -833,7 +833,7 @@ def test_force_strategy_set_enabled_supports_strong_market_stable_core_base_stra
     assert strategy_cfg["local_factor"]["strong_market_stable_core_base"]["enabled"] is True
 
 
-def test_force_strategy_set_enabled_supports_i48_stable_core_attribution_variants() -> None:
+def test_i48_attribution_variants_only_enable_scoped_evidence_runs() -> None:
     strategy_cfg = {"local_factor": {"strong_market_stable_core_base": {"enabled": False}}}
 
     _force_strategy_set_enabled_for_admission(
@@ -842,6 +842,21 @@ def test_force_strategy_set_enabled_supports_i48_stable_core_attribution_variant
     )
 
     assert strategy_cfg["local_factor"]["strong_market_stable_core_base"]["enabled"] is True
+    scope = _resolve_strategy_scope(
+        {"compare_strategies": ["legacy_momentum", "strong_market_stable_core_base_v1"]},
+        {
+            "default_strategy_set": "baseline_admission_all_v1",
+            "strategy_sets": {
+                "baseline_admission_all_v1": {
+                    "strategies": ["legacy_momentum", "strong_market_stable_core_base_v1"]
+                }
+            },
+        },
+        strategy_set="baseline_admission_all_v1",
+        strategies=None,
+    )
+    assert "strong_market_stable_core_only_v1" not in scope["strategies"]
+    assert "strong_market_stable_satellite_only_v1" not in scope["strategies"]
 
 
 def test_force_strategy_set_enabled_supports_sleeve_low_churn_strategy() -> None:

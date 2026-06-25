@@ -20,6 +20,8 @@ class BaseStrategy(ABC):
     candidate_name: str = ""
     display_name: str = ""
     category: str = "generic"
+    strategy_role: str = "candidate"
+    promotion_boundary: str = ""
     panel_scope: str = "portfolio"
     supports_compare: bool = True
     supports_brief: bool = True
@@ -37,6 +39,8 @@ class BaseStrategy(ABC):
             "candidate_name": self.candidate_name,
             "display_name": self.display_name or self.name,
             "category": self.category,
+            "strategy_role": self.strategy_role,
+            "promotion_boundary": self.promotion_boundary,
             "panel_scope": self.panel_scope,
             "supports_compare": self.supports_compare,
             "supports_brief": self.supports_brief,

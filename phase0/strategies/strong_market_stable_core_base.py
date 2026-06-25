@@ -250,7 +250,10 @@ class StrongMarketStableCoreBaseStrategy(BaseStrategy):
 class StrongMarketStableCoreOnlyStrategy(StrongMarketStableCoreBaseStrategy):
     name = "strong_market_stable_core_only_v1"
     candidate_name = "strong_market_stable_core_only_v1"
-    display_name = "Strong Market Stable Core Only"
+    display_name = "Strong Market Stable Core Only (I48 Attribution Only)"
+    category = "attribution_diagnostic"
+    strategy_role = "attribution_only"
+    promotion_boundary = "I48/I49 diagnostic variant; do not add to baseline_admission_all_v1, paper review, simulation, daily brief, or watchlist."
 
     def select_params(
         self,
@@ -279,7 +282,10 @@ class StrongMarketStableCoreOnlyStrategy(StrongMarketStableCoreBaseStrategy):
 class StrongMarketStableSatelliteOnlyStrategy(StrongMarketStableCoreBaseStrategy):
     name = "strong_market_stable_satellite_only_v1"
     candidate_name = "strong_market_stable_satellite_only_v1"
-    display_name = "Strong Market Stable Satellite Only"
+    display_name = "Strong Market Stable Satellite Only (I48 Attribution Only)"
+    category = "attribution_diagnostic"
+    strategy_role = "attribution_only"
+    promotion_boundary = "I48/I49 diagnostic variant; do not add to baseline_admission_all_v1, paper review, simulation, daily brief, or watchlist."
 
     def select_params(
         self,
