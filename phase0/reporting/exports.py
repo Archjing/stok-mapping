@@ -21,7 +21,7 @@ def export_phase0_low_turnover_bill(
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
-    from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
+    from phase0.reporting.strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
 
     resolved_strategy_id = strategy_id or DEFAULT_STRATEGY_ID
     cfg = _load_report_config_if_available(config_path)

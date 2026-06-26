@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.reporting.paths import report_config_path
-from scripts.export_strategy_bill import (
+from phase0.reporting.strategy_bill import (
     _default_report_strategy_id,
     _execution_settings,
     export_strategy_bill,

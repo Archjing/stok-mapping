@@ -20,7 +20,7 @@ from scripts.export_execution_effectiveness_report import (
     _live_backtest_settings,
     _profile_settings,
 )
-from scripts.export_strategy_bill import (
+from phase0.reporting.strategy_bill import (
     _default_report_strategy_id,
     _strategy_report_cfg,
     export_strategy_bill,

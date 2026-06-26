@@ -27,7 +27,7 @@ from phase0.reporting.paths import report_config_path
 from phase0.research.metrics import calc_metrics as _calc_metrics
 from phase0.strategies import get_strategy
 from phase0.walk_forward import _resolve_walk_forward_window
-from scripts.export_strategy_bill import (
+from phase0.reporting.strategy_bill import (
     DEFAULT_PANEL_CACHE,
     _execution_settings,
     _limit_pct,

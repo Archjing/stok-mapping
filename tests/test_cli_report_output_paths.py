@@ -187,7 +187,7 @@ def test_low_turnover_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: P
         calls.append(kwargs)
         return {"bill": kwargs["output"], "daily": kwargs["daily_output"], "preview": kwargs["preview_output"]}
 
-    monkeypatch.setattr("scripts.export_strategy_bill.export_strategy_bill", fake_export_strategy_bill)
+    monkeypatch.setattr("phase0.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
     result = report_exports.export_phase0_low_turnover_bill(config_path=tmp_path / "config.yaml")
 
@@ -206,7 +206,7 @@ def test_low_turnover_bill_uses_configured_run_dir(monkeypatch, tmp_path: Path) 
         calls.append(kwargs)
         return {"bill": kwargs["output"], "daily": kwargs["daily_output"], "preview": kwargs["preview_output"]}
 
-    monkeypatch.setattr("scripts.export_strategy_bill.export_strategy_bill", fake_export_strategy_bill)
+    monkeypatch.setattr("phase0.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
     result = report_exports.export_phase0_low_turnover_bill(config_path=config_path)
 

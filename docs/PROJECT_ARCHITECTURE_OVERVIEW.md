@@ -562,8 +562,9 @@ data health PASS / acceptable warning
 
 - [phase0/execution/accounts.py](../phase0/execution/accounts.py)
 - [phase0/reporting/account_bill.py](../phase0/reporting/account_bill.py)
+- [phase0/reporting/strategy_bill.py](../phase0/reporting/strategy_bill.py)
 - [phase0/accounts.py](../phase0/accounts.py)（兼容旧入口；新代码不要继续依赖）
-- [scripts/export_strategy_bill.py](../scripts/export_strategy_bill.py)
+- [scripts/export_strategy_bill.py](../scripts/export_strategy_bill.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_strategy_oos_report.py](../scripts/export_strategy_oos_report.py)
 - [scripts/export_strategy_period_compare.py](../scripts/export_strategy_period_compare.py)
 - [scripts/export_premarket_watchlist.py](../scripts/export_premarket_watchlist.py)

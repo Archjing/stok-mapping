@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Backward-compatible entrypoint for the historical low-turnover bill export.
 
-New code should import from scripts.export_strategy_bill.
+New code should import from phase0.reporting.strategy_bill.
 """
 
 import sys
@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
+from phase0.reporting.strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
 
 
 def export_low_turnover_bill(**kwargs: Any) -> dict[str, Any]:
@@ -22,7 +22,7 @@ def export_low_turnover_bill(**kwargs: Any) -> dict[str, Any]:
 
 
 def main() -> int:
-    from scripts.export_strategy_bill import main as strategy_main
+    from phase0.reporting.strategy_bill import main as strategy_main
 
     return int(strategy_main() or 0)
 

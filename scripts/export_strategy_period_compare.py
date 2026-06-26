@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.reporting.paths import report_path
-from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, _default_report_strategy_id, _strategy_report_cfg
+from phase0.reporting.strategy_bill import DEFAULT_STRATEGY_ID, _default_report_strategy_id, _strategy_report_cfg
 
 
 DEFAULT_COMPARE_TITLE = "策略 OOS：早期区间与当前区间对比"

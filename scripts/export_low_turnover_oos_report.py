@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID
+from phase0.reporting.strategy_bill import DEFAULT_STRATEGY_ID
 from scripts.export_strategy_oos_report import export_strategy_oos_report
 
 
