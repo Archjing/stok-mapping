@@ -36,7 +36,14 @@ logs/
 reports/*
 !reports/README.md
 !reports/strategy_governance/
-!reports/strategy_governance/**
+!reports/strategy_governance/**/
+reports/strategy_governance/**/*.csv
+reports/strategy_governance/**/*.json
+reports/strategy_governance/**/*.parquet
+reports/strategy_governance/**/*.png
+reports/strategy_governance/**/*.svg
+!reports/strategy_governance/**/*.md
+!reports/strategy_governance/**/*.html
 *.sqlite
 *.sqlite-*
 *.db
