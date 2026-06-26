@@ -814,6 +814,16 @@ The sixty-ninth slice extracts pure Tushare backfill report helpers from the bro
 
 This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, upsert behavior, task-table state transitions, rate limiting, retry behavior, CLI command names, generated report filenames, generated artifact schemas, or history/financial audit SQL queries.
 
+## Seventieth Slice In This Branch
+
+The seventieth slice extracts read-only Tushare backfill audit queries from the broad write-side backfill job:
+
+- Add `phase0.data_governance.backfills.tushare_history_audit_queries` for history coverage audit and financial backfill task/factor coverage audit DataFrame builders.
+- Keep `phase0.data_governance.backfills.tushare_history` as the write-side orchestration module and retain `_coverage_audit` / `_financial_backfill_audit` aliases for compatibility.
+- Add audit-query compatibility and behavior tests using in-memory SQLite fixtures that verify row counts, task-state counts, and coverage ratios.
+
+This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, upsert behavior, task-table state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, or report rendering.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
