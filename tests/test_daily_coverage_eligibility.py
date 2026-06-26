@@ -4,8 +4,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from phase0.db_health import _check_cn_market_data
-from phase0.db_health import _connect as db_connect
+from phase0.data_governance.db_health import _check_cn_market_data
+from phase0.data_governance.db_health import _connect as db_connect
 from phase0.update_history import _latest_stats
 
 

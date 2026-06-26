@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_exposure_diagnostic import run_strategy_exposure_diagnostic
+from phase0.research.diagnostics.exposure import run_strategy_exposure_diagnostic
 
 
 def test_strategy_exposure_diagnostic_merges_existing_artifacts_and_writes_reports(tmp_path) -> None:

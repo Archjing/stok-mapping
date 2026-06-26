@@ -89,6 +89,16 @@ The sixth slice consolidates Cloe/acpx shell wrapper behavior while preserving t
 
 This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `install_dev_cron.sh`, or `.codex/run_claude_agent.sh`. Those scripts carry cron installation, every-minute scheduler, or Codex runner behavior and need separate review.
 
+## Seventh Slice In This Branch
+
+The seventh slice starts retiring old Python import paths inside the project:
+
+- Update ordinary data-governance, research diagnostic, and research attribution tests to import from `phase0.data_governance.*` and `phase0.research.*`.
+- Keep `tests/test_data_governance_imports.py`, `tests/test_research_diagnostics_imports.py`, and `tests/test_research_attribution_imports.py` as explicit compatibility tests for old root-level shims.
+- Confirm an `rg` audit leaves old Python import paths only in those compatibility tests and historical/planning documentation.
+
+This slice does not remove any root-level compatibility shim. Wrapper deletion is deferred until after main-branch merge and the complete validation cycle described below.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

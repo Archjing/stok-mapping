@@ -4,8 +4,8 @@ import sqlite3
 
 import pandas as pd
 
-from phase0.index_asof_audit import run_index_asof_audit
-from phase0.index_asof_backfill import normalize_index_weight_rows, upsert_index_asof_rows
+from phase0.data_governance.index_asof_audit import run_index_asof_audit
+from phase0.data_governance.index_asof_backfill import normalize_index_weight_rows, upsert_index_asof_rows
 
 
 def _create_base_db(path) -> None:

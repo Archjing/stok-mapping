@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_fold_attribution import run_strategy_fold_attribution
+from phase0.research.attribution.fold import run_strategy_fold_attribution
 
 
 def test_strategy_fold_attribution_pairs_folds_and_writes_outputs(tmp_path) -> None:
