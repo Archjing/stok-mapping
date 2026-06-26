@@ -1040,7 +1040,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 - [x] `phase0/quality.py` 已有简单 `QualityResult` / `audit_quality` / `aggregate_quality`
 - [x] 已有 `financial-pti`、`universe-pti`、`adjustment-audit` 等专项审计命令
-- [x] 已有 `scripts/check_local_history_consistency.py`，但不是统一 CLI 健康检查入口
+- [x] 已有本地历史一致性旁路校验能力；实现现位于 `phase0.data_governance.local_history_consistency`，`scripts/check_local_history_consistency.py` 只保留兼容入口，但它不是统一 CLI 健康检查入口
 - [x] 结论：项目已有分散质量检查能力，但缺少统一、可调度、可作为门禁的数据库健康检查模块
 
 ## W2.17.3 MVP 实现范围

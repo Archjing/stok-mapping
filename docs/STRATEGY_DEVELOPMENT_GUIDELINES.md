@@ -375,6 +375,7 @@ strategy_governance_report_YYYY-MM-DD_<short_context>.md
 - 架构说明：`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - 文档索引：`docs/README.md`
 - 变更日志：`reports/phase0_strategy_change_log.md`
-- 数据一致性旁路校验脚本：`scripts/check_local_history_consistency.py`
+- 数据一致性旁路校验模块：`phase0.data_governance.local_history_consistency`
+- 兼容旧入口：`scripts/check_local_history_consistency.py`
 
 这份 guideline 是“标准”；Checklist 是“执行单”；主计划是“当前阶段优先级”。
