@@ -13,7 +13,7 @@ import yfinance as yf
 
 from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
-from phase0.tushare_source import fetch_tushare_smoke, token_env_is_set, tushare_config
+from phase0.data_access.providers.tushare import fetch_tushare_smoke, token_env_is_set, tushare_config
 
 
 DEFAULT_FRED_SERIES: dict[str, str] = {

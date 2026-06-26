@@ -14,7 +14,7 @@ from phase0.adjustment_backfill import ensure_dividend_table, upsert_dividends
 from phase0.config import load_config
 from phase0.financial_factors import ensure_financial_factor_table
 from phase0.reporting.paths import report_path
-from phase0.tushare_source import (
+from phase0.data_access.providers.tushare import (
     fetch_tushare_adj_factor_trade_date,
     fetch_tushare_daily_basic_trade_date,
     fetch_tushare_dividend,

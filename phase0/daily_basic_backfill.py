@@ -10,7 +10,7 @@ import pandas as pd
 
 from phase0.config import load_config
 from phase0.local_history import configure_local_history
-from phase0.tushare_source import fetch_tushare_trade_date, tushare_available, tushare_config
+from phase0.data_access.providers.tushare import fetch_tushare_trade_date, tushare_available, tushare_config
 from phase0.update_history import _ensure_daily_basic_table, _safe_identifier, _upsert_daily_basic_rows
 
 

@@ -11,7 +11,7 @@ import pandas as pd
 
 from phase0.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.config import load_config
-from phase0.tushare_source import (
+from phase0.data_access.providers.tushare import (
     fetch_tushare_adj_factor_trade_date,
     fetch_tushare_dividend,
     tushare_available,
