@@ -360,6 +360,18 @@ The thirtieth slice prepares data-governance module migration by extracting shar
 
 This slice does not move `phase0/update_history.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, or `phase0/tushare_history_backfill.py` yet. It only creates the shared helper layer needed to move those write-side data-governance jobs safely in later slices.
 
+## Thirty-First Slice In This Branch
+
+The thirty-first slice moves the first write-side backfill jobs into the data-governance package:
+
+- Move `phase0/daily_basic_backfill.py` to `phase0.data_governance.backfills.daily_basic`.
+- Move `phase0/adjustment_backfill.py` to `phase0.data_governance.backfills.adjustment`.
+- Keep root-level `phase0.daily_basic_backfill` and `phase0.adjustment_backfill` as module alias shims so old imports and monkeypatches remain compatible during the transition.
+- Update effective project imports in the data-update CLI and Tushare history backfill to use the new package paths.
+- Add import compatibility tests for new backfill paths and old root-path aliases.
+
+This slice does not change backfill algorithms, database schemas, Tushare payloads, throttling behavior, CLI command names, or generated artifact paths. It also does not move the larger `phase0/tushare_history_backfill.py` or `phase0/update_history.py` jobs yet.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

@@ -6,10 +6,10 @@ from typing import Any
 
 from rich.console import Console
 
-from phase0.adjustment_backfill import backfill_adjustment_factors_from_config
 from phase0.cli_commands.output import print_manual_history_update_result
 from phase0.config import load_config
-from phase0.daily_basic_backfill import backfill_daily_basic_from_config
+from phase0.data_governance.backfills.adjustment import backfill_adjustment_factors_from_config
+from phase0.data_governance.backfills.daily_basic import backfill_daily_basic_from_config
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
 from phase0.financial_factors import update_financial_factors_from_config
