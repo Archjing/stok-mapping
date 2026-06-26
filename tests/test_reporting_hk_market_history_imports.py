@@ -1,34 +1,9 @@
 from __future__ import annotations
 
 import sqlite3
-import subprocess
-import sys
 from pathlib import Path
 
-import scripts.export_hk_market_history_report as legacy_hk_market_history
-from phase0.reporting import hk_market_history
 from phase0.reporting.hk_market_history import build_report
-
-
-def test_hk_market_history_report_new_imports_are_available() -> None:
-    assert callable(build_report)
-
-
-def test_legacy_hk_market_history_report_script_aliases_reporting_module() -> None:
-    assert legacy_hk_market_history is hk_market_history
-    assert legacy_hk_market_history.build_report is build_report
-
-
-def test_legacy_hk_market_history_report_script_help_runs_directly() -> None:
-    result = subprocess.run(
-        [sys.executable, "scripts/export_hk_market_history_report.py", "--help"],
-        check=False,
-        capture_output=True,
-        text=True,
-    )
-
-    assert result.returncode == 0
-    assert "--output" in result.stdout
 
 
 def test_hk_market_history_report_builds_from_local_sqlite(tmp_path: Path) -> None:

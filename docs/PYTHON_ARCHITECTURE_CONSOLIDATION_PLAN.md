@@ -874,6 +874,17 @@ The seventy-fifth slice consolidates pure strategy-intelligence package-root com
 
 This slice does not change production code, CLI commands, intelligence collection/review/validation behavior, online request settings, ledger schemas, report paths, or script wrapper behavior. It reduces compatibility-test duplication while preserving the alias checks needed for the later wrapper cleanup commit.
 
+## Seventy-Sixth Slice In This Branch
+
+The seventy-sixth slice consolidates repeated reporting script-wrapper compatibility tests:
+
+- Add `tests/test_reporting_script_wrappers.py` as the shared matrix for reporting script wrappers that alias packaged reporting modules and expose working `--help`.
+- Replace repeated import/help test files for execution effectiveness, market regime, premarket watchlist, strategy bill, strategy OOS, and strategy period compare.
+- Move HK market-history script wrapper import/help checks into the same matrix while keeping its SQLite report-building behavior test in `tests/test_reporting_hk_market_history_imports.py`.
+- Keep account-bill re-export tests separate because they verify `phase0.execution.accounts` compatibility rather than a `scripts/` wrapper.
+
+This slice does not change production code, CLI commands, report output behavior, report paths, generated schemas, or script wrapper behavior. It reduces test duplication while preserving direct script `--help` coverage.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
