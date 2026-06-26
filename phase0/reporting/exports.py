@@ -199,7 +199,7 @@ def export_phase0_execution_gate(
     enable_limit_check: bool | None = None,
     enable_suspension_check: bool | None = None,
 ) -> dict:
-    from scripts.export_execution_effectiveness_report import export_execution_effectiveness_report
+    from phase0.reporting.execution_effectiveness import export_execution_effectiveness_report
 
     return export_execution_effectiveness_report(
         config_path=config_path,

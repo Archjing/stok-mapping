@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts import export_execution_effectiveness_report as module
+from phase0.reporting import execution_effectiveness as module
 
 
 def test_explicit_fold_and_report_outputs_remain_project_relative(monkeypatch, tmp_path: Path) -> None:

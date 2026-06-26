@@ -31,12 +31,13 @@ Current decisions:
 - Account bill HTML and latest-snapshot presentation helpers now live in `phase0.reporting.account_bill`, with execution-layer re-exports kept for compatibility during the transition.
 - Strategy bill export implementation now lives in `phase0.reporting.strategy_bill`; `scripts/export_strategy_bill.py` is a direct-execution-compatible shim.
 - Strategy bill execution matching and ledger helpers now live in `phase0.execution.strategy_ledger`; `phase0.reporting.strategy_bill` keeps old private-name aliases only for compatibility during the transition.
+- Execution effectiveness gate report implementation now lives in `phase0.reporting.execution_effectiveness`; `scripts/export_execution_effectiveness_report.py` is a direct-execution-compatible shim.
 
 ## Current Functional Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
-| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, account bill presentation, strategy bill export orchestration, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, `phase0/reporting/account_bill.py`, `phase0/reporting/strategy_bill.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, `scripts/export_strategy_bill.py`, report-export helper aliases in `phase0/cli.py` |
+| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, account bill presentation, strategy bill export orchestration, execution effectiveness gate reporting, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, `phase0/reporting/account_bill.py`, `phase0/reporting/strategy_bill.py`, `phase0/reporting/execution_effectiveness.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, `scripts/export_strategy_bill.py`, `scripts/export_execution_effectiveness_report.py`, report-export helper aliases in `phase0/cli.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, price-adjustment governance, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/adjustment.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
@@ -599,6 +600,17 @@ The fiftieth slice separates strategy-bill execution matching from report export
 
 This slice does not change strategy signal generation, walk-forward fold construction, panel cache keys, bill CSV schemas, daily asset schemas, report filenames, report paths, CLI arguments, generated artifacts, execution assumptions, or strategy algorithms. Research-heavy panel loading and fold orchestration remain in `phase0.reporting.strategy_bill` until a later slice has focused tests for moving them.
 
+## Fifty-First Slice In This Branch
+
+The fifty-first slice moves the execution-effectiveness gate report out of `scripts/` and into the reporting package:
+
+- Move `scripts/export_execution_effectiveness_report.py` implementation to `phase0.reporting.execution_effectiveness`.
+- Keep `scripts/export_execution_effectiveness_report.py` as a direct-execution-compatible module alias shim; `python scripts/export_execution_effectiveness_report.py --help` continues to work.
+- Update `phase0.reporting.exports` and `scripts/export_strategy_oos_report.py` to import the shared execution-effectiveness helpers from the new reporting module.
+- Update execution-effectiveness path tests to patch the new reporting module and add legacy script alias/help compatibility tests.
+
+This slice does not change execution gate metrics, live/research profile semantics, output schemas, report filenames, report paths, CLI arguments, generated artifacts, execution assumptions, or strategy algorithms. The OOS report still reuses profile helper functions from this module; if that reuse grows further, a later slice can extract a small shared profile helper.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -638,7 +650,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Strategy bill research helpers | `phase0.reporting.strategy_bill` | Execution matching has moved to `phase0.execution.strategy_ledger`; split remaining panel/fold orchestration into `phase0.research` only after focused tests exist |
-| Large execution/report scripts | `scripts/export_strategy_oos_report.py`, `scripts/export_execution_effectiveness_report.py`, `scripts/export_premarket_watchlist.py` | Move implementation into `phase0.reporting` / `phase0.execution` modules and leave scripts as thin wrappers |
+| Large execution/report scripts | `scripts/export_strategy_oos_report.py`, `scripts/export_premarket_watchlist.py` | `scripts/export_execution_effectiveness_report.py` is now a thin shim over `phase0.reporting.execution_effectiveness`; move remaining large implementations into packages and leave scripts as thin wrappers |
 | Data audit scripts | `scripts/check_local_history_consistency.py`, `scripts/audit_financial_pti.py`, `scripts/audit_universe_pit.py` | Move reusable audit logic into data-governance or validation modules with CLI entrypoints |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
 | External probe scripts | `scripts/tiingo_news_probe.py`, `scripts/export_hk_a_mapping_factors.py`, `scripts/export_hk_market_history_report.py` | Keep network side effects explicit; migrate only after provider boundaries and output contracts are covered by tests |
