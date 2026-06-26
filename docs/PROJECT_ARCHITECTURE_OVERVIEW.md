@@ -300,8 +300,9 @@ Tushare 财务历史回填当前状态：
 
 - [phase0/db_health.py](../phase0/db_health.py)
 - [phase0/data_governance/adjustment.py](../phase0/data_governance/adjustment.py)
+- [phase0/data_governance/universe_pit.py](../phase0/data_governance/universe_pit.py)
 - [scripts/audit_financial_pti.py](../scripts/audit_financial_pti.py)
-- [scripts/audit_universe_pit.py](../scripts/audit_universe_pit.py)
+- [scripts/audit_universe_pit.py](../scripts/audit_universe_pit.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/check_local_history_consistency.py](../scripts/check_local_history_consistency.py)
 
 当前审计命令：

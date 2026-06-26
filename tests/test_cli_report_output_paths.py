@@ -256,7 +256,7 @@ def test_universe_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) 
         calls.append(kwargs)
         return {"report": kwargs["report_output"]}
 
-    monkeypatch.setattr("scripts.audit_universe_pit.audit_universe_pit", fake_audit_universe_pit)
+    monkeypatch.setattr("phase0.data_governance.universe_pit.audit_universe_pit", fake_audit_universe_pit)
 
     result = report_exports.export_phase0_universe_pit(tmp_path / "config.yaml", as_of_date="2021-05-28")
 

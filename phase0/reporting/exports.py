@@ -114,7 +114,7 @@ def export_phase0_financial_pti(config_path: Path) -> dict:
 
 
 def export_phase0_universe_pit(config_path: Path, *, as_of_date: str) -> dict:
-    from scripts.audit_universe_pit import audit_universe_pit
+    from phase0.data_governance.universe_pit import audit_universe_pit
 
     cfg = _load_report_config_if_available(config_path)
     report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="universe-pti", scope=as_of_date)
