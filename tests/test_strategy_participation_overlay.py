@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_participation_overlay import _overlay_daily_rows, _overlay_summary
+from phase0.research.participation.overlay import _overlay_daily_rows, _overlay_summary
 
 
 def test_participation_overlay_scales_low_exposure_day_with_symbol_cap() -> None:

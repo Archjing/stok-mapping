@@ -16,7 +16,7 @@ The current branch starts with narrow, verifiable slices. It does not claim the 
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
 | `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, participation diagnostics, role cards | `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/participation/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -98,6 +98,17 @@ The seventh slice starts retiring old Python import paths inside the project:
 - Confirm an `rg` audit leaves old Python import paths only in those compatibility tests and historical/planning documentation.
 
 This slice does not remove any root-level compatibility shim. Wrapper deletion is deferred until after main-branch merge and the complete validation cycle described below.
+
+## Eighth Slice In This Branch
+
+The eighth slice adds a participation research package for low-coupling exposure diagnostics:
+
+- Move `strategy_participation_overlay.py` into `phase0.research.participation.overlay`.
+- Move `strategy_participation_path_audit.py` into `phase0.research.participation.path_audit`.
+- Update `phase0.cli` and ordinary participation tests to import from the new package paths.
+- Keep root-level alias shims and `tests/test_research_participation_imports.py` so old imports and private-helper imports remain compatible during the transition.
+
+This slice intentionally does not move holdings exposure, CSI300 attribution, core reachability, missing-core audit, role cards, or failure attribution. Those modules either rebuild historical holdings, read local benchmark as-of tables, or depend on admission internals and need separate gates.
 
 ## Later Migration Stages
 

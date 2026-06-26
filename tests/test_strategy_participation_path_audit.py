@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_participation_path_audit import run_strategy_participation_path_audit
+from phase0.research.participation.path_audit import run_strategy_participation_path_audit
 
 
 def test_participation_path_audit_buckets_target_and_live_exposure(tmp_path) -> None:
