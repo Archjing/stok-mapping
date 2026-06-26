@@ -14,7 +14,7 @@ import pandas as pd
 
 from phase0.accounts import SimulatedAccountConfig, run_signal_account_execution
 from phase0.data_access.connectivity import fetch_cn_daily, fetch_hk_daily, fetch_yf_daily
-from phase0.external_market_history import (
+from phase0.data_governance.external_market_history import (
     configure_us_market_history,
     load_us_daily_from_history,
     us_market_history_runtime_fallback_enabled,

@@ -22,7 +22,7 @@ from phase0.accounts import (
     load_simulated_accounts,
     price_mode_label,
 )
-from phase0.external_market_history import configure_us_market_history
+from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history
 from phase0.reporting.paths import report_config_path
 from phase0.research.metrics import calc_metrics as _calc_metrics

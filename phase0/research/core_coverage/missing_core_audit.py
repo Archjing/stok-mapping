@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.external_market_history import configure_us_market_history
+from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history, local_history_path
 from phase0.throttle import configure_akshare_throttle
 from phase0.universe import _filter_snapshot, _score_snapshot, _select_balanced_universe, load_point_in_time_universe

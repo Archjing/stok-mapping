@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.external_market_history import configure_hk_market_history, configure_us_market_history
+from phase0.data_governance.external_market_history import configure_hk_market_history, configure_us_market_history
 from phase0.local_history import _safe_identifier, configure_local_history, local_history_path
 from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds

@@ -14,7 +14,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
-from phase0.external_market_history import configure_us_market_history
+from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history, load_daily_from_local_history
 from phase0.reporting.paths import report_config_path
 from phase0.research.metrics import calc_metrics as _calc_metrics

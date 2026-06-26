@@ -10,7 +10,7 @@ from phase0.cli_commands.gates import run_db_health_gate as _run_db_health_gate
 from phase0.config import load_config
 from phase0.data_access.connectivity import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.quality import aggregate_quality, audit_quality
-from phase0.external_market_history import load_us_daily_from_history, update_us_market_history_from_config
+from phase0.data_governance.external_market_history import load_us_daily_from_history, update_us_market_history_from_config
 from phase0.local_history import configure_local_history
 from phase0.reporting import (
     write_cost_sensitivity_report,
