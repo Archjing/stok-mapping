@@ -236,7 +236,8 @@ CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块�
 
 - [phase0/data_access/providers/tushare.py](../phase0/data_access/providers/tushare.py)
 - [phase0/tushare_source.py](../phase0/tushare_source.py)（兼容旧入口；新代码不要继续依赖）
-- [phase0/data_sources.py](../phase0/data_sources.py)
+- [phase0/data_access/connectivity.py](../phase0/data_access/connectivity.py)
+- [phase0/data_sources.py](../phase0/data_sources.py)（兼容旧入口；新代码不要继续依赖）
 - [phase0/throttle.py](../phase0/throttle.py)
 - [phase0/external_market_history.py](../phase0/external_market_history.py)
 

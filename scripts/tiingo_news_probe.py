@@ -14,7 +14,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase0.config import load_config
-from phase0.data_sources import DEFAULT_TIINGO_NEWS_SYMBOLS, fetch_tiingo_news
+from phase0.data_access.connectivity import DEFAULT_TIINGO_NEWS_SYMBOLS, fetch_tiingo_news
 from phase0.reporting.paths import report_config_path
 
 

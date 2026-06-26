@@ -29,7 +29,7 @@ from phase0.cli_commands.system import (
     register_system_commands,
     summarize_system_maintenance_status,
 )
-from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
+from phase0.data_access.connectivity import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.quality import aggregate_quality, audit_quality
 from phase0.cli_commands.delivery import (
     DELIVERY_COMMANDS,

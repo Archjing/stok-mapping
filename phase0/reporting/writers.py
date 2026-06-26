@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.data_sources import ConnectivityResult
+from phase0.data_access.connectivity import ConnectivityResult
 from phase0.data_governance.quality import QualityResult
 
 

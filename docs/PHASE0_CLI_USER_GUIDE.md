@@ -341,6 +341,6 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 ## 8. 参考源码
 
 - CLI 入口：[phase0/cli.py](/home/zj/workspace/stok-mapping/phase0/cli.py)
-- 数据源适配：[phase0/data_sources.py](/home/zj/workspace/stok-mapping/phase0/data_sources.py)
+- 数据源适配：[phase0/data_access/connectivity.py](/home/zj/workspace/stok-mapping/phase0/data_access/connectivity.py)
 - US/HK 历史库更新：[phase0/external_market_history.py](/home/zj/workspace/stok-mapping/phase0/external_market_history.py)
 - A 股增量更新：[phase0/update_history.py](/home/zj/workspace/stok-mapping/phase0/update_history.py)

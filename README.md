@@ -139,7 +139,7 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 
 `phase0 run` 会在策略评估前按 `us_market_history.run_before_phase0` 更新 US market 本地库。策略读取的是落库后的 `us_daily_bars`，不是运行时临时 yfinance 请求；若本地库覆盖率不足且 `runtime_yfinance_fallback: false`，跨市场特征会退化为空并记录告警，避免在线源静默改变回测结果。
 
-当前 `Tiingo` 和 `FRED` 已完成最小接入，正式入口均在 `phase0/data_sources.py`：
+当前 `Tiingo` 和 `FRED` 已完成最小接入，正式入口均在 `phase0/data_access/connectivity.py`。`phase0/data_sources.py` 仅保留为旧导入兼容入口：
 
 ```text
 docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md

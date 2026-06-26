@@ -612,7 +612,7 @@ LLM 不直接生成评分与交易信号。
 
 当前状态：
 
-- Tiingo 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_tiingo_daily`，`check_connectivity` 已覆盖 `NVDA`、`AAPL`、`TSLA`、`KWEB`。
+- Tiingo 最小接入已完成：正式入口为 `phase0/data_access/connectivity.py` 中的 `fetch_tiingo_daily`，`check_connectivity` 已覆盖 `NVDA`、`AAPL`、`TSLA`、`KWEB`；`phase0/data_sources.py` 仅保留为兼容旧导入的薄 wrapper。
 - 当前跨市场标的已先由 `yfinance` 增量写入 US market 本地 SQLite，策略读取落库数据，避免每次评估时临时在线抓取。
 - Tiingo 暂不承接新闻源；新闻源独立任务见 `T1.3`。
 - 接入任务单见：`docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md`
@@ -638,7 +638,7 @@ LLM 不直接生成评分与交易信号。
 
 当前状态：
 
-- FRED 最小接入已完成：`phase0/data_sources.py` 新增 `fetch_fred_series`，`check_connectivity` 已纳入 `fred` 源检查。
+- FRED 最小接入已完成：正式入口为 `phase0/data_access/connectivity.py` 中的 `fetch_fred_series`，`check_connectivity` 已纳入 `fred` 源检查。
 - `config.yaml` 已新增 `data_sources.fred.enabled / api_key_env / series` 配置项。
 - 已在非受限网络环境完成首批 5 个序列连通性验收，并写入 `reports/phase0_data_source_report.md`。
 - 接入任务单见：`docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md`
@@ -937,7 +937,10 @@ stok-mapping/
 ├── pyproject.toml
 ├── phase0/
 │   ├── cli.py
-│   ├── data_sources.py
+│   ├── data_access/
+│   │   ├── connectivity.py
+│   │   └── providers/
+│   ├── data_sources.py  # 兼容旧入口
 │   ├── local_history.py
 │   ├── update_history.py
 │   ├── universe.py
@@ -1159,7 +1162,7 @@ stok-mapping/
 - [x] `T6.4` 当前优先：完成只读 manifest MVP 和 `dashboard scan`，生成 `reports/report_dashboard/manifest.json`
 - [x] `T6.5` 当前优先：建立 `reports/runs/YYYY-MM-DD/YYYYMMDD_HHMMSS__<command>__<scope>/` 规则并迁移核心默认输出
 
-- [x] `T1.2` Tiingo 最小接入：在 `phase0/data_sources.py` 增加 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
+- [x] `T1.2` Tiingo 最小接入：在 `phase0/data_access/connectivity.py` 提供 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
 - [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
 - [x] 将 FRED/Tiingo 当前接入状态同步到 `reports/phase0_strategy_change_log.md`（按增量记录）
 - [x] 强化 `07:30` 阶段试用观察池自动生成链路，形成“每日产出 + 可复盘归档”的最小闭环

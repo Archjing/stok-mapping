@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.data_sources import fetch_hk_daily, fetch_tushare_hk_daily, fetch_yf_daily
+from phase0.data_access.connectivity import fetch_hk_daily, fetch_tushare_hk_daily, fetch_yf_daily
 
 
 DEFAULT_US_MARKET_SYMBOLS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
