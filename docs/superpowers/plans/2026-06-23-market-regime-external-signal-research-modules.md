@@ -26,7 +26,7 @@
 - 已有跨市场行情数据模块：`phase0/external_market_history.py`。
 - 已有跨市场特征生成入口：`phase0/walk_forward.py` 中的跨市场分数、风险状态和仓位缩放。
 - 已有新闻与情报方向任务文档：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`、`docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`。
-- 已有情报采集基础模块：`phase0/intelligence.py`。
+- 已有情报采集基础包：`phase0/intelligence/__init__.py`。
 - 已有 Tushare 技能与数据方向，可覆盖 A 股指数、行业板块、资金流、公告新闻、政策和宏观数据。
 - 两条目标策略目前配置中未启用跨市场风险覆盖，新闻、政策、宏观和资金流也未参与选股、仓位或准入判断。
 
@@ -153,7 +153,7 @@
 建议复用与扩展：
 
 - Reuse: `docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
-- Reuse: `phase0/intelligence.py`
+- Reuse: `phase0/intelligence/__init__.py`
 - Create: `phase0/text_event_features.py`
 - Create: `tests/test_text_event_features.py`
 

@@ -25,7 +25,8 @@ T5.2 不做以下事情：
 | 路径 | 用途 |
 | --- | --- |
 | `config.yaml` | `phase0.intelligence` 配置入口，定义 ledger、inbox、report 目录和采集源 |
-| `phase0/intelligence.py` | 情报采集、候选 CSV 写出、ledger / RAG manifest 校验实现 |
+| `phase0/intelligence/__init__.py` | 情报采集、候选 CSV 写出、ledger / RAG manifest 校验实现 |
+| `phase0/intelligence/tiingo_news_probe.py` | Tiingo News 权限与过滤条件探测实现；`scripts/tiingo_news_probe.py` 仅保留兼容旧入口 |
 | `data/intelligence/inbox/` | 自动采集生成的候选情报 CSV，不能直接视为正式台账 |
 | `reports/intelligence/` | 本地导入、采集和校验报告 |
 | `knowledge/intelligence/strategy_intelligence_ledger.csv` | 正式情报总台账 |

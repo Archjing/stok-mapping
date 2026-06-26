@@ -146,7 +146,7 @@ docs/tasks/data-sources/TIINGO_IMPLEMENTATION_TASKS.md
 docs/tasks/data-sources/FRED_IMPLEMENTATION_TASKS.md
 ```
 
-Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` 和独立探测脚本 `scripts/tiingo_news_probe.py`，用于验证 `ticker 列表 + 主题标签 + 时间窗口` 三类过滤条件及 token 权限状态。当前实测结论是：项目所用 token 可访问 Tiingo 日线接口，但访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻能力暂不可用。
+Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` 和探测模块 `phase0.intelligence.tiingo_news_probe`，用于验证 `ticker 列表 + 主题标签 + 时间窗口` 三类过滤条件及 token 权限状态；`scripts/tiingo_news_probe.py` 仅保留为兼容旧入口。当前实测结论是：项目所用 token 可访问 Tiingo 日线接口，但访问 `/tiingo/news` 返回 `403 You do not have permission to access the News API`，因此新闻能力暂不可用。
 
 ## 本地数据
 

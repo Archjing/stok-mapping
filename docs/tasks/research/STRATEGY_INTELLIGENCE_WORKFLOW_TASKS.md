@@ -38,7 +38,7 @@
 | 情报总台账 | `knowledge/intelligence/strategy_intelligence_ledger.csv` | 已创建 |
 | 情报解读模板 | `knowledge/intelligence/templates/intelligence_note_template.md` | 已创建 |
 | 情报转策略模板 | `knowledge/intelligence/templates/strategy_translation_template.md` | 已创建 |
-| 自动采集器 V1 | `phase0.cli intelligence` / `phase0/intelligence.py` | 已创建 |
+| 自动采集器 V1 | `phase0.cli intelligence` / `phase0/intelligence/__init__.py` | 已创建 |
 | RAG-ready 语料规范 | `knowledge/intelligence/rag_corpus_spec.md` | 已创建 |
 | RAG manifest | `knowledge/intelligence/rag_manifest.csv` | 已创建 |
 | 月度扫描索引 | `knowledge/intelligence/monthly/index.md` | 已创建 |

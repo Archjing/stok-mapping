@@ -1334,7 +1334,7 @@ python -m phase0.cli backfill-tushare-financials \
 
 ## W2.23.2 范围
 
-- [x] 新增 `phase0/intelligence.py`
+- [x] 新增 `phase0.intelligence` 情报包；核心 API 位于 `phase0/intelligence/__init__.py`
 - [x] 新增 CLI：`phase0.cli intelligence collect`
 - [x] 新增 CLI：`phase0.cli intelligence import-local`
 - [x] 新增 CLI：`phase0.cli intelligence validate`

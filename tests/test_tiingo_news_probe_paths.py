@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from scripts import tiingo_news_probe
+from phase0.intelligence import tiingo_news_probe
 
 
 def test_tiingo_news_probe_default_output_uses_configured_archive_category(monkeypatch, tmp_path: Path) -> None:
