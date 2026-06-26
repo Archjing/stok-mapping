@@ -143,7 +143,7 @@ The eighth slice adds a participation research package for low-coupling exposure
 - Move `strategy_participation_overlay.py` into `phase0.research.participation.overlay`.
 - Move `strategy_participation_path_audit.py` into `phase0.research.participation.path_audit`.
 - Update `phase0.cli` and ordinary participation tests to import from the new package paths.
-- Keep root-level alias shims and `tests/test_research_participation_imports.py` so old imports and private-helper imports remain compatible during the transition.
+- Keep root-level alias shims and consolidated coverage in `tests/test_research_compatibility.py` so old imports and private-helper imports remain compatible during the transition.
 
 This slice intentionally does not move holdings exposure, CSI300 attribution, core reachability, missing-core audit, role cards, or failure attribution. Those modules either rebuild historical holdings, read local benchmark as-of tables, or depend on admission internals and need separate gates.
 
@@ -153,7 +153,7 @@ The ninth slice adds a research summaries package for read-only strategy summary
 
 - Move `strategy_role_card.py` into `phase0.research.summaries.role_card`.
 - Update `phase0.cli` and ordinary role-card tests to import from the new package path.
-- Keep a root-level alias shim and `tests/test_research_summaries_imports.py` so old imports remain compatible during the transition.
+- Keep a root-level alias shim and consolidated coverage in `tests/test_research_compatibility.py` so old imports remain compatible during the transition.
 
 This slice intentionally does not move failure attribution, holdings exposure, CSI300 attribution, core reachability, or missing-core audit. Those modules have admission-internal, holdings-rebuild, or benchmark-as-of/data-access coupling and need separate migration gates.
 
@@ -884,6 +884,16 @@ The seventy-sixth slice consolidates repeated reporting script-wrapper compatibi
 - Keep account-bill re-export tests separate because they verify `phase0.execution.accounts` compatibility rather than a `scripts/` wrapper.
 
 This slice does not change production code, CLI commands, report output behavior, report paths, generated schemas, or script wrapper behavior. It reduces test duplication while preserving direct script `--help` coverage.
+
+## Seventy-Seventh Slice In This Branch
+
+The seventy-seventh slice consolidates pure research compatibility tests:
+
+- Add `tests/test_research_compatibility.py` as the shared matrix for root-level strategy/research shims and package exports.
+- Replace repeated alias-only tests for diagnostics, factor effectiveness, overfit, participation, summaries, and holdings exposure.
+- Keep the holdings monkeypatch behavior test in `tests/test_research_holdings_imports.py` because it verifies old-path monkeypatches still affect the new module object.
+
+This slice does not change production code, CLI commands, research diagnostics, attribution, reports, strategy behavior, or generated outputs. It reduces compatibility-test duplication while preserving old-path alias coverage.
 
 ## Later Migration Stages
 
