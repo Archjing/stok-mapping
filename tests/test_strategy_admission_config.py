@@ -4,13 +4,12 @@ import pandas as pd
 import pytest
 from types import SimpleNamespace
 
-import phase0.strategy_admission as admission
 import phase0.research.admission.runner as admission_runner
-from phase0.strategy_admission import (
-    _admission_command_hint,
-    _config_command_arg,
-    _write_report,
-    _write_governance_report,
+from phase0.research.admission.reports import (
+    admission_command_hint as _admission_command_hint,
+    config_command_arg as _config_command_arg,
+    write_governance_report as _write_governance_report,
+    write_report as _write_report,
 )
 from phase0.research.admission.runner import run_strategy_admission
 from phase0.research.admission.gate import (

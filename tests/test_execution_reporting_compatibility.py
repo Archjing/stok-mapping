@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pandas as pd
 
-import phase0.accounts as legacy_accounts
 from phase0.execution import accounts, strategy_ledger
 from phase0.execution.accounts import (
     SimulatedAccountConfig,
@@ -22,14 +21,6 @@ from phase0.execution.strategy_ledger import (
 )
 from phase0.reporting import account_bill
 import phase0.reporting.strategy_bill as strategy_bill
-
-
-def test_legacy_accounts_import_aliases_execution_module() -> None:
-    assert legacy_accounts is accounts
-    assert legacy_accounts.SimulatedAccountConfig is SimulatedAccountConfig
-    assert legacy_accounts.load_simulated_accounts is load_simulated_accounts
-    assert legacy_accounts.run_signal_account_execution is run_signal_account_execution
-    assert legacy_accounts.export_account_bill_html is export_account_bill_html
 
 
 def test_execution_accounts_public_imports_are_available() -> None:
