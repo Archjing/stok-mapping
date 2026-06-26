@@ -258,6 +258,16 @@ The twenty-first slice extracts the maintenance command group from the large top
 
 This slice only moves maintenance command routing. It does not change scheduler timing, maintenance state refresh defaults, long-task process control, shard state transitions, state database schema, generated maintenance reports, or external command names such as `python -m phase0.cli maintain ...`.
 
+## Twenty-Second Slice In This Branch
+
+The twenty-second slice starts extracting report-export command registration from the large top-level CLI:
+
+- Add `phase0.cli_commands.reports` for `bill`, `market-regime`, `oos-report`, `financial-pti`, `universe-pti`, `premarket`, and `execution-gate` parser registration.
+- Update `phase0.cli` to delegate those parser definitions to `register_report_export_commands`.
+- Keep the command handlers and `_export_phase0_*` helper functions in `phase0.cli` for this slice to avoid a circular import and to preserve existing report-path monkeypatch tests.
+
+This slice only moves argparse registration for report-export commands. It does not change report path generation, report helper implementations, execution profile defaults, generated artifacts, or public command names.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

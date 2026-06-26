@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 import phase0.cli as cli
+from phase0.cli_commands.reports import register_report_export_commands
 
 
 def _assert_standard_run(path: Path, *, root: Path, command: str, scope: str) -> None:
@@ -31,6 +32,23 @@ phase0:
 """,
         encoding="utf-8",
     )
+
+
+def test_report_export_command_registration_preserves_execution_profile_args() -> None:
+    parser = cli.argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="cmd")
+    register_report_export_commands(subparsers)
+
+    oos_args = parser.parse_args(["oos-report", "--profile", "live", "--output-dir", "out", "--no-enable-limit-check"])
+    execution_args = parser.parse_args(["execution-gate", "--profile", "research", "--enable-suspension-check"])
+
+    assert oos_args.cmd == "oos-report"
+    assert oos_args.profile == "live"
+    assert oos_args.output_dir == "out"
+    assert oos_args.enable_limit_check is False
+    assert execution_args.cmd == "execution-gate"
+    assert execution_args.profile == "research"
+    assert execution_args.enable_suspension_check is True
 
 
 def _assert_configured_run(path: Path, *, root: Path, command: str, scope: str) -> None:
