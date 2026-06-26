@@ -222,7 +222,7 @@ def test_market_regime_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
         return {"summary": kwargs["summary_output"], "segments": kwargs["segment_output"], "html": kwargs["html_output"]}
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("scripts.export_market_regime_report.export_market_regime_report", fake_export_market_regime_report)
+    monkeypatch.setattr("phase0.reporting.market_regime.export_market_regime_report", fake_export_market_regime_report)
 
     result = report_exports.export_phase0_market_regime_report(root=tmp_path)
 

@@ -39,7 +39,7 @@ def export_phase0_low_turnover_bill(
 
 
 def export_phase0_market_regime_report(*, root: Path | None = None) -> dict:
-    from scripts.export_market_regime_report import export_market_regime_report
+    from phase0.reporting.market_regime import export_market_regime_report
 
     resolved_root = root or Path.cwd()
     legacy_input = resolved_root / "reports" / "phase0_low_turnover_oos_curve.csv"

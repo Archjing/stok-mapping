@@ -35,12 +35,13 @@ Current decisions:
 - Strategy OOS report implementation now lives in `phase0.reporting.strategy_oos`; `scripts/export_strategy_oos_report.py` is a direct-execution-compatible shim.
 - Premarket watchlist/report implementation now lives in `phase0.reporting.premarket_watchlist`; `scripts/export_premarket_watchlist.py` is a direct-execution-compatible shim.
 - Strategy period-compare report implementation now lives in `phase0.reporting.strategy_period_compare`; `scripts/export_strategy_period_compare.py` is a direct-execution-compatible shim.
+- Market-regime report implementation now lives in `phase0.reporting.market_regime`; `scripts/export_market_regime_report.py` is a direct-execution-compatible shim.
 
 ## Current Functional Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
-| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, account bill presentation, strategy bill export orchestration, execution effectiveness gate reporting, continuous OOS reporting, period comparison reporting, premarket watchlist/report generation, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, `phase0/reporting/account_bill.py`, `phase0/reporting/strategy_bill.py`, `phase0/reporting/execution_effectiveness.py`, `phase0/reporting/strategy_oos.py`, `phase0/reporting/strategy_period_compare.py`, `phase0/reporting/premarket_watchlist.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, `scripts/export_strategy_bill.py`, `scripts/export_execution_effectiveness_report.py`, `scripts/export_strategy_oos_report.py`, `scripts/export_strategy_period_compare.py`, `scripts/export_premarket_watchlist.py`, report-export helper aliases in `phase0/cli.py` |
+| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, account bill presentation, strategy bill export orchestration, execution effectiveness gate reporting, continuous OOS reporting, period comparison reporting, market-regime reporting, premarket watchlist/report generation, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, `phase0/reporting/account_bill.py`, `phase0/reporting/strategy_bill.py`, `phase0/reporting/execution_effectiveness.py`, `phase0/reporting/strategy_oos.py`, `phase0/reporting/strategy_period_compare.py`, `phase0/reporting/market_regime.py`, `phase0/reporting/premarket_watchlist.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, `scripts/export_strategy_bill.py`, `scripts/export_execution_effectiveness_report.py`, `scripts/export_strategy_oos_report.py`, `scripts/export_strategy_period_compare.py`, `scripts/export_market_regime_report.py`, `scripts/export_premarket_watchlist.py`, report-export helper aliases in `phase0/cli.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, price-adjustment governance, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/adjustment.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
@@ -647,6 +648,17 @@ The fifty-fourth slice moves the strategy period-compare report out of `scripts/
 
 This slice does not change period comparison metrics, output schemas, report filenames, report paths, CLI arguments, generated artifacts, execution assumptions, or strategy algorithms.
 
+## Fifty-Fifth Slice In This Branch
+
+The fifty-fifth slice moves the market-regime report out of `scripts/` and into the reporting package:
+
+- Move `scripts/export_market_regime_report.py` implementation to `phase0.reporting.market_regime`.
+- Keep `scripts/export_market_regime_report.py` as a direct-execution-compatible module alias shim; `python scripts/export_market_regime_report.py --help` continues to work.
+- Update `phase0.reporting.exports` and report-path tests to import and monkeypatch the new reporting module.
+- Add legacy script alias/help compatibility tests for the new reporting module.
+
+This slice does not change regime classification, metrics, output schemas, report filenames, report paths, CLI arguments, generated artifacts, execution assumptions, or strategy algorithms.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -686,7 +698,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Strategy bill research helpers | `phase0.reporting.strategy_bill` | Execution matching has moved to `phase0.execution.strategy_ledger`; split remaining panel/fold orchestration into `phase0.research` only after focused tests exist |
-| Large execution/report scripts | Remaining report and audit scripts under `scripts/` | `scripts/export_execution_effectiveness_report.py`, `scripts/export_strategy_oos_report.py`, `scripts/export_strategy_period_compare.py`, and `scripts/export_premarket_watchlist.py` are now thin shims over reporting modules; move remaining large implementations into packages only when ownership and tests are clear |
+| Large execution/report scripts | Remaining report and audit scripts under `scripts/` | `scripts/export_execution_effectiveness_report.py`, `scripts/export_strategy_oos_report.py`, `scripts/export_strategy_period_compare.py`, `scripts/export_market_regime_report.py`, and `scripts/export_premarket_watchlist.py` are now thin shims over reporting modules; move remaining large implementations into packages only when ownership and tests are clear |
 | Data audit scripts | `scripts/check_local_history_consistency.py`, `scripts/audit_financial_pti.py`, `scripts/audit_universe_pit.py` | Move reusable audit logic into data-governance or validation modules with CLI entrypoints |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
 | External probe scripts | `scripts/tiingo_news_probe.py`, `scripts/export_hk_a_mapping_factors.py`, `scripts/export_hk_market_history_report.py` | Keep network side effects explicit; migrate only after provider boundaries and output contracts are covered by tests |
