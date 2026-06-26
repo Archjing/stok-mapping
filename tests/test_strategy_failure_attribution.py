@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_failure_attribution import run_strategy_failure_attribution
+from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
 
 
 def _config() -> dict:

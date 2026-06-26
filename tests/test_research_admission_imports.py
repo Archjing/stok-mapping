@@ -1,0 +1,18 @@
+from __future__ import annotations
+
+import phase0.strategy_failure_attribution as legacy_failure_attribution
+from phase0.research.admission import StrategyFailureAttributionResult, run_strategy_failure_attribution as new_failure_runner
+from phase0.research.admission import failure_attribution
+from phase0.research.admission.failure_attribution import SEVERITY_RANK
+from phase0.research.admission.failure_attribution import StrategyFailureAttributionResult as NewFailureResult
+from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
+from phase0.strategy_failure_attribution import SEVERITY_RANK as legacy_severity_rank
+from phase0.strategy_failure_attribution import run_strategy_failure_attribution as legacy_failure_runner
+
+
+def test_legacy_strategy_failure_attribution_import_aliases_new_module() -> None:
+    assert legacy_failure_attribution is failure_attribution
+    assert legacy_failure_runner is run_strategy_failure_attribution
+    assert legacy_severity_rank is SEVERITY_RANK
+    assert new_failure_runner is run_strategy_failure_attribution
+    assert StrategyFailureAttributionResult is NewFailureResult

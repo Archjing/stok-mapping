@@ -16,7 +16,7 @@ The current branch starts with narrow, verifiable slices. It does not claim the 
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
 | `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, participation diagnostics, research summaries/role cards | `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, participation diagnostics, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -66,7 +66,7 @@ The fourth slice adds a research attribution package for low-coupling modules th
 - Move `strategy_fold_attribution.py` into `phase0.research.attribution.fold`.
 - Keep root-level modules as alias shims so old imports and module-level monkeypatches remain compatible.
 
-This slice intentionally does not move `strategy_failure_attribution.py`, because it imports admission gate helpers and is closer to the admission workflow. It also does not move participation overlays, participation-path audits, role cards, holdings exposure, CSI300 attribution, core reachability, or missing-core audit because those belong to separate research subpackages or depend on heavier execution/data internals.
+This slice intentionally does not move `strategy_failure_attribution.py`, because it imports admission gate helpers and is closer to the admission workflow. It also does not move participation overlays, participation-path audits, role cards, holdings exposure, CSI300 attribution, core reachability, or missing-core audit because those belong to separate research subpackages or depend on heavier execution/data internals. A later slice moves failure attribution with its own admission-focused compatibility gate.
 
 ## Fifth Slice In This Branch
 
@@ -119,6 +119,16 @@ The ninth slice adds a research summaries package for read-only strategy summary
 - Keep a root-level alias shim and `tests/test_research_summaries_imports.py` so old imports remain compatible during the transition.
 
 This slice intentionally does not move failure attribution, holdings exposure, CSI300 attribution, core reachability, or missing-core audit. Those modules have admission-internal, holdings-rebuild, or benchmark-as-of/data-access coupling and need separate migration gates.
+
+## Tenth Slice In This Branch
+
+The tenth slice adds a research admission package for admission-result diagnostics:
+
+- Move `strategy_failure_attribution.py` into `phase0.research.admission.failure_attribution`.
+- Update `phase0.cli` and ordinary failure-attribution tests to import from the new package path.
+- Keep a root-level alias shim and `tests/test_research_admission_imports.py` so old imports remain compatible during the transition.
+
+This slice intentionally does not move `strategy_admission.py` itself. Failure attribution still depends on selected admission gate helper functions, but it remains a read-only diagnostic that consumes existing admission/overfit CSV artifacts and writes attribution reports.
 
 ## Later Migration Stages
 
