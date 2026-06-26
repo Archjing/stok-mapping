@@ -2,7 +2,7 @@ from __future__ import annotations
 
 """Backward-compatible entrypoint for the historical low-turnover OOS report.
 
-New code should import from scripts.export_strategy_oos_report.
+New code should import from phase0.reporting.strategy_oos.
 """
 
 import sys
@@ -12,7 +12,7 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.reporting.strategy_bill import DEFAULT_STRATEGY_ID
-from scripts.export_strategy_oos_report import export_strategy_oos_report
+from phase0.reporting.strategy_oos import export_strategy_oos_report
 
 
 def export_low_turnover_oos_report(**kwargs: Any) -> dict[str, Path | str]:
@@ -23,7 +23,7 @@ def export_low_turnover_oos_report(**kwargs: Any) -> dict[str, Path | str]:
 
 
 def main() -> None:
-    from scripts.export_strategy_oos_report import main as strategy_main
+    from phase0.reporting.strategy_oos import main as strategy_main
 
     strategy_main()
 

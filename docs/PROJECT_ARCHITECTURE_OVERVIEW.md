@@ -565,10 +565,11 @@ data health PASS / acceptable warning
 - [phase0/reporting/account_bill.py](../phase0/reporting/account_bill.py)
 - [phase0/reporting/strategy_bill.py](../phase0/reporting/strategy_bill.py)（策略账单导出编排；执行撮合核心已拆到 `phase0/execution/strategy_ledger.py`）
 - [phase0/reporting/execution_effectiveness.py](../phase0/reporting/execution_effectiveness.py)
+- [phase0/reporting/strategy_oos.py](../phase0/reporting/strategy_oos.py)
 - [phase0/accounts.py](../phase0/accounts.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_strategy_bill.py](../scripts/export_strategy_bill.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_execution_effectiveness_report.py](../scripts/export_execution_effectiveness_report.py)（兼容旧入口；新代码不要继续依赖）
-- [scripts/export_strategy_oos_report.py](../scripts/export_strategy_oos_report.py)
+- [scripts/export_strategy_oos_report.py](../scripts/export_strategy_oos_report.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_strategy_period_compare.py](../scripts/export_strategy_period_compare.py)
 - [scripts/export_premarket_watchlist.py](../scripts/export_premarket_watchlist.py)
 

@@ -79,7 +79,7 @@ def export_phase0_oos_report(
     enable_limit_check: bool | None = None,
     enable_suspension_check: bool | None = None,
 ) -> dict:
-    from scripts.export_strategy_oos_report import export_strategy_oos_report
+    from phase0.reporting.strategy_oos import export_strategy_oos_report
 
     return export_strategy_oos_report(
         config_path=config_path,
