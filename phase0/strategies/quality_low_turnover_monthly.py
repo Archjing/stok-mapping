@@ -72,7 +72,7 @@ class QualityLowTurnoverMonthlyStrategy(BaseStrategy):
         stamp_duty_sell: float,
     ) -> dict[str, Any]:
         """在训练窗口内搜索质量准入阈值、低波/低换手约束和低频持仓参数。"""
-        from phase0.walk_forward import _calc_metrics
+        from phase0.research.metrics import calc_metrics as _calc_metrics
 
         # T2.7 不搜索短线趋势或动量窗口；训练评分仍惩罚回撤和换手，避免把财务慢变量日频交易化。
         cfg = strategy_cfg.get("local_factor", {}).get("quality_low_turnover_monthly", {})

@@ -25,8 +25,9 @@ from phase0.accounts import (
 from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history
 from phase0.reporting.paths import report_config_path
+from phase0.research.metrics import calc_metrics as _calc_metrics
 from phase0.strategies import get_strategy
-from phase0.walk_forward import _calc_metrics, _resolve_walk_forward_window
+from phase0.walk_forward import _resolve_walk_forward_window
 from scripts.export_strategy_bill import (
     DEFAULT_PANEL_CACHE,
     _execution_settings,

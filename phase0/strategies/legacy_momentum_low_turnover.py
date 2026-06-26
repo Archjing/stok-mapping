@@ -26,7 +26,7 @@ class LegacyMomentumLowTurnoverStrategy(BaseStrategy):
         commission: float,
         stamp_duty_sell: float,
     ) -> dict[str, Any]:
-        from phase0.walk_forward import _calc_metrics
+        from phase0.research.metrics import calc_metrics as _calc_metrics
 
         cfg = strategy_cfg.get("legacy_momentum_low_turnover", {})
         mom_windows = [int(item) for item in cfg.get("mom_windows", [5, 20])]

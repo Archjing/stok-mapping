@@ -70,7 +70,7 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
         stamp_duty_sell: float,
     ) -> dict[str, Any]:
         """在训练窗口内搜索低波、低换手、质量和中期动量的首版参数组合。"""
-        from phase0.walk_forward import _calc_metrics
+        from phase0.research.metrics import calc_metrics as _calc_metrics
 
         # 首版只搜索阈值、持仓数量、调仓周期和中期动量窗口；因子权重固定，
         # 以降低参数空间和过拟合风险。训练样本不足时返回不可交易 fallback。

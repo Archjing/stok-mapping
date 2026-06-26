@@ -28,7 +28,7 @@ class ThemeExposureMomentumStrategy(BaseStrategy):
         commission: float,
         stamp_duty_sell: float,
     ) -> dict[str, Any]:
-        from phase0.walk_forward import _calc_metrics
+        from phase0.research.metrics import calc_metrics as _calc_metrics
 
         cfg = strategy_cfg.get("theme_exposure_momentum", {})
         best: dict[str, Any] | None = None

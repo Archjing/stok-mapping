@@ -67,7 +67,7 @@ class MaKlineBaselineStrategy(BaseStrategy):
                                 commission=commission,
                                 stamp_duty_sell=stamp_duty_sell,
                             )
-                            from phase0.walk_forward import _calc_metrics
+                            from phase0.research.metrics import calc_metrics as _calc_metrics
 
                             metric = _calc_metrics(output.returns, output.exposure)
                             if metric["trades"] < min_trades:

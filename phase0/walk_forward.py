@@ -27,6 +27,12 @@ from phase0.local_history import (
     local_history_path,
     local_history_prefer_daily_for_backtest,
 )
+from phase0.research.metrics import (
+    annualized_return as _annualized_return,
+    calc_metrics as _calc_metrics,
+    max_drawdown as _max_drawdown,
+    sharpe as _sharpe,
+)
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints
@@ -154,50 +160,6 @@ class FoldResult:
     trades: int
     passed_min_samples: bool
     selected_params: str = ""
-
-
-def _annualized_return(r: pd.Series) -> float:
-    if r.empty:
-        return 0.0
-    cum = float((1.0 + r).prod() - 1.0)
-    yrs = max(len(r) / 252.0, 1 / 252.0)
-    return float((1 + cum) ** (1 / yrs) - 1)
-
-
-def _sharpe(r: pd.Series) -> float:
-    if len(r) < 2:
-        return 0.0
-    std = float(r.std(ddof=1))
-    if std == 0:
-        return 0.0
-    return float((r.mean() / std) * np.sqrt(252))
-
-
-def _max_drawdown(r: pd.Series) -> float:
-    if r.empty:
-        return 0.0
-    eq = (1 + r).cumprod()
-    peak = eq.cummax()
-    dd = (eq / peak) - 1
-    return float(dd.min())
-
-
-def _calc_metrics(returns: pd.Series, signals: pd.Series) -> dict[str, float]:
-    ann = _annualized_return(returns)
-    shp = _sharpe(returns)
-    mdd = _max_drawdown(returns)
-
-    realized = returns[signals != 0]
-    win_rate = float((realized > 0).mean()) if len(realized) else 0.0
-    turnover = float(signals.diff().abs().fillna(0).sum()) * (252.0 / max(len(signals), 1))
-    return {
-        "annualized_return": ann,
-        "sharpe": shp,
-        "max_drawdown": mdd,
-        "win_rate": win_rate,
-        "turnover_annual": turnover,
-        "trades": int((signals.diff().abs() > 0).sum()),
-    }
 
 
 def _benchmark_fold_metrics(config: dict[str, Any], valid_start: Any, valid_end: Any) -> dict[str, Any]:

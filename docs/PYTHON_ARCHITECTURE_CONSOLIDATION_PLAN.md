@@ -396,6 +396,17 @@ The thirty-third slice moves the remaining Phase 0 run command group out of the 
 
 This slice does not change command names, console messages, output report paths, cost scenario parsing semantics, db-health gate policy, walk-forward behavior, strategy bill export behavior, data-source connectivity behavior, or generated artifact names.
 
+## Thirty-Fourth Slice In This Branch
+
+The thirty-fourth slice starts reducing research metric duplication and strategy-to-walk-forward coupling:
+
+- Add `phase0.research.metrics` for the shared walk-forward-compatible `annualized_return`, `sharpe`, `max_drawdown`, and `calc_metrics` helpers.
+- Update `phase0.walk_forward` so old private helper names remain compatibility aliases over `phase0.research.metrics`.
+- Update strategy implementations and the premarket export script to import `_calc_metrics` from `phase0.research.metrics` instead of the large `phase0.walk_forward` module.
+- Add compatibility and formula tests for the metrics helpers.
+
+This slice does not change metric formulas, annualization assumptions, strategy algorithms, training parameter search behavior, report paths, or generated artifact names. Other metric implementations with intentionally different missing-value or `ddof` semantics remain in place until their owning report flow gets a separate compatibility gate.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -431,7 +442,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | --- | --- | --- |
 | `_resolve_path` variants | Multiple `phase0/` modules and `scripts/` | Centralize into a small core path helper after reporting and data-governance shims are stable |
 | SQL identifier validation | Data governance modules | Centralize into a single helper when moving data modules |
-| Annualized return / Sharpe / drawdown helpers | `walk_forward.py`, OOS/report scripts, market-regime scripts | Move to `research.metrics` only after matching NaN and annualization behavior with tests |
+| Annualized return / Sharpe / drawdown helpers | `research.metrics`, selected compatibility aliases in `walk_forward.py`, OOS/report scripts, market-regime scripts | Continue migrating only when matching NaN and annualization behavior with tests |
 | Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |

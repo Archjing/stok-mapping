@@ -33,7 +33,7 @@ class QualityGrowthPriceStrategy(BaseStrategy):
         commission: float,
         stamp_duty_sell: float,
     ) -> dict[str, Any]:
-        from phase0.walk_forward import _calc_metrics
+        from phase0.research.metrics import calc_metrics as _calc_metrics
 
         best: dict[str, Any] | None = None
         min_trades = int(strategy_cfg.get("train_min_trades", 5))
