@@ -55,7 +55,7 @@ from phase0.strategy_failure_attribution import run_strategy_failure_attribution
 from phase0.strategy_holdings_exposure import run_strategy_holdings_exposure
 from phase0.strategy_missing_core_audit import run_missing_core_audit
 from phase0.research.participation.overlay import run_strategy_participation_overlay
-from phase0.strategy_role_card import run_strategy_role_card
+from phase0.research.summaries.role_card import run_strategy_role_card
 from phase0.throttle import configure_akshare_throttle
 from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
