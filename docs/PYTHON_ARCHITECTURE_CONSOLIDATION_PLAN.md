@@ -336,6 +336,18 @@ The twenty-eighth slice extracts write-side data update/import/backfill command 
 
 This slice does not move `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py`, `phase0/external_market_history.py`, or `phase0/universe.py`. It is a CLI adapter move only and does not change database write behavior, Tushare payloads, report paths, command names, or generated artifact names.
 
+## Twenty-Ninth Slice In This Branch
+
+The twenty-ninth slice extracts strategy research run command routing from the large top-level CLI:
+
+- Add `phase0.cli_commands.strategy_research` for `overfit-diagnostic`, `strategy-admission`, and `factor-effectiveness` parser registration and command handling.
+- Move the walk-forward trace printer into that command module and add `phase0.cli_commands.gates` for the shared database-health gate used by both `run` and factor-effectiveness.
+- Keep `phase0.cli._print_walk_forward_trace` and `phase0.cli._run_db_health_gate` available as compatibility imports during the transition.
+- Keep `phase0.cli` as the top-level parser owner and delegate these commands through `STRATEGY_RESEARCH_COMMANDS`.
+- Add handler-level tests for parser registration, overfit path forwarding, admission preset/strategy/trace forwarding, factor-effectiveness health gating, CLI-main delegation, and old helper-name compatibility.
+
+This slice does not move `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, `phase0/walk_forward.py`, or any strategy implementation. It is a CLI adapter move only and does not change walk-forward/admission algorithms, thresholds, report paths, command names, generated artifact names, or data-write behavior.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
