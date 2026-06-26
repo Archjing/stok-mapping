@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 import phase0.cli as cli
+import phase0.cli_commands.phase0_run as phase0_run_cli
 import phase0.cli_commands.reports as report_cli
 import phase0.reporting.exports as report_exports
 
@@ -301,19 +302,23 @@ def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -
     assert calls[0]["latest_report_output"] == tmp_path / "local_reports" / "run_outputs" / "latest" / "watchlist" / "index.html"
 
 
+def test_phase0_cost_sensitivity_compatibility_aliases_new_command_module() -> None:
+    assert cli.run_phase0_cost_sensitivity is phase0_run_cli.run_phase0_cost_sensitivity
+
+
 def test_phase0_cost_sensitivity_uses_configured_phase0_category(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     _write_config(config_path)
     saved_paths: list[Path] = []
     report_paths: list[Path] = []
 
-    monkeypatch.setattr(cli, "configure_local_history", lambda cfg, root: None)
-    monkeypatch.setattr(cli, "configure_akshare_throttle", lambda cfg: None)
-    monkeypatch.setattr(cli, "run_cost_sensitivity", lambda cfg: pd.DataFrame({"scenario": ["base"]}))
-    monkeypatch.setattr(cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
-    monkeypatch.setattr(cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
+    monkeypatch.setattr(phase0_run_cli, "configure_local_history", lambda cfg, root: None)
+    monkeypatch.setattr(phase0_run_cli, "configure_akshare_throttle", lambda cfg: None)
+    monkeypatch.setattr(phase0_run_cli, "run_cost_sensitivity", lambda cfg: pd.DataFrame({"scenario": ["base"]}))
+    monkeypatch.setattr(phase0_run_cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
+    monkeypatch.setattr(phase0_run_cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
 
-    exit_code = cli.run_phase0_cost_sensitivity(
+    exit_code = phase0_run_cli.run_phase0_cost_sensitivity(
         config_path,
         [{"name": "base", "slippage": 0.001, "commission": 0.0, "stamp_duty_sell": 0.0}],
     )

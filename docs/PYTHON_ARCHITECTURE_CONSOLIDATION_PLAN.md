@@ -384,6 +384,18 @@ The thirty-second slice moves external data connectivity helpers into the data-a
 
 This slice does not change provider request payloads, fallback order, cache behavior, CLI command names, report paths, data writes, or strategy research behavior. It also does not move `phase0/update_history.py` or `phase0/tushare_history_backfill.py`; those are write-side jobs and need further helper extraction before a safe package move.
 
+## Thirty-Third Slice In This Branch
+
+The thirty-third slice moves the remaining Phase 0 run command group out of the top-level CLI module:
+
+- Add `phase0.cli_commands.phase0_run` for `run` and `cost-sensitivity` parser registration and command handling.
+- Move `run_phase0`, `run_phase0_cost_sensitivity`, `_parse_cost_scenario`, and `_configured_cost_scenarios` into the command module.
+- Keep `phase0.cli.run_phase0`, `phase0.cli.run_phase0_cost_sensitivity`, `phase0.cli._parse_cost_scenario`, and `phase0.cli._configured_cost_scenarios` as compatibility imports during the transition.
+- Keep the CN database health gate before `phase0 run` with the same `scope="cn"`, `fail_on="error"`, and `label="Phase 0 run"` settings.
+- Update targeted tests so ordinary Phase 0 run behavior monkeypatches the new command module, while a small compatibility test checks the old names.
+
+This slice does not change command names, console messages, output report paths, cost scenario parsing semantics, db-health gate policy, walk-forward behavior, strategy bill export behavior, data-source connectivity behavior, or generated artifact names.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
