@@ -12,8 +12,8 @@ from phase0.data_governance.backfills.adjustment import backfill_adjustment_fact
 from phase0.data_governance.backfills.daily_basic import backfill_daily_basic_from_config
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.data_governance.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
+from phase0.data_governance.import_history import import_from_config, import_index_history_from_config
 from phase0.financial_factors import update_financial_factors_from_config
-from phase0.import_history import import_from_config, import_index_history_from_config
 from phase0.data_governance.backfills.tushare_history import (
     backfill_tushare_financials_from_config,
     backfill_tushare_history_from_config,

@@ -16,6 +16,7 @@ Current decisions:
 
 - Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
 - `phase0/update_history.py` has been moved to `phase0.data_governance.update_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
+- `phase0/import_history.py` has been moved to `phase0.data_governance.import_history`. It is a write-side local history initialization and index-history rebuild job; the old root path remains a compatibility shim.
 - `phase0/tushare_history_backfill.py` has been moved to `phase0.data_governance.backfills.tushare_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/external_market_history.py` has been moved to `phase0.data_governance.external_market_history`. It still owns both US/HK history writes and runtime reads for now; a later slice can split pure read helpers only if that reduces coupling without changing behavior.
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
@@ -26,8 +27,8 @@ Current decisions:
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
-| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/*_backfill.py`, `phase0/external_market_history.py` |
-| `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/connectivity.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/data_sources.py` and `phase0/tushare_source.py`; other provider/read modules still in `phase0/local_history.py`; possible future provider-only extraction from `phase0/financial_factors.py` and `phase0/import_history.py` |
+| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/external_market_history.py` |
+| `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/connectivity.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/data_sources.py` and `phase0/tushare_source.py`; other provider/read modules still in `phase0/local_history.py`; possible future provider-only extraction from `phase0/financial_factors.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
@@ -441,6 +442,17 @@ The thirty-seventh slice moves the US/HK external market history maintenance mod
 - Add an import compatibility test covering `MarketHistoryUpdateResult`, US/HK configure/update functions, and `load_us_daily_from_history`.
 
 This slice does not change US/HK provider selection, yfinance/Tushare-HK fallback behavior, SQLite schemas, upsert behavior, runtime fallback policy, CLI command names, generated artifact paths, or cross-market signal construction.
+
+## Thirty-Eighth Slice In This Branch
+
+The thirty-eighth slice moves the local manual history import job into the data-governance package:
+
+- Move `phase0/import_history.py` to `phase0.data_governance.import_history`.
+- Keep root-level `phase0.import_history` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update the data-update CLI to import `import_from_config` and `import_index_history_from_config` from the new package path.
+- Add an import compatibility test covering `ImportResult`, `IndexImportResult`, and both CLI-callable import functions.
+
+This slice does not change zip parsing, local-history database schemas, table rebuild behavior, symbol normalization, CLI command names, generated artifact paths, or import filtering by start date.
 
 ## Later Migration Stages
 
