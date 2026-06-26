@@ -142,13 +142,14 @@ This slice intentionally does not move holdings exposure, core reachability, or 
 
 ## Twelfth Slice In This Branch
 
-The twelfth slice adds a core coverage research package for post-diagnostic missing-core audits:
+The twelfth slice adds a core coverage research package for core reachability and post-diagnostic missing-core audits:
 
+- Move `strategy_core_reachability.py` into `phase0.research.core_coverage.core_reachability`.
 - Move `strategy_missing_core_audit.py` into `phase0.research.core_coverage.missing_core_audit`.
-- Update `phase0.cli` and ordinary missing-core audit tests to import from the new package path.
-- Keep a root-level alias shim and add `tests/test_research_core_coverage_imports.py` so old imports remain compatible during the transition.
+- Update `phase0.cli` and ordinary core-coverage tests to import from the new package paths.
+- Keep root-level alias shims and add `tests/test_research_core_coverage_imports.py` so old imports remain compatible during the transition.
 
-This slice intentionally does not move `strategy_core_reachability.py` or `strategy_holdings_exposure.py`. Missing-core audit consumes existing core-reachability/admission CSV artifacts, checks point-in-time universe membership and local-history coverage, and writes audit CSV/Markdown. It does not rebuild holdings, rerun strategies, or write database state.
+This slice intentionally does not move `strategy_holdings_exposure.py`. Core reachability checks benchmark core-weight reachability through existing PIT universe folds and optional read-only panel seeding; missing-core audit consumes existing core-reachability/admission CSV artifacts, checks point-in-time universe membership and local-history coverage, and writes audit CSV/Markdown. These modules do not rebuild holdings, change strategy algorithms, or write database state.
 
 ## Later Migration Stages
 

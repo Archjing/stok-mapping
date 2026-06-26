@@ -47,7 +47,7 @@ from phase0.reporting.registry import scan_report_artifacts, write_report_manife
 from phase0.research.attribution.fold import run_strategy_fold_attribution
 from phase0.strategy_admission import run_strategy_admission
 from phase0.research.attribution.csi300 import run_strategy_csi300_attribution
-from phase0.strategy_core_reachability import run_strategy_core_reachability_diagnostic
+from phase0.research.core_coverage.core_reachability import run_strategy_core_reachability_diagnostic
 from phase0.research.core_coverage.missing_core_audit import run_missing_core_audit
 from phase0.research.diagnostics.exposure import run_strategy_exposure_diagnostic
 from phase0.research.diagnostics.filter import run_strategy_filter_diagnostic
