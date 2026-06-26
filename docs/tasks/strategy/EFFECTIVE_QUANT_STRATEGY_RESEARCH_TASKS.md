@@ -181,9 +181,9 @@ score =
 
 2026-06-23 口径校验：
 
-- `config.yaml` 中 `baseline_admission_all_v1` 已包含 12 个候选策略。
-- main 上已落盘的全候选 admission 报告仍需重跑以纳入 `sleeve_composite_v1`；当前 sleeve 证据来自 `reports/strategy_admission_sleeve_composite_v1_20260623/` 的 scoped admission。
-- `sleeve_composite_v1` 的代码和策略声明保持 research-only，不进入 paper review、模拟账户、日报或 watchlist。若历史 `constraint_review` 中出现 `supports_paper_trade=True`，以策略源码、candidate folds 和治理报告的 research-only 边界为准，后续重跑全量 admission 时需校正该字段。
+- `config.yaml` 中 `baseline_admission_all_v1` 已包含 13 个候选策略。
+- main 上已落盘的全候选 admission 报告仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`；当前 sleeve 证据来自 scoped admission 与后续低 churn 诊断实验。
+- `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1` 的代码和策略声明保持 research-only，不进入 paper review、模拟账户、日报或 watchlist。若历史 `constraint_review` 中出现 `supports_paper_trade=True`，以策略源码、candidate folds 和治理报告的 research-only 边界为准，后续重跑全量 admission 时需校正该字段。
 
 ### T2.8.4 Walk-forward preset 设计
 
@@ -338,7 +338,7 @@ final_score =
 + 0.20 * risk_overlay_score
 ```
 
-实现状态：`sleeve_composite_v1` 已作为 research-only / compare / scoped admission 候选接入，输出三段 sleeve 分数、`final_score`、排名、权重和降级原因；2026-06-23 scoped admission 结论为 `reject`，不进入 paper review、模拟账户或日报主线。main 上仍需重跑全候选 admission，确保 `baseline_admission_all_v1` 的 12 策略配置与落盘报告一致。
+实现状态：`sleeve_composite_v1` 已作为 research-only / compare / scoped admission 候选接入，输出三段 sleeve 分数、`final_score`、排名、权重和降级原因；2026-06-23 scoped admission 结论为 `reject`，不进入 paper review、模拟账户或日报主线。`sleeve_composite_low_churn_v1` 已作为 research-only 低 churn 变体接入，当前结论仍为 `reject`。main 上仍需重跑全候选 admission，确保 `baseline_admission_all_v1` 的 13 策略配置与落盘报告一致。
 
 ### T2.10.2 二阶段 ML rerank
 
@@ -392,7 +392,7 @@ final_score =
 1. [x] T2.5 因子有效性诊断报告
 2. [x] T2.6 `low_vol_low_turnover_quality_v1`
 3. [x] T2.7 `quality_low_turnover_monthly_v1`
-4. [x] T2.8 策略准入报告与策略回测窗口期配置模块 V1（MVP 已完成；全候选 12 策略报告需重跑校准）
+4. [x] T2.8 策略准入报告与策略回测窗口期配置模块 V1（MVP 已完成；全候选 13 策略报告需重跑校准）
 5. [x] T2.9 策略失败归因诊断模块 V1
 6. [x] T2.10 sleeve 组合 V1（`sleeve_composite_v1` scoped admission 已拒绝；二阶段 ML rerank 未启动）
 7. [ ] T2.11 PEAD / 文本 / 跨市场增强

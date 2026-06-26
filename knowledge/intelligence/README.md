@@ -29,11 +29,12 @@
 
 ## 自动采集器
 
-自动采集器通过 `phase0.cli intelligence` 提供三个命令：
+自动采集器通过 `phase0.cli intelligence` 提供四个命令：
 
 ```bash
 ./.venv/bin/python -m phase0.cli intelligence import-local --config config.yaml --source-dir refdocs/papers
 ./.venv/bin/python -m phase0.cli intelligence collect --config config.yaml
+./.venv/bin/python -m phase0.cli intelligence review-candidates --config config.yaml --candidates-csv data/intelligence/inbox/intelligence_candidates_YYYY-MM-DD.csv
 ./.venv/bin/python -m phase0.cli intelligence validate --config config.yaml
 ```
 
@@ -42,11 +43,15 @@
 | 产物 | 默认路径 |
 | --- | --- |
 | 候选情报 CSV | `data/intelligence/inbox/intelligence_candidates_YYYY-MM-DD.csv` |
+| 复核建议 CSV | `data/intelligence/inbox/intelligence_review_suggestions_YYYY-MM-DD.csv` |
 | 采集报告 | `reports/intelligence/intelligence_collect_report_YYYY-MM-DD.md` |
 | 本地导入报告 | `reports/intelligence/intelligence_import_local_report_YYYY-MM-DD.md` |
+| 复核建议报告 | `reports/intelligence/intelligence_review_report_YYYY-MM-DD.md` |
 | 台账校验报告 | `reports/intelligence/intelligence_validate_report_YYYY-MM-DD.md` |
 
 候选情报 CSV 是 inbox，不是正式台账。正式写入 `strategy_intelligence_ledger.csv` 前必须人工筛选、评分、补充偏差风险和推荐动作。
+
+`review-candidates` 是 LLM-ready 的复核辅助步骤：它读取候选 CSV 与本地来源文本，输出 `suggested_*` 建议字段、来源片段和复核理由。当前实现是可复现的规则型建议，不调用外部 LLM；后续可在相同输出结构下接入 LLM provider。无论是否接入 LLM，建议字段都不能自动覆盖正式 ledger。
 
 ## 状态流转
 
@@ -95,8 +100,9 @@ monthly scan -> inbox candidate -> manual review -> ledger update -> note / tran
 
 ## 采集边界
 
-- 默认只扫描本地 `refdocs/papers/`。
-- `arxiv`、`openalex`、`crossref`、`rss` 仅作为元数据和链接来源，默认关闭。
+- `refdocs/papers/` 是本地参考资料入口。
+- 当前主配置已启用 `arxiv`、`openalex`、`crossref`、`rss` 在线元数据源；运行 `collect` 前必须记录是否联网、启用源、输出路径和 warning。
+- 在线源仅作为元数据和链接来源。
 - 不抓取付费研报全文。
 - 不替代新闻/文本事件数据层。
 - 不自动把候选情报转为交易信号。

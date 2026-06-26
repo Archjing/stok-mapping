@@ -354,6 +354,7 @@ phase0:
             - "core_selection_quality_momentum_v1"
             - "theme_exposure_momentum_v1"
             - "sleeve_composite_v1"
+            - "sleeve_composite_low_churn_v1"
         quality_research_v1:
           description: "质量/低换手策略专项研究集合。"
           strategies:
@@ -400,6 +401,7 @@ phase0:
         - "core_selection_quality_momentum_v1"
         - "theme_exposure_momentum_v1"
         - "sleeve_composite_v1"
+        - "sleeve_composite_low_churn_v1"
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -449,6 +451,14 @@ phase0:
         momentum_windows: [20, 60]
         top_n: 10
         max_symbol_weight: 0.10
+      sleeve_composite_low_churn:
+        enabled: true
+        top_n: 10
+        hold_rank_multiplier: 2.0
+        rebalance_days: 20
+        min_hold_days: 20
+        max_symbol_weight: 0.10
+        max_names_per_industry: 2
       cross_market:
         enabled: true
         tech_score_thresholds: [0.0, 0.5]

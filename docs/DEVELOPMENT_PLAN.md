@@ -34,8 +34,8 @@
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
 - `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
-- `T2.1` Phase 0 候选策略池已从“候选扩张/晋级清单”修订为“策略池治理清单”：以 `baseline_admission_all_v1` 统一管理 12 个候选，当前无 `admission_pass_candidate`，候选按 `active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 等状态治理
-- `T2.8` strategy-admission 已成为策略池治理主入口：配置层 `baseline_admission_all_v1` 已包含当前 12 个候选；main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1`，当前 sleeve 证据来自 scoped admission。准入口径统一要求 `qfq_asof`、窗口 preset、过拟合、行业集中和因子诊断；账户执行目前输出诊断状态，正式 execution gate / brief 集成仍待完成
+- `T2.1` Phase 0 候选策略池已从“候选扩张/晋级清单”修订为“策略池治理清单”：以 `baseline_admission_all_v1` 统一管理 13 个候选，当前无 `admission_pass_candidate`，候选按 `active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 等状态治理
+- `T2.8` strategy-admission 已成为策略池治理主入口：配置层 `baseline_admission_all_v1` 已包含当前 13 个候选；main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，当前 sleeve 证据来自 scoped admission 与后续低 churn 诊断实验。准入口径统一要求 `qfq_asof`、窗口 preset、过拟合、行业集中和因子诊断；账户执行目前输出诊断状态，正式 execution gate / brief 集成仍待完成
 - `T2.10.1` 规则型 `sleeve_composite_v1` 已完成 scoped admission 与治理报告，结论为 `reject`；该策略保留为 research-only 诊断候选，不进入 paper review、模拟账户、日报或 watchlist
 - 行业集中度 100% universe 专项实验已在分支 `codex/industry-weight-100-universe-experiment` 完成并落盘；main 尚未合入该实验产物。实验结论为 research-only，取消 universe 行业上限未产生可准入策略，主线默认仍保留 universe 层行业分散约束
 - `INT-KMS-001` A 股个股行情影响因子全景图已通过情报采集器入库，并与 marklogseq HTML 结构化知识整合为项目可用知识资产；其中“因子传导逻辑图（从定价公式到六域关系矩阵）”被采纳为 `T2.13` 因子本体、特征注册与市场环境归因的理论框架，定位为只读元数据和诊断层，不直接作为 alpha 公式或因果证明
@@ -339,8 +339,8 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 
 当前重点：
 
-- 以上 12 个策略已进入 `config.yaml` 的 `compare_strategies` 与 `baseline_admission_all_v1` 配置集合。
-- main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1`，当前没有通过严格准入的 selected candidate。
+- 以上 13 个策略已进入 `config.yaml` 的 `compare_strategies` 与 `baseline_admission_all_v1` 配置集合。
+- main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，当前没有通过严格准入的 selected candidate。
 - `legacy_momentum` / `legacy_momentum_low_turnover_v1` 仅作为 baseline 或研究样本保留，新候选不能仅凭少量 fold 的高分晋级。
 
 ### 引擎 #3：港股领先指标
@@ -777,9 +777,9 @@ Phase 0 已完成基础闭环验证：
 - `legacy_momentum_low_turnover_v1`：`turnover_annual_mean = 1.50`
 - 主测试成本口径：`slippage = 0.00246`，`commission = 0.00025`，`stamp_duty_sell = 0.0005`
 
-这些结果只能作为兼容参考和研究基线，不能作为当前准入结论。T2.1 当前已经从“继续找一个马上晋级的候选”调整为“把 12 个候选治理为可复查的研究资产”。当前真实缺口变为：
+这些结果只能作为兼容参考和研究基线，不能作为当前准入结论。T2.1 当前已经从“继续找一个马上晋级的候选”调整为“把 13 个候选治理为可复查的研究资产”。当前真实缺口变为：
 
-1. 在配置层 12 个候选尚未形成 main 全量 admission 通过记录的前提下，重排策略池优先级，避免继续在高换手价格行为策略上消耗研发资源。
+1. 在配置层 13 个候选尚未形成 main 全量 admission 通过记录的前提下，重排策略池优先级，避免继续在高换手价格行为策略上消耗研发资源。
 2. 对 `low_vol_low_turnover_quality_v1`、`quality_low_turnover_monthly_v1` 做失败归因复核，重点解释质量暴露为何没有稳定转化为收益。
 3. 对 `sleeve_composite_v1` 先降低组合换手、换股 churn 和行业集中，再考虑二次 scoped admission；不直接做收益调参。
 4. 保持 universe 层分散约束和策略层 `max_industry_weight = 0.35` 审计分离，避免用放宽研究池约束替代最终组合风险控制。
@@ -787,8 +787,8 @@ Phase 0 已完成基础闭环验证：
 
 #### 当前核心任务
 
-1. 以 `baseline_admission_all_v1` 统一治理当前 12 个候选；compare 只产生研究线索，admission 才能产生准入动作。
-2. 重跑 main 全候选 admission，纳入 `sleeve_composite_v1`，并输出策略池治理报告。
+1. 以 `baseline_admission_all_v1` 统一治理当前 13 个候选；compare 只产生研究线索，admission 才能产生准入动作。
+2. 重跑 main 全候选 admission，纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，并输出策略池治理报告。
 3. 保留 `legacy_momentum_low_turnover_v1` 作为兼容 baseline 与动量 sleeve 研究样本，而非实盘模拟合格候选。
 4. 优先完善低波、低换手、质量主线的组合构造和失败归因，控制年化换手、参数漂移和行业集中。
 5. 用 T2.13 因子传导框架增强失败归因和 admission 报告解释，但不直接生成策略权重。
@@ -1074,7 +1074,7 @@ stok-mapping/
 
 当前策略池候选方向：
 
-1. **T2.1 策略池治理清单收口**：12 个候选统一归入 `active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`
+1. **T2.1 策略池治理清单收口**：13 个候选统一归入 `active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`
 2. **全候选 admission 治理报告标准化**：日期、背景、策略集合、preset、数据口径、研究边界和准入动作必须落盘
 3. **低波低换手质量主线失败归因与组合构造修正**
 4. **低频质量策略参数稳定性和 regime 依赖复核**
@@ -1113,7 +1113,7 @@ stok-mapping/
 - 港股历史库至少完成 30 标的覆盖、新鲜度、审计记录和报告输出。
 - `data/` 与 `reports/` 的职责边界在 README 和架构文档中保持一致。
 - 所有数据源变更不破坏当前 Phase 0 策略、账单、gate、premarket 主链路。
-- 全候选 strategy-admission 需重跑并覆盖 `baseline_admission_all_v1` 的 12 个候选，结论、拒绝原因和治理报告可追溯。
+- 全候选 strategy-admission 需重跑并覆盖 `baseline_admission_all_v1` 的 13 个候选，结论、拒绝原因和治理报告可追溯。
 - 每个候选必须具备明确治理状态：`active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`。
 - 新一轮策略池改造必须改善至少一个核心失败项：收益、Sharpe、正收益折比例、年化换手、行业集中、参数稳定性或 overfit risk。
 - 任何进入 paper review / 模拟账户 / 日报链路的候选必须先通过 admission，而不是仅凭 compare 排名或单次实验相对最优。
@@ -1136,7 +1136,7 @@ stok-mapping/
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
 | `T1.5` | Tushare 财务因子逐股票历史补齐 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W216tushare-财务因子逐股票历史补齐t15) | **已完成：2016Q1-2018Q1 目标季度末已补齐并完成 PTI / factor-effectiveness 复核** |
 | `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`docs/tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) | **已完成：主库定义、维护分工与口径边界已同步到文档** |
-| `T2.1` | Phase 0 候选策略池治理清单 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | **已修订为治理清单：`baseline_admission_all_v1` 统一管理 12 个候选；当前无 admission pass，短期聚焦全候选 admission、低波低换手质量主线失败归因和 sleeve 降换手重构** |
+| `T2.1` | Phase 0 候选策略池治理清单 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | **已修订为治理清单：`baseline_admission_all_v1` 统一管理 13 个候选；当前无 admission pass，短期聚焦全候选 admission、低波低换手质量主线失败归因和 sleeve 降换手重构** |
 | `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
 | `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，已进入 strategy-admission 诊断链路，待 gate / brief 集成** |
 | `T2.13` | 因子传导图工程化：因子本体、特征注册与市场环境归因 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md) | **计划新增：基于 `INT-KMS-001` 和项目架构文档，把六域传导框架落成只读元数据、诊断与报告解释层；不直接进入交易信号** |
@@ -1175,7 +1175,7 @@ stok-mapping/
 - [x] 运行主策略 `legacy_momentum_low_turnover_v1` 的 `qfq_current` / `qfq_asof` 对照回测，结论：`qfq_current` 降级为兼容口径参考
 - [x] 运行最新版本全候选策略池 `qfq_asof` compare，结论：当前无可用于实盘模拟的合格 candidate
 - [x] 制定 `T2.5-T2.11` 有效量化策略研发实施方案与开发任务清单
-- [x] 修订 `T2.1` Phase 0 候选策略池文档：从旧候选晋级清单改为策略池治理清单，明确 12 个候选的角色、准入边界、优先级和不做清单
+- [x] 修订 `T2.1` Phase 0 候选策略池文档：从旧候选晋级清单改为策略池治理清单，明确 13 个候选的角色、准入边界、优先级和不做清单
 - [x] 实现 `T2.5` 因子有效性诊断报告，先验证低波、低换手、质量、动量、反转和估值因子
 - [x] 实现 Tushare 财务回填进度显示：任务选择、处理进度、完成率、速率、耗时和 ETA 可见
 - [x] 将 `tushare_financial_backfill_audit.md` 覆盖率展示改为百分数，CSV 保持 0-1 机器口径
@@ -1188,7 +1188,7 @@ stok-mapping/
 - [ ] 继续评估哪些其他研究命令需要 `cn/error` 门禁，避免重复或过度阻断
 - [x] 实现 `T2.6` `low_vol_low_turnover_quality_v1`
 - [x] 实现 `T2.7` `quality_low_turnover_monthly_v1`
-- [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断、过拟合诊断和执行诊断；当前已完成 strategy-admission MVP、全局 admission 配置层、过拟合诊断合并、窗口/约束准入复核、diagnostics suites 设计输入、preset 启动说明、诊断状态可信化和 `baseline_admission_all_v1` 全局策略集合；下一步是把每次 compare/admission 的治理报告模板固化为强制产物，并重跑 main 全候选 12 策略 admission
+- [ ] 实现 `T2.8` 策略准入报告，合并 qfq_asof、因子诊断、过拟合诊断和执行诊断；当前已完成 strategy-admission MVP、全局 admission 配置层、过拟合诊断合并、窗口/约束准入复核、diagnostics suites 设计输入、preset 启动说明、诊断状态可信化和 `baseline_admission_all_v1` 全局策略集合；下一步是把每次 compare/admission 的治理报告模板固化为强制产物，并重跑 main 全候选 13 策略 admission
 - [x] 在 `T2.8` 中加入 walk-forward 窗口 preset 与窗口稳健性矩阵：保留 `baseline_2y_1y` 为统一可比口径，并为低频质量策略增加 `quality_3y_1y`、`quality_4y_1y` 复核
 - [x] 建立 `T2.8` 回测窗口期配置模块 V1（KISS 收缩版）：先只支持 preset 级 `start_date` / `end_date`、`expected_folds`，新增 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`，解决 T2.7 折数不足和窗口单一问题
 - [x] 为窗口配置模块补齐最小报告字段：在 `strategy-admission` 输出 `expected_folds`、`actual_folds`、`window_start`、`window_end`、`fold_generation_warning`
@@ -1203,7 +1203,7 @@ stok-mapping/
 - [x] 实现策略修饰层模块 V1：新增通用 `strategy_v2.constraints`，支持行业约束 `audit/enforce`、PIT 行业暴露审计和 strategy-admission 行业集中度复核
 - [x] 完成 `sleeve_composite_v1` scoped admission 治理报告：2026-06-23 运行 `baseline_2y_1y_5fold` 与 `quality_3y_1y_4fold`，最终 action 为 `reject`，保留 research-only 边界
 - [ ] 合并或在 main 复核行业集中度 100% universe 专项实验：当前证据位于 `codex/industry-weight-100-universe-experiment` 分支，实验验证取消 universe 层行业上限不会让策略机械失败，但 admission 仍全部拒绝；主线继续保留 universe 分散约束与策略层行业审计
-- [ ] 按修订后的 `T2.1` 治理清单为 12 个候选落盘状态枚举：`active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`
+- [ ] 按修订后的 `T2.1` 治理清单为 13 个候选落盘状态枚举：`active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`
 - [ ] 新增 T2.12 策略池完善专项：以低波低换手质量主线为核心，重构组合构造、换手控制、参数稳定性和行业集中处理；输出 paired compare/admission 与治理报告
 - [ ] 新增 T2.13 因子传导图工程化专项：参考 `docs/PROJECT_ARCHITECTURE_OVERVIEW.md`，把 `INT-KMS-001` 六域传导框架落成因子本体、特征注册、市场环境归因和 admission 报告解释元数据
 - [ ] T2.13 第一阶段只做只读 schema、知识资产索引和诊断报告字段，不修改策略权重、不接入模拟账户、不进入日报交易信号

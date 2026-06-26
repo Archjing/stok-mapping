@@ -13,7 +13,7 @@ Phase 0 的基础工程闭环已经完成，但策略池当前没有严格 `qfq_
 - 当前 selected candidate：无
 - 当前正式 baseline：无严格准入合格 baseline
 - 当前兼容 baseline：`legacy_momentum_low_turnover_v1`，仅作旧 `qfq_current` 口径兼容参考、动量 sleeve 输入和失败对照样本
-- 当前全局准入集合：`baseline_admission_all_v1`，包含 12 个候选策略
+- 当前全局准入集合：`baseline_admission_all_v1`，包含 13 个候选策略
 - 当前重点研发集合：`price_volume_low_turnover_v1` 防守 / 选择性角色治理；`sleeve_composite_v1` 低换手改造已验证为 research-only 经验，不作为当前主动调参主线
 - 当前治理工具新增：`strategy-role-card`，用于把 admission、失败归因、市场状态、持仓暴露和反事实实验汇总成可复查的策略角色卡
 - 当前角色卡批量验证结论：只有 `price_volume_low_turnover_v1` 暂时支持“防守 / 选择性研究样本”标签；质量线和低换手 sleeve 只能作为诊断样本
@@ -87,7 +87,7 @@ Phase 0 的基础工程闭环已经完成，但策略池当前没有严格 `qfq_
 
 ## T2.1.2 当前策略集合
 
-配置层当前以 `baseline_admission_all_v1` 作为全局治理集合，包含 12 个策略：
+配置层当前以 `baseline_admission_all_v1` 作为全局治理集合，包含 13 个策略：
 
 | 策略 | 当前角色 | 当前动作 | 进入正式链路条件 |
 | --- | --- | --- | --- |
@@ -354,7 +354,7 @@ T2.1 当前不是“挑一个马上上线的策略”，而是“把策略池治
 
 短期唯一合理主线是：
 
-1. 用 `baseline_admission_all_v1` 统一治理 12 个候选。
+1. 用 `baseline_admission_all_v1` 统一治理 13 个候选。
 2. 优先修正低波、低换手、质量策略的失败原因。
 3. 把 `sleeve_composite_v1` 和 `sleeve_composite_low_churn_v1` 保持为 research-only；低 churn 构造可复用，但当前 sleeve alpha 不再继续小参数调优。
 4. 把 `price_volume_low_turnover_v1` 作为防守 / 选择性研究候选观察，不强行改成强指数参与策略。
