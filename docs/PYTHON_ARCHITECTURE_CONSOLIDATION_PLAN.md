@@ -299,6 +299,19 @@ The twenty-fifth slice extracts read-only data-governance audit command routing:
 
 This slice intentionally does not move write-side commands such as `backfill-index-asof`, `update-history`, `backfill-daily-basic`, or Tushare backfills. It also leaves the shared `_run_db_health_gate` in `phase0.cli` for `run` and `factor-effectiveness` until those command groups get their own migration gates.
 
+## Twenty-Sixth Slice In This Branch
+
+The twenty-sixth slice extracts research-diagnostic command routing for already-migrated strategy research modules:
+
+- Add `phase0.cli_commands.research` for parser registration and command handling for the migrated `strategy-*` research diagnostics:
+  `strategy-failure-attribution`, `strategy-market-context`, `strategy-exposure-diagnostic`, `strategy-filter-diagnostic`,
+  `strategy-core-reachability-diagnostic`, `strategy-missing-core-audit`, `strategy-holdings-exposure`,
+  `strategy-fold-attribution`, `strategy-participation-overlay`, `strategy-csi300-attribution`, and `strategy-role-card`.
+- Keep `phase0.cli` as the top-level parser owner and delegate these commands through `RESEARCH_COMMANDS`.
+- Add handler-level tests for parser registration, local-history setup, path forwarding, run-log command forwarding, and CLI-main delegation.
+
+This slice intentionally does not move `strategy-admission`, `factor-effectiveness`, or `overfit-diagnostic`. It also does not change research algorithms, strategy parameters, report path policy, generated artifact names, or legacy root import shims.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
