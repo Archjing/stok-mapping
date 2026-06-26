@@ -235,17 +235,26 @@ CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块�
 核心模块：
 
 - [phase0/data_access/providers/tushare.py](../phase0/data_access/providers/tushare.py)
+- [phase0/data_access/providers/external_market.py](../phase0/data_access/providers/external_market.py)
 - [phase0/tushare_source.py](../phase0/tushare_source.py)（兼容旧入口；新代码不要继续依赖）
 - [phase0/data_access/connectivity.py](../phase0/data_access/connectivity.py)
 - [phase0/data_sources.py](../phase0/data_sources.py)（兼容旧入口；新代码不要继续依赖）
 - [phase0/data_access/throttle.py](../phase0/data_access/throttle.py)
-- [phase0/data_governance/external_market_history.py](../phase0/data_governance/external_market_history.py)
 
 职责：
 
 - 统一外部源调用、规范化、节流和错误处理。
-- 将源数据转换成项目内部表结构。
-- 记录 source 和 fetched_at，支持审计。
+- 提供不直接写库的 provider 读取适配。
+
+跨市场历史库维护归属数据治理层：
+
+- [phase0/data_governance/external_market_history.py](../phase0/data_governance/external_market_history.py)
+
+职责：
+
+- 调用外部市场 provider 读取适配器。
+- 将 US/HK 源数据写入本地 SQLite 历史库。
+- 记录 source 和 fetched_at，支持审计和 freshness 检查。
 
 当前源边界：
 

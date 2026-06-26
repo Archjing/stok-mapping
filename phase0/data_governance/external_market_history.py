@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.data_access.connectivity import fetch_hk_daily, fetch_tushare_hk_daily, fetch_yf_daily
+from phase0.data_access.providers.external_market import fetch_external_market_daily
 
 
 DEFAULT_US_MARKET_SYMBOLS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
@@ -250,25 +250,6 @@ def _normalize_frame(symbol: str, df: pd.DataFrame, settings: MarketHistorySetti
     return out[keep].drop_duplicates(["symbol", "date"]).astype(object).where(pd.notna(out[keep]), None)
 
 
-def _fetch_market_daily(symbol: str, settings: MarketHistorySettings) -> pd.DataFrame:
-    def _to_yf_symbol(raw_symbol: str) -> str:
-        raw = str(raw_symbol).strip().upper()
-        if raw.startswith("HK."):
-            code = raw.split(".", 1)[1]
-            if code.isdigit():
-                code = str(int(code)).zfill(4)
-            return f"{code}.HK"
-        return raw
-
-    if settings.provider == "yfinance":
-        return fetch_yf_daily(_to_yf_symbol(symbol), years=settings.years)
-    if settings.provider in {"akshare_hk", "akshare-hk"}:
-        return fetch_hk_daily(symbol, years=settings.years, adjust="qfq")
-    if settings.provider in {"tushare_hk", "tushare-hk"}:
-        return fetch_tushare_hk_daily(symbol, years=settings.years)
-    raise ValueError(f"Unsupported market history provider: {settings.provider}")
-
-
 def _update_market_history(
     settings: MarketHistorySettings,
     *,
@@ -305,7 +286,7 @@ def _update_market_history(
         updated_rows = 0
         for symbol in symbols:
             try:
-                raw = _fetch_market_daily(symbol, settings)
+                raw = fetch_external_market_daily(symbol, settings)
             except Exception as exc:
                 warnings.append(f"{settings.provider} {symbol} failed: {exc}")
                 continue
