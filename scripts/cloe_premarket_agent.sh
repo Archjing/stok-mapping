@@ -2,10 +2,12 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SESSION_NAME="${CLOE_PREMARKET_ACPX_SESSION:-${CLOE_ACPX_SESSION:-${OPENCLAW_ACPX_SESSION:-cloe-premarket}}}"
-TIMEOUT_SECONDS="${CLOE_PREMARKET_ACPX_TIMEOUT:-${CLOE_ACPX_TIMEOUT:-${OPENCLAW_ACPX_TIMEOUT:-600}}}"
-TTL_SECONDS="${CLOE_PREMARKET_ACPX_TTL:-${CLOE_ACPX_TTL:-${OPENCLAW_ACPX_TTL:-1800}}}"
-OUTPUT_FORMAT="${CLOE_PREMARKET_ACPX_FORMAT:-${CLOE_ACPX_FORMAT:-${OPENCLAW_ACPX_FORMAT:-text}}}"
+source "${ROOT_DIR}/scripts/lib/acpx_agent.sh"
+
+SESSION_NAME="$(stok_acpx_env_value PREMARKET SESSION "cloe-premarket")"
+TIMEOUT_SECONDS="$(stok_acpx_env_value PREMARKET TIMEOUT "600")"
+TTL_SECONDS="$(stok_acpx_env_value PREMARKET TTL "1800")"
+OUTPUT_FORMAT="$(stok_acpx_env_value PREMARKET FORMAT "text")"
 
 if [[ $# -eq 0 ]]; then
   cat <<USAGE
@@ -29,9 +31,4 @@ fi
 
 TASK="$*"
 
-acpx --cwd "$ROOT_DIR" openclaw sessions ensure --name "$SESSION_NAME" >/dev/null
-acpx --cwd "$ROOT_DIR" \
-  --ttl "$TTL_SECONDS" \
-  --format "$OUTPUT_FORMAT" \
-  --timeout "$TIMEOUT_SECONDS" \
-  openclaw -s "$SESSION_NAME" "$TASK"
+stok_acpx_run_openclaw_task "$ROOT_DIR" "$SESSION_NAME" "$TIMEOUT_SECONDS" "$OUTPUT_FORMAT" "$TTL_SECONDS" "$TASK"

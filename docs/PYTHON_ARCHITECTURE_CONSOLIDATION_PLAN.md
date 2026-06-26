@@ -78,6 +78,17 @@ The fifth slice starts shell-entrypoint consolidation with a small shared enviro
 
 This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `install_dev_cron.sh`, Cloe/acpx agent wrappers, `openclaw_agent.sh`, or `.codex/run_claude_agent.sh`. Those scripts affect cron installation, the every-minute scheduler entrypoint, external agent session semantics, or `.codex` runner behavior and need separate review.
 
+## Sixth Slice In This Branch
+
+The sixth slice consolidates Cloe/acpx shell wrapper behavior while preserving the external agent contract:
+
+- Add `scripts/lib/acpx_agent.sh` for role/global/OpenClaw environment fallback and common `acpx openclaw` invocation.
+- Update `cloe_agent.sh`, `cloe_premarket_agent.sh`, `cloe_research_agent.sh`, and `cloe_risk_agent.sh` to keep only usage text, defaults, and role selection.
+- Preserve `openclaw_agent.sh` as the compatibility entrypoint over `cloe_agent.sh`.
+- Add `tests/test_acpx_agent_wrappers.py` with a fake `acpx` command so session names, timeout, format, TTL, argument joining, usage exit code, and compatibility behavior are verified without touching external agents.
+
+This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `install_dev_cron.sh`, or `.codex/run_claude_agent.sh`. Those scripts carry cron installation, every-minute scheduler, or Codex runner behavior and need separate review.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -88,6 +99,22 @@ This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `i
 | P4 CLI and orchestration | Split `phase0.cli` into command modules and move scheduler orchestration | All CLI help paths pass, scheduler command names and env vars remain compatible |
 | P5 Intelligence | Split collection/import/validate/review code and keep scripts thin | Intelligence CLI help, ledger/candidate schema tests, no required external API calls in tests |
 | P6 Scripts cleanup | Convert heavy Python scripts and repeated shell entrypoints into wrappers over packaged functions/shared shell helpers | Thin script smoke tests, bash syntax checks, import compatibility tests |
+
+## Compatibility Shim Retirement Policy
+
+Compatibility wrappers and import shims are temporary migration aids, not the final architecture. They can be removed only after the new package paths have become the project-internal default.
+
+Required sequence:
+
+1. Migrate effective project code and normal tests to new package paths.
+2. Keep explicit compatibility tests for old paths during the transition period so downstream/manual commands fail loudly if behavior changes.
+3. After this branch is merged back to `main`, run one complete validation cycle:
+   - one data maintenance flow,
+   - one strategy compare/admission flow or equivalent research diagnostic flow,
+   - and an `rg` audit proving no effective project code still imports the old paths.
+4. Remove compatibility wrappers/import shims in a separate cleanup commit, after the validation evidence is recorded.
+
+Historical plans and compatibility tests may still mention old paths until the cleanup commit. That is acceptable; production code and ordinary tests should not keep depending on them.
 
 ## KISS Cleanup Backlog
 
