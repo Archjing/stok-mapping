@@ -5,6 +5,8 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from phase0.data_access.local_history import load_daily_from_local_history
+
 
 def execution_settings(config: dict[str, Any]) -> dict[str, Any]:
     cfg = config.get("execution", {})
@@ -82,6 +84,38 @@ def prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFram
     sf["previous_close"] = sf.groupby("symbol")["close"].shift(1)
     sf["price_mode"] = sf["execution_adjust_type"].astype(str).fillna("unknown") + ":" + price_mode
     return sf.sort_values(["date", "symbol"]).reset_index(drop=True)
+
+
+def load_bfq_execution_price_frame(price_frame: pd.DataFrame) -> pd.DataFrame:
+    if price_frame.empty or "date" not in price_frame.columns or "symbol" not in price_frame.columns:
+        return price_frame.copy()
+    frame = price_frame.copy()
+    frame["date"] = pd.to_datetime(frame["date"]).dt.normalize()
+    symbols = sorted(frame["symbol"].dropna().astype(str).unique())
+    if not symbols:
+        return frame
+    start = pd.Timestamp(frame["date"].min()).date()
+    end = pd.Timestamp(frame["date"].max()).date()
+    rows: list[pd.DataFrame] = []
+    for symbol in symbols:
+        bfq = load_daily_from_local_history(symbol, start, end, price_adjustment="bfq_raw")
+        if bfq.empty:
+            continue
+        keep = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount"] if col in bfq.columns]
+        one = bfq[keep].copy()
+        one["date"] = pd.to_datetime(one["date"]).dt.normalize()
+        one["symbol"] = one["symbol"].astype(str)
+        rows.append(one)
+    if not rows:
+        return frame
+    bfq_prices = pd.concat(rows, ignore_index=True).drop_duplicates(["date", "symbol"])
+    out = frame.drop(columns=[col for col in ["open", "high", "low", "close", "volume", "amount"] if col in frame.columns]).merge(
+        bfq_prices,
+        on=["date", "symbol"],
+        how="left",
+    )
+    out["execution_adjust_type"] = "bfq_raw"
+    return out
 
 
 def trade_block_reasons(row: pd.Series, action: str, execution_cfg: dict[str, Any]) -> list[str]:
