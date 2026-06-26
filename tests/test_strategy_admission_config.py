@@ -13,13 +13,15 @@ from phase0.strategy_admission import (
     _write_report,
     _write_governance_report,
     _industry_missing_window_count,
-    _overfit_blocks_admission,
     _price_adjustment_fail_window_count,
-    _resolve_admission_gate,
-    _resolve_diagnostic_suites,
     _turnover_fail_window_count,
     _window_metrics,
     run_strategy_admission,
+)
+from phase0.research.admission.gate import (
+    overfit_blocks_admission as _overfit_blocks_admission,
+    resolve_admission_gate as _resolve_admission_gate,
+    resolve_diagnostic_suites as _resolve_diagnostic_suites,
 )
 from phase0.research.admission.strategy_scope import (
     _force_strategy_set_enabled_for_admission,

@@ -11,8 +11,8 @@ from phase0.strategy_admission import (
     _industry_concentration_window_count,
     _parameter_unstable_window_count,
     _price_adjustment_fail_window_count,
-    _resolve_admission_gate,
 )
+from phase0.research.admission.gate import resolve_admission_gate as _resolve_admission_gate
 from phase0.reporting.paths import report_path
 
 

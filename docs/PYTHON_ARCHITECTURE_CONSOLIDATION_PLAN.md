@@ -526,6 +526,17 @@ The forty-fourth slice moves price-adjustment governance into the data-governanc
 
 This slice does not change adjustment factor schemas, qfq_asof formulas, qfq_current comparison logic, audit report filenames, report paths, CLI command names, generated artifacts, database writes, or strategy algorithms.
 
+## Forty-Fifth Slice In This Branch
+
+The forty-fifth slice extracts pure admission gate helpers from the admission runner:
+
+- Add `phase0.research.admission.gate` for admission gate resolution, diagnostic suite resolution, and overfit-risk blocking policy.
+- Keep `phase0.strategy_admission._resolve_admission_gate`, `_resolve_diagnostic_suites`, and `_overfit_blocks_admission` as compatibility aliases over the new functions.
+- Update ordinary strategy-admission tests and failure-attribution code to use the new gate helper path where they do not need the runner itself.
+- Add import compatibility tests proving the old runner-private names and new helper names are the same function objects.
+
+This slice does not change admission thresholds, admission actions, window matrix construction, constraint review logic, walk-forward execution, overfit execution, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
