@@ -7,7 +7,7 @@ from typing import Any
 import pandas as pd
 
 from phase0.data_sources import ConnectivityResult
-from phase0.quality import QualityResult
+from phase0.data_governance.quality import QualityResult
 
 
 def _md_table(headers: list[str], rows: list[list[str]]) -> str:

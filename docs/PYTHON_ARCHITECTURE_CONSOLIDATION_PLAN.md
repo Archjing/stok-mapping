@@ -6,14 +6,15 @@ Last revised: 2026-06-26
 
 This plan defines the KISS-oriented path for consolidating Python code by the project's actual functional architecture. The goal is to group related code, reduce duplicated helpers, and keep behavior stable while the strategy-research system continues to run.
 
-The current branch starts with a narrow, verifiable slice: the reporting/path layer. It does not claim the full codebase consolidation is finished.
+The current branch starts with narrow, verifiable slices. It does not claim the full codebase consolidation is finished.
 
 ## Current Functional Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py` |
-| `data_governance` | Local history, data-source updates, as-of coverage, adjustment audits, health checks, backfills | `phase0/local_history.py`, `phase0/update_history.py`, `phase0/import_history.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment*.py`, `phase0/tushare_*.py`, `scripts/check_local_history_consistency.py`, `scripts/audit_*_pti.py` |
+| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
+| `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, `phase0/strategy_*diagnostic.py`, `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
@@ -34,12 +35,24 @@ The first slice consolidates report path and report artifact responsibilities:
 
 This slice is intentionally small because report paths are a cross-cutting dependency. Stabilizing it first lowers risk for later data-governance and research-module moves.
 
+## Second Slice In This Branch
+
+The second slice starts the data-governance package with modules whose responsibilities are already audit/governance shaped:
+
+- Move `quality.py` into `phase0.data_governance.quality`.
+- Move `db_health.py` into `phase0.data_governance.db_health`.
+- Move `index_asof_audit.py` into `phase0.data_governance.index_asof_audit`.
+- Move `index_asof_backfill.py` into `phase0.data_governance.index_asof_backfill`.
+- Keep root-level shims for old imports, including tests that still depend on selected private helper imports.
+
+This slice intentionally does not move `local_history.py`, `update_history.py`, broad Tushare/AkShare backfill flows, or adjustment/financial production jobs. Those modules carry more write-side behavior and third-party provider coupling, so they need separate helper extraction and compatibility tests before migration.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
 | --- | --- | --- |
 | P1 Reporting foundation | Finish `phase0.reporting.*` and config-driven output defaults | Report path tests, registry tests, targeted CLI path tests, `python -m phase0.cli --help` |
-| P2 Data governance package | Move data health, as-of, adjustment, local-history, and backfill modules behind compatibility shims | Existing data-health/as-of tests, CLI help for related commands, no table/schema changes |
+| P2 Data governance package | Move audit/quality/as-of governance modules first; keep write-heavy providers and broad backfills in place until helper extraction | Existing data-health/as-of tests, import compatibility tests, CLI help for related commands, no table/schema changes |
 | P3 Domain strategies and research | Separate strategy implementations from walk-forward/admission/diagnostics | Strategy registry tests, walk-forward/admission targeted tests, no strategy parameter or cost-model changes |
 | P4 CLI and orchestration | Split `phase0.cli` into command modules and move scheduler orchestration | All CLI help paths pass, scheduler command names and env vars remain compatible |
 | P5 Intelligence | Split collection/import/validate/review code and keep scripts thin | Intelligence CLI help, ledger/candidate schema tests, no required external API calls in tests |
@@ -51,13 +64,14 @@ These are real redundancy candidates, but each should be cleaned only when its o
 
 | Redundancy | Current locations | KISS action |
 | --- | --- | --- |
-| `_resolve_path` variants | Multiple `phase0/` modules and `scripts/` | Centralize into a small core path helper after reporting semantics are stable |
+| `_resolve_path` variants | Multiple `phase0/` modules and `scripts/` | Centralize into a small core path helper after reporting and data-governance shims are stable |
 | SQL identifier validation | Data governance modules | Centralize into a single helper when moving data modules |
 | Annualized return / Sharpe / drawdown helpers | `walk_forward.py`, OOS/report scripts, market-regime scripts | Move to `research.metrics` only after matching NaN and annualization behavior with tests |
 | Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
+| Provider/update coupling | `local_history.py`, `data_sources.py`, `external_market_history.py`, `tushare_source.py`, `update_history.py` | Split read-only data access from write-side governance jobs before moving |
 
 ## Non-Goals
 

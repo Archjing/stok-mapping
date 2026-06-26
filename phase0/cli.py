@@ -15,7 +15,10 @@ from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
-from phase0.db_health import run_database_health_check
+from phase0.data_governance.db_health import run_database_health_check
+from phase0.data_governance.index_asof_audit import run_index_asof_audit
+from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
+from phase0.data_governance.quality import aggregate_quality, audit_quality
 from phase0.external_market_history import (
     load_us_daily_from_history,
     update_hk_market_history_from_config,
@@ -24,8 +27,6 @@ from phase0.external_market_history import (
 from phase0.factor_effectiveness import run_factor_effectiveness_report
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
-from phase0.index_asof_backfill import backfill_index_asof_from_config
-from phase0.index_asof_audit import run_index_asof_audit
 from phase0.intelligence import (
     collect_intelligence,
     import_local_intelligence,
@@ -35,7 +36,6 @@ from phase0.intelligence import (
 from phase0.local_history import configure_local_history
 from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_supervise, maintenance_tick
 from phase0.overfit import run_overfit_diagnostic
-from phase0.quality import aggregate_quality, audit_quality
 from phase0.reporting import (
     write_cost_sensitivity_report,
     write_data_source_report,
