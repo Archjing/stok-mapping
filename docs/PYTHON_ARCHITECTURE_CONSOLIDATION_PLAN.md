@@ -312,6 +312,18 @@ The twenty-sixth slice extracts research-diagnostic command routing for already-
 
 This slice intentionally does not move `strategy-admission`, `factor-effectiveness`, or `overfit-diagnostic`. It also does not change research algorithms, strategy parameters, report path policy, generated artifact names, or legacy root import shims.
 
+## Twenty-Seventh Slice In This Branch
+
+The twenty-seventh slice extracts delivery/watchlist command routing from the large top-level CLI:
+
+- Add `phase0.cli_commands.delivery` for `brief daily`, `brief daily-brief`, `brief watchlist`, `brief premarket`, `brief account-bill`, and the legacy top-level `daily-brief` parser/handler.
+- Move the watchlist/daily-brief pipeline and ECS watchlist mirror helper into the delivery command module.
+- Add `phase0.cli_commands.output.print_manual_history_update_result` so delivery and `update-history` can share the same console rendering without creating a reverse dependency.
+- Keep `phase0.cli.run_watchlist_pipeline`, `phase0.cli.run_daily_brief_pipeline`, and old `_export_*` helper names available as compatibility imports during the transition.
+- Add delivery CLI tests for parser registration, watchlist path copying, check-only behavior, premarket/account-bill forwarding, and CLI-main delegation.
+
+This slice does not change watchlist selection logic, simulated account behavior, report path policy, ECS sync environment variables, public command names, or generated artifact names. It also keeps the top-level `premarket` report-export command in `phase0.cli_commands.reports`; only the nested `brief premarket` route moves here.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
