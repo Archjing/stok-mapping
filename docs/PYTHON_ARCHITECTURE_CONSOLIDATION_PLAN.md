@@ -324,6 +324,18 @@ The twenty-seventh slice extracts delivery/watchlist command routing from the la
 
 This slice does not change watchlist selection logic, simulated account behavior, report path policy, ECS sync environment variables, public command names, or generated artifact names. It also keeps the top-level `premarket` report-export command in `phase0.cli_commands.reports`; only the nested `brief premarket` route moves here.
 
+## Twenty-Eighth Slice In This Branch
+
+The twenty-eighth slice extracts write-side data update/import/backfill command routing from the large top-level CLI:
+
+- Add `phase0.cli_commands.data_update` for `update-history`, `update-financials`, `update-us-market-history`, `update-hk-market-history`, `import-history`, `import-index-history`, `build-universe`, `backfill-daily-basic`, `backfill-adjustment-factors`, `backfill-index-asof`, `backfill-tushare-history`, and `backfill-tushare-financials`.
+- Move parser registration, console output, argument forwarding, progress rendering, and exit-code mapping into the data-update command module.
+- Keep `phase0.cli` as the top-level parser owner and delegate these commands through `DATA_UPDATE_COMMANDS`.
+- Keep `phase0.cli._format_duration`, `phase0.cli._print_tushare_financial_progress`, and `phase0.cli._print_manual_history_update_result` available as compatibility imports during the transition.
+- Add handler-level tests for parser registration, update-history/update-financials universe rebuild behavior, backfill argument forwarding, missing-token exit codes, progress callback forwarding, external market updates, imports, build-universe, and CLI-main delegation.
+
+This slice does not move `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py`, `phase0/external_market_history.py`, or `phase0/universe.py`. It is a CLI adapter move only and does not change database write behavior, Tushare payloads, report paths, command names, or generated artifact names.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
