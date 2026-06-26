@@ -289,6 +289,16 @@ The twenty-fourth slice finishes the top-level report-export command boundary:
 
 This slice intentionally does not move `brief premarket`, `brief account-bill`, `daily-brief`, `run_phase0`, watchlist ECS sync, report path generation, or export helper behavior. Those flows still cross delivery, scheduler, and reporting concerns and need separate gates.
 
+## Twenty-Fifth Slice In This Branch
+
+The twenty-fifth slice extracts read-only data-governance audit command routing:
+
+- Add `phase0.cli_commands.data_governance` for `adjustment-audit`, `db-health`, and `index-asof-audit` parser registration and command handling.
+- Keep `phase0.cli` as the top-level parser owner and delegate these commands through `DATA_GOVERNANCE_COMMANDS`.
+- Add handler-level tests for argument forwarding, `db-health --fail-on` exit-code behavior, and CLI-main delegation.
+
+This slice intentionally does not move write-side commands such as `backfill-index-asof`, `update-history`, `backfill-daily-basic`, or Tushare backfills. It also leaves the shared `_run_db_health_gate` in `phase0.cli` for `run` and `factor-effectiveness` until those command groups get their own migration gates.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

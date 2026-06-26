@@ -10,7 +10,11 @@ from rich.console import Console
 
 from phase0.adjustment_backfill import backfill_adjustment_factors_from_config
 from phase0.config import load_config
-from phase0.adjustment import run_adjustment_audit
+from phase0.cli_commands.data_governance import (
+    DATA_GOVERNANCE_COMMANDS,
+    handle_data_governance_command,
+    register_data_governance_commands,
+)
 from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
 from phase0.cli_commands.intelligence import handle_intelligence_command, register_intelligence_commands
 from phase0.cli_commands.maintenance import handle_maintenance_command, register_maintenance_commands
@@ -23,7 +27,6 @@ from phase0.cli_commands.system import (
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.db_health import run_database_health_check
-from phase0.data_governance.index_asof_audit import run_index_asof_audit
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.data_governance.quality import aggregate_quality, audit_quality
 from phase0.external_market_history import (
@@ -621,10 +624,7 @@ def main() -> int:
         help="Use cost_sensitivity.scenarios from config.yaml. Required when --scenario is omitted.",
     )
     register_report_export_commands(sub)
-    adjustment_parser = sub.add_parser("adjustment-audit", help="Audit A-share price adjustment point-in-time readiness")
-    adjustment_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    adjustment_parser.add_argument("--output-csv", default=None, help="Optional CSV output path")
-    adjustment_parser.add_argument("--output-md", default=None, help="Optional Markdown output path")
+    register_data_governance_commands(sub)
     overfit_parser = sub.add_parser("overfit-diagnostic", help="Generate strategy overfitting diagnostic report")
     overfit_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     overfit_parser.add_argument("--candidates", default=None, help="Path to walk-forward candidates CSV")
@@ -708,11 +708,6 @@ def main() -> int:
     fold_attr_parser.add_argument("--quality-daily-exposure", required=True, help="Path to quality strategy_daily_exposure.csv")
     fold_attr_parser.add_argument("--price-volume-daily-exposure", required=True, help="Path to price-volume strategy_daily_exposure.csv")
     fold_attr_parser.add_argument("--output-dir", required=True, help="Output directory for paired fold attribution artifacts")
-    index_asof_parser = sub.add_parser("index-asof-audit", help="Audit benchmark constituent and weight as-of data readiness")
-    index_asof_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    index_asof_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
-    index_asof_parser.add_argument("--candidate-folds", default=None, help="Optional strategy_admission_candidate_folds.csv for fold-level coverage")
-    index_asof_parser.add_argument("--output-dir", default=None, help="Output directory for index as-of audit artifacts")
     participation_parser = sub.add_parser("strategy-participation-overlay", help="Run research-only minimum-exposure counterfactual on daily holdings")
     participation_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     participation_parser.add_argument("--holdings", required=True, help="Path to strategy_daily_holdings.csv")
@@ -745,22 +740,6 @@ def main() -> int:
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
-    db_health_parser = sub.add_parser("db-health", help="Run read-only SQLite database health checks")
-    db_health_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    db_health_parser.add_argument(
-        "--scope",
-        choices=["all", "cn", "financial", "cross_market", "scheduler"],
-        default="all",
-        help="Health-check scope. Default: all",
-    )
-    db_health_parser.add_argument("--as-of", default=None, help="As-of date in YYYY-MM-DD. Defaults to today.")
-    db_health_parser.add_argument("--output-dir", default=None, help="Output directory for health-check artifacts")
-    db_health_parser.add_argument(
-        "--fail-on",
-        choices=["error", "warning", "never"],
-        default="never",
-        help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
-    )
     register_dashboard_commands(sub)
     register_intelligence_commands(sub)
     register_maintenance_commands(sub)
@@ -912,25 +891,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.cmd in REPORT_EXPORT_COMMANDS:
         return handle_report_export_command(args, parser=parser)
-    if args.cmd == "adjustment-audit":
-        config_path = Path(args.config).resolve()
-        cfg = load_config(config_path)
-        console = Console()
-        console.print("[bold]A-share price adjustment audit started[/bold]")
-        result = run_adjustment_audit(
-            config=cfg.get("phase0", cfg),
-            root=config_path.parent,
-            output_csv=Path(args.output_csv).resolve() if args.output_csv else None,
-            output_md=Path(args.output_md).resolve() if args.output_md else None,
-        )
-        color = "green" if result.can_build_qfq_asof else "yellow"
-        console.print(f"[{color}]Adjustment audit verdict: {result.verdict}[/{color}]")
-        console.print(f"Can build qfq_asof: {result.can_build_qfq_asof}")
-        console.print(f"CSV: {result.csv_path}")
-        console.print(f"Markdown: {result.md_path}")
-        for warning in result.warnings[:10]:
-            console.print(f"[yellow]Warning:[/yellow] {warning}")
-        return 0
+    if args.cmd in DATA_GOVERNANCE_COMMANDS:
+        return handle_data_governance_command(args, parser=parser)
     if args.cmd == "overfit-diagnostic":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
@@ -1193,32 +1155,6 @@ def main() -> int:
         console.print(f"Turnover cost CSV: {result.turnover_cost_csv_path}")
         console.print(f"Markdown: {result.md_path}")
         return 0
-    if args.cmd == "index-asof-audit":
-        config_path = Path(args.config).resolve()
-        cfg = load_config(config_path)
-        phase_cfg = cfg.get("phase0", cfg)
-        console = Console()
-        console.print("[bold]Index as-of data audit started[/bold]")
-        result = run_index_asof_audit(
-            config=phase_cfg,
-            root=config_path.parent,
-            config_path=config_path,
-            benchmark_symbol=args.benchmark_symbol,
-            candidate_folds_path=Path(args.candidate_folds).resolve() if args.candidate_folds else None,
-            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
-            command=" ".join(os.sys.argv),
-        )
-        console.print("[green]Index as-of data audit complete[/green]")
-        console.print(f"Benchmark: {result.benchmark_symbol}")
-        console.print(f"Database: {result.db_path}")
-        console.print(f"Constituents: {result.constituent_status}")
-        console.print(f"Weights: {result.weight_status}")
-        console.print(f"Fold rows: {result.fold_rows}")
-        console.print(f"Capability CSV: {result.capability_csv_path}")
-        console.print(f"Fold coverage CSV: {result.fold_coverage_csv_path}")
-        console.print(f"Markdown: {result.report_md_path}")
-        console.print(f"Run log: {result.run_log_md_path}")
-        return 0
     if args.cmd == "strategy-participation-overlay":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
@@ -1327,32 +1263,6 @@ def main() -> int:
         console.print(f"Correlation: {result.correlation_csv}")
         for warning in result.warnings[:10]:
             console.print(f"[yellow]Warning:[/yellow] {warning}")
-        return 0
-    if args.cmd == "db-health":
-        config_path = Path(args.config).resolve()
-        cfg = load_config(config_path)
-        console = Console()
-        console.print("[bold]Database health check started[/bold]")
-        result = run_database_health_check(
-            config=cfg.get("phase0", cfg),
-            root=config_path.parent,
-            scope=str(args.scope),
-            as_of_date=str(args.as_of) if args.as_of else None,
-            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
-        )
-        color = "green" if result.status == "pass" else ("yellow" if result.status == "warning" else "red")
-        console.print(f"[{color}]Database health status: {result.status}[/{color}]")
-        console.print(f"Summary rows: {result.summary_rows}")
-        console.print(
-            f"Findings: errors={result.error_count}, warnings={result.warning_count}, info={result.info_count}"
-        )
-        console.print(f"Summary CSV: {result.summary_csv}")
-        console.print(f"Findings CSV: {result.findings_csv}")
-        console.print(f"Markdown: {result.summary_md}")
-        if args.fail_on == "error" and result.error_count > 0:
-            return 2
-        if args.fail_on == "warning" and (result.error_count > 0 or result.warning_count > 0):
-            return 2
         return 0
     if args.cmd == "dashboard":
         return handle_dashboard_command(args, parser=parser)
