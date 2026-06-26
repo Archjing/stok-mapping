@@ -47,7 +47,7 @@ phase0:
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module, "_default_report_strategy_id", lambda config: "demo")
-    monkeypatch.setattr(module, "_execution_settings", lambda config: {})
+    monkeypatch.setattr(module, "execution_settings", lambda config: {})
     monkeypatch.setattr(module, "export_strategy_bill", fake_export_strategy_bill)
     monkeypatch.setattr(module, "_fold_metrics", lambda daily, bill, strategy_id: pd.DataFrame({"fold": [1], "daily_return": [0.01]}))
     monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily: {})
@@ -115,7 +115,7 @@ phase0:
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(module, "_default_report_strategy_id", lambda config: "demo")
-    monkeypatch.setattr(module, "_execution_settings", lambda config: {})
+    monkeypatch.setattr(module, "execution_settings", lambda config: {})
     monkeypatch.setattr(module, "export_strategy_bill", fake_export_strategy_bill)
     monkeypatch.setattr(module, "_fold_metrics", lambda daily, bill, strategy_id: pd.DataFrame({"fold": [1], "daily_return": [0.01]}))
     monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily: {})

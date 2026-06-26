@@ -561,8 +561,9 @@ data health PASS / acceptable warning
 核心模块：
 
 - [phase0/execution/accounts.py](../phase0/execution/accounts.py)
+- [phase0/execution/strategy_ledger.py](../phase0/execution/strategy_ledger.py)
 - [phase0/reporting/account_bill.py](../phase0/reporting/account_bill.py)
-- [phase0/reporting/strategy_bill.py](../phase0/reporting/strategy_bill.py)
+- [phase0/reporting/strategy_bill.py](../phase0/reporting/strategy_bill.py)（策略账单导出编排；执行撮合核心已拆到 `phase0/execution/strategy_ledger.py`）
 - [phase0/accounts.py](../phase0/accounts.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_strategy_bill.py](../scripts/export_strategy_bill.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/export_strategy_oos_report.py](../scripts/export_strategy_oos_report.py)
@@ -573,6 +574,7 @@ data health PASS / acceptable warning
 
 - 模拟账户 SQLite 主账本。
 - 日资产、成交、持仓记录。
+- 策略组合账单的折内执行撮合、整手约束、涨跌停/停牌阻断和未成交原因。
 - A 股 100 股整手、现金约束、卖出回款。
 - 成交价 profile：`research` / `live` 与 `close` / `next_open` / `conservative` 等口径。
 - 涨跌停、停牌、流动性参与率、未成交原因。

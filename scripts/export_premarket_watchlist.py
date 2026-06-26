@@ -20,6 +20,7 @@ from phase0.execution.accounts import (
     load_simulated_accounts,
     price_mode_label,
 )
+from phase0.execution.strategy_ledger import execution_settings, limit_pct
 from phase0.reporting.account_bill import export_account_bill_html, load_latest_account_snapshot
 from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.data_access.local_history import configure_local_history
@@ -29,8 +30,6 @@ from phase0.strategies import get_strategy
 from phase0.walk_forward import _resolve_walk_forward_window
 from phase0.reporting.strategy_bill import (
     DEFAULT_PANEL_CACHE,
-    _execution_settings,
-    _limit_pct,
     _load_names,
     _load_or_build_panel,
     _panel_cache_key,
@@ -230,9 +229,9 @@ def _execution_risk_note(row: pd.Series, execution_cfg: dict[str, Any]) -> str:
             notes.append("最近一日成交额为0，可能停牌或流动性异常")
 
     if bool(execution_cfg.get("enable_limit_check", True)) and pd.notna(close_price) and pd.notna(previous_close) and float(previous_close) > 0:
-        limit_pct = _limit_pct(str(row.get("symbol", "")), execution_cfg)
-        limit_up = float(previous_close) * (1.0 + limit_pct)
-        limit_down = float(previous_close) * (1.0 - limit_pct)
+        daily_limit_pct = limit_pct(str(row.get("symbol", "")), execution_cfg)
+        limit_up = float(previous_close) * (1.0 + daily_limit_pct)
+        limit_down = float(previous_close) * (1.0 - daily_limit_pct)
         tolerance = 0.001
         if ("买" in action or "加仓" in action) and float(close_price) >= limit_up * (1.0 - tolerance):
             notes.append("接近/触及涨停，买入可能无法成交")
@@ -694,7 +693,7 @@ def export_premarket_watchlist(
     configure_us_market_history(config.get("us_market_history", {}), root)
 
     wcfg = config["walk_forward"]
-    execution_cfg = _execution_settings(config)
+    execution_cfg = execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
     symbols = _parse_symbol_list(config, root)
     history_years = int(config["years"])

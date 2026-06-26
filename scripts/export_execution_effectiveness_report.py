@@ -13,11 +13,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.reporting.paths import report_config_path
-from phase0.reporting.strategy_bill import (
-    _default_report_strategy_id,
-    _execution_settings,
-    export_strategy_bill,
-)
+from phase0.execution.strategy_ledger import execution_settings
+from phase0.reporting.strategy_bill import _default_report_strategy_id, export_strategy_bill
 
 
 DEFAULT_OUTPUT_DIR = "live_execution_backtest"
@@ -522,7 +519,7 @@ def export_execution_effectiveness_report(
         bill=bill,
         daily=daily,
     )
-    execution_cfg = _execution_settings(effective_config)
+    execution_cfg = execution_settings(effective_config)
     live_cfg["slippage"] = effective_config.get("walk_forward", {}).get("slippage", "")
     live_cfg["commission"] = effective_config.get("walk_forward", {}).get("commission", "")
     live_cfg["stamp_duty_sell"] = effective_config.get("walk_forward", {}).get("stamp_duty_sell", "")
