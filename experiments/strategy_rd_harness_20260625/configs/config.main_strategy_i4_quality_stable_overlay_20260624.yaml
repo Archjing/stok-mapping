@@ -1,0 +1,704 @@
+phase0:
+  experiment:
+    name: "main_strategy_i4_quality_stable_overlay_20260624"
+    purpose: "Special governance experiment for Phase1 main-strategy admission breakthrough; tests the existing cross-market risk overlay on top of the I3 quality-stable low_vol_low_turnover_quality_v1 hypothesis."
+  benchmark_symbol: "SH.000300"
+  years: 7
+  symbols:
+    - "SZ.300750"
+    - "SZ.002594"
+    - "SH.688981"
+    - "SZ.002475"
+    - "SZ.300308"
+    - "SZ.300502"
+    - "SZ.300394"
+    - "SZ.002415"
+    - "SZ.000063"
+    - "SH.688012"
+    - "SZ.002371"
+    - "SH.603986"
+    - "SZ.002241"
+    - "SZ.000725"
+    - "SZ.000333"
+    - "SZ.000651"
+    - "SZ.000858"
+    - "SH.600519"
+    - "SH.601318"
+    - "SH.600036"
+    - "SH.600276"
+    - "SH.600900"
+    - "SH.600030"
+  universe:
+    enabled: true
+    point_in_time_for_backtest: true
+    allow_static_universe_for_backtest: false
+    target_size: 500
+    min_usable_size: 100
+    walk_forward_limit: 120
+    output_dir: "data/universe"
+    output_file: "local_factor_universe.csv"
+    snapshot_file: "a_share_snapshot.csv"
+    report_file: "local_factor_universe_report.md"
+    markets: ["SH", "SZ"]
+    exclude_name_patterns: ["ST", "*ST", "退"]
+    min_amount: 50000000
+    min_total_mv: 5000000000
+    max_industry_weight: 0.12
+    fallback_days: 90
+    fetch_industry: true
+    industry_max_boards: 120
+  local_history:
+    enabled: true
+    path: "data/manual_history/a_share_history.sqlite"
+    market: "CN"
+    adjust_type: "qfq"
+    execution_adjust_type: "bfq"
+    daily_table: "market_daily_bars"
+    meta_table: "market_stocks"
+    daily_basic_table: "market_daily_basic"
+    financial_table: "market_financial_factors"
+    adj_factor_table: "market_adj_factors"
+    dividend_table: "market_dividends"
+    index_table: "market_index_bars"
+    index_meta_table: "market_indices"
+    calendar_table: "trading_calendar"
+    price_adjustment_for_backtest: "qfq_asof"
+    price_adjustment_audit:
+      enabled: true
+      compare_modes: ["qfq_current", "qfq_asof", "bfq_raw"]
+      feature_checks: ["mom20", "ma20", "vol20", "breakout20"]
+    use_for_daily_fallback: true
+    use_for_universe_fallback: true
+    prefer_daily_for_backtest: true
+    min_history_days: 200
+    max_snapshot_staleness_days: 1
+    min_snapshot_coverage: 0.80
+    allow_stale_universe_fallback: false
+  manual_history_update:
+    enabled: true
+    adjust_types: ["qfq"]
+    markets: ["SH", "SZ"]
+    max_staleness_days: 1
+    min_latest_coverage: 0.80
+    refresh_metadata: true
+    min_metadata_coverage: 0.80
+    min_run_time: "16:30"
+    source_audit_table: "market_data_source_runs"
+    rebuild_universe_after: true
+    run_before_phase0: false
+    max_symbols: 0
+  us_market_history:
+    enabled: true
+    path: "data/us_market_history.sqlite"
+    daily_table: "us_daily_bars"
+    source_audit_table: "us_data_source_runs"
+    provider: "yfinance"
+    years: 5
+    max_staleness_days: 3
+    min_symbol_coverage: 1.0
+    run_before_phase0: false
+    runtime_yfinance_fallback: false
+    symbols: ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
+  hk_market_history:
+    enabled: true
+    path: "data/hk_market_history.sqlite"
+    daily_table: "hk_daily_bars"
+    source_audit_table: "hk_data_source_runs"
+    provider: "yfinance"
+    years: 5
+    max_staleness_days: 3
+    min_symbol_coverage: 1.0
+    run_before_phase0: false
+    symbols:
+      - "HK.00700"  # 腾讯控股
+      - "HK.09988"  # 阿里巴巴-W
+      - "HK.03690"  # 美团-W
+      - "HK.01810"  # 小米集团-W
+      - "HK.00981"  # 中芯国际
+      - "HK.01211"  # 比亚迪股份
+      - "HK.09618"  # 京东集团-SW
+      - "HK.09888"  # 百度集团-SW
+      - "HK.01024"  # 快手-W
+      - "HK.09999"  # 网易-S
+      - "HK.02015"  # 理想汽车-W
+      - "HK.09868"  # 小鹏汽车-W
+      - "HK.01347"  # 华虹半导体
+      - "HK.00992"  # 联想集团
+      - "HK.00005"  # 汇丰控股
+      - "HK.00388"  # 香港交易所
+      - "HK.01299"  # 友邦保险
+      - "HK.02318"  # 中国平安
+      - "HK.00939"  # 建设银行
+      - "HK.01398"  # 工商银行
+      - "HK.03988"  # 中国银行
+      - "HK.00941"  # 中国移动
+      - "HK.00728"  # 中国电信
+      - "HK.00883"  # 中国海洋石油
+      - "HK.01088"  # 中国神华
+      - "HK.02899"  # 紫金矿业
+      - "HK.02020"  # 安踏体育
+      - "HK.09633"  # 农夫山泉
+      - "HK.02269"  # 药明生物
+      - "HK.06160"  # 百济神州
+  financial_factors:
+    enabled: true
+    table: "market_financial_factors"
+    periods: 32
+    markets: ["SH", "SZ"]
+    min_factor_coverage: 0.60
+    rebuild_universe_after: true
+  cost_sensitivity:
+    enabled: false
+    scenarios:
+      - name: "base_research_cost"
+        slippage: 0.001
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "main_personal_execution"
+        slippage: 0.00246
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "stress_slippage_0_003"
+        slippage: 0.003
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "stress_slippage_0_005"
+        slippage: 0.005
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "low_slippage"
+        slippage: 0.0003
+        commission: 0.00025
+        stamp_duty_sell: 0.0005
+      - name: "zero_cost"
+        slippage: 0.0
+        commission: 0.0
+        stamp_duty_sell: 0.0
+  manual_history_import:
+    # Set A_SHARE_DATA_DIR to the external raw data directory in .env or shell.
+    qfq_zip: "${A_SHARE_DATA_DIR}/daily_qfq.zip"
+    bfq_zip: "${A_SHARE_DATA_DIR}/daily.zip"
+    stock_list_csv: "${A_SHARE_DATA_DIR}/股票列表.csv"
+    trading_calendar_csv: "${A_SHARE_DATA_DIR}/交易日历.csv"
+    delisted_stock_csv: "${A_SHARE_DATA_DIR}/退市股票列表.csv"
+    index_list_csv: "${A_SHARE_DATA_DIR}/指数/指数列表.csv"
+    csi_index_list_csv: "${A_SHARE_DATA_DIR}/指数/中证指数列表.csv"
+    index_daily_zip: "${A_SHARE_DATA_DIR}/指数/指数_日_kline.zip"
+    csi_index_daily_zip: "${A_SHARE_DATA_DIR}/指数/中证指数_日_kline.zip"
+    output_db: "data/manual_history/a_share_history.sqlite"
+    years: 10
+    chunk_size: 250000
+  data_sources:
+    fred:
+      enabled: false
+      api_key_env: "FRED_API_KEY"
+      cache:
+        enabled: true
+        dir: "data/cache/fred"
+        ttl_hours: 24
+      series:
+        gdp: "GDP"
+        cpi: "CPIAUCSL"
+        fedfunds: "FEDFUNDS"
+        fedfunds_daily: "DFF"
+        vix: "VIXCLS"
+    tiingo:
+      enabled: true
+      token_env: "TIINGO_API_TOKEN"
+      us_equities:
+        - "NVDA"
+        - "AAPL"
+        - "TSLA"
+      thematic_etfs:
+        - "KWEB"
+    yfinance:
+      us_indices:
+        - "^NDX"
+        - "^SOX"
+        - "^GSPC"
+        - "^VIX"
+      us_equities:
+        - "NVDA"
+        - "AAPL"
+        - "TSLA"
+      thematic_etfs:
+        - "KWEB"
+      cnh_proxy:
+        - "CNY=X"
+    tushare:
+      enabled: true
+      token_env: "TUSHARE_TOKEN"
+      api_url: "http://api.tushare.pro"
+      request_delay: 0.25
+      max_retries: 3
+      retry_backoff: 2
+      min_coverage: 0.80
+    akshare:
+      anti_crawler:
+        enabled: true
+        request_delay: 0.8
+        jitter: 0.4
+        batch_size: 5
+        batch_pause: 6
+        max_retries: 1
+        retry_backoff: 4
+      cn_symbols:
+        - "SZ.300750"
+        - "SH.600519"
+      hk_symbols:
+        - "HK.00700"
+        - "HK.09988"
+  intelligence:
+    ledger: "knowledge/intelligence/strategy_intelligence_ledger.csv"
+    inbox_dir: "data/intelligence/inbox"
+    report_dir: "reports/intelligence"
+    sources:
+      - name: "local_papers"
+        type: "local_dir"
+        enabled: true
+        path: "refdocs/papers"
+      - name: "logseq_pages"
+        type: "local_dir"
+        enabled: false
+        path: "/home/zj/workspace/KMS/My_logseq/pages"
+      - name: "arxiv_quant_finance"
+        type: "arxiv"
+        enabled: true
+        query: "all:quantitative finance stock trading strategy"
+      - name: "openalex_quant_strategy"
+        type: "openalex"
+        enabled: true
+        query: "quantitative investment stock strategy"
+      - name: "crossref_quant_strategy"
+        type: "crossref"
+        enabled: true
+        query: "quantitative investment stock strategy"
+      - name: "rss_quantocracy"
+        type: "rss"
+        enabled: true
+        url: "https://feeds.feedburner.com/Quantocracy"
+  maintenance_orchestrator:
+    enabled: true
+    state_db: "data/maintenance/maintenance.sqlite"
+    default_timezone: "Asia/Shanghai"
+    tushare_financial_backfill:
+      shard_count: 3
+      max_requests_per_minute_per_shard: 67
+      default_start_period: "2018-06-30"
+      default_end_period: "2026-03-31"
+  walk_forward:
+    preset_name: "baseline_2y_1y_5fold"
+    presets:
+      baseline_2y_1y:
+        train_years: 2
+        validate_years: 1
+        description: "统一候选比较 baseline，保留与既有报告可比性。"
+      baseline_2y_1y_5fold:
+        train_years: 2
+        validate_years: 1
+        start_date: "2019-04-01"
+        end_date: "2026-03-31"
+        expected_folds: 5
+        description: "通用策略准入 baseline；自然日期窗口，交易日历过滤，5 折验收。"
+      quality_3y_1y:
+        train_years: 3
+        validate_years: 1
+        description: "低频质量/低换手策略稳健性复核窗口。"
+      quality_3y_1y_4fold:
+        train_years: 3
+        validate_years: 1
+        start_date: "2019-04-01"
+        end_date: "2026-03-31"
+        expected_folds: 4
+        description: "低频质量/低换手策略稳健性复核；自然日期窗口，交易日历过滤。"
+      quality_4y_1y:
+        train_years: 4
+        validate_years: 1
+        start_date: "2020-04-01"
+        end_date: "2026-03-31"
+        expected_folds: 2
+        description: "质量/低换手策略严格复核窗口；自然日期窗口，交易日历过滤。"
+    min_samples: 200
+    initial_cash: 1000000
+    commission: 0.00025
+    stamp_duty_sell: 0.0005
+    slippage: 0.00246
+    gate:
+      annualized_return_min: 0.0
+      sharpe_min: 0.5
+      max_drawdown_min: -0.25
+      win_rate_min: 0.45
+      oos_return_decay_ratio_max: 0.30
+      oos_annualized_return_min: 0.0
+      oos_sharpe_min: 0.5
+      min_oos_fold_count: 2
+      min_positive_fold_ratio: 0.75
+      max_negative_fold_count: 1
+      min_fold_annualized_return_min: -0.10
+      min_oos_positive_fold_ratio: 1.0
+    admission:
+      # strategy_sets 是准入设计输入，不记录运行状态。
+      # 一次性缩小范围优先用 CLI --strategies；下次不带该参数会回到默认集合。
+      # 注释某个策略行属于持久配置变更，需要手动取消注释恢复。
+      default_strategy_set: "baseline_admission_all_v1"
+      strategy_sets:
+        baseline_admission_all_v1:
+          description: "默认全局准入策略集合；临时缩小范围优先使用 CLI --strategies 覆盖。"
+          strategies:
+            - "legacy_momentum"
+            - "legacy_momentum_low_turnover_v1"
+            - "ma_kline_baseline_v1"
+            - "residual_momentum_reversal_v1"
+            - "residual_momentum_reversal_v2"
+            - "quality_growth_price_v1"
+            - "low_vol_low_turnover_quality_v1"
+            - "quality_low_turnover_monthly_v1"
+            - "multifactor_volume_price_filter_v1"
+            - "core_selection_quality_momentum_v1"
+            - "theme_exposure_momentum_v1"
+            - "sleeve_composite_v1"
+        quality_research_v1:
+          description: "质量/低换手策略专项研究集合。"
+          strategies:
+            - "quality_growth_price_v1"
+            - "low_vol_low_turnover_quality_v1"
+            - "quality_low_turnover_monthly_v1"
+        sleeve_research_v1:
+          description: "T2.10 规则型 sleeve 组合研究集合；不代表准入或交易信号。"
+          strategies:
+            - "legacy_momentum_low_turnover_v1"
+            - "quality_low_turnover_monthly_v1"
+            - "sleeve_composite_v1"
+      gate:
+        annualized_return_min: 0.0
+        sharpe_min: 0.5
+        max_drawdown_min: -0.25
+        positive_fold_ratio_min: 0.75
+        turnover_annual_mean_max: 3.0
+        turnover_annual_max_max: 5.0
+        overfit_risk_max: "medium"
+        require_parameter_stability: true
+        require_industry_concentration_check: true
+        require_factor_diagnostics: true
+        require_qfq_asof: true
+      diagnostics:
+        suites:
+          - "data_quality_v1"
+          - "execution_feasibility_v1"
+          - "factor_explainability_v1"
+          - "overfit_v1"
+    strategy_v2:
+      mode: "compare"
+      # 非 admission walk-forward 的兼容候选列表。
+      compare_strategies:
+        - "legacy_momentum"
+        - "legacy_momentum_low_turnover_v1"
+        - "ma_kline_baseline_v1"
+        - "residual_momentum_reversal_v1"
+        - "residual_momentum_reversal_v2"
+        - "quality_growth_price_v1"
+        - "low_vol_low_turnover_quality_v1"
+        - "quality_low_turnover_monthly_v1"
+        - "multifactor_volume_price_filter_v1"
+        - "core_selection_quality_momentum_v1"
+        - "theme_exposure_momentum_v1"
+        - "sleeve_composite_v1"
+      candidate_governance:
+        enabled: true
+        selection_panel_scope: "portfolio"
+        min_fold_count: 20
+        min_symbol_count: 20
+        min_portfolio_fold_count: 4
+      constraints:
+        enabled: true
+        apply_to: []
+        industry:
+          enabled: true
+          mode: "audit"
+          max_names_per_industry: 2
+          max_industry_weight: 0.35
+          unknown_industry_policy: "allow"
+      account_execution:
+        enabled: false
+        initial_cash: 1000000
+        execution_price_mode: "next_open"
+        lot_size: 100
+        max_participation_rate: 0.05
+        enable_limit_check: true
+        enable_suspension_check: true
+      top_n: 3
+      mom_windows: [3, 5, 10, 20]
+      mom_quantiles: [0.5, 0.6]
+      trend_windows: [20, 60]
+      vol_window: 20
+      vol_quantiles: [0.6, 0.75]
+      target_vol: 0.18
+      train_min_trades: 5
+      legacy_momentum_low_turnover:
+        enabled: true
+        mom_windows: [5, 20]
+        buy_quantiles: [0.6]
+        hold_quantiles: [0.4]
+        buy_top_n_values: [5, 10]
+        hold_rank_multipliers: [2.0]
+        rebalance_days_values: [5, 10, 20]
+        min_hold_days_values: [5, 10]
+        turnover_penalties: [0.01, 0.02]
+      sleeve_composite:
+        enabled: true
+        defensive_quality_weight: 0.55
+        low_turnover_momentum_weight: 0.25
+        risk_overlay_weight: 0.20
+        momentum_windows: [20, 60]
+        top_n: 10
+        max_symbol_weight: 0.10
+      cross_market:
+        enabled: true
+        tech_score_thresholds: [0.0, 0.5]
+        vix_risk_off_level: 25
+        cny_pressure_threshold: 0.003
+        magnitude_z_window: 252
+        magnitude_z_min_periods: 60
+        magnitude_z_clip: 2.0
+        magnitude_score_thresholds: [0.0]
+        soft_risk_scale: 0.5
+        mapped_symbols:
+          SZ.300750: ev
+          SZ.002594: ev
+          SH.688981: semiconductor
+          SZ.002475: consumer_electronics
+          SZ.300308: ai_infra
+          SZ.300502: ai_infra
+          SZ.300394: ai_infra
+          SZ.002415: tech_hardware
+          SZ.000063: tech_hardware
+          SH.688012: semiconductor
+          SZ.002371: consumer_electronics
+          SH.603986: semiconductor
+          SZ.002241: semiconductor
+          SZ.000725: semiconductor
+          SZ.000333: domestic_core
+          SZ.000651: domestic_core
+          SZ.000858: domestic_core
+          SH.600519: domestic_core
+          SH.601318: financial
+          SH.600036: financial
+          SH.600276: healthcare
+          SH.600900: defensive
+          SH.600030: financial
+      price_volume_features:
+        amount_ma_window: 20
+        breakout_window: 20
+        shadow_clip: 5.0
+      baseline_ma_kline:
+        enabled: true
+        top_n_values: [3, 5]
+        trend_window_pairs: [[20, 60]]
+        amount_ratio_mins: [1.0, 1.2]
+        upper_shadow_max_values: [1.0, 1.5]
+      core_selection_quality_momentum:
+        enabled: false
+        quality_quantiles: [0.6, 0.7]
+        residual_windows: [10, 20]
+        residual_quantiles: [0.55, 0.6]
+        top_n_values: [8, 12]
+        use_xmarket_overlay: false
+      theme_exposure_momentum:
+        enabled: false
+        mom_windows: [10, 20]
+        mom_quantiles: [0.6, 0.7]
+        top_n_values: [3, 5]
+        amount_ratio_mins: [1.0, 1.2]
+        breakout_required_values: [true]
+        xmarket_thresholds: [0.0, 0.5]
+        use_xmarket_overlay: true
+      local_factor:
+        enabled: true
+        residual_momentum_windows: [10, 20]
+        residual_momentum_quantiles: [0.6]
+        reversal_window: 3
+        reversal_quantiles: [0.7]
+        use_xmarket_overlay: true
+        residual_reversal_v2:
+          enabled: true
+          residual_windows: [5, 10, 20]
+          residual_quantiles: [0.6]
+          reversal_windows: [1, 3]
+          reversal_quantiles: [0.7]
+          amount_ratio_mins: [1.0, 1.2]
+          upper_shadow_max_values: [1.0, 1.5]
+          gap_ret_max_values: [0.03, 0.05]
+          use_xmarket_overlay: false
+        multifactor_filter:
+          enabled: true
+          quality_quantiles: [0.7]
+          residual_windows: [10, 20]
+          residual_quantiles: [0.6]
+          top_n_values: [5, 10]
+          amount_ratio_mins: [1.0, 1.2]
+          upper_shadow_max_values: [1.0, 1.5]
+          breakout_required_values: [false, true]
+          use_xmarket_overlay: false
+          factor_weights:
+            quality_growth: 0.45
+            residual_momentum: 0.35
+            low_volatility: 0.20
+        quality_growth:
+          enabled: true
+          financial_table: "market_financial_factors"
+          financial_lag_days: 1
+          min_available_fields: 4
+          quality_quantiles: [0.7]
+          top_n_values: [5, 10]
+          cash_flow_quality_clip: [-5, 5]
+          growth_clip: [-100, 300]
+          debt_to_asset_clip: [0, 100]
+          use_xmarket_overlay: true
+          weights:
+            roe: 0.30
+            cash_flow_quality: 0.20
+            profit_growth: 0.20
+            revenue_growth: 0.15
+            low_debt: 0.15
+        low_vol_low_turnover_quality:
+          enabled: true
+          quality_quantiles: [0.6]
+          low_vol_windows: [20]
+          low_vol_quantiles: [0.5]
+          low_turnover_quantiles: [0.5]
+          momentum_windows: [60]
+          top_n_values: [10]
+          hold_rank_multipliers: [2.0]
+          rebalance_days_values: [40]
+          min_hold_days_values: [20]
+          turnover_penalties: [0.02]
+          max_symbol_weight: 0.10
+          use_xmarket_overlay: true
+          factor_weights:
+            low_volatility: 0.40
+            low_turnover: 0.25
+            quality: 0.25
+            medium_momentum: 0.10
+        quality_low_turnover_monthly:
+          enabled: true
+          quality_quantiles: [0.6, 0.7]
+          low_vol_windows: [20, 60]
+          low_vol_quantiles: [0.5, 0.6]
+          low_turnover_quantiles: [0.5]
+          top_n_values: [10, 20]
+          hold_rank_multipliers: [2.0]
+          rebalance_days_values: [20, 40]
+          min_hold_days_values: [20]
+          turnover_penalties: [0.02]
+          max_symbol_weight: 0.10
+          use_xmarket_overlay: false
+  accounts:
+    simulated:
+      - account_id: "default"
+        name: "默认模拟账户"
+        enabled: true
+        initial_cash: 1000000
+        ledger_path: "data/simulated_trading/phase0_daily_account_ledger.csv"
+        database_path: "data/simulated_trading/simulated_accounts.sqlite"
+        execution_price_mode: "next_open"
+        max_participation_rate: 0.05
+        lot_size: 100
+  execution:
+    price_mode: "next_open"
+    conservative_price_buffer: 0.001
+    lot_size: 100
+    max_participation_rate: 0.05
+    enable_limit_check: true
+    enable_suspension_check: true
+    limit_up_down_pct:
+      default: 0.10
+      star: 0.20
+      chinext: 0.20
+      bj: 0.30
+  strategy_reports:
+    default_strategy_id: "legacy_momentum_low_turnover_v1"
+    strategies:
+      legacy_momentum_low_turnover_v1:
+        display_name: "低换手经典动量"
+        bill:
+          output: "reports/phase0_low_turnover_bill.csv"
+          daily_output: "reports/phase0_low_turnover_daily_assets.csv"
+          preview_output: "reports/phase0_low_turnover_bill_preview.html"
+          panel_cache: "reports/cache/low_turnover_panel.pkl"
+          preview_title: "Phase 0 Low Turnover Bill Preview"
+          score_label: "策略分数"
+        oos:
+          output_dir: "reports/live_execution_backtest"
+          daily_assets: "reports/live_execution_backtest/oos_daily_assets.csv"
+          report_output: "reports/live_execution_backtest/oos_report.html"
+          curve_output: "reports/live_execution_backtest/oos_curve.csv"
+          fold_output: "reports/live_execution_backtest/oos_fold_compare.csv"
+          title: "Phase 0 Low Turnover Continuous OOS Report"
+          checkpoint_date: "2025-05-30"
+          checkpoint_note: "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。"
+        period_compare:
+          title: "低换手经典动量：早期区间与当前区间对比"
+          note: "两段都沿用 walk-forward 的 2 年训练 + 1 年验证方法。该表用于观察策略是否只适配最近区间。"
+  live_execution_backtest:
+    name: "实盘仿真回测"
+    default_profile: "live"
+    gate_source: "account_daily_assets"
+    gate:
+      annualized_return_min: 0.0
+      sharpe_min: 0.5
+      max_drawdown_min: -0.25
+      win_rate_min: 0.45
+      oos_return_decay_ratio_max: 0.30
+      oos_annualized_return_min: 0.0
+      oos_sharpe_min: 0.5
+      min_oos_fold_count: 2
+      min_positive_fold_ratio: 0.75
+      max_negative_fold_count: 1
+      min_fold_annualized_return_min: -0.10
+      min_oos_positive_fold_ratio: 1.0
+      max_unfilled_or_partial_order_ratio: 0.60
+      max_partial_fill_order_ratio: 0.05
+      max_stale_valuation_positions_total: 0
+    output_dir: "reports/live_execution_backtest"
+    bill_output: "reports/live_execution_backtest/live_execution_bill.csv"
+    daily_output: "reports/live_execution_backtest/live_execution_daily_assets.csv"
+    preview_output: "reports/live_execution_backtest/live_execution_bill_preview.html"
+    fold_output: "reports/live_execution_backtest/live_execution_walk_forward_folds.csv"
+    report_output: "reports/live_execution_backtest/live_execution_effectiveness_report.md"
+    profiles:
+      research:
+        name: "策略研究回测"
+        walk_forward:
+          slippage: 0.001
+          commission: 0.00025
+          stamp_duty_sell: 0.0005
+        execution:
+          price_mode: "close"
+          conservative_price_buffer: 0.001
+          lot_size: 100
+          max_participation_rate: 0.0
+          enable_limit_check: false
+          enable_suspension_check: false
+          limit_up_down_pct:
+            default: 0.10
+            star: 0.20
+            chinext: 0.20
+            bj: 0.30
+      live:
+        name: "实盘仿真回测"
+        walk_forward:
+          slippage: 0.00246
+          commission: 0.00025
+          stamp_duty_sell: 0.0005
+        execution:
+          price_mode: "next_open"
+          conservative_price_buffer: 0.001
+          lot_size: 100
+          max_participation_rate: 0.05
+          enable_limit_check: true
+          enable_suspension_check: true
+          limit_up_down_pct:
+            default: 0.10
+            star: 0.20
+            chinext: 0.20
+            bj: 0.30

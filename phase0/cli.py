@@ -24,6 +24,8 @@ from phase0.external_market_history import (
 from phase0.factor_effectiveness import run_factor_effectiveness_report
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
+from phase0.index_asof_backfill import backfill_index_asof_from_config
+from phase0.index_asof_audit import run_index_asof_audit
 from phase0.intelligence import collect_intelligence, import_local_intelligence, validate_intelligence_ledger
 from phase0.local_history import configure_local_history
 from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_supervise, maintenance_tick
@@ -38,7 +40,17 @@ from phase0.reporting import (
 from phase0.report_paths import latest_dir
 from phase0.report_registry import scan_report_artifacts, write_report_manifest
 from phase0.strategy_admission import run_strategy_admission
+from phase0.strategy_csi300_attribution import run_strategy_csi300_attribution
+from phase0.strategy_core_reachability import run_strategy_core_reachability_diagnostic
+from phase0.strategy_exposure_diagnostic import run_strategy_exposure_diagnostic
 from phase0.strategy_failure_attribution import run_strategy_failure_attribution
+from phase0.strategy_filter_diagnostic import run_strategy_filter_diagnostic
+from phase0.strategy_fold_attribution import run_strategy_fold_attribution
+from phase0.strategy_holdings_exposure import run_strategy_holdings_exposure
+from phase0.strategy_market_context import run_strategy_market_context
+from phase0.strategy_missing_core_audit import run_missing_core_audit
+from phase0.strategy_participation_overlay import run_strategy_participation_overlay
+from phase0.strategy_role_card import run_strategy_role_card
 from phase0.throttle import configure_akshare_throttle
 from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
 from phase0.universe import build_local_factor_universe
@@ -691,6 +703,7 @@ def main() -> int:
         "Data Import & Update": [
             "backfill-adjustment-factors",
             "backfill-daily-basic",
+            "backfill-index-asof",
             "backfill-tushare-financials",
             "backfill-tushare-history",
             "build-universe",
@@ -716,11 +729,22 @@ def main() -> int:
             "execution-gate",
             "factor-effectiveness",
             "financial-pti",
+            "index-asof-audit",
             "intelligence",
             "overfit-diagnostic",
             "run",
             "strategy-admission",
+            "strategy-core-reachability-diagnostic",
+            "strategy-csi300-attribution",
+            "strategy-exposure-diagnostic",
             "strategy-failure-attribution",
+            "strategy-filter-diagnostic",
+            "strategy-fold-attribution",
+            "strategy-holdings-exposure",
+            "strategy-market-context",
+            "strategy-missing-core-audit",
+            "strategy-participation-overlay",
+            "strategy-role-card",
             "universe-pti",
         ],
         "Operations": [
@@ -740,10 +764,10 @@ def main() -> int:
             "\n".join(grouped_help_lines)
             + "\n\n"
             "Nested command groups:\n"
+            "  brief: account-bill, daily, daily-brief, premarket, watchlist\n"
             "  dashboard: scan\n"
-            "  brief: daily, daily-brief, watchlist, premarket, account-bill\n"
             "  intelligence: collect, import-local, validate\n"
-            "  maintain: run, resume, status, stop, supervise, tick\n"
+            "  maintain: resume, run, status, stop, supervise, tick\n"
             "  system: status\n"
         ),
     )
@@ -814,6 +838,103 @@ def main() -> int:
     attribution_parser.add_argument("--constraints", default=None, help="Path to strategy_admission_constraint_review.csv")
     attribution_parser.add_argument("--overfit", default=None, help="Path to overfit_diagnostic/strategy_overfit_diagnostic.csv")
     attribution_parser.add_argument("--output-dir", default=None, help="Output directory for failure attribution artifacts")
+    market_context_parser = sub.add_parser("strategy-market-context", help="Overlay benchmark market context onto strategy fold attribution")
+    market_context_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    market_context_parser.add_argument("--fold-attribution", required=True, help="Path to strategy_failure_fold_attribution.csv")
+    market_context_parser.add_argument("--output-dir", default=None, help="Output directory for market context artifacts")
+    market_context_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
+    market_context_parser.add_argument("--trend-window", type=int, default=120, help="Benchmark trend moving-average window")
+    market_context_parser.add_argument("--vol-window", type=int, default=20, help="Benchmark volatility window")
+    market_context_parser.add_argument("--vol-quantile", type=float, default=0.70, help="Rolling volatility quantile for high-vol context")
+    exposure_parser = sub.add_parser("strategy-exposure-diagnostic", help="Diagnose strong-benchmark lag exposure proxies from existing strategy artifacts")
+    exposure_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    exposure_parser.add_argument("--candidate-folds", required=True, help="Path to strategy_admission_candidate_folds.csv")
+    exposure_parser.add_argument("--market-context", required=True, help="Path to strategy_market_context_diagnostic.csv")
+    exposure_parser.add_argument("--universe", default=None, help="Optional universe metadata CSV; defaults to data/universe/local_factor_universe.csv")
+    exposure_parser.add_argument("--output-dir", default=None, help="Output directory for exposure diagnostic artifacts")
+    filter_parser = sub.add_parser("strategy-filter-diagnostic", help="Diagnose strategy empty-exposure and hard-filter bottlenecks")
+    filter_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    filter_parser.add_argument("--candidate-folds", required=True, help="Path to strategy_admission_candidate_folds.csv")
+    filter_parser.add_argument("--strategy", required=True, help="Strategy ID to diagnose")
+    filter_parser.add_argument("--presets", nargs="+", default=None, help="Optional walk-forward preset names to include")
+    filter_parser.add_argument("--folds", nargs="+", type=int, default=None, help="Optional fold numbers to include")
+    filter_parser.add_argument("--output-dir", default=None, help="Output directory for filter diagnostic artifacts")
+    core_reach_parser = sub.add_parser("strategy-core-reachability-diagnostic", help="Diagnose complete CSI300 core-weight reachability from as-of benchmark weights")
+    core_reach_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    core_reach_parser.add_argument("--candidate-folds", required=True, help="Path to strategy_admission_candidate_folds.csv")
+    core_reach_parser.add_argument("--output-dir", required=True, help="Output directory for core reachability artifacts")
+    core_reach_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
+    core_reach_parser.add_argument("--presets", nargs="+", default=None, help="Optional walk-forward preset names to include")
+    core_reach_parser.add_argument("--folds", nargs="+", type=int, default=None, help="Optional fold numbers to include")
+    core_reach_parser.add_argument("--core-top-n", type=int, default=60, help="Benchmark rank cutoff for core constituents")
+    core_reach_parser.add_argument("--core-cumulative-weight", type=float, default=0.60, help="Cumulative benchmark weight cutoff for core constituents")
+    core_reach_parser.add_argument("--top-n", type=int, default=20, help="Complete benchmark top-weight constituent count to audit")
+    core_reach_parser.add_argument("--min-amount", type=float, default=0.0, help="Minimum daily amount required for reachability")
+    core_reach_parser.add_argument("--min-amount-ratio20", type=float, default=0.0, help="Minimum amount_ratio20 required for reachability")
+    core_reach_parser.add_argument("--weight-date-lag-days", type=int, default=1, help="Calendar-day lag before looking up benchmark weights")
+    core_reach_parser.add_argument("--seed-benchmark-core", action="store_true", help="Read-only experiment: append missing benchmark core/top members into the diagnostic panel")
+    core_reach_parser.add_argument("--seed-top-n", type=int, default=None, help="Benchmark top-N members to seed when --seed-benchmark-core is used; defaults to --top-n")
+    core_reach_parser.add_argument("--seed-core-top-n", type=int, default=None, help="Benchmark core rank cutoff to seed; defaults to --core-top-n")
+    core_reach_parser.add_argument("--seed-core-cumulative-weight", type=float, default=None, help="Benchmark cumulative core weight to seed; defaults to --core-cumulative-weight")
+    missing_core_parser = sub.add_parser("strategy-missing-core-audit", help="Audit why benchmark core members are missing from PIT panels")
+    missing_core_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    missing_core_parser.add_argument("--missing-reasons", required=True, help="Path to strategy_core_reachability_failure_reasons.csv")
+    missing_core_parser.add_argument("--candidate-folds", required=True, help="Path to strategy_admission_candidate_folds.csv")
+    missing_core_parser.add_argument("--output-dir", required=True, help="Output directory for missing-core audit artifacts")
+    missing_core_parser.add_argument("--top-symbols", type=int, default=30, help="Number of missing symbols to audit by total missing weight")
+    holdings_parser = sub.add_parser("strategy-holdings-exposure", help="Rebuild research-only daily holdings and industry exposure for strategy folds")
+    holdings_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    holdings_parser.add_argument("--candidate-folds", required=True, help="Path to strategy_admission_candidate_folds.csv")
+    holdings_parser.add_argument("--market-context", required=True, help="Path to strategy_market_context_diagnostic.csv")
+    holdings_parser.add_argument("--strategy", required=True, help="Strategy ID to rebuild")
+    holdings_parser.add_argument("--presets", nargs="+", default=None, help="Optional walk-forward preset names to include")
+    holdings_parser.add_argument("--folds", nargs="+", type=int, default=None, help="Optional fold numbers to include")
+    holdings_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
+    holdings_parser.add_argument("--output-dir", default=None, help="Output directory for holdings exposure artifacts")
+    fold_attr_parser = sub.add_parser("strategy-fold-attribution", help="Assemble read-only paired fold attribution from existing diagnostics")
+    fold_attr_parser.add_argument("--quality-fold-attribution", required=True, help="Path to quality strategy_failure_fold_attribution.csv")
+    fold_attr_parser.add_argument("--price-volume-fold-attribution", required=True, help="Path to price-volume strategy_failure_fold_attribution.csv")
+    fold_attr_parser.add_argument("--quality-market-context", required=True, help="Path to quality strategy_market_context_diagnostic.csv")
+    fold_attr_parser.add_argument("--price-volume-market-context", required=True, help="Path to price-volume strategy_market_context_diagnostic.csv")
+    fold_attr_parser.add_argument("--quality-holdings", required=True, help="Path to quality strategy_daily_holdings.csv")
+    fold_attr_parser.add_argument("--price-volume-holdings", required=True, help="Path to price-volume strategy_daily_holdings.csv")
+    fold_attr_parser.add_argument("--quality-daily-exposure", required=True, help="Path to quality strategy_daily_exposure.csv")
+    fold_attr_parser.add_argument("--price-volume-daily-exposure", required=True, help="Path to price-volume strategy_daily_exposure.csv")
+    fold_attr_parser.add_argument("--output-dir", required=True, help="Output directory for paired fold attribution artifacts")
+    index_asof_parser = sub.add_parser("index-asof-audit", help="Audit benchmark constituent and weight as-of data readiness")
+    index_asof_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    index_asof_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
+    index_asof_parser.add_argument("--candidate-folds", default=None, help="Optional strategy_admission_candidate_folds.csv for fold-level coverage")
+    index_asof_parser.add_argument("--output-dir", default=None, help="Output directory for index as-of audit artifacts")
+    participation_parser = sub.add_parser("strategy-participation-overlay", help="Run research-only minimum-exposure counterfactual on daily holdings")
+    participation_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    participation_parser.add_argument("--holdings", required=True, help="Path to strategy_daily_holdings.csv")
+    participation_parser.add_argument("--daily-exposure", required=True, help="Path to strategy_daily_exposure.csv")
+    participation_parser.add_argument("--output-dir", required=True, help="Output directory for participation overlay artifacts")
+    participation_parser.add_argument("--min-exposure", type=float, default=0.65, help="Minimum gross exposure target for scoped rows")
+    participation_parser.add_argument("--max-symbol-weight", type=float, default=0.10, help="Per-symbol live weight cap after scaling")
+    participation_parser.add_argument("--max-scale", type=float, default=2.0, help="Maximum per-day scaling factor")
+    participation_parser.add_argument("--context-label", default="relative_lag_in_strong_benchmark_context", help="Market context label to rescale; use 'all' for no filter")
+    csi300_attr_parser = sub.add_parser("strategy-csi300-attribution", help="Attribute strong CSI300 lag using as-of benchmark weights")
+    csi300_attr_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    csi300_attr_parser.add_argument("--holdings", default=None, help="Optional path to strategy_daily_holdings.csv")
+    csi300_attr_parser.add_argument("--daily-exposure", default=None, help="Optional path to strategy_daily_exposure.csv")
+    csi300_attr_parser.add_argument("--candidate-folds", default=None, help="Optional strategy_admission_candidate_folds.csv for fold date scaffolding")
+    csi300_attr_parser.add_argument("--market-context", default=None, help="Optional strategy_market_context_diagnostic.csv for context filtering")
+    csi300_attr_parser.add_argument("--output-dir", required=True, help="Output directory for CSI300 attribution artifacts")
+    csi300_attr_parser.add_argument("--benchmark-symbol", default=None, help="Benchmark symbol; defaults to phase0.benchmark_symbol")
+    csi300_attr_parser.add_argument("--context-label", default="relative_lag_in_strong_benchmark_context", help="Market context label to diagnose; use 'all' for no filter")
+    csi300_attr_parser.add_argument("--top-n", type=int, default=20, help="Benchmark top-weight constituent count to audit")
+    csi300_attr_parser.add_argument("--weight-date-lag-days", type=int, default=1, help="Calendar-day lag before looking up benchmark weights; default avoids same-day close as pre-trade visible")
+    role_card_parser = sub.add_parser("strategy-role-card", help="Build a research-only strategy role card from existing diagnostics")
+    role_card_parser.add_argument("--strategy", required=True, help="Strategy ID to summarize")
+    role_card_parser.add_argument("--matrix", required=True, help="Path to strategy_admission_window_matrix.csv")
+    role_card_parser.add_argument("--constraints", required=True, help="Path to strategy_admission_constraint_review.csv")
+    role_card_parser.add_argument("--fold-attribution", default=None, help="Optional strategy_failure_fold_attribution.csv")
+    role_card_parser.add_argument("--market-context", default=None, help="Optional strategy_market_context_diagnostic.csv")
+    role_card_parser.add_argument("--holdings-summary", default=None, help="Optional strategy_holdings_exposure_summary.csv")
+    role_card_parser.add_argument("--overlay-summary", default=None, help="Optional strategy_participation_overlay_summary.csv")
+    role_card_parser.add_argument("--output-dir", required=True, help="Output directory for role-card artifacts")
     factor_parser = sub.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     factor_parser.add_argument("--output-dir", default=None, help="Output directory for factor effectiveness artifacts")
@@ -984,6 +1105,20 @@ def main() -> int:
         default=180,
         help="Client-side Tushare request throttle. Default 180 is below the 2000-point 200/minute tier.",
     )
+    index_asof_backfill_parser = sub.add_parser("backfill-index-asof", help="Backfill benchmark index constituent and weight as-of tables")
+    index_asof_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    index_asof_backfill_parser.add_argument("--index-code", default=None, help="Project index code, defaults to benchmark_symbol")
+    index_asof_backfill_parser.add_argument("--start-date", default="2016-01-01", help="Start date in YYYY-MM-DD")
+    index_asof_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    index_asof_backfill_parser.add_argument("--input-csv", default=None, help="Optional CSV with index_code, con_code, trade_date, weight")
+    index_asof_backfill_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=180,
+        help="Client-side Tushare request throttle. Default 180 is below the 2000-point 200/minute tier.",
+    )
+    index_asof_backfill_parser.add_argument("--weights-table", default="cn_index_weights_asof", help="Target SQLite weights table")
+    index_asof_backfill_parser.add_argument("--constituents-table", default="cn_index_constituents_asof", help="Target SQLite constituents table")
     tushare_backfill_parser = sub.add_parser("backfill-tushare-history", help="Backfill Tushare historical A-share fields and audit coverage")
     tushare_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     tushare_backfill_parser.add_argument("--start-date", default="2016-01-01", help="Start date in YYYY-MM-DD")
@@ -1171,6 +1306,7 @@ def main() -> int:
         result = run_strategy_admission(
             config=phase_cfg,
             root=config_path.parent,
+            config_path=config_path,
             presets=args.presets,
             strategy_set=args.strategy_set,
             strategies=args.strategies,
@@ -1208,6 +1344,303 @@ def main() -> int:
         console.print(f"Rows: {result.rows}")
         console.print(f"CSV: {result.csv_path}")
         console.print(f"Markdown: {result.md_path}")
+        if result.fold_csv_path is not None:
+            console.print(f"Fold CSV: {result.fold_csv_path}")
+        if result.fold_md_path is not None:
+            console.print(f"Fold Markdown: {result.fold_md_path}")
+        return 0
+    if args.cmd == "strategy-market-context":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        configure_local_history(phase_cfg.get("local_history", {}), config_path.parent)
+        console = Console()
+        console.print("[bold]Strategy market context diagnostic started[/bold]")
+        result = run_strategy_market_context(
+            config=phase_cfg,
+            root=config_path.parent,
+            fold_attribution_path=Path(args.fold_attribution).resolve(),
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            benchmark_symbol=args.benchmark_symbol,
+            trend_window=args.trend_window,
+            vol_window=args.vol_window,
+            vol_quantile=args.vol_quantile,
+        )
+        console.print("[green]Strategy market context diagnostic complete[/green]")
+        console.print(f"Benchmark: {result.benchmark_symbol}")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"CSV: {result.csv_path}")
+        console.print(f"Summary CSV: {result.summary_csv_path}")
+        console.print(f"Coverage CSV: {result.coverage_csv_path}")
+        console.print(f"Markdown: {result.md_path}")
+        return 0
+    if args.cmd == "strategy-exposure-diagnostic":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy exposure diagnostic started[/bold]")
+        result = run_strategy_exposure_diagnostic(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            candidate_folds_path=Path(args.candidate_folds).resolve(),
+            market_context_path=Path(args.market_context).resolve(),
+            universe_path=Path(args.universe).resolve() if args.universe else None,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy exposure diagnostic complete[/green]")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"Strong lag rows: {result.strong_lag_rows}")
+        console.print(f"CSV: {result.csv_path}")
+        console.print(f"Summary CSV: {result.summary_csv_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        console.print(f"Markdown: {result.md_path}")
+        return 0
+    if args.cmd == "strategy-filter-diagnostic":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy filter diagnostic started[/bold]")
+        result = run_strategy_filter_diagnostic(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            candidate_folds_path=Path(args.candidate_folds).resolve(),
+            strategy_id=args.strategy,
+            presets=args.presets,
+            folds=args.folds,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy filter diagnostic complete[/green]")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"Folds: {result.folds}")
+        console.print(f"Fold summary CSV: {result.fold_summary_csv_path}")
+        console.print(f"Daily CSV: {result.daily_csv_path}")
+        console.print(f"Funnel CSV: {result.funnel_csv_path}")
+        console.print(f"Markdown: {result.md_path}")
+        return 0
+    if args.cmd == "strategy-core-reachability-diagnostic":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy core reachability diagnostic started[/bold]")
+        result = run_strategy_core_reachability_diagnostic(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            candidate_folds_path=Path(args.candidate_folds).resolve(),
+            output_dir=Path(args.output_dir).resolve(),
+            benchmark_symbol=args.benchmark_symbol,
+            presets=args.presets,
+            folds=args.folds,
+            core_top_n=args.core_top_n,
+            core_cumulative_weight=args.core_cumulative_weight,
+            top_n=args.top_n,
+            min_amount=args.min_amount,
+            min_amount_ratio20=args.min_amount_ratio20,
+            weight_date_lag_days=args.weight_date_lag_days,
+            seed_benchmark_core=args.seed_benchmark_core,
+            seed_top_n=args.seed_top_n,
+            seed_core_top_n=args.seed_core_top_n,
+            seed_core_cumulative_weight=args.seed_core_cumulative_weight,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy core reachability diagnostic complete[/green]")
+        console.print(f"Status: {result.status}")
+        console.print(f"Daily rows: {result.daily_rows}")
+        console.print(f"Fold rows: {result.fold_rows}")
+        console.print(f"Daily CSV: {result.daily_csv_path}")
+        console.print(f"Fold summary CSV: {result.fold_summary_csv_path}")
+        console.print(f"Failure reasons CSV: {result.failure_reason_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        return 0
+    if args.cmd == "strategy-missing-core-audit":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy missing-core audit started[/bold]")
+        result = run_missing_core_audit(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            missing_reasons_path=Path(args.missing_reasons).resolve(),
+            candidate_folds_path=Path(args.candidate_folds).resolve(),
+            output_dir=Path(args.output_dir).resolve(),
+            top_symbols=args.top_symbols,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy missing-core audit complete[/green]")
+        console.print(f"Symbol rows: {result.symbol_rows}")
+        console.print(f"Event rows: {result.event_rows}")
+        console.print(f"Symbol CSV: {result.symbol_csv_path}")
+        console.print(f"Event CSV: {result.event_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        return 0
+    if args.cmd == "strategy-holdings-exposure":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy holdings exposure diagnostic started[/bold]")
+        result = run_strategy_holdings_exposure(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            candidate_folds_path=Path(args.candidate_folds).resolve(),
+            market_context_path=Path(args.market_context).resolve(),
+            strategy_id=args.strategy,
+            presets=args.presets,
+            folds=args.folds,
+            benchmark_symbol=args.benchmark_symbol,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy holdings exposure diagnostic complete[/green]")
+        console.print(f"Holdings rows: {result.holdings_rows}")
+        console.print(f"Daily rows: {result.daily_rows}")
+        console.print(f"Summary rows: {result.summary_rows}")
+        console.print(f"Holdings CSV: {result.holdings_csv_path}")
+        console.print(f"Daily exposure CSV: {result.daily_exposure_csv_path}")
+        console.print(f"Industry exposure CSV: {result.industry_exposure_csv_path}")
+        console.print(f"Summary CSV: {result.summary_csv_path}")
+        console.print(f"Coverage CSV: {result.coverage_csv_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        console.print(f"Markdown: {result.md_path}")
+        return 0
+    if args.cmd == "strategy-fold-attribution":
+        console = Console()
+        console.print("[bold]Strategy fold attribution assembly started[/bold]")
+        result = run_strategy_fold_attribution(
+            quality_fold_attribution_path=Path(args.quality_fold_attribution).resolve(),
+            price_volume_fold_attribution_path=Path(args.price_volume_fold_attribution).resolve(),
+            quality_market_context_path=Path(args.quality_market_context).resolve(),
+            price_volume_market_context_path=Path(args.price_volume_market_context).resolve(),
+            quality_holdings_path=Path(args.quality_holdings).resolve(),
+            price_volume_holdings_path=Path(args.price_volume_holdings).resolve(),
+            quality_daily_exposure_path=Path(args.quality_daily_exposure).resolve(),
+            price_volume_daily_exposure_path=Path(args.price_volume_daily_exposure).resolve(),
+            output_dir=Path(args.output_dir).resolve(),
+        )
+        console.print("[green]Strategy fold attribution assembly complete[/green]")
+        console.print(f"Paired rows: {result.paired_rows}")
+        console.print(f"Paired fold CSV: {result.paired_fold_csv_path}")
+        console.print(f"Daily exposure CSV: {result.daily_exposure_csv_path}")
+        console.print(f"Top holdings CSV: {result.top_holding_csv_path}")
+        console.print(f"Quality bucket CSV: {result.quality_bucket_csv_path}")
+        console.print(f"Turnover cost CSV: {result.turnover_cost_csv_path}")
+        console.print(f"Markdown: {result.md_path}")
+        return 0
+    if args.cmd == "index-asof-audit":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Index as-of data audit started[/bold]")
+        result = run_index_asof_audit(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            benchmark_symbol=args.benchmark_symbol,
+            candidate_folds_path=Path(args.candidate_folds).resolve() if args.candidate_folds else None,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Index as-of data audit complete[/green]")
+        console.print(f"Benchmark: {result.benchmark_symbol}")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Constituents: {result.constituent_status}")
+        console.print(f"Weights: {result.weight_status}")
+        console.print(f"Fold rows: {result.fold_rows}")
+        console.print(f"Capability CSV: {result.capability_csv_path}")
+        console.print(f"Fold coverage CSV: {result.fold_coverage_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        return 0
+    if args.cmd == "strategy-participation-overlay":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy participation overlay counterfactual started[/bold]")
+        result = run_strategy_participation_overlay(
+            config=phase_cfg,
+            root=config_path.parent,
+            config_path=config_path,
+            holdings_path=Path(args.holdings).resolve(),
+            daily_exposure_path=Path(args.daily_exposure).resolve(),
+            output_dir=Path(args.output_dir).resolve(),
+            min_exposure=args.min_exposure,
+            max_symbol_weight=args.max_symbol_weight,
+            max_scale=args.max_scale,
+            context_label=args.context_label,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy participation overlay counterfactual complete[/green]")
+        console.print(f"Daily rows: {result.daily_rows}")
+        console.print(f"Summary rows: {result.summary_rows}")
+        console.print(f"Daily CSV: {result.daily_csv_path}")
+        console.print(f"Summary CSV: {result.summary_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        return 0
+    if args.cmd == "strategy-csi300-attribution":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        phase_cfg = cfg.get("phase0", cfg)
+        console = Console()
+        console.print("[bold]Strategy CSI300 attribution started[/bold]")
+        result = run_strategy_csi300_attribution(
+            config=phase_cfg,
+            root=config_path.parent,
+            holdings_path=Path(args.holdings).resolve() if args.holdings else None,
+            daily_exposure_path=Path(args.daily_exposure).resolve() if args.daily_exposure else None,
+            candidate_folds_path=Path(args.candidate_folds).resolve() if args.candidate_folds else None,
+            market_context_path=Path(args.market_context).resolve() if args.market_context else None,
+            output_dir=Path(args.output_dir).resolve(),
+            benchmark_symbol=args.benchmark_symbol,
+            context_label=args.context_label,
+            top_n=args.top_n,
+            weight_date_lag_days=args.weight_date_lag_days,
+            command=" ".join(os.sys.argv),
+        )
+        console.print("[green]Strategy CSI300 attribution complete[/green]")
+        console.print(f"Status: {result.status}")
+        console.print(f"Daily rows: {result.daily_rows}")
+        console.print(f"Fold rows: {result.fold_rows}")
+        console.print(f"Daily CSV: {result.daily_csv_path}")
+        console.print(f"Fold CSV: {result.fold_csv_path}")
+        console.print(f"Missed top weights CSV: {result.missed_top_csv_path}")
+        console.print(f"Industry CSV: {result.industry_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
+        console.print(f"Run log: {result.run_log_md_path}")
+        return 0
+    if args.cmd == "strategy-role-card":
+        console = Console()
+        console.print("[bold]Strategy role card generation started[/bold]")
+        result = run_strategy_role_card(
+            strategy_id=args.strategy,
+            matrix_path=Path(args.matrix).resolve(),
+            constraints_path=Path(args.constraints).resolve(),
+            fold_attribution_path=Path(args.fold_attribution).resolve() if args.fold_attribution else None,
+            market_context_path=Path(args.market_context).resolve() if args.market_context else None,
+            holdings_summary_path=Path(args.holdings_summary).resolve() if args.holdings_summary else None,
+            overlay_summary_path=Path(args.overlay_summary).resolve() if args.overlay_summary else None,
+            output_dir=Path(args.output_dir).resolve(),
+        )
+        console.print("[green]Strategy role card generation complete[/green]")
+        console.print(f"Strategy: {result.strategy_id}")
+        console.print(f"Admission action: {result.admission_action}")
+        console.print(f"Rows: {result.rows}")
+        console.print(f"Rule CSV: {result.rule_csv_path}")
+        console.print(f"Markdown: {result.report_md_path}")
         return 0
     if args.cmd == "factor-effectiveness":
         config_path = Path(args.config).resolve()
@@ -1744,6 +2177,36 @@ def main() -> int:
             for item in result.warnings[:30]:
                 console.print(f"- {item}")
         return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "backfill-index-asof":
+        config_path = Path(args.config).resolve()
+        console = Console()
+        console.print("[bold]Index as-of backfill started[/bold]")
+        result = backfill_index_asof_from_config(
+            config_path,
+            index_code=str(args.index_code) if args.index_code else None,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            input_csv=Path(args.input_csv).resolve() if args.input_csv else None,
+            max_requests_per_minute=int(args.max_requests_per_minute),
+            weights_table=str(args.weights_table),
+            constituents_table=str(args.constituents_table),
+        )
+        color = "green" if result.status == "ok" else "yellow"
+        console.print(f"[{color}]Index as-of backfill status: {result.status}[/{color}]")
+        console.print(f"Database: {result.db_path}")
+        console.print(f"Index: {result.index_code} ({result.vendor_index_code})")
+        console.print(f"Source: {result.source}")
+        console.print(f"Fetched rows: {result.fetched_rows}")
+        console.print(f"Inserted weight rows: {result.inserted_weight_rows}")
+        console.print(f"Inserted constituent rows: {result.inserted_constituent_rows}")
+        console.print(f"Trade dates: {result.distinct_trade_dates} ({result.min_trade_date or 'N/A'}..{result.max_trade_date or 'N/A'})")
+        console.print(f"Audit CSV: {result.audit_csv}")
+        console.print(f"Audit Markdown: {result.audit_md}")
+        if result.warnings:
+            console.print("Warnings:")
+            for item in result.warnings[:30]:
+                console.print(f"- {item}")
+        return 0 if result.status not in {"missing_tushare_token"} else 2
     if args.cmd == "backfill-tushare-financials":
         config_path = Path(args.config).resolve()
         console = Console()

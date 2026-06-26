@@ -99,6 +99,12 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
         turnover_penalties = [float(item) for item in cfg.get("turnover_penalties", [0.02])]
         use_xmarket_overlay = bool(cfg.get("use_xmarket_overlay", False))
         max_symbol_weight = float(cfg.get("max_symbol_weight", 0.10))
+        industry_cfg = strategy_cfg.get("constraints", {}).get("industry", {})
+        max_names_per_industry = (
+            int(industry_cfg["max_names_per_industry"])
+            if industry_cfg.get("max_names_per_industry") is not None
+            else None
+        )
 
         for quality_q in quality_quantiles:
             quality_threshold = float(quality_scores.quantile(quality_q))
@@ -141,6 +147,7 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
                                                 "target_vol": target_vol,
                                                 "max_symbol_weight": max_symbol_weight,
                                                 "use_xmarket_overlay": use_xmarket_overlay,
+                                                "max_names_per_industry": max_names_per_industry,
                                                 "factor_weights": weights,
                                             }
                                             output = self.apply(
@@ -247,6 +254,7 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
         rebalance_days = max(1, int(params["rebalance_days"]))
         min_hold_days = max(0, int(params["min_hold_days"]))
         max_symbol_weight = float(params.get("max_symbol_weight", 0.10))
+        max_names_per_industry = self._optional_positive_int(params.get("max_names_per_industry"))
 
         # current_weights 是收盘后形成的目标持仓，held_days 用于执行最短持有期。
         # 只有调仓日才重新审视组合：老持仓持有够久且跌出宽持有区才卖，新候选按排名补足目标数量。
@@ -274,9 +282,16 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
                         held_days.pop(symbol, None)
 
                 candidates = day[day["rank_score"].notna()].sort_values(["rank", "symbol"])
-                for symbol in candidates["symbol"].head(buy_top_n).astype(str):
+                for symbol in candidates["symbol"].astype(str):
                     if len(current_weights) >= buy_top_n:
                         break
+                    if not self._industry_slot_available(
+                        symbol=symbol,
+                        day=day,
+                        current_weights=current_weights,
+                        max_names_per_industry=max_names_per_industry,
+                    ):
+                        continue
                     if symbol not in current_weights:
                         current_weights[symbol] = 0.0
                         held_days[symbol] = 0
@@ -412,6 +427,9 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
             "target_vol": target_vol,
             "max_symbol_weight": float(cfg.get("max_symbol_weight", 0.10)),
             "use_xmarket_overlay": bool(cfg.get("use_xmarket_overlay", False)),
+            "max_names_per_industry": self._optional_positive_int(
+                strategy_cfg.get("constraints", {}).get("industry", {}).get("max_names_per_industry")
+            ),
             "factor_weights": weights,
             "turnover_penalty": float(cfg.get("turnover_penalties", [0.02])[0]),
             "train_score": 0.0,
@@ -419,3 +437,36 @@ class LowVolLowTurnoverQualityStrategy(BaseStrategy):
             "train_trades": 0,
             "train_turnover_annual": 0.0,
         }
+
+    @staticmethod
+    def _optional_positive_int(value: Any) -> int | None:
+        if value is None or value == "":
+            return None
+        parsed = int(value)
+        return parsed if parsed > 0 else None
+
+    @staticmethod
+    def _industry_slot_available(
+        *,
+        symbol: str,
+        day: pd.DataFrame,
+        current_weights: dict[str, float],
+        max_names_per_industry: int | None,
+    ) -> bool:
+        if max_names_per_industry is None or "industry" not in day.columns:
+            return True
+        indexed = day.set_index(day["symbol"].astype(str))
+        if symbol not in indexed.index:
+            return True
+        industry = str(indexed.loc[symbol, "industry"]).strip()
+        if not industry or industry.lower() == "nan":
+            industry = "UNKNOWN"
+        active_symbols = [active for active in current_weights if active in indexed.index]
+        same_industry_count = 0
+        for active in active_symbols:
+            active_industry = str(indexed.loc[active, "industry"]).strip()
+            if not active_industry or active_industry.lower() == "nan":
+                active_industry = "UNKNOWN"
+            if active_industry == industry:
+                same_industry_count += 1
+        return same_industry_count < max_names_per_industry

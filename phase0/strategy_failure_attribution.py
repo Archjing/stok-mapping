@@ -25,6 +25,8 @@ class StrategyFailureAttributionResult:
     md_path: Path
     rows: int
     strategies: int
+    fold_csv_path: Path | None = None
+    fold_md_path: Path | None = None
 
 
 def run_strategy_failure_attribution(
@@ -109,6 +111,10 @@ def run_strategy_failure_attribution(
     csv_path = output_dir / "strategy_failure_attribution.csv"
     md_path = output_dir / "strategy_failure_attribution.md"
     attribution_df.to_csv(csv_path, index=False)
+    fold_attribution_df = _build_fold_attribution(folds, matrix, review, gate_cfg)
+    fold_csv_path = output_dir / "strategy_failure_fold_attribution.csv"
+    fold_md_path = output_dir / "strategy_failure_fold_attribution.md"
+    fold_attribution_df.to_csv(fold_csv_path, index=False)
     _write_markdown(
         md_path,
         attribution_df,
@@ -119,11 +125,22 @@ def run_strategy_failure_attribution(
             "overfit": overfit_path,
         },
     )
+    _write_fold_markdown(
+        fold_md_path,
+        fold_attribution_df,
+        input_paths={
+            "folds": folds_path,
+            "window_matrix": matrix_path,
+            "constraint_review": constraint_path,
+        },
+    )
     return StrategyFailureAttributionResult(
         csv_path=csv_path,
         md_path=md_path,
         rows=len(attribution_df),
         strategies=int(attribution_df["strategy_id"].nunique()) if "strategy_id" in attribution_df.columns else 0,
+        fold_csv_path=fold_csv_path,
+        fold_md_path=fold_md_path,
     )
 
 
@@ -155,7 +172,7 @@ def _attribute_window(
     _attribute_data(window, strategy_review, gate_cfg, dimension_evidence, dimension_severity)
 
     primary = _primary_dimension(dimension_severity)
-    severity = dimension_severity[primary] if primary else "none"
+    severity = dimension_severity[primary] if primary and primary != "none" else "none"
     evidence_parts: list[str] = []
     for dimension in _dimension_order():
         if dimension_evidence[dimension]:
@@ -178,6 +195,203 @@ def _attribute_window(
         }
     )
     return out
+
+
+def _build_fold_attribution(
+    folds: pd.DataFrame,
+    matrix: pd.DataFrame,
+    review: pd.DataFrame,
+    gate_cfg: dict[str, Any],
+) -> pd.DataFrame:
+    if folds.empty:
+        return pd.DataFrame()
+    matrix_by_window = {
+        (_safe_str(row.get("strategy_id")), _safe_str(row.get("walk_forward_preset"))): row
+        for _, row in matrix.iterrows()
+    }
+    review_by_strategy = {_safe_str(row.get("strategy_id")): row for _, row in review.iterrows()}
+    rows: list[dict[str, Any]] = []
+    for _, fold in folds.iterrows():
+        strategy_id = _safe_str(fold.get("strategy_id", fold.get("candidate", "")))
+        preset = _safe_str(fold.get("walk_forward_preset"))
+        window = matrix_by_window.get((strategy_id, preset), pd.Series(dtype=object))
+        strategy_review = review_by_strategy.get(strategy_id, pd.Series(dtype=object))
+        attribution = _attribute_fold(fold, window, strategy_review, gate_cfg)
+        rows.append(
+            {
+                "strategy_id": strategy_id,
+                "walk_forward_preset": preset,
+                "fold": _safe_int(fold.get("fold")),
+                "valid_start": _safe_str(fold.get("valid_start")),
+                "valid_end": _safe_str(fold.get("valid_end")),
+                "admission_action": _safe_str(strategy_review.get("admission_action", "")),
+                "window_pass": _safe_bool(window.get("is_window_pass", False)),
+                "fold_status": _safe_str(fold.get("status", "")),
+                "fold_severity": attribution["fold_severity"],
+                "primary_fold_failure": attribution["primary_fold_failure"],
+                "absolute_return_status": attribution["absolute_return_status"],
+                "benchmark_relative_status": attribution["benchmark_relative_status"],
+                "risk_adjusted_status": attribution["risk_adjusted_status"],
+                "drawdown_status": attribution["drawdown_status"],
+                "turnover_status": attribution["turnover_status"],
+                "annualized_return": _optional_float(fold.get("annualized_return")),
+                "benchmark_annualized_return": _optional_float(fold.get("benchmark_annualized_return")),
+                "excess_annualized_return": _optional_float(fold.get("excess_annualized_return")),
+                "sharpe": _optional_float(fold.get("sharpe")),
+                "max_drawdown": _optional_float(fold.get("max_drawdown")),
+                "turnover_annual": _optional_float(fold.get("turnover_annual")),
+                "negative_fold_attribution": _safe_str(fold.get("negative_fold_attribution")),
+                "selected_params": _safe_str(fold.get("selected_params")),
+                "evidence": attribution["evidence"],
+                "recommended_next_action": attribution["recommended_next_action"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _attribute_fold(
+    fold: pd.Series,
+    window: pd.Series,
+    strategy_review: pd.Series,
+    gate_cfg: dict[str, Any],
+) -> dict[str, str]:
+    ann = _optional_float(fold.get("annualized_return"))
+    benchmark_ann = _optional_float(fold.get("benchmark_annualized_return"))
+    excess_ann = _optional_float(fold.get("excess_annualized_return"))
+    sharpe = _optional_float(fold.get("sharpe"))
+    max_drawdown = _optional_float(fold.get("max_drawdown"))
+    turnover = _optional_float(fold.get("turnover_annual"))
+    status = _safe_str(fold.get("status", "ok")) or "ok"
+    benchmark_status = _safe_str(fold.get("benchmark_status", "not_available"))
+    negative_attribution = _safe_str(fold.get("negative_fold_attribution"))
+
+    ann_gate = float(gate_cfg.get("annualized_return_min", 0.0))
+    sharpe_gate = float(gate_cfg.get("sharpe_min", 0.5))
+    drawdown_gate = float(gate_cfg.get("max_drawdown_min", -1.0))
+    turnover_gate = float(gate_cfg.get("turnover_annual_max_max", gate_cfg.get("turnover_annual_mean_max", 5.0)))
+
+    evidence: list[str] = []
+    absolute_status = "unknown"
+    relative_status = "benchmark_unavailable"
+    risk_status = "unknown"
+    drawdown_status = "unknown"
+    turnover_status = "unknown"
+
+    if status != "ok":
+        evidence.append(f"fold status={status}: {_safe_str(fold.get('failure_reason', ''))}")
+        return _fold_out(
+            severity="high",
+            primary="data_or_fold_status",
+            absolute_status=absolute_status,
+            relative_status=relative_status,
+            risk_status=risk_status,
+            drawdown_status=drawdown_status,
+            turnover_status=turnover_status,
+            evidence=evidence,
+            action="先修复该 fold 的数据/样本问题，再比较策略表现。",
+        )
+
+    if ann is not None:
+        absolute_status = "positive_absolute" if ann > ann_gate else "negative_or_below_gate_absolute"
+        evidence.append(f"ann={ann:.4f} vs gate={ann_gate:.4f}")
+    if benchmark_status == "available" and excess_ann is not None:
+        relative_status = "positive_excess" if excess_ann > 0 else "negative_excess"
+        evidence.append(f"benchmark_ann={benchmark_ann:.4f}" if benchmark_ann is not None else "benchmark_ann=n/a")
+        evidence.append(f"excess_ann={excess_ann:.4f}")
+    elif benchmark_status:
+        evidence.append(f"benchmark_status={benchmark_status}")
+    if sharpe is not None:
+        risk_status = "sharpe_pass" if sharpe >= sharpe_gate else "sharpe_below_gate"
+        evidence.append(f"sharpe={sharpe:.4f} vs gate={sharpe_gate:.4f}")
+    if max_drawdown is not None:
+        drawdown_status = "drawdown_pass" if max_drawdown >= drawdown_gate else "drawdown_below_gate"
+        evidence.append(f"max_drawdown={max_drawdown:.4f} vs gate={drawdown_gate:.4f}")
+    if turnover is not None:
+        turnover_status = "turnover_pass" if turnover <= turnover_gate else "turnover_above_gate"
+        evidence.append(f"turnover={turnover:.2f} vs gate={turnover_gate:.2f}")
+
+    primary = "uncategorized_fold"
+    severity = "none"
+    action = "保留该 fold 作为诊断样本，不用从单个 fold 反推新规则。"
+    if absolute_status == "positive_absolute" and relative_status == "positive_excess":
+        primary = "clean_positive_fold"
+        action = "fold 绝对收益和相对基准均为正；只作为稳健样本保留。"
+    if relative_status == "negative_excess" and absolute_status == "positive_absolute":
+        primary = (
+            "relative_failure_benchmark_strong"
+            if benchmark_ann is not None and benchmark_ann > 0
+            else "positive_absolute_but_benchmark_lag"
+        )
+        severity = "medium"
+        action = "优先解释为何绝对赚钱但跑输沪深300；不要用该 fold 直接调选股参数。"
+    if absolute_status == "negative_or_below_gate_absolute" and relative_status == "positive_excess":
+        primary = "absolute_failure_market_weak_but_outperform"
+        severity = "medium"
+        action = "该 fold 更像市场下行背景中的相对抗跌，不应单独触发选股参数调整。"
+    if absolute_status == "negative_or_below_gate_absolute" and relative_status == "negative_excess":
+        primary = "strategy_specific_underperformance"
+        severity = "high"
+        action = "先复核该 fold 的持仓、行业暴露和信号来源，再考虑策略假设调整。"
+    if primary == "uncategorized_fold" and risk_status == "sharpe_below_gate":
+        primary = "low_risk_adjusted_return"
+        severity = "medium"
+        action = "拆解该 fold 的收益波动和回撤簇，确认低 Sharpe 是否来自少数日期。"
+    if drawdown_status == "drawdown_below_gate":
+        primary = "drawdown_pressure"
+        severity = _max_severity(severity, "high")
+        action = "优先定位最大回撤发生日期和持仓暴露，再谈风险过滤。"
+    if turnover_status == "turnover_above_gate":
+        primary = "execution_pressure"
+        severity = _max_severity(severity, "high")
+        action = "先降低调仓/成交暴露，否则收益改善可能被交易成本吞噬。"
+    if "negative_absolute_but_positive_excess" in negative_attribution:
+        primary = "absolute_failure_market_weak_but_outperform"
+        severity = _max_severity(severity, "medium")
+        action = "该 fold 负收益但正超额，适合作为市场状态归因样本，而不是 alpha 失败样本。"
+    elif "negative_absolute_and_negative_excess" in negative_attribution:
+        primary = "strategy_specific_underperformance"
+        severity = _max_severity(severity, "high")
+        action = "该 fold 绝对和相对都失败，优先复核 alpha 与组合暴露。"
+
+    if _safe_str(strategy_review.get("admission_action")) in {"reject", "research_only"} and primary == "clean_positive_fold":
+        action = "fold 本身不阻断；结合其他失败 fold 和 constraint review 决策。"
+
+    return _fold_out(
+        severity=severity,
+        primary=primary,
+        absolute_status=absolute_status,
+        relative_status=relative_status,
+        risk_status=risk_status,
+        drawdown_status=drawdown_status,
+        turnover_status=turnover_status,
+        evidence=evidence,
+        action=action,
+    )
+
+
+def _fold_out(
+    *,
+    severity: str,
+    primary: str,
+    absolute_status: str,
+    relative_status: str,
+    risk_status: str,
+    drawdown_status: str,
+    turnover_status: str,
+    evidence: list[str],
+    action: str,
+) -> dict[str, str]:
+    return {
+        "fold_severity": severity,
+        "primary_fold_failure": primary,
+        "absolute_return_status": absolute_status,
+        "benchmark_relative_status": relative_status,
+        "risk_adjusted_status": risk_status,
+        "drawdown_status": drawdown_status,
+        "turnover_status": turnover_status,
+        "evidence": "；".join(evidence),
+        "recommended_next_action": action,
+    }
 
 
 def _attribute_return(
@@ -442,6 +656,120 @@ def _write_markdown(path: Path, attribution: pd.DataFrame, *, input_paths: dict[
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _write_fold_markdown(path: Path, fold_attribution: pd.DataFrame, *, input_paths: dict[str, Path]) -> None:
+    lines = [
+        "# Strategy Failure Fold Attribution",
+        "",
+        f"Generated at: {datetime.now().isoformat(timespec='seconds')}",
+        "",
+        "## Scope",
+        "",
+        "- This report is research-only fold-level attribution.",
+        "- It reads existing admission CSV artifacts only; it does not rerun backtests or admission.",
+        "- Benchmark / market context labels are diagnostic labels, not admission gates and not trading rules.",
+        "- Do not infer a regime filter from this report alone; use it only to decide whether a later isolated I8 test is justified.",
+        "",
+        "## Inputs",
+        "",
+    ]
+    for label, input_path in input_paths.items():
+        lines.append(f"- {label}: `{input_path}`")
+    if fold_attribution.empty:
+        lines.extend(["", "No fold attribution rows were generated."])
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return
+
+    lines.extend(
+        [
+            "",
+            "## Fold Summary",
+            "",
+            _md_table(
+                [
+                    "strategy_id",
+                    "preset",
+                    "fold",
+                    "valid_window",
+                    "primary_label",
+                    "severity",
+                    "ann",
+                    "bench_ann",
+                    "excess_ann",
+                    "sharpe",
+                    "drawdown",
+                    "turnover",
+                ],
+                [
+                    [
+                        _safe_str(row["strategy_id"]),
+                        _safe_str(row["walk_forward_preset"]),
+                        str(_safe_int(row["fold"])),
+                        f"{_safe_str(row['valid_start'])}..{_safe_str(row['valid_end'])}",
+                        _safe_str(row["primary_fold_failure"]),
+                        _safe_str(row["fold_severity"]),
+                        _format_optional(row.get("annualized_return"), 4),
+                        _format_optional(row.get("benchmark_annualized_return"), 4),
+                        _format_optional(row.get("excess_annualized_return"), 4),
+                        _format_optional(row.get("sharpe"), 4),
+                        _format_optional(row.get("max_drawdown"), 4),
+                        _format_optional(row.get("turnover_annual"), 2),
+                    ]
+                    for _, row in fold_attribution.iterrows()
+                ],
+            ),
+            "",
+            "## Label Counts",
+            "",
+        ]
+    )
+    label_counts = fold_attribution["primary_fold_failure"].fillna("").astype(str).value_counts().reset_index()
+    label_counts.columns = ["primary_label", "fold_count"]
+    lines.append(
+        _md_table(
+            ["primary_label", "fold_count"],
+            [[_safe_str(row["primary_label"]), str(_safe_int(row["fold_count"]))] for _, row in label_counts.iterrows()],
+        )
+    )
+    lines.extend(
+        [
+            "",
+            "## Evidence By Fold",
+            "",
+        ]
+    )
+    for _, row in fold_attribution.iterrows():
+        lines.extend(
+            [
+                f"### {_safe_str(row['walk_forward_preset'])} fold {_safe_int(row['fold'])}",
+                "",
+                f"- Valid window: `{_safe_str(row['valid_start'])}` to `{_safe_str(row['valid_end'])}`",
+                f"- Primary diagnostic label: `{_safe_str(row['primary_fold_failure'])}`",
+                f"- Severity: `{_safe_str(row['fold_severity'])}`",
+                f"- Absolute status: `{_safe_str(row['absolute_return_status'])}`",
+                f"- Benchmark-relative status: `{_safe_str(row['benchmark_relative_status'])}`",
+                f"- Risk-adjusted status: `{_safe_str(row['risk_adjusted_status'])}`",
+                f"- Drawdown status: `{_safe_str(row['drawdown_status'])}`",
+                f"- Turnover status: `{_safe_str(row['turnover_status'])}`",
+                f"- Existing fold attribution: `{_safe_str(row['negative_fold_attribution']) or 'n/a'}`",
+                f"- Evidence: {_safe_str(row['evidence'])}",
+                f"- Next diagnostic action: {_safe_str(row['recommended_next_action'])}",
+                "",
+            ]
+        )
+    lines.extend(
+        [
+            "## Interpretation Guardrails",
+            "",
+            "- Admission failure remains governed by the admission window matrix and constraint review.",
+            "- Positive absolute return with negative excess is benchmark-context evidence, not proof that a market-state filter will work.",
+            "- Negative absolute return with positive excess is market-context evidence, not standalone alpha failure.",
+            "- Any I8 market-context test must keep I7 selection logic fixed and test one pre-declared variable only.",
+            "",
+        ]
+    )
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def _recommended_next_action(*, primary_dimension: str, admission_action: str, severity: str) -> str:
     prefix = {
         "reject": "当前 spec 维持 reject；",
@@ -565,6 +893,16 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
 
 def _safe_int(value: Any, default: int = 0) -> int:
     return int(round(_safe_float(value, float(default))))
+
+
+def _optional_float(value: Any) -> float | None:
+    parsed = pd.to_numeric(pd.Series([value]), errors="coerce").iloc[0]
+    return None if pd.isna(parsed) else float(parsed)
+
+
+def _format_optional(value: Any, precision: int) -> str:
+    parsed = _optional_float(value)
+    return "n/a" if parsed is None else f"{parsed:.{precision}f}"
 
 
 def _safe_str(value: Any, default: str = "") -> str:
