@@ -120,7 +120,7 @@ def load_daily_from_local_history(
     if price_mode == "qfq_asof":
         if as_of_date is None:
             return pd.DataFrame()
-        from phase0.adjustment import build_qfq_asof_bars
+        from phase0.data_governance.adjustment import build_qfq_asof_bars
 
         as_of = pd.to_datetime(as_of_date).date()
         return build_qfq_asof_bars(

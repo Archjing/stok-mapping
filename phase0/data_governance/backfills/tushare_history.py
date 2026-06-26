@@ -9,7 +9,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
-from phase0.adjustment import ensure_adj_factor_table, upsert_adj_factors
+from phase0.data_governance.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.config import load_config
 from phase0.data_governance.backfills.adjustment import ensure_dividend_table, upsert_dividends
 from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows

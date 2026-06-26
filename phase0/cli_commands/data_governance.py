@@ -7,7 +7,7 @@ from typing import Any
 
 from rich.console import Console
 
-from phase0.adjustment import run_adjustment_audit
+from phase0.data_governance.adjustment import run_adjustment_audit
 from phase0.config import load_config
 from phase0.data_governance.db_health import run_database_health_check
 from phase0.data_governance.index_asof_audit import run_index_asof_audit

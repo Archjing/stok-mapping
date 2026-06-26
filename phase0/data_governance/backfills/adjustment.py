@@ -9,7 +9,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.adjustment import ensure_adj_factor_table, upsert_adj_factors
+from phase0.data_governance.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.config import load_config
 from phase0.data_governance.sql import safe_identifier
 from phase0.data_access.providers.tushare import (

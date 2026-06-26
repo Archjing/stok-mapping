@@ -299,7 +299,7 @@ Tushare 财务历史回填当前状态：
 核心模块：
 
 - [phase0/db_health.py](../phase0/db_health.py)
-- [phase0/adjustment.py](../phase0/adjustment.py)
+- [phase0/data_governance/adjustment.py](../phase0/data_governance/adjustment.py)
 - [scripts/audit_financial_pti.py](../scripts/audit_financial_pti.py)
 - [scripts/audit_universe_pit.py](../scripts/audit_universe_pit.py)
 - [scripts/check_local_history_consistency.py](../scripts/check_local_history_consistency.py)
@@ -335,7 +335,7 @@ Tushare 财务历史回填当前状态：
 
 - [phase0/universe.py](../phase0/universe.py)
 - [phase0/data_access/local_history.py](../phase0/data_access/local_history.py)
-- [phase0/adjustment.py](../phase0/adjustment.py)
+- [phase0/data_governance/adjustment.py](../phase0/data_governance/adjustment.py)
 - [phase0/research/diagnostics/factor_effectiveness.py](../phase0/research/diagnostics/factor_effectiveness.py)
 
 职责：

@@ -10,7 +10,7 @@ from typing import Any
 import pandas as pd
 import requests
 
-from phase0.adjustment import upsert_adj_factors
+from phase0.data_governance.adjustment import upsert_adj_factors
 from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
 from phase0.data_governance.sql import safe_identifier, to_sql_value
 from phase0.env import prepare_imports

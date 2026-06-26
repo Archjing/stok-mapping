@@ -19,6 +19,7 @@ Current decisions:
 - `phase0/overfit.py` has been moved to `phase0.research.diagnostics.overfit`. It is a research diagnostic consumed by the admission runner and strategy-research CLI; the old root path remains a compatibility shim.
 - `phase0/factor_effectiveness.py` has been moved to `phase0.research.diagnostics.factor_effectiveness`. It is a strategy research diagnostic; the old root path remains a compatibility shim.
 - `phase0/update_history.py` has been moved to `phase0.data_governance.update_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
+- `phase0/adjustment.py` has been moved to `phase0.data_governance.adjustment`. It owns price-adjustment factor table helpers, qfq_asof construction, and adjustment audit reporting; the old root path remains a compatibility shim.
 - `phase0/import_history.py` has been moved to `phase0.data_governance.import_history`. It is a write-side local history initialization and index-history rebuild job; the old root path remains a compatibility shim.
 - `phase0/financial_factors.py` has been moved to `phase0.data_governance.financial_factors`. It is a write-side quarterly financial factor maintenance job and table helper; the old root path remains a compatibility shim.
 - `phase0/tushare_history_backfill.py` has been moved to `phase0.data_governance.backfills.tushare_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
@@ -32,7 +33,7 @@ Current decisions:
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
-| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
+| `data_governance` | Data quality checks, governance audits, as-of coverage validation, price-adjustment governance, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/adjustment.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
@@ -513,6 +514,17 @@ The forty-third slice moves the factor-effectiveness diagnostic into the researc
 - Add an import compatibility test covering the result dataclass, factor spec dataclass, factor spec list, and CLI-callable report function.
 
 This slice does not change factor formulas, point-in-time financial factor enrichment, daily-basic merging, group return or rank-IC calculations, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
+
+## Forty-Fourth Slice In This Branch
+
+The forty-fourth slice moves price-adjustment governance into the data-governance package:
+
+- Move `phase0/adjustment.py` to `phase0.data_governance.adjustment`.
+- Keep root-level `phase0.adjustment` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update effective imports in the data-governance CLI, local-history qfq_asof loader, manual history update job, adjustment backfill job, and broad Tushare history backfill job.
+- Add an import compatibility test covering the audit result dataclass, adjustment factor table helpers, qfq_asof construction helpers, and audit entrypoint.
+
+This slice does not change adjustment factor schemas, qfq_asof formulas, qfq_current comparison logic, audit report filenames, report paths, CLI command names, generated artifacts, database writes, or strategy algorithms.
 
 ## Later Migration Stages
 
