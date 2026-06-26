@@ -100,7 +100,7 @@ def export_phase0_oos_report(
 
 
 def export_phase0_financial_pti(config_path: Path) -> dict:
-    from scripts.audit_financial_pti import audit_financial_pti
+    from phase0.data_governance.financial_pti import audit_financial_pti
 
     cfg = _load_report_config_if_available(config_path)
     report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="financial-pti", scope="qfq_asof")

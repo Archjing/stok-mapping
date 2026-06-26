@@ -300,8 +300,9 @@ Tushare 财务历史回填当前状态：
 
 - [phase0/db_health.py](../phase0/db_health.py)
 - [phase0/data_governance/adjustment.py](../phase0/data_governance/adjustment.py)
+- [phase0/data_governance/financial_pti.py](../phase0/data_governance/financial_pti.py)
 - [phase0/data_governance/universe_pit.py](../phase0/data_governance/universe_pit.py)
-- [scripts/audit_financial_pti.py](../scripts/audit_financial_pti.py)
+- [scripts/audit_financial_pti.py](../scripts/audit_financial_pti.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/audit_universe_pit.py](../scripts/audit_universe_pit.py)（兼容旧入口；新代码不要继续依赖）
 - [scripts/check_local_history_consistency.py](../scripts/check_local_history_consistency.py)
 
@@ -394,8 +395,9 @@ Tushare 财务历史回填当前状态：
 架构风险：
 
 - [phase0/walk_forward.py](../phase0/walk_forward.py) 仍承担较多职责：数据加载、特征构造、组合模拟、候选比较和指标计算都集中在一个大模块内。
-- 短期可接受，因为系统仍处于研究迭代期。
+- 短期可接受，因为系统仍处于研究迭代期；当前不应为了目录整洁整体迁移 `walk_forward.py`。
 - 若 T2.6/T2.7 新策略开始稳定，应逐步拆出 `factors/`、`portfolio/`、`evaluation/` 子模块，降低维护成本。
+- 后续只应拆分有清晰测试边界的叶子职责，避免改动研究主编排入口导致 compare/admission 行为漂移。
 
 ### 5.8 研究情报层
 

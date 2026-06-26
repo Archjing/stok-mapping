@@ -239,7 +239,7 @@ def test_financial_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
         calls.append(kwargs)
         return {"summary": kwargs["summary_output"], "samples": kwargs["sample_output"], "html": kwargs["html_output"]}
 
-    monkeypatch.setattr("scripts.audit_financial_pti.audit_financial_pti", fake_audit_financial_pti)
+    monkeypatch.setattr("phase0.data_governance.financial_pti.audit_financial_pti", fake_audit_financial_pti)
 
     result = report_exports.export_phase0_financial_pti(tmp_path / "config.yaml")
 
