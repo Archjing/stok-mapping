@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from types import SimpleNamespace
 
+from phase0.cli_commands.intelligence import handle_intelligence_command
 from phase0.config import load_config
 from phase0.intelligence import LEDGER_COLUMNS, _write_candidates, review_intelligence_candidates, validate_intelligence_ledger
 
@@ -217,3 +219,63 @@ def test_review_candidates_writes_suggestions_without_updating_ledger(tmp_path) 
     assert review_rows[0]["suggested_recommended_action"] == "create_strategy_task"
     assert "factor-style idea" in review_rows[0]["review_rationale"]
     assert "Ledger updated: no" in result.report_md.read_text(encoding="utf-8")
+
+
+def test_intelligence_validate_cli_handler_forwards_args_and_error_exit(monkeypatch, tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    ledger_path = tmp_path / "knowledge/intelligence/ledger.csv"
+    report_path = tmp_path / "reports/intelligence/validate.md"
+    calls = []
+
+    def fake_validate_intelligence_ledger(config_path_arg, *, ledger, output_report):
+        calls.append(
+            {
+                "config_path": config_path_arg,
+                "ledger": ledger,
+                "output_report": output_report,
+            }
+        )
+        return SimpleNamespace(
+            status="error",
+            row_count=3,
+            error_count=1,
+            warning_count=2,
+            report_md=report_path,
+            errors=["broken ledger"],
+            warnings=["check review date"],
+        )
+
+    class ConsoleStub:
+        def __init__(self) -> None:
+            self.messages: list[str] = []
+
+        def print(self, message: object) -> None:
+            self.messages.append(str(message))
+
+    class ParserStub:
+        def error(self, message: str) -> None:
+            raise AssertionError(message)
+
+    monkeypatch.setattr(
+        "phase0.cli_commands.intelligence.validate_intelligence_ledger",
+        fake_validate_intelligence_ledger,
+    )
+    args = SimpleNamespace(
+        intelligence_cmd="validate",
+        config=str(config_path),
+        ledger=str(ledger_path),
+        output_report=str(report_path),
+    )
+    console = ConsoleStub()
+
+    exit_code = handle_intelligence_command(args, parser=ParserStub(), console=console)
+
+    assert exit_code == 2
+    assert calls == [
+        {
+            "config_path": config_path.resolve(),
+            "ledger": str(ledger_path),
+            "output_report": str(report_path),
+        }
+    ]
+    assert any("Intelligence validation status: error" in message for message in console.messages)

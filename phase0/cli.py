@@ -14,6 +14,7 @@ from phase0.config import load_config
 from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
 from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
+from phase0.cli_commands.intelligence import handle_intelligence_command, register_intelligence_commands
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.db_health import run_database_health_check
@@ -28,12 +29,6 @@ from phase0.external_market_history import (
 from phase0.factor_effectiveness import run_factor_effectiveness_report
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
-from phase0.intelligence import (
-    collect_intelligence,
-    import_local_intelligence,
-    review_intelligence_candidates,
-    validate_intelligence_ledger,
-)
 from phase0.local_history import configure_local_history
 from phase0.maintenance_orchestrator import maintenance_resume, maintenance_run_long_task, maintenance_status, maintenance_stop, maintenance_supervise, maintenance_tick
 from phase0.overfit import run_overfit_diagnostic
@@ -1009,41 +1004,7 @@ def main() -> int:
         help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
     )
     register_dashboard_commands(sub)
-    intelligence_parser = sub.add_parser(
-        "intelligence",
-        help="Collect, import, review, and validate strategy intelligence metadata",
-    )
-    intelligence_sub = intelligence_parser.add_subparsers(dest="intelligence_cmd")
-    intelligence_collect_parser = intelligence_sub.add_parser("collect", help="Collect configured intelligence metadata into an inbox CSV")
-    intelligence_collect_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    intelligence_collect_parser.add_argument("--output-csv", default=None, help="Optional candidate inbox CSV output path")
-    intelligence_collect_parser.add_argument("--output-report", default=None, help="Optional Markdown report output path")
-    intelligence_collect_parser.add_argument("--limit", type=int, default=None, help="Optional per-source row/file limit")
-    intelligence_import_parser = intelligence_sub.add_parser("import-local", help="Import local paper/report metadata into an inbox CSV")
-    intelligence_import_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    intelligence_import_parser.add_argument("--source-dir", default="refdocs/papers", help="Local source directory to scan")
-    intelligence_import_parser.add_argument("--output-csv", default=None, help="Optional candidate inbox CSV output path")
-    intelligence_import_parser.add_argument("--output-report", default=None, help="Optional Markdown report output path")
-    intelligence_import_parser.add_argument("--limit", type=int, default=None, help="Optional file limit")
-    intelligence_review_parser = intelligence_sub.add_parser(
-        "review-candidates",
-        help="Generate review suggestions for an intelligence inbox CSV",
-    )
-    intelligence_review_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    intelligence_review_parser.add_argument("--candidates-csv", required=True, help="Candidate inbox CSV to review")
-    intelligence_review_parser.add_argument("--output-csv", default=None, help="Optional review suggestions CSV output path")
-    intelligence_review_parser.add_argument("--output-report", default=None, help="Optional Markdown review report output path")
-    intelligence_review_parser.add_argument("--limit", type=int, default=None, help="Optional candidate row limit")
-    intelligence_review_parser.add_argument(
-        "--excerpt-chars",
-        type=int,
-        default=2000,
-        help="Maximum source excerpt chars per candidate",
-    )
-    intelligence_validate_parser = intelligence_sub.add_parser("validate", help="Validate the strategy intelligence ledger CSV")
-    intelligence_validate_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    intelligence_validate_parser.add_argument("--ledger", default=None, help="Ledger CSV path. Defaults to config intelligence.ledger")
-    intelligence_validate_parser.add_argument("--output-report", default=None, help="Optional Markdown validation report output path")
+    register_intelligence_commands(sub)
     maintain_parser = sub.add_parser("maintain", help="Maintenance orchestrator commands")
     maintain_sub = maintain_parser.add_subparsers(dest="maintain_cmd")
     maintain_tick_parser = maintain_sub.add_parser("tick", help="Evaluate scheduled maintenance tasks")
@@ -1770,81 +1731,7 @@ def main() -> int:
     if args.cmd == "dashboard":
         return handle_dashboard_command(args, parser=parser)
     if args.cmd == "intelligence":
-        console = Console()
-        if args.intelligence_cmd == "collect":
-            config_path = Path(args.config).resolve()
-            console.print("[bold]Strategy intelligence collect started[/bold]")
-            result = collect_intelligence(
-                config_path,
-                output_csv=args.output_csv,
-                output_report=args.output_report,
-                limit=args.limit,
-            )
-            color = "green" if result.status == "ok" else "yellow"
-            console.print(f"[{color}]Intelligence collect status: {result.status}[/{color}]")
-            console.print(f"Candidate rows: {result.rows}")
-            console.print(f"Candidate CSV: {result.candidates_csv}")
-            console.print(f"Markdown: {result.report_md}")
-            for warning in (result.warnings or [])[:10]:
-                console.print(f"[yellow]Warning:[/yellow] {warning}")
-            return 0
-        if args.intelligence_cmd == "import-local":
-            config_path = Path(args.config).resolve()
-            console.print("[bold]Strategy intelligence local import started[/bold]")
-            result = import_local_intelligence(
-                config_path,
-                source_dir=args.source_dir,
-                output_csv=args.output_csv,
-                output_report=args.output_report,
-                limit=args.limit,
-            )
-            color = "green" if result.status == "ok" else "yellow"
-            console.print(f"[{color}]Intelligence import status: {result.status}[/{color}]")
-            console.print(f"Candidate rows: {result.rows}")
-            console.print(f"Candidate CSV: {result.candidates_csv}")
-            console.print(f"Markdown: {result.report_md}")
-            for warning in (result.warnings or [])[:10]:
-                console.print(f"[yellow]Warning:[/yellow] {warning}")
-            return 0
-        if args.intelligence_cmd == "review-candidates":
-            config_path = Path(args.config).resolve()
-            console.print("[bold]Strategy intelligence candidate review started[/bold]")
-            result = review_intelligence_candidates(
-                config_path,
-                candidates_csv=args.candidates_csv,
-                output_csv=args.output_csv,
-                output_report=args.output_report,
-                limit=args.limit,
-                excerpt_chars=args.excerpt_chars,
-            )
-            color = "green" if result.status == "ok" else "yellow"
-            console.print(f"[{color}]Intelligence review status: {result.status}[/{color}]")
-            console.print(f"Rows: {result.row_count}")
-            console.print(f"Review CSV: {result.review_csv}")
-            console.print(f"Markdown: {result.report_md}")
-            for warning in result.warnings[:10]:
-                console.print(f"[yellow]Warning:[/yellow] {warning}")
-            return 0
-        if args.intelligence_cmd == "validate":
-            config_path = Path(args.config).resolve()
-            console.print("[bold]Strategy intelligence ledger validation started[/bold]")
-            result = validate_intelligence_ledger(
-                config_path,
-                ledger=args.ledger,
-                output_report=args.output_report,
-            )
-            color = "green" if result.status == "ok" else "red"
-            console.print(f"[{color}]Intelligence validation status: {result.status}[/{color}]")
-            console.print(f"Rows: {result.row_count}")
-            console.print(f"Errors: {result.error_count}")
-            console.print(f"Warnings: {result.warning_count}")
-            console.print(f"Markdown: {result.report_md}")
-            for error in result.errors[:10]:
-                console.print(f"[red]Error:[/red] {error}")
-            for warning in result.warnings[:10]:
-                console.print(f"[yellow]Warning:[/yellow] {warning}")
-            return 2 if result.error_count > 0 else 0
-        parser.error("intelligence requires a subcommand: collect, import-local, review-candidates, or validate")
+        return handle_intelligence_command(args, parser=parser)
     if args.cmd == "maintain":
         console = Console()
         if args.maintain_cmd == "tick":

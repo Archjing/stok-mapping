@@ -225,6 +225,17 @@ The eighteenth slice starts splitting the large top-level CLI with a low-risk da
 
 This slice only moves report-dashboard command routing. It does not change report registry scanning, manifest schema, report path policy, strategy commands, maintenance commands, data writes, or generated report artifacts.
 
+## Nineteenth Slice In This Branch
+
+The nineteenth slice continues CLI decomposition with the strategy-intelligence command group:
+
+- Add `phase0.cli_commands.intelligence` for `intelligence collect`, `intelligence import-local`, `intelligence review-candidates`, and `intelligence validate` parser registration and command handling.
+- Update `phase0.cli` to delegate intelligence parser setup and execution to the new command module.
+- Keep the public commands unchanged: `python -m phase0.cli intelligence ...`.
+- Add a handler-level regression test that monkeypatches the new command module and verifies `intelligence validate` argument forwarding plus the error exit code.
+
+This slice only moves strategy-intelligence command routing. It does not change intelligence collection sources, candidate CSV schema, ledger validation rules, review heuristics, report path policy, external API behavior, or generated intelligence artifacts.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
