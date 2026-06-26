@@ -206,7 +206,7 @@ data/manual_history/README.md
 - `data/raw_data/`：用于保存接近原始源口径的快照或响应，例如 FRED 序列、Tiingo 日线、Tushare 批量导出和其他外部数据源原始落盘。
 - `data/features/`：用于保存已经清洗、对齐并可被策略或日报复用的特征表，例如跨市场映射特征、宏观状态特征、技术/财务组合特征和信号输入表。
 
-当前 FRED 最小缓存已按数据层边界配置到 `data/cache/fred`。若后续需要保留更接近原始源口径的完整响应归档，可进一步迁入或扩展到 `data/raw_data/fred`。`reports/hk_a_mapping_factors` 目前仍按实验输出处理；若未来成为策略稳定输入，应迁移到 `data/features/cross_market/`。
+当前 FRED 最小缓存已按数据层边界配置到 `data/cache/fred`。若后续需要保留更接近原始源口径的完整响应归档，可进一步迁入或扩展到 `data/raw_data/fred`。HK-A mapping factor 探测实现位于 `phase0.intelligence.hk_a_mapping_factors`，`scripts/export_hk_a_mapping_factors.py` 仅保留为兼容旧入口；`reports/hk_a_mapping_factors` 目前仍按实验输出处理，若未来成为策略稳定输入，应迁移到 `data/features/cross_market/`。
 
 ## 常用命令
 

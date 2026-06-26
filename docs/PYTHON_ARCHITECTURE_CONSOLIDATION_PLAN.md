@@ -54,7 +54,7 @@ Current decisions:
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py` |
 | `execution` | Simulated accounts, account-level execution simulation, strategy-ledger execution matching, ledgers, account database tables, and execution assumptions | `phase0/execution/accounts.py`, `phase0/execution/strategy_ledger.py`, compatibility shim `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, remaining heavy `phase0/strategy_*` research modules |
-| `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence/__init__.py`, `phase0/intelligence/tiingo_news_probe.py`, compatibility shim `scripts/tiingo_news_probe.py`, LLM/integration scripts |
+| `intelligence` | Strategy intelligence collection, import, validation, review, external signal/probe scripts | `phase0/intelligence/__init__.py`, `phase0/intelligence/tiingo_news_probe.py`, `phase0/intelligence/hk_a_mapping_factors.py`, compatibility shims `scripts/tiingo_news_probe.py` and `scripts/export_hk_a_mapping_factors.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
 | `core` | Config/env/path helpers and small shared utilities that do not own business behavior | `phase0/config.py`, `phase0/env.py`, future shared helpers |
@@ -730,6 +730,16 @@ The sixty-first slice moves the HK market-history batch-load report into the rep
 
 This slice does not change HK history table reads, summary calculations, Markdown output schema, default report path, CLI arguments, generated artifacts, or market-history update behavior.
 
+## Sixty-Second Slice In This Branch
+
+The sixty-second slice moves the HK-to-A-share mapping factor probe into the intelligence package:
+
+- Move `scripts/export_hk_a_mapping_factors.py` implementation to `phase0.intelligence.hk_a_mapping_factors`.
+- Keep `scripts/export_hk_a_mapping_factors.py` as a direct-execution-compatible module alias shim.
+- Add import/help compatibility tests and no-network normalization tests for AH comparison and HSGT history.
+
+This slice does not change AKShare calls, output filenames, report paths, generated CSV/HTML schemas, or whether HK-A mapping is treated as research-only external signal exploration.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -772,7 +782,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Large execution/report scripts | Remaining report and audit scripts under `scripts/` | `scripts/export_execution_effectiveness_report.py`, `scripts/export_strategy_oos_report.py`, `scripts/export_strategy_period_compare.py`, `scripts/export_market_regime_report.py`, and `scripts/export_premarket_watchlist.py` are now thin shims over reporting modules; move remaining large implementations into packages only when ownership and tests are clear |
 | Data audit scripts | None with clear immediate migration benefit | `scripts/audit_financial_pti.py`, `scripts/audit_universe_pit.py`, and `scripts/check_local_history_consistency.py` are now shims over data-governance modules; only move future audit scripts when ownership and CLI compatibility are clear |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
-| External probe scripts | `scripts/export_hk_a_mapping_factors.py` | `scripts/tiingo_news_probe.py` is now a shim over `phase0.intelligence.tiingo_news_probe`; `scripts/export_hk_market_history_report.py` is now a shim over `phase0.reporting.hk_market_history`; keep remaining network side effects explicit and migrate only after provider boundaries and output contracts are covered by tests |
+| External probe scripts | None with clear immediate migration benefit | `scripts/tiingo_news_probe.py` is now a shim over `phase0.intelligence.tiingo_news_probe`; `scripts/export_hk_market_history_report.py` is now a shim over `phase0.reporting.hk_market_history`; `scripts/export_hk_a_mapping_factors.py` is now a shim over `phase0.intelligence.hk_a_mapping_factors` |
 | Developer/agent helpers | `scripts/cloe_*.sh`, `scripts/openclaw_agent.sh`, `scripts/deepseek_agent_mcp.py`, `scripts/install_dev_cron.sh`, `scripts/lib/*` | Keep under `scripts/` as local developer/ops tooling; do not fold into runtime business packages |
 | Provider/update coupling | Local history readers, external market history jobs, update jobs, Tushare write-side jobs | Move only where it improves dependency direction or reuse; keep shims until post-merge validation proves old paths are unused by effective project code |
 | Universe boundary | `universe.py` | Keep in place in this branch; revisit only if current snapshot construction and point-in-time loading are split into separately tested units |

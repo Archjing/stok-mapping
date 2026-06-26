@@ -413,6 +413,9 @@ Tushare 财务历史回填当前状态：
 
 核心资料：
 
+- [phase0/intelligence/__init__.py](../phase0/intelligence/__init__.py)
+- [phase0/intelligence/tiingo_news_probe.py](../phase0/intelligence/tiingo_news_probe.py)
+- [phase0/intelligence/hk_a_mapping_factors.py](../phase0/intelligence/hk_a_mapping_factors.py)
 - `refdocs/papers/`
 - `knowledge/intelligence/strategy_intelligence_ledger.csv`
 - `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
