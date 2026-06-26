@@ -17,6 +17,7 @@ Current decisions:
 - Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
 - `phase0/local_history.py` has been moved to `phase0.data_access.local_history`. It is the SQLite-backed local history read/configuration layer; the old root path remains a compatibility shim.
 - `phase0/overfit.py` has been moved to `phase0.research.diagnostics.overfit`. It is a research diagnostic consumed by the admission runner and strategy-research CLI; the old root path remains a compatibility shim.
+- `phase0/factor_effectiveness.py` has been moved to `phase0.research.diagnostics.factor_effectiveness`. It is a strategy research diagnostic; the old root path remains a compatibility shim.
 - `phase0/update_history.py` has been moved to `phase0.data_governance.update_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/import_history.py` has been moved to `phase0.data_governance.import_history`. It is a write-side local history initialization and index-history rebuild job; the old root path remains a compatibility shim.
 - `phase0/financial_factors.py` has been moved to `phase0.data_governance.financial_factors`. It is a write-side quarterly financial factor maintenance job and table helper; the old root path remains a compatibility shim.
@@ -35,7 +36,7 @@ Current decisions:
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -501,6 +502,17 @@ The forty-second slice moves the AkShare request pacing helper into the data-acc
 - Add an import compatibility test proving the old and new paths share the same `akshare_throttle` singleton.
 
 This slice does not change throttle defaults, retry behavior, sleep timing formulas, AkShare/Tushare fallback logic, CLI command names, generated artifacts, database writes, or strategy algorithms.
+
+## Forty-Third Slice In This Branch
+
+The forty-third slice moves the factor-effectiveness diagnostic into the research diagnostics package:
+
+- Move `phase0/factor_effectiveness.py` to `phase0.research.diagnostics.factor_effectiveness`.
+- Keep root-level `phase0.factor_effectiveness` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update the strategy-research CLI command module to import `run_factor_effectiveness_report` from the new package path.
+- Add an import compatibility test covering the result dataclass, factor spec dataclass, factor spec list, and CLI-callable report function.
+
+This slice does not change factor formulas, point-in-time financial factor enrichment, daily-basic merging, group return or rank-IC calculations, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
 
 ## Later Migration Stages
 

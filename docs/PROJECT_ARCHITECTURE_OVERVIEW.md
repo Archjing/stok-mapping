@@ -336,7 +336,7 @@ Tushare 财务历史回填当前状态：
 - [phase0/universe.py](../phase0/universe.py)
 - [phase0/data_access/local_history.py](../phase0/data_access/local_history.py)
 - [phase0/adjustment.py](../phase0/adjustment.py)
-- [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
+- [phase0/research/diagnostics/factor_effectiveness.py](../phase0/research/diagnostics/factor_effectiveness.py)
 
 职责：
 
@@ -517,7 +517,7 @@ updated_at
 
 - [phase0/walk_forward.py](../phase0/walk_forward.py)
 - [phase0/research/diagnostics/overfit.py](../phase0/research/diagnostics/overfit.py)
-- [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
+- [phase0/research/diagnostics/factor_effectiveness.py](../phase0/research/diagnostics/factor_effectiveness.py)
 - [phase0/strategy_admission.py](../phase0/strategy_admission.py)
 - [phase0/reporting.py](../phase0/reporting.py)
 
