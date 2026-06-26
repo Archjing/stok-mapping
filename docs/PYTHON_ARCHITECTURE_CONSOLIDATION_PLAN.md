@@ -804,6 +804,16 @@ The sixty-eighth slice splits strategy-intelligence collection and local import 
 
 This slice does not change intelligence CLI commands, local import behavior, online source request URLs or parameters, candidate CSV columns, collect/import report wording, report filenames, report paths, generated artifact schemas, review behavior, validation behavior, or Tiingo/HK-A probe behavior.
 
+## Sixty-Ninth Slice In This Branch
+
+The sixty-ninth slice extracts pure Tushare backfill report helpers from the broad write-side backfill job:
+
+- Add `phase0.data_governance.backfills.tushare_history_reports` for Tushare history/financial report column schemas, report-path builders, detail CSV/Markdown writers, summary append rendering, and summary row builders.
+- Keep `phase0.data_governance.backfills.tushare_history` as the write-side orchestration module and retain the old private helper aliases for compatibility.
+- Add report-helper import compatibility tests and a missing-token behavior test that calls `backfill_tushare_history_from_config` against a temporary SQLite database and verifies audit/summary reports are still written without touching real Tushare or production data.
+
+This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, upsert behavior, task-table state transitions, rate limiting, retry behavior, CLI command names, generated report filenames, generated artifact schemas, or history/financial audit SQL queries.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
