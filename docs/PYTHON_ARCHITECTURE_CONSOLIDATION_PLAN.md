@@ -1,10 +1,10 @@
-# Python Architecture Consolidation Plan
+# Python And Shell Architecture Consolidation Plan
 
 Last revised: 2026-06-26
 
 ## Purpose
 
-This plan defines the KISS-oriented path for consolidating Python code by the project's actual functional architecture. The goal is to group related code, reduce duplicated helpers, and keep behavior stable while the strategy-research system continues to run.
+This plan defines the KISS-oriented path for consolidating Python code and shell entrypoints by the project's actual functional architecture. The goal is to group related code, reduce duplicated helpers, and keep behavior stable while the strategy-research system continues to run.
 
 The current branch starts with narrow, verifiable slices. It does not claim the full codebase consolidation is finished.
 
@@ -19,7 +19,7 @@ The current branch starts with narrow, verifiable slices. It does not claim the 
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
-| `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints |
+| `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
 | `core` | Config/env/path helpers and small shared utilities that do not own business behavior | `phase0/config.py`, `phase0/env.py`, future shared helpers |
 
 ## First Slice In This Branch
@@ -68,6 +68,16 @@ The fourth slice adds a research attribution package for low-coupling modules th
 
 This slice intentionally does not move `strategy_failure_attribution.py`, because it imports admission gate helpers and is closer to the admission workflow. It also does not move participation overlays, participation-path audits, role cards, holdings exposure, CSI300 attribution, core reachability, or missing-core audit because those belong to separate research subpackages or depend on heavier execution/data internals.
 
+## Fifth Slice In This Branch
+
+The fifth slice starts shell-entrypoint consolidation with a small shared environment helper:
+
+- Add `scripts/lib/project_env.sh` for project-root, Python interpreter, log directory, `.env` loading, and timestamp helpers.
+- Update `run_daily_brief_pipeline.sh`, `update_manual_history_daily.sh`, and `update_financial_factors_weekly.sh` to use the shared helper.
+- Keep each script's task command, logging destination, and lock behavior unchanged.
+
+This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `install_dev_cron.sh`, Cloe/acpx agent wrappers, `openclaw_agent.sh`, or `.codex/run_claude_agent.sh`. Those scripts affect cron installation, the every-minute scheduler entrypoint, external agent session semantics, or `.codex` runner behavior and need separate review.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -77,7 +87,7 @@ This slice intentionally does not move `strategy_failure_attribution.py`, becaus
 | P3 Domain strategies and research | Start with leaf research diagnostics and attribution helpers, then separate strategy implementations from walk-forward/admission/diagnostics | Research diagnostic/attribution import tests, strategy registry tests, walk-forward/admission targeted tests, no strategy parameter or cost-model changes |
 | P4 CLI and orchestration | Split `phase0.cli` into command modules and move scheduler orchestration | All CLI help paths pass, scheduler command names and env vars remain compatible |
 | P5 Intelligence | Split collection/import/validate/review code and keep scripts thin | Intelligence CLI help, ledger/candidate schema tests, no required external API calls in tests |
-| P6 Scripts cleanup | Convert heavy scripts into wrappers over packaged functions | Thin script smoke tests, import compatibility tests |
+| P6 Scripts cleanup | Convert heavy Python scripts and repeated shell entrypoints into wrappers over packaged functions/shared shell helpers | Thin script smoke tests, bash syntax checks, import compatibility tests |
 
 ## KISS Cleanup Backlog
 
@@ -93,6 +103,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
 | Provider/update coupling | `local_history.py`, `data_sources.py`, `external_market_history.py`, `tushare_source.py`, `update_history.py` | Split read-only data access from write-side governance jobs before moving |
+| Shell environment bootstrap | Maintenance shell scripts | Keep one small `scripts/lib/project_env.sh`; do not hide cron, lock, or external agent semantics in broad shell frameworks |
 
 ## Non-Goals
 
