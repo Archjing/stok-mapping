@@ -834,6 +834,16 @@ The seventy-first slice extracts Tushare financial-factor row persistence helper
 
 This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, task-table schema or state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, audit SQL queries, or report rendering.
 
+## Seventy-Second Slice In This Branch
+
+The seventy-second slice extracts Tushare financial backfill task-state helpers from the broad write-side backfill job:
+
+- Add `phase0.data_governance.backfills.tushare_financial_tasks` for financial task-table schemas, symbol eligibility by reporting period, missing-field normalization, task initialization, shard selection, retry selection, and task status marking.
+- Keep `phase0.data_governance.backfills.tushare_history` as the write-side orchestration module and retain the old private helper aliases for compatibility.
+- Add behavior tests for missing-field normalization, listing/delisting-aware task initialization, retry/shard selection, error truncation, and missing-field task interface updates.
+
+This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, task-table schema or state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, audit SQL queries, report rendering, or financial row write semantics.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -848,6 +858,8 @@ This slice does not change Tushare API request payloads, provider selection, tok
 ## Compatibility Shim Retirement Policy
 
 Compatibility wrappers and import shims are temporary migration aids, not the final architecture. They can be removed only after the new package paths have become the project-internal default.
+
+Individual migration slices do not have to be line-count negative. During this branch, line count may temporarily grow because old import paths, compatibility tests, and package-level helpers coexist. The acceptance standard is that each migrated area has an explicit cleanup path and that the branch performs a consolidation pass before main integration.
 
 Required sequence:
 
@@ -877,6 +889,7 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Data audit scripts | None with clear immediate migration benefit | `scripts/audit_financial_pti.py`, `scripts/audit_universe_pit.py`, and `scripts/check_local_history_consistency.py` are now shims over data-governance modules; only move future audit scripts when ownership and CLI compatibility are clear |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
 | External probe scripts | None with clear immediate migration benefit | `scripts/tiingo_news_probe.py` is now a shim over `phase0.intelligence.tiingo_news_probe`; `scripts/export_hk_market_history_report.py` is now a shim over `phase0.reporting.hk_market_history`; `scripts/export_hk_a_mapping_factors.py` is now a shim over `phase0.intelligence.hk_a_mapping_factors` |
+| Tushare backfill compatibility aliases | `phase0.tushare_history_backfill`, private aliases in `phase0.data_governance.backfills.tushare_history` | Keep until post-merge validation proves normal project code uses `phase0.data_governance.backfills.*`; then remove old root wrapper and reduce private alias compatibility tests in a dedicated cleanup commit |
 | Developer/agent helpers | `scripts/cloe_*.sh`, `scripts/openclaw_agent.sh`, `scripts/deepseek_agent_mcp.py`, `scripts/install_dev_cron.sh`, `scripts/lib/*` | Keep under `scripts/` as local developer/ops tooling; do not fold into runtime business packages |
 | Provider/update coupling | Local history readers, external market history jobs, update jobs, Tushare write-side jobs | Move only where it improves dependency direction or reuse; keep shims until post-merge validation proves old paths are unused by effective project code |
 | Universe boundary | `universe.py` | Keep in place in this branch; revisit only if current snapshot construction and point-in-time loading are split into separately tested units |
