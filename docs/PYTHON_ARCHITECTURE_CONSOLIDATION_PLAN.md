@@ -864,6 +864,16 @@ The seventy-fourth slice continues consolidating pure import-compatibility tests
 
 This slice does not change production code, CLI commands, data writes, data-governance behavior, report paths, or script wrapper behavior. It reduces compatibility-test duplication while preserving the old-path alias checks needed for the later wrapper cleanup commit.
 
+## Seventy-Fifth Slice In This Branch
+
+The seventy-fifth slice consolidates pure strategy-intelligence package-root compatibility tests:
+
+- Add `tests/test_intelligence_compatibility.py` as the shared compatibility test for `phase0.intelligence` package-root exports that alias split modules.
+- Replace the one-off collection, review, and validation compatibility test files with a parameterized module/symbol matrix.
+- Keep Tiingo probe and HK-A mapping tests separate because they verify script wrapper `--help` execution and normalization behavior, not only package-root compatibility.
+
+This slice does not change production code, CLI commands, intelligence collection/review/validation behavior, online request settings, ledger schemas, report paths, or script wrapper behavior. It reduces compatibility-test duplication while preserving the alias checks needed for the later wrapper cleanup commit.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
