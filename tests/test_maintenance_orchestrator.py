@@ -2,6 +2,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import phase0.cli as cli
+import phase0.cli_commands.maintenance as maintenance_cli
 import phase0.cli_commands.system as system_cli
 from phase0.cli import summarize_system_maintenance_status
 from phase0.cli_commands.system import summarize_system_maintenance_status as new_summarize_system_maintenance_status
@@ -164,8 +165,8 @@ def test_maintain_status_cli_keeps_default_refresh_behavior(monkeypatch, capsys)
             shards=[],
         )
 
-    monkeypatch.setattr(cli, "maintenance_status", fake_maintenance_status)
-    monkeypatch.setattr(cli, "Console", lambda: SimpleNamespace(print=print))
+    monkeypatch.setattr(maintenance_cli, "maintenance_status", fake_maintenance_status)
+    monkeypatch.setattr(maintenance_cli, "Console", lambda: SimpleNamespace(print=print))
     monkeypatch.setattr(
         cli.argparse.ArgumentParser,
         "exit",
@@ -188,3 +189,53 @@ def test_maintain_status_cli_keeps_default_refresh_behavior(monkeypatch, capsys)
         )
     ]
     assert "Maintenance status started" in captured.out
+
+
+def test_maintain_tick_cli_forwards_dry_run_without_starting_tasks(monkeypatch, capsys) -> None:
+    calls = []
+
+    def fake_maintenance_tick(config_path, **kwargs):
+        calls.append((config_path, kwargs))
+        return SimpleNamespace(
+            state_db=Path("data/maintenance/maintenance.sqlite"),
+            as_of="2026-06-23 08:00",
+            dry_run=True,
+            executed_runs=0,
+            decisions=[
+                SimpleNamespace(
+                    task_name="daily_brief",
+                    decision="skipped",
+                    scheduled_time="07:20",
+                    reason="not_in_window",
+                )
+            ],
+        )
+
+    monkeypatch.setattr(maintenance_cli, "maintenance_tick", fake_maintenance_tick)
+    monkeypatch.setattr(maintenance_cli, "Console", lambda: SimpleNamespace(print=print))
+    monkeypatch.setattr(
+        cli.argparse.ArgumentParser,
+        "exit",
+        lambda self, status=0, message=None: (_ for _ in ()).throw(SystemExit(status)),
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        ["phase0.cli", "maintain", "tick", "--config", "config.yaml", "--dry-run", "--as-of", "2026-06-23 08:00"],
+    )
+
+    try:
+        exit_code = cli.main()
+    except SystemExit as exc:
+        exit_code = int(exc.code or 0)
+
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert calls == [
+        (
+            Path("config.yaml").resolve(),
+            {"as_of": "2026-06-23 08:00", "dry_run": True},
+        )
+    ]
+    assert "Maintenance tick started" in captured.out
+    assert "Dry run: True" in captured.out

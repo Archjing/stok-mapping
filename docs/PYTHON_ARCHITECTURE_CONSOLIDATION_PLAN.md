@@ -247,6 +247,17 @@ The twentieth slice extracts the read-only system status command from the large 
 
 This slice only moves the read-only system-status route. It does not change `maintain` task execution, maintenance state refresh behavior, status database schema, scheduler timing, long-task controls, report writing, or generated maintenance artifacts.
 
+## Twenty-First Slice In This Branch
+
+The twenty-first slice extracts the maintenance command group from the large top-level CLI:
+
+- Add `phase0.cli_commands.maintenance` for `maintain tick`, `maintain status`, `maintain supervise`, `maintain run`, `maintain stop`, and `maintain resume` parser registration and command handling.
+- Update `phase0.cli` to delegate maintenance parser setup and execution to the new command module.
+- Update maintenance-orchestrator CLI tests so monkeypatches target the new command module.
+- Add a `maintain tick --dry-run` regression test to verify dry-run argument forwarding without starting real tasks.
+
+This slice only moves maintenance command routing. It does not change scheduler timing, maintenance state refresh defaults, long-task process control, shard state transitions, state database schema, generated maintenance reports, or external command names such as `python -m phase0.cli maintain ...`.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
