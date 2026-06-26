@@ -63,7 +63,7 @@ def test_write_report_manifest_has_runs_and_artifacts_shape(tmp_path: Path) -> N
     manifest_path = write_report_manifest(root=tmp_path)
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-    assert manifest_path == tmp_path / "reports" / "report_dashboard" / "manifest.json"
+    assert manifest_path == tmp_path / "reports" / "runs" / "report_dashboard" / "manifest.json"
     assert payload["schema_version"] == 1
     assert payload["project_root"] == "."
     assert payload["generated_at"]
@@ -144,7 +144,7 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
 
     def fake_write_report_manifest(*, root, manifest_path=None, reports_dir=None):
         calls.append((root, manifest_path, reports_dir))
-        return root / "reports" / "report_dashboard" / "manifest.json"
+        return root / "reports" / "runs" / "report_dashboard" / "manifest.json"
 
     monkeypatch.setattr(cli, "write_report_manifest", fake_write_report_manifest)
     monkeypatch.setattr(

@@ -206,9 +206,9 @@ def audit_financial_pti(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--summary-output", default="reports/phase0_financial_pti_summary.csv")
-    parser.add_argument("--sample-output", default="reports/phase0_financial_pti_problem_samples.csv")
-    parser.add_argument("--html-output", default="reports/phase0_financial_pti_report.html")
+    parser.add_argument("--summary-output", default="reports/phase0/phase0_financial_pti_summary.csv")
+    parser.add_argument("--sample-output", default="reports/phase0/phase0_financial_pti_problem_samples.csv")
+    parser.add_argument("--html-output", default="reports/phase0/phase0_financial_pti_report.html")
     args = parser.parse_args()
     result = audit_financial_pti(
         config_path=Path(args.config),

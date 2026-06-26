@@ -38,8 +38,8 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_WATCHLIST_OUTPUT = "reports/phase0_premarket_watchlist.csv"
-DEFAULT_REPORT_OUTPUT = "reports/phase0_premarket_report.html"
+DEFAULT_WATCHLIST_OUTPUT = "reports/phase0/phase0_premarket_watchlist.csv"
+DEFAULT_REPORT_OUTPUT = "reports/phase0/phase0_premarket_report.html"
 DEFAULT_SIMULATION_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
 STRATEGY_DISPLAY_NAMES = {
     "legacy_momentum_low_turnover_v1": "低换手经典动量",

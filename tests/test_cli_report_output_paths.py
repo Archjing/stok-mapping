@@ -97,7 +97,7 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
     _assert_standard_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
     assert Path(result["watchlist"]).name == "premarket__watchlist.csv"
     assert Path(result["report"]).name == "premarket__report.html"
-    assert calls[0]["latest_report_output"] == tmp_path / "reports" / "latest" / "watchlist" / "index.html"
+    assert calls[0]["latest_report_output"] == tmp_path / "reports" / "runs" / "latest" / "watchlist" / "index.html"
 
 
 def test_account_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) -> None:

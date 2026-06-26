@@ -28,10 +28,10 @@ from phase0.walk_forward import (
 )
 
 
-DEFAULT_BILL_OUTPUT = "reports/phase0_low_turnover_bill.csv"
-DEFAULT_DAILY_OUTPUT = "reports/phase0_low_turnover_daily_assets.csv"
-DEFAULT_PREVIEW_OUTPUT = "reports/phase0_low_turnover_bill_preview.html"
-DEFAULT_PANEL_CACHE = "reports/cache/low_turnover_panel.pkl"
+DEFAULT_BILL_OUTPUT = "reports/phase0/phase0_low_turnover_bill.csv"
+DEFAULT_DAILY_OUTPUT = "reports/phase0/phase0_low_turnover_daily_assets.csv"
+DEFAULT_PREVIEW_OUTPUT = "reports/phase0/phase0_low_turnover_bill_preview.html"
+DEFAULT_PANEL_CACHE = "reports/runs/cache/low_turnover_panel.pkl"
 DEFAULT_STRATEGY_ID = "legacy_momentum_low_turnover_v1"
 DEFAULT_PREVIEW_HEAD_ROWS = 120
 DEFAULT_PREVIEW_TAIL_ROWS = 120

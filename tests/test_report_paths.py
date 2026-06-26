@@ -30,15 +30,15 @@ def test_artifact_uses_family_artifact_extension(tmp_path: Path) -> None:
 
 
 def test_latest_and_scratch_directories_are_separate(tmp_path: Path) -> None:
-    assert latest_dir(root=tmp_path, channel="daily brief") == tmp_path / "reports" / "latest" / "daily_brief"
+    assert latest_dir(root=tmp_path, channel="daily brief") == tmp_path / "reports" / "runs" / "latest" / "daily_brief"
     assert scratch_dir(root=tmp_path, purpose="strategy admission trace", now=datetime(2026, 6, 23, 1, 2, 3)) == (
-        tmp_path / "reports" / "scratch" / "2026-06-23" / "strategy_admission_trace"
+        tmp_path / "reports" / "runs" / "scratch" / "2026-06-23" / "strategy_admission_trace"
     )
 
 
 def test_latest_watchlist_entry_path(tmp_path: Path) -> None:
     assert latest_dir(root=tmp_path, channel="watchlist") / "index.html" == (
-        tmp_path / "reports" / "latest" / "watchlist" / "index.html"
+        tmp_path / "reports" / "runs" / "latest" / "watchlist" / "index.html"
     )
 
 

@@ -697,7 +697,7 @@ def run_index_asof_audit(
     index_table = str(local_history.get("index_table", "market_index_bars"))
     index_meta_table = str(local_history.get("index_meta_table", "market_indices"))
     calendar_table = str(local_history.get("calendar_table", "trading_calendar"))
-    out_dir = output_dir or (root / "reports/index_asof_audit")
+    out_dir = output_dir or (root / "reports/database_health/index_asof_audit")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     if not db_path.exists():

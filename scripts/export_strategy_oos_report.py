@@ -26,10 +26,10 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "reports/live_execution_backtest/oos_daily_assets.csv"
-DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "reports/live_execution_backtest/oos_report.html"
-DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "reports/live_execution_backtest/oos_curve.csv"
-DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "reports/live_execution_backtest/oos_fold_compare.csv"
+DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "reports/phase0/live_execution_backtest/oos_daily_assets.csv"
+DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "reports/phase0/live_execution_backtest/oos_report.html"
+DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "reports/phase0/live_execution_backtest/oos_curve.csv"
+DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "reports/phase0/live_execution_backtest/oos_fold_compare.csv"
 DEFAULT_CHECKPOINT_DATE = "2025-05-30"
 DEFAULT_CHECKPOINT_NOTE = (
     "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。"
@@ -499,7 +499,7 @@ def export_strategy_oos_report(
         enable_suspension_check=enable_suspension_check,
     )
     live_cfg = _live_backtest_settings(config)
-    output_root = Path(output_dir or oos_cfg.get("output_dir") or live_cfg.get("output_dir") or "reports/live_execution_backtest")
+    output_root = Path(output_dir or oos_cfg.get("output_dir") or live_cfg.get("output_dir") or "reports/phase0/live_execution_backtest")
     output_root = output_root if output_root.is_absolute() else root / output_root
     use_config_paths = output_dir is None
     if daily_assets_path is None:

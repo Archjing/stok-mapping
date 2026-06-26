@@ -542,7 +542,7 @@ def review_intelligence_candidates(
     cfg = load_config(config_path)
     intel_cfg = cfg.get("intelligence", {})
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/intelligence")
+    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
     candidates_path = _resolve_path(root, candidates_csv)
     review_csv = _configured_path(
         root=root,
@@ -709,7 +709,7 @@ def import_local_intelligence(
     cfg = load_config(config_path)
     intel_cfg = cfg.get("intelligence", {})
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/intelligence")
+    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
     raw_source = source_dir or "refdocs/papers"
     output = _configured_path(
         root=root,
@@ -858,7 +858,7 @@ def collect_intelligence(
     intel_cfg = cfg.get("intelligence", {})
     sources = intel_cfg.get("sources", [])
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/intelligence")
+    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
     output = _configured_path(
         root=root,
         intel_cfg=intel_cfg,
@@ -1033,7 +1033,7 @@ def validate_intelligence_ledger(
         intel_cfg=intel_cfg,
         override=output_report,
         config_key="validate_report",
-        fallback=f"reports/intelligence/intelligence_validate_report_{_date_tag()}.md",
+        fallback=f"reports/archive/intelligence/intelligence_validate_report_{_date_tag()}.md",
     )
     errors: list[str] = []
     warnings: list[str] = []

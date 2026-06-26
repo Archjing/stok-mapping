@@ -51,9 +51,9 @@ def create_report_run(
 
 
 def latest_dir(*, root: Path, channel: str) -> Path:
-    return root / "reports" / "latest" / slug(channel)
+    return root / "reports" / "runs" / "latest" / slug(channel)
 
 
 def scratch_dir(*, root: Path, purpose: str, now: datetime | None = None) -> Path:
     timestamp = now or datetime.now()
-    return root / "reports" / "scratch" / f"{timestamp:%Y-%m-%d}" / slug(purpose)
+    return root / "reports" / "runs" / "scratch" / f"{timestamp:%Y-%m-%d}" / slug(purpose)

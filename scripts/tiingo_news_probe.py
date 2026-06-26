@@ -44,7 +44,7 @@ def main() -> int:
     parser.add_argument("--days", type=int, default=7)
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--token-env", default="TIINGO_API_TOKEN")
-    parser.add_argument("--output", default="reports/tiingo_news_probe_report.md")
+    parser.add_argument("--output", default="reports/archive/intelligence/tiingo_news_probe_report.md")
     args = parser.parse_args()
 
     load_dotenv(Path(".env"))

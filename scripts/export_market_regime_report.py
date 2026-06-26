@@ -260,10 +260,10 @@ def export_market_regime_report(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="reports/phase0_low_turnover_oos_curve.csv")
-    parser.add_argument("--summary-output", default="reports/phase0_market_regime_summary.csv")
-    parser.add_argument("--segment-output", default="reports/phase0_market_regime_segments.csv")
-    parser.add_argument("--html-output", default="reports/phase0_market_regime_report.html")
+    parser.add_argument("--input", default="reports/phase0/phase0_low_turnover_oos_curve.csv")
+    parser.add_argument("--summary-output", default="reports/phase0/phase0_market_regime_summary.csv")
+    parser.add_argument("--segment-output", default="reports/phase0/phase0_market_regime_segments.csv")
+    parser.add_argument("--html-output", default="reports/phase0/phase0_market_regime_report.html")
     args = parser.parse_args()
     result = export_market_regime_report(
         input_path=Path(args.input),

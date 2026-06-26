@@ -271,7 +271,7 @@ def main() -> int:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--start-date", default=(date.today() - timedelta(days=30)).strftime("%Y%m%d"))
     parser.add_argument("--end-date", default=date.today().strftime("%Y%m%d"))
-    parser.add_argument("--output-dir", default="reports/hk_a_mapping_factors")
+    parser.add_argument("--output-dir", default="reports/phase0/hk_a_mapping_factors")
     parser.add_argument("--holding-tail", type=int, default=20, help="Rows kept per holding symbol when date range has no rows")
     parser.add_argument(
         "--holding-symbol",

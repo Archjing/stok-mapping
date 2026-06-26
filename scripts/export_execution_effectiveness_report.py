@@ -19,7 +19,7 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_OUTPUT_DIR = "reports/live_execution_backtest"
+DEFAULT_OUTPUT_DIR = "reports/phase0/live_execution_backtest"
 DEFAULT_BILL_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_bill.csv"
 DEFAULT_DAILY_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_daily_assets.csv"
 DEFAULT_PREVIEW_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_bill_preview.html"

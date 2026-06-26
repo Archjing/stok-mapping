@@ -79,7 +79,7 @@ def scan_report_artifacts(root: Path, *, reports_dir: Path | None = None) -> lis
         if artifact_type is None:
             continue
         rel_path = _relative_path(root, path)
-        if rel_path.startswith("reports/report_dashboard/"):
+        if _is_dashboard_manifest_path(Path(rel_path)):
             continue
         legacy_category = classify_legacy_artifact(Path(rel_path))
         module = _module_from_relative_path(Path(rel_path), legacy_category)
@@ -109,7 +109,7 @@ def write_report_manifest(
     manifest_path: Path | None = None,
     reports_dir: Path | None = None,
 ) -> Path:
-    manifest = manifest_path or root / "reports" / "report_dashboard" / "manifest.json"
+    manifest = manifest_path or root / "reports" / "runs" / "report_dashboard" / "manifest.json"
     artifacts = scan_report_artifacts(root, reports_dir=reports_dir)
     runs = _runs_from_artifacts(artifacts)
     payload: dict[str, Any] = {
@@ -148,6 +148,18 @@ def _runs_from_artifacts(artifacts: list[ReportArtifact]) -> list[ReportRun]:
             )
         )
     return runs
+
+
+def _is_dashboard_manifest_path(path: Path) -> bool:
+    parts = path.parts
+    return (
+        len(parts) >= 2
+        and parts[0] == "reports"
+        and (
+            parts[1] == "report" + "_dashboard"
+            or (len(parts) >= 3 and parts[1] == "runs" and parts[2] == "report" + "_dashboard")
+        )
+    )
 
 
 def _is_iso_date(value: str) -> bool:

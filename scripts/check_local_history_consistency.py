@@ -351,8 +351,8 @@ def main() -> None:
     parser.add_argument("--adjust-type", default="", help="override local adjust_type, default from config")
     parser.add_argument("--rtol", type=float, default=1e-6)
     parser.add_argument("--atol", type=float, default=1e-4)
-    parser.add_argument("--detail-output", type=Path, default=Path("reports/local_history_consistency_details.csv"))
-    parser.add_argument("--report-output", type=Path, default=Path("reports/local_history_consistency_report.html"))
+    parser.add_argument("--detail-output", type=Path, default=Path("reports/database_health/local_history_consistency_details.csv"))
+    parser.add_argument("--report-output", type=Path, default=Path("reports/database_health/local_history_consistency_report.html"))
     args = parser.parse_args()
 
     config = load_config(args.config)

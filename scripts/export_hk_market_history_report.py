@@ -211,7 +211,7 @@ def build_report(config_path: Path, output_path: Path) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Export HK market history batch load report")
     parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    parser.add_argument("--output", default="reports/hk_market_history_batch_load_report.md", help="Output markdown report")
+    parser.add_argument("--output", default="reports/database_health/hk_market_history_batch_load_report.md", help="Output markdown report")
     args = parser.parse_args()
     report_path = build_report(Path(args.config).resolve(), Path(args.output))
     print(report_path)
