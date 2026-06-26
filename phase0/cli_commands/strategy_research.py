@@ -10,7 +10,7 @@ import phase0.cli_commands.gates as gates
 from phase0.config import load_config
 from phase0.research.diagnostics.factor_effectiveness import run_factor_effectiveness_report
 from phase0.research.diagnostics.overfit import run_overfit_diagnostic
-from phase0.strategy_admission import run_strategy_admission
+from phase0.research.admission.runner import run_strategy_admission
 from phase0.walk_forward import describe_walk_forward_presets
 
 

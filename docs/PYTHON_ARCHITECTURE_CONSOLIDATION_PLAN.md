@@ -53,7 +53,7 @@ Current decisions:
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py` |
 | `execution` | Simulated accounts, account-level execution simulation, strategy-ledger execution matching, ledgers, account database tables, and execution assumptions | `phase0/execution/accounts.py`, `phase0/execution/strategy_ledger.py`, compatibility shim `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, remaining heavy `phase0/strategy_*` research modules |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py` compatibility shim, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external signal/probe scripts | `phase0/intelligence/__init__.py`, `phase0/intelligence/tiingo_news_probe.py`, `phase0/intelligence/hk_a_mapping_factors.py`, compatibility shims `scripts/tiingo_news_probe.py` and `scripts/export_hk_a_mapping_factors.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -759,6 +759,17 @@ The sixty-fourth slice extracts admission report writing from the admission runn
 - Add import compatibility tests for the new report helper path and old runner-private aliases.
 
 This slice does not change `run_strategy_admission`, walk-forward execution, overfit execution, admission gates, matrix/review calculations, report filenames, report paths, CLI command names, generated artifact schemas, or strategy algorithms.
+
+## Sixty-Fifth Slice In This Branch
+
+The sixty-fifth slice moves the strategy-admission runner into the research admission package:
+
+- Add `phase0.research.admission.runner` for `StrategyAdmissionResult` and `run_strategy_admission`.
+- Update the strategy-research CLI command module to import the runner from the new package path.
+- Turn `phase0.strategy_admission` into a compatibility export module for the runner and the previously migrated private helper aliases.
+- Move ordinary runner monkeypatch tests to the new runner path and add explicit old-path compatibility tests.
+
+This slice does not change walk-forward execution, overfit execution, admission gates, matrix/review calculations, report writers, report filenames, report paths, CLI command names, generated artifact schemas, thresholds, or strategy algorithms.
 
 ## Later Migration Stages
 

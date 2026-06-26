@@ -5,13 +5,14 @@ import pytest
 from types import SimpleNamespace
 
 import phase0.strategy_admission as admission
+import phase0.research.admission.runner as admission_runner
 from phase0.strategy_admission import (
     _admission_command_hint,
     _config_command_arg,
     _write_report,
     _write_governance_report,
-    run_strategy_admission,
 )
+from phase0.research.admission.runner import run_strategy_admission
 from phase0.research.admission.gate import (
     overfit_blocks_admission as _overfit_blocks_admission,
     resolve_admission_gate as _resolve_admission_gate,
@@ -740,8 +741,8 @@ def test_strategy_admission_default_output_uses_standard_run_paths(monkeypatch, 
         ).to_csv(csv_path, index=False)
         return SimpleNamespace(csv_path=csv_path)
 
-    monkeypatch.setattr(admission, "run_walk_forward", fake_run_walk_forward)
-    monkeypatch.setattr(admission, "run_overfit_diagnostic", fake_overfit)
+    monkeypatch.setattr(admission_runner, "run_walk_forward", fake_run_walk_forward)
+    monkeypatch.setattr(admission_runner, "run_overfit_diagnostic", fake_overfit)
 
     result = run_strategy_admission(
         config={
@@ -793,8 +794,8 @@ def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_fo
     def fail_overfit(**kwargs):
         raise AssertionError("overfit diagnostic should not run without candidate folds")
 
-    monkeypatch.setattr(admission, "run_walk_forward", fake_run_walk_forward)
-    monkeypatch.setattr(admission, "run_overfit_diagnostic", fail_overfit)
+    monkeypatch.setattr(admission_runner, "run_walk_forward", fake_run_walk_forward)
+    monkeypatch.setattr(admission_runner, "run_overfit_diagnostic", fail_overfit)
 
     result = run_strategy_admission(
         config={
