@@ -10,10 +10,12 @@ from typing import Any
 import pandas as pd
 
 from phase0.config import load_config
+from phase0.data_access.providers.tushare import TushareConfig, _call, tushare_available, tushare_config
+from phase0.data_governance.sql import safe_identifier
 from phase0.local_history import normalize_cn_symbol
 from phase0.reporting.paths import report_path
-from phase0.data_access.providers.tushare import TushareConfig, _call, tushare_available, tushare_config
-from phase0.update_history import _safe_identifier
+
+_safe_identifier = safe_identifier
 
 
 @dataclass(frozen=True)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import sqlite3
 import time as time_module
 from dataclasses import dataclass, field
@@ -12,6 +11,8 @@ import pandas as pd
 import requests
 
 from phase0.adjustment import upsert_adj_factors
+from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
+from phase0.data_governance.sql import safe_identifier, to_sql_value
 from phase0.env import prepare_imports
 from phase0.local_history import normalize_cn_symbol
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
@@ -20,6 +21,11 @@ from phase0.data_access.providers.tushare import fetch_tushare_adj_factor_trade_
 prepare_imports()
 
 import akshare as ak  # noqa: E402
+
+_safe_identifier = safe_identifier
+_to_sql_value = to_sql_value
+_ensure_daily_basic_table = ensure_daily_basic_table
+_upsert_daily_basic_rows = upsert_daily_basic_rows
 
 
 @dataclass
@@ -51,12 +57,6 @@ class SourceAttempt:
     coverage: float
     status: str
     message: str = ""
-
-
-def _safe_identifier(value: str) -> str:
-    if not value or not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value):
-        raise ValueError(f"Unsafe SQL identifier: {value}")
-    return value
 
 
 def _parse_date(value: Any) -> date | None:
@@ -185,59 +185,6 @@ def _metadata_coverage(conn: sqlite3.Connection, *, meta_table: str, market: str
         out[field_name] = float(int(row.get(field_name) or 0) / total) if total else 0.0
     out["min_field"] = min(out[field_name] for field_name in fields) if total else 0.0
     return out
-
-
-def _ensure_daily_basic_table(conn: sqlite3.Connection, *, table_name: str) -> None:
-    table = _safe_identifier(table_name)
-    conn.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {table} (
-            market TEXT NOT NULL,
-            symbol TEXT NOT NULL,
-            date TEXT NOT NULL,
-            market_cap REAL,
-            circ_mv REAL,
-            pe_ratio REAL,
-            pb_ratio REAL,
-            turnover_rate REAL,
-            PRIMARY KEY (market, symbol, date)
-        )
-        """
-    )
-    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_date ON {table}(date)")
-
-
-def _upsert_daily_basic_rows(conn: sqlite3.Connection, *, table_name: str, rows: pd.DataFrame) -> int:
-    if rows.empty:
-        return 0
-    table = _safe_identifier(table_name)
-    _ensure_daily_basic_table(conn, table_name=table)
-    params = [
-        (
-            str(row.get("market") or "CN"),
-            str(row.get("symbol") or ""),
-            str(row.get("date") or ""),
-            _to_sql_value(row.get("market_cap")),
-            _to_sql_value(row.get("circ_mv")),
-            _to_sql_value(row.get("pe_ratio")),
-            _to_sql_value(row.get("pb_ratio")),
-            _to_sql_value(row.get("turnover_rate")),
-        )
-        for _, row in rows.iterrows()
-        if str(row.get("symbol") or "") and str(row.get("date") or "")
-    ]
-    if not params:
-        return 0
-    cursor = conn.executemany(
-        f"""
-        INSERT OR REPLACE INTO {table} (
-            market, symbol, date, market_cap, circ_mv, pe_ratio, pb_ratio, turnover_rate
-        )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """,
-        params,
-    )
-    return int(cursor.rowcount or 0)
 
 
 def _ensure_source_audit_table(conn: sqlite3.Connection, *, table_name: str) -> None:
@@ -608,12 +555,6 @@ def _fetch_incremental_rows(
     meta = _normalize_spot_metadata(raw, markets=markets, max_symbols=max_symbols) if raw is not None and not raw.empty else pd.DataFrame()
     source = str(raw.attrs.get("source", "akshare_or_sina_snapshot")) if raw is not None else "akshare_or_sina_snapshot"
     return rows, meta, pd.DataFrame(), fetched_rows, source, attempts
-
-
-def _to_sql_value(value: Any) -> Any:
-    if pd.isna(value):
-        return None
-    return value
 
 
 def _upsert_stock_metadata(conn: sqlite3.Connection, *, meta_table: str, rows: pd.DataFrame) -> int:

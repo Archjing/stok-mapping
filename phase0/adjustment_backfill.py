@@ -11,13 +11,13 @@ import pandas as pd
 
 from phase0.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.config import load_config
+from phase0.data_governance.sql import safe_identifier
 from phase0.data_access.providers.tushare import (
     fetch_tushare_adj_factor_trade_date,
     fetch_tushare_dividend,
     tushare_available,
     tushare_config,
 )
-from phase0.update_history import _safe_identifier
 
 
 @dataclass(frozen=True)
@@ -35,7 +35,7 @@ class AdjustmentBackfillResult:
 
 
 def _load_open_dates(conn: sqlite3.Connection, *, calendar_table: str, start_date: str, end_date: str) -> list[str]:
-    table = _safe_identifier(calendar_table)
+    table = safe_identifier(calendar_table)
     df = pd.read_sql_query(
         f"""
         SELECT date
@@ -52,7 +52,7 @@ def _load_open_dates(conn: sqlite3.Connection, *, calendar_table: str, start_dat
 
 
 def _existing_adj_factor_dates(conn: sqlite3.Connection, *, table_name: str, start_date: str, end_date: str) -> set[str]:
-    table = _safe_identifier(table_name)
+    table = safe_identifier(table_name)
     df = pd.read_sql_query(
         f"""
         SELECT DISTINCT date
@@ -68,7 +68,7 @@ def _existing_adj_factor_dates(conn: sqlite3.Connection, *, table_name: str, sta
 
 
 def ensure_dividend_table(conn: sqlite3.Connection, *, table_name: str = "market_dividends") -> None:
-    table = _safe_identifier(table_name)
+    table = safe_identifier(table_name)
     conn.execute(
         f"""
         CREATE TABLE IF NOT EXISTS {table} (
@@ -101,7 +101,7 @@ def upsert_dividends(conn: sqlite3.Connection, rows: pd.DataFrame, *, table_name
     if rows.empty:
         return 0
     ensure_dividend_table(conn, table_name=table_name)
-    table = _safe_identifier(table_name)
+    table = safe_identifier(table_name)
     out = rows.copy()
     out["source"] = "tushare.dividend"
     out["updated_at"] = datetime.now().isoformat(timespec="seconds")

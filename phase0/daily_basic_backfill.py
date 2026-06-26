@@ -9,9 +9,10 @@ from typing import Any
 import pandas as pd
 
 from phase0.config import load_config
+from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
+from phase0.data_governance.sql import safe_identifier
 from phase0.local_history import configure_local_history
 from phase0.data_access.providers.tushare import fetch_tushare_trade_date, tushare_available, tushare_config
-from phase0.update_history import _ensure_daily_basic_table, _safe_identifier, _upsert_daily_basic_rows
 
 
 @dataclass
@@ -29,7 +30,7 @@ class DailyBasicBackfillResult:
 
 
 def _load_open_dates(conn: sqlite3.Connection, *, calendar_table: str, start_date: str, end_date: str) -> list[str]:
-    table = _safe_identifier(calendar_table)
+    table = safe_identifier(calendar_table)
     df = pd.read_sql_query(
         f"""
         SELECT date
@@ -46,7 +47,7 @@ def _load_open_dates(conn: sqlite3.Connection, *, calendar_table: str, start_dat
 
 
 def _existing_dates(conn: sqlite3.Connection, *, table_name: str, start_date: str, end_date: str) -> set[str]:
-    table = _safe_identifier(table_name)
+    table = safe_identifier(table_name)
     df = pd.read_sql_query(
         f"""
         SELECT DISTINCT date
@@ -99,7 +100,7 @@ def backfill_daily_basic_from_config(
     fetched_dates = 0
     skipped_existing_dates = 0
     with sqlite3.connect(db_path) as conn:
-        _ensure_daily_basic_table(conn, table_name=table_name)
+        ensure_daily_basic_table(conn, table_name=table_name)
         open_dates = _load_open_dates(conn, calendar_table=calendar_table, start_date=start_date, end_date=end_date)
         existing = _existing_dates(conn, table_name=table_name, start_date=start_date, end_date=end_date)
         pending = [value for value in open_dates if value not in existing]
@@ -120,7 +121,7 @@ def backfill_daily_basic_from_config(
             if meta_rows.empty:
                 warnings.append(f"{one_date}: daily_basic returned empty")
                 continue
-            inserted_rows += _upsert_daily_basic_rows(conn, table_name=table_name, rows=meta_rows)
+            inserted_rows += upsert_daily_basic_rows(conn, table_name=table_name, rows=meta_rows)
             fetched_dates += 1
             conn.commit()
 
@@ -137,4 +138,3 @@ def backfill_daily_basic_from_config(
         status=status,
         warnings=warnings,
     )
-

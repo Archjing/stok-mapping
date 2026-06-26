@@ -348,6 +348,18 @@ The twenty-ninth slice extracts strategy research run command routing from the l
 
 This slice does not move `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, `phase0/walk_forward.py`, or any strategy implementation. It is a CLI adapter move only and does not change walk-forward/admission algorithms, thresholds, report paths, command names, generated artifact names, or data-write behavior.
 
+## Thirtieth Slice In This Branch
+
+The thirtieth slice prepares data-governance module migration by extracting shared table helpers that were previously borrowed from `phase0.update_history`:
+
+- Add `phase0.data_governance.sql.safe_identifier` and `to_sql_value`.
+- Add `phase0.data_governance.daily_basic.ensure_daily_basic_table` and `upsert_daily_basic_rows`.
+- Keep `phase0.update_history._safe_identifier`, `_to_sql_value`, `_ensure_daily_basic_table`, and `_upsert_daily_basic_rows` as compatibility aliases during the transition.
+- Update effective project imports in daily-basic backfill, adjustment backfill, Tushare history backfill, and index as-of backfill so they no longer depend on `phase0.update_history` private helpers.
+- Add helper tests for identifier validation, missing-value conversion, daily-basic table upsert behavior, and old private-name compatibility.
+
+This slice does not move `phase0/update_history.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, or `phase0/tushare_history_backfill.py` yet. It only creates the shared helper layer needed to move those write-side data-governance jobs safely in later slices.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
