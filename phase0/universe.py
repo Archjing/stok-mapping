@@ -17,7 +17,7 @@ from phase0.data_access.local_history import (
     load_snapshot_from_local_history_as_of,
     normalize_cn_symbol,
 )
-from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.data_access.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 
 prepare_imports()
 

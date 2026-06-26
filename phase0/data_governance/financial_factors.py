@@ -13,7 +13,7 @@ import pandas as pd
 import requests
 
 from phase0.data_access.local_history import normalize_cn_symbol
-from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.data_access.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 
 EASTMONEY_DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 

@@ -36,7 +36,7 @@ from phase0.research.metrics import (
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints
-from phase0.throttle import configure_akshare_throttle
+from phase0.data_access.throttle import configure_akshare_throttle
 from phase0.universe import load_point_in_time_universe, load_universe_symbols
 
 

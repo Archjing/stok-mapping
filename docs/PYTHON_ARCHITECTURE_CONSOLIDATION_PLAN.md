@@ -24,6 +24,7 @@ Current decisions:
 - `phase0/external_market_history.py` has been moved to `phase0.data_governance.external_market_history`. It still owns both US/HK history writes and runtime reads for now; a later slice can split pure read helpers only if that reduces coupling without changing behavior.
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
 - `phase0/data_sources.py` has been moved to `phase0.data_access.connectivity`. It is an external-provider read/connectivity layer, not a write-side governance job. The old root path remains a compatibility shim.
+- `phase0/throttle.py` has been moved to `phase0.data_access.throttle`. It owns external-provider request throttling and retry pacing, so it belongs beside provider access code; the old root path remains a compatibility shim.
 
 ## Current Functional Layers
 
@@ -31,7 +32,7 @@ Current decisions:
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
-| `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, and `phase0/tushare_source.py` |
+| `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
@@ -489,6 +490,17 @@ The forty-first slice moves the strategy overfit diagnostic into the research di
 - Add an import compatibility test covering `OverfitDiagnosticResult`, `run_overfit_diagnostic`, and selected scoring helpers.
 
 This slice does not change overfit scoring rules, last-fold lift detection, report filenames, report paths, admission thresholds, CLI command names, generated artifacts, or strategy algorithms.
+
+## Forty-Second Slice In This Branch
+
+The forty-second slice moves the AkShare request pacing helper into the data-access package:
+
+- Move `phase0/throttle.py` to `phase0.data_access.throttle`.
+- Keep root-level `phase0.throttle` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update effective imports in data-access connectivity, data-governance jobs, universe construction, walk-forward, core-coverage diagnostics, holdings exposure, Phase 0 run CLI commands, and the HK/A mapping export script.
+- Add an import compatibility test proving the old and new paths share the same `akshare_throttle` singleton.
+
+This slice does not change throttle defaults, retry behavior, sleep timing formulas, AkShare/Tushare fallback logic, CLI command names, generated artifacts, database writes, or strategy algorithms.
 
 ## Later Migration Stages
 

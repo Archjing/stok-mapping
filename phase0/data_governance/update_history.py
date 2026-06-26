@@ -15,7 +15,7 @@ from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_
 from phase0.data_governance.sql import safe_identifier, to_sql_value
 from phase0.env import prepare_imports
 from phase0.data_access.local_history import normalize_cn_symbol
-from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
+from phase0.data_access.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 from phase0.data_access.providers.tushare import fetch_tushare_adj_factor_trade_date, fetch_tushare_trade_date, tushare_available, tushare_config
 
 prepare_imports()

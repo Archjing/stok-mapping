@@ -18,7 +18,7 @@ from phase0.data_access.local_history import configure_local_history, load_index
 from phase0.strategies import get_strategy
 from phase0.research.admission.strategy_scope import _force_strategy_set_enabled_for_admission
 from phase0.strategies.constraints import apply_strategy_constraints
-from phase0.throttle import configure_akshare_throttle
+from phase0.data_access.throttle import configure_akshare_throttle
 from phase0.walk_forward import (
     _attach_benchmark_fold_metrics,
     _build_account_execution_config,

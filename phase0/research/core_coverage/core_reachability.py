@@ -11,7 +11,7 @@ import pandas as pd
 
 from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.data_access.local_history import configure_local_history, load_daily_from_local_history, local_history_path
-from phase0.throttle import configure_akshare_throttle
+from phase0.data_access.throttle import configure_akshare_throttle
 from phase0.walk_forward import (
     _effective_history_years,
     _load_cross_market_features,
