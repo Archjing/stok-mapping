@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 import phase0.cli as cli
+import phase0.reporting.exports as report_exports
 from phase0.cli_commands.reports import register_report_export_commands
 
 
@@ -69,7 +70,7 @@ def test_low_turnover_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: P
 
     monkeypatch.setattr("scripts.export_strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
-    result = cli._export_phase0_low_turnover_bill(config_path=tmp_path / "config.yaml")
+    result = report_exports.export_phase0_low_turnover_bill(config_path=tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
@@ -88,7 +89,7 @@ def test_low_turnover_bill_uses_configured_run_dir(monkeypatch, tmp_path: Path) 
 
     monkeypatch.setattr("scripts.export_strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
-    result = cli._export_phase0_low_turnover_bill(config_path=config_path)
+    result = report_exports.export_phase0_low_turnover_bill(config_path=config_path)
 
     assert calls
     _assert_configured_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
@@ -104,7 +105,7 @@ def test_market_regime_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("scripts.export_market_regime_report.export_market_regime_report", fake_export_market_regime_report)
 
-    result = cli._export_phase0_market_regime_report(root=tmp_path)
+    result = report_exports.export_phase0_market_regime_report(root=tmp_path)
 
     assert calls
     _assert_standard_run(Path(result["summary"]), root=tmp_path, command="market_regime", scope="low_turnover")
@@ -121,7 +122,7 @@ def test_financial_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
 
     monkeypatch.setattr("scripts.audit_financial_pti.audit_financial_pti", fake_audit_financial_pti)
 
-    result = cli._export_phase0_financial_pti(tmp_path / "config.yaml")
+    result = report_exports.export_phase0_financial_pti(tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["summary"]), root=tmp_path, command="financial_pti", scope="qfq_asof")
@@ -138,7 +139,7 @@ def test_universe_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) 
 
     monkeypatch.setattr("scripts.audit_universe_pit.audit_universe_pit", fake_audit_universe_pit)
 
-    result = cli._export_phase0_universe_pit(tmp_path / "config.yaml", as_of_date="2021-05-28")
+    result = report_exports.export_phase0_universe_pit(tmp_path / "config.yaml", as_of_date="2021-05-28")
 
     assert calls
     _assert_standard_run(Path(result["report"]), root=tmp_path, command="universe_pti", scope="2021_05_28")
@@ -154,7 +155,7 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
 
     monkeypatch.setattr("scripts.export_premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    result = cli._export_phase0_premarket(config_path=tmp_path / "config.yaml")
+    result = report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
@@ -174,7 +175,7 @@ def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -
 
     monkeypatch.setattr("scripts.export_premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    result = cli._export_phase0_premarket(config_path=config_path)
+    result = report_exports.export_phase0_premarket(config_path=config_path)
 
     assert calls
     _assert_configured_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
@@ -212,16 +213,27 @@ def test_account_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) 
     account = Account()
     calls: list[dict[str, object]] = []
 
-    monkeypatch.setattr(cli, "load_config", lambda path: {"phase0": {}})
-    monkeypatch.setattr(cli, "load_simulated_accounts", lambda cfg, root: [account])
+    monkeypatch.setattr(report_exports, "load_config", lambda path: {"phase0": {}})
+    monkeypatch.setattr(report_exports, "load_simulated_accounts", lambda cfg, root: [account])
 
     def fake_export_account_bill_html(**kwargs):
         calls.append(kwargs)
 
-    monkeypatch.setattr(cli, "export_account_bill_html", fake_export_account_bill_html)
+    monkeypatch.setattr(report_exports, "export_account_bill_html", fake_export_account_bill_html)
 
-    result = cli._export_brief_account_bill(config_path=tmp_path / "config.yaml", brief_date="2026-06-25")
+    result = report_exports.export_brief_account_bill(config_path=tmp_path / "config.yaml", brief_date="2026-06-25")
 
     assert calls
     _assert_standard_run(Path(result["account_bill"]), root=tmp_path, command="brief_account_bill", scope="demo")
     assert Path(result["account_bill"]).name == "account_bill__report.html"
+
+
+def test_cli_report_export_helper_names_remain_compatible() -> None:
+    assert cli._export_phase0_low_turnover_bill is report_exports.export_phase0_low_turnover_bill
+    assert cli._export_phase0_market_regime_report is report_exports.export_phase0_market_regime_report
+    assert cli._export_phase0_oos_report is report_exports.export_phase0_oos_report
+    assert cli._export_phase0_financial_pti is report_exports.export_phase0_financial_pti
+    assert cli._export_phase0_universe_pit is report_exports.export_phase0_universe_pit
+    assert cli._export_phase0_premarket is report_exports.export_phase0_premarket
+    assert cli._export_brief_account_bill is report_exports.export_brief_account_bill
+    assert cli._export_phase0_execution_gate is report_exports.export_phase0_execution_gate

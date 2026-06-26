@@ -22,7 +22,7 @@ Current decisions:
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
-| `reporting` | Report output paths, run directories, artifact registry, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py` |
+| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
 | `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/providers/tushare.py`, compatibility shim `phase0/tushare_source.py`; other provider/read modules still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`; possible future provider-only extraction from `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, and `phase0/import_history.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
@@ -267,6 +267,16 @@ The twenty-second slice starts extracting report-export command registration fro
 - Keep the command handlers and `_export_phase0_*` helper functions in `phase0.cli` for this slice to avoid a circular import and to preserve existing report-path monkeypatch tests.
 
 This slice only moves argparse registration for report-export commands. It does not change report path generation, report helper implementations, execution profile defaults, generated artifacts, or public command names.
+
+## Twenty-Third Slice In This Branch
+
+The twenty-third slice moves report-export helper implementations into the reporting package:
+
+- Add `phase0.reporting.exports` for `bill`, `market-regime`, `oos-report`, `financial-pti`, `universe-pti`, `premarket`, `brief-account-bill`, and `execution-gate` export helpers.
+- Update `phase0.cli` so old `_export_phase0_*` and `_export_brief_account_bill` names remain compatibility aliases over the new reporting functions.
+- Update report-output-path tests to call the new reporting module directly, with a narrow compatibility test for the old CLI helper names.
+
+This slice only moves helper ownership. It does not change public CLI commands, report path generation, output filenames, script-level export behavior, or generated artifacts.
 
 ## Later Migration Stages
 
