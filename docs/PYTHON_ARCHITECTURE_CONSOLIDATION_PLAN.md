@@ -278,6 +278,17 @@ The twenty-third slice moves report-export helper implementations into the repor
 
 This slice only moves helper ownership. It does not change public CLI commands, report path generation, output filenames, script-level export behavior, or generated artifacts.
 
+## Twenty-Fourth Slice In This Branch
+
+The twenty-fourth slice finishes the top-level report-export command boundary:
+
+- Add `phase0.cli_commands.reports.REPORT_EXPORT_COMMANDS` and `handle_report_export_command`.
+- Move top-level handling for `bill`, `market-regime`, `oos-report`, `financial-pti`, `universe-pti`, `premarket`, and `execution-gate` from `phase0.cli` into `phase0.cli_commands.reports`.
+- Keep `phase0.cli` as the parser owner and compatibility alias owner for `_export_phase0_*` helper names during the migration.
+- Add handler-level tests for argument forwarding and CLI-main delegation.
+
+This slice intentionally does not move `brief premarket`, `brief account-bill`, `daily-brief`, `run_phase0`, watchlist ECS sync, report path generation, or export helper behavior. Those flows still cross delivery, scheduler, and reporting concerns and need separate gates.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

@@ -14,7 +14,7 @@ from phase0.adjustment import run_adjustment_audit
 from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
 from phase0.cli_commands.intelligence import handle_intelligence_command, register_intelligence_commands
 from phase0.cli_commands.maintenance import handle_maintenance_command, register_maintenance_commands
-from phase0.cli_commands.reports import register_report_export_commands
+from phase0.cli_commands.reports import REPORT_EXPORT_COMMANDS, handle_report_export_command, register_report_export_commands
 from phase0.cli_commands.system import (
     handle_system_command,
     register_system_commands,
@@ -910,83 +910,8 @@ def main() -> int:
     )
 
     args = parser.parse_args()
-    if args.cmd == "bill":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 bill export started[/bold]")
-        result = _export_phase0_low_turnover_bill(
-            config_path=config_path,
-            strategy_id=args.strategy_id,
-            refresh_cache=bool(args.refresh_cache),
-            no_panel_cache=bool(args.no_panel_cache),
-        )
-        console.print("[green]Bill export complete[/green]")
-        console.print(f"Strategy: {result.get('strategy_id', '')}")
-        console.print(f"Bill: {result['bill']}")
-        console.print(f"Daily assets: {result['daily']}")
-        console.print(f"Preview: {result['preview']}")
-        console.print(f"Rows: {result['rows']}")
-        return 0
-    if args.cmd == "market-regime":
-        console = Console()
-        console.print("[bold]Phase 0 market-regime report started[/bold]")
-        result = _export_phase0_market_regime_report()
-        console.print("[green]Market-regime report complete[/green]")
-        console.print(f"Summary: {result['summary']}")
-        console.print(f"Segments: {result['segments']}")
-        console.print(f"HTML: {result['html']}")
-        console.print(f"Rows: {result['rows']}")
-        return 0
-    if args.cmd == "oos-report":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 OOS report started[/bold]")
-        result = _export_phase0_oos_report(
-            config_path=config_path,
-            strategy_id=args.strategy_id,
-            profile=args.profile,
-            output_dir=args.output_dir,
-            refresh_cache=bool(args.refresh_cache),
-            no_panel_cache=bool(args.no_panel_cache),
-            slippage=args.slippage,
-            commission=args.commission,
-            stamp_duty_sell=args.stamp_duty_sell,
-            price_mode=args.price_mode,
-            lot_size=args.lot_size,
-            max_participation_rate=args.max_participation_rate,
-            enable_limit_check=args.enable_limit_check,
-            enable_suspension_check=args.enable_suspension_check,
-        )
-        console.print("[green]OOS report complete[/green]")
-        console.print(f"Strategy: {result.get('strategy_id', '')}")
-        console.print(f"Profile: {result['profile']}")
-        console.print(f"Daily assets: {result['daily_assets']}")
-        console.print(f"Report: {result['report']}")
-        console.print(f"Curve: {result['curve']}")
-        console.print(f"Fold: {result['fold']}")
-        return 0
-    if args.cmd == "financial-pti":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 financial PTI audit started[/bold]")
-        result = _export_phase0_financial_pti(config_path)
-        console.print("[green]Financial PTI audit complete[/green]")
-        console.print(f"Verdict: {result['verdict']}")
-        console.print(f"Summary: {result['summary']}")
-        console.print(f"Samples: {result['samples']}")
-        console.print(f"HTML: {result['html']}")
-        return 0
-    if args.cmd == "universe-pti":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 universe PTI audit started[/bold]")
-        result = _export_phase0_universe_pit(config_path, as_of_date=str(args.date))
-        console.print("[green]Universe PTI audit complete[/green]")
-        console.print(f"Report: {result['report']}")
-        console.print(f"Selected count: {result['selected_count']}")
-        console.print(f"Boundary violations: {result['boundary_violations']}")
-        console.print(f"Historical industry constraint effective: {result['industry_effective']}")
-        return 0
+    if args.cmd in REPORT_EXPORT_COMMANDS:
+        return handle_report_export_command(args, parser=parser)
     if args.cmd == "adjustment-audit":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
@@ -1475,22 +1400,6 @@ def main() -> int:
             console.print(f"Account bill: {result['account_bill']}")
             return 0
         parser.error("brief requires a subcommand: daily, watchlist, premarket, or account-bill")
-    if args.cmd == "premarket":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 premarket watchlist started[/bold]")
-        result = _export_phase0_premarket(
-            config_path=config_path,
-            refresh_cache=bool(args.refresh_cache),
-            no_panel_cache=bool(args.no_panel_cache),
-        )
-        console.print("[green]Premarket watchlist complete[/green]")
-        console.print(f"Watchlist: {result['watchlist']}")
-        console.print(f"Report: {result['report']}")
-        console.print(f"Rows: {result['rows']}")
-        console.print(f"Signal date: {result['signal_date']}")
-        console.print(f"Check time: {result['check_time']}")
-        return 0
     if args.cmd == "daily-brief":
         return run_daily_brief_pipeline(
             config_path=Path(args.config).resolve(),
@@ -1500,32 +1409,6 @@ def main() -> int:
             refresh_cache=bool(args.refresh_cache),
             no_panel_cache=bool(args.no_panel_cache),
         )
-    if args.cmd == "execution-gate":
-        config_path = Path(args.config).resolve()
-        console = Console()
-        console.print("[bold]Phase 0 account execution gate started[/bold]")
-        result = _export_phase0_execution_gate(
-            config_path=config_path,
-            strategy_id=args.strategy_id,
-            profile=args.profile,
-            output_dir=args.output_dir,
-            refresh_cache=bool(args.refresh_cache),
-            no_panel_cache=bool(args.no_panel_cache),
-            slippage=args.slippage,
-            commission=args.commission,
-            stamp_duty_sell=args.stamp_duty_sell,
-            price_mode=args.price_mode,
-            lot_size=args.lot_size,
-            max_participation_rate=args.max_participation_rate,
-            enable_limit_check=args.enable_limit_check,
-            enable_suspension_check=args.enable_suspension_check,
-        )
-        console.print("[green]Account execution gate complete[/green]")
-        console.print(f"Strategy: {result.get('strategy_id', '')}")
-        console.print(f"Verdict: {result['verdict']}")
-        console.print(f"Folds: {result['folds']}")
-        console.print(f"Report: {result['report']}")
-        return 0
     if args.cmd == "update-financials":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

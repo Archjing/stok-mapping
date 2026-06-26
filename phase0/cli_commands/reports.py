@@ -1,6 +1,33 @@
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
+from typing import Any
+
+from rich.console import Console
+
+from phase0.reporting.exports import (
+    export_phase0_execution_gate,
+    export_phase0_financial_pti,
+    export_phase0_low_turnover_bill,
+    export_phase0_market_regime_report,
+    export_phase0_oos_report,
+    export_phase0_premarket,
+    export_phase0_universe_pit,
+)
+
+
+REPORT_EXPORT_COMMANDS = frozenset(
+    {
+        "bill",
+        "market-regime",
+        "oos-report",
+        "financial-pti",
+        "universe-pti",
+        "premarket",
+        "execution-gate",
+    }
+)
 
 
 def register_report_export_commands(subparsers: argparse._SubParsersAction) -> None:
@@ -38,6 +65,127 @@ def register_report_export_commands(subparsers: argparse._SubParsersAction) -> N
     _add_execution_profile_args(execution_gate_parser, output_help="Optional standalone output directory for live execution backtest artifacts")
     execution_gate_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     execution_gate_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
+
+
+def handle_report_export_command(args: argparse.Namespace, *, parser: argparse.ArgumentParser, console: Any | None = None) -> int:
+    report_console = console or Console()
+    if args.cmd == "bill":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 bill export started[/bold]")
+        result = export_phase0_low_turnover_bill(
+            config_path=config_path,
+            strategy_id=args.strategy_id,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+        )
+        report_console.print("[green]Bill export complete[/green]")
+        report_console.print(f"Strategy: {result.get('strategy_id', '')}")
+        report_console.print(f"Bill: {result['bill']}")
+        report_console.print(f"Daily assets: {result['daily']}")
+        report_console.print(f"Preview: {result['preview']}")
+        report_console.print(f"Rows: {result['rows']}")
+        return 0
+    if args.cmd == "market-regime":
+        report_console.print("[bold]Phase 0 market-regime report started[/bold]")
+        result = export_phase0_market_regime_report()
+        report_console.print("[green]Market-regime report complete[/green]")
+        report_console.print(f"Summary: {result['summary']}")
+        report_console.print(f"Segments: {result['segments']}")
+        report_console.print(f"HTML: {result['html']}")
+        report_console.print(f"Rows: {result['rows']}")
+        return 0
+    if args.cmd == "oos-report":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 OOS report started[/bold]")
+        result = export_phase0_oos_report(
+            config_path=config_path,
+            strategy_id=args.strategy_id,
+            profile=args.profile,
+            output_dir=args.output_dir,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+            slippage=args.slippage,
+            commission=args.commission,
+            stamp_duty_sell=args.stamp_duty_sell,
+            price_mode=args.price_mode,
+            lot_size=args.lot_size,
+            max_participation_rate=args.max_participation_rate,
+            enable_limit_check=args.enable_limit_check,
+            enable_suspension_check=args.enable_suspension_check,
+        )
+        report_console.print("[green]OOS report complete[/green]")
+        report_console.print(f"Strategy: {result.get('strategy_id', '')}")
+        report_console.print(f"Profile: {result['profile']}")
+        report_console.print(f"Daily assets: {result['daily_assets']}")
+        report_console.print(f"Report: {result['report']}")
+        report_console.print(f"Curve: {result['curve']}")
+        report_console.print(f"Fold: {result['fold']}")
+        return 0
+    if args.cmd == "financial-pti":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 financial PTI audit started[/bold]")
+        result = export_phase0_financial_pti(config_path)
+        report_console.print("[green]Financial PTI audit complete[/green]")
+        report_console.print(f"Verdict: {result['verdict']}")
+        report_console.print(f"Summary: {result['summary']}")
+        report_console.print(f"Samples: {result['samples']}")
+        report_console.print(f"HTML: {result['html']}")
+        return 0
+    if args.cmd == "universe-pti":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 universe PTI audit started[/bold]")
+        result = export_phase0_universe_pit(config_path, as_of_date=str(args.date))
+        report_console.print("[green]Universe PTI audit complete[/green]")
+        report_console.print(f"Report: {result['report']}")
+        report_console.print(f"Selected count: {result['selected_count']}")
+        report_console.print(f"Boundary violations: {result['boundary_violations']}")
+        report_console.print(f"Historical industry constraint effective: {result['industry_effective']}")
+        return 0
+    if args.cmd == "premarket":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 premarket watchlist started[/bold]")
+        result = export_phase0_premarket(
+            config_path=config_path,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+        )
+        report_console.print("[green]Premarket watchlist complete[/green]")
+        report_console.print(f"Watchlist: {result['watchlist']}")
+        report_console.print(f"Report: {result['report']}")
+        report_console.print(f"Rows: {result['rows']}")
+        report_console.print(f"Signal date: {result['signal_date']}")
+        report_console.print(f"Check time: {result['check_time']}")
+        return 0
+    if args.cmd == "execution-gate":
+        config_path = Path(args.config).resolve()
+        report_console.print("[bold]Phase 0 account execution gate started[/bold]")
+        result = export_phase0_execution_gate(
+            config_path=config_path,
+            strategy_id=args.strategy_id,
+            profile=args.profile,
+            output_dir=args.output_dir,
+            refresh_cache=bool(args.refresh_cache),
+            no_panel_cache=bool(args.no_panel_cache),
+            slippage=args.slippage,
+            commission=args.commission,
+            stamp_duty_sell=args.stamp_duty_sell,
+            price_mode=args.price_mode,
+            lot_size=args.lot_size,
+            max_participation_rate=args.max_participation_rate,
+            enable_limit_check=args.enable_limit_check,
+            enable_suspension_check=args.enable_suspension_check,
+        )
+        report_console.print("[green]Account execution gate complete[/green]")
+        report_console.print(f"Strategy: {result.get('strategy_id', '')}")
+        report_console.print(f"Verdict: {result['verdict']}")
+        report_console.print(f"Folds: {result['folds']}")
+        report_console.print(f"Report: {result['report']}")
+        return 0
+    parser.error(
+        "report export command expected one of: "
+        + ", ".join(sorted(REPORT_EXPORT_COMMANDS))
+    )
+    return 2
 
 
 def _add_execution_profile_args(parser: argparse.ArgumentParser, *, output_help: str) -> None:

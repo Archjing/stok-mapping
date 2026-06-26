@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 
 import phase0.cli as cli
+import phase0.cli_commands.reports as report_cli
 import phase0.reporting.exports as report_exports
-from phase0.cli_commands.reports import register_report_export_commands
 
 
 def _assert_standard_run(path: Path, *, root: Path, command: str, scope: str) -> None:
@@ -38,7 +39,7 @@ phase0:
 def test_report_export_command_registration_preserves_execution_profile_args() -> None:
     parser = cli.argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="cmd")
-    register_report_export_commands(subparsers)
+    report_cli.register_report_export_commands(subparsers)
 
     oos_args = parser.parse_args(["oos-report", "--profile", "live", "--output-dir", "out", "--no-enable-limit-check"])
     execution_args = parser.parse_args(["execution-gate", "--profile", "research", "--enable-suspension-check"])
@@ -50,6 +51,123 @@ def test_report_export_command_registration_preserves_execution_profile_args() -
     assert execution_args.cmd == "execution-gate"
     assert execution_args.profile == "research"
     assert execution_args.enable_suspension_check is True
+
+
+def test_report_export_handler_forwards_bill_args(monkeypatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    lines: list[str] = []
+
+    def fake_export_phase0_low_turnover_bill(**kwargs):
+        calls.append(kwargs)
+        return {
+            "strategy_id": "demo_strategy",
+            "bill": tmp_path / "bill.csv",
+            "daily": tmp_path / "daily.csv",
+            "preview": tmp_path / "preview.html",
+            "rows": 3,
+        }
+
+    monkeypatch.setattr(report_cli, "export_phase0_low_turnover_bill", fake_export_phase0_low_turnover_bill)
+    args = SimpleNamespace(
+        cmd="bill",
+        config=str(tmp_path / "config.yaml"),
+        strategy_id="demo_strategy",
+        refresh_cache=True,
+        no_panel_cache=True,
+    )
+
+    exit_code = report_cli.handle_report_export_command(
+        args,
+        parser=cli.argparse.ArgumentParser(),
+        console=SimpleNamespace(print=lambda text: lines.append(str(text))),
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        {
+            "config_path": (tmp_path / "config.yaml").resolve(),
+            "strategy_id": "demo_strategy",
+            "refresh_cache": True,
+            "no_panel_cache": True,
+        }
+    ]
+    assert any("Bill export complete" in line for line in lines)
+    assert any("Daily assets:" in line for line in lines)
+
+
+def test_report_export_handler_forwards_execution_profile_args(monkeypatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    lines: list[str] = []
+
+    def fake_export_phase0_execution_gate(**kwargs):
+        calls.append(kwargs)
+        return {
+            "strategy_id": "demo_strategy",
+            "verdict": "pass",
+            "folds": 5,
+            "report": tmp_path / "execution_gate.md",
+        }
+
+    monkeypatch.setattr(report_cli, "export_phase0_execution_gate", fake_export_phase0_execution_gate)
+    args = SimpleNamespace(
+        cmd="execution-gate",
+        config=str(tmp_path / "config.yaml"),
+        strategy_id="demo_strategy",
+        profile="live",
+        output_dir="custom_output",
+        refresh_cache=True,
+        no_panel_cache=False,
+        slippage=0.002,
+        commission=0.0003,
+        stamp_duty_sell=0.001,
+        price_mode="next_open",
+        lot_size=100,
+        max_participation_rate=0.08,
+        enable_limit_check=False,
+        enable_suspension_check=True,
+    )
+
+    exit_code = report_cli.handle_report_export_command(
+        args,
+        parser=cli.argparse.ArgumentParser(),
+        console=SimpleNamespace(print=lambda text: lines.append(str(text))),
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        {
+            "config_path": (tmp_path / "config.yaml").resolve(),
+            "strategy_id": "demo_strategy",
+            "profile": "live",
+            "output_dir": "custom_output",
+            "refresh_cache": True,
+            "no_panel_cache": False,
+            "slippage": 0.002,
+            "commission": 0.0003,
+            "stamp_duty_sell": 0.001,
+            "price_mode": "next_open",
+            "lot_size": 100,
+            "max_participation_rate": 0.08,
+            "enable_limit_check": False,
+            "enable_suspension_check": True,
+        }
+    ]
+    assert any("Account execution gate complete" in line for line in lines)
+    assert any("Verdict: pass" in line for line in lines)
+
+
+def test_cli_main_delegates_top_level_report_export_commands(monkeypatch, tmp_path: Path) -> None:
+    calls = []
+
+    def fake_handle_report_export_command(args, *, parser):
+        calls.append((args.cmd, Path(args.config), parser is not None))
+        return 0
+
+    monkeypatch.setattr(cli, "handle_report_export_command", fake_handle_report_export_command)
+    monkeypatch.setattr("sys.argv", ["phase0.cli", "bill", "--config", str(tmp_path / "config.yaml")])
+
+    assert cli.main() == 0
+    assert calls == [("bill", tmp_path / "config.yaml", True)]
 
 
 def _assert_configured_run(path: Path, *, root: Path, command: str, scope: str) -> None:
