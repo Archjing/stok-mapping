@@ -15,7 +15,8 @@ Structural migration is not valuable by itself. A module should move only when t
 Current decisions:
 
 - Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
-- Do not move `phase0/update_history.py` or `phase0/tushare_history_backfill.py` just to satisfy package shape. They are write-side data-governance jobs and should move only if we first extract shared helpers with tests and can preserve CLI/data-write behavior.
+- Do not move `phase0/update_history.py` just to satisfy package shape. It is a write-side data-governance job and should move only if we first extract shared helpers with tests and can preserve CLI/data-write behavior.
+- `phase0/tushare_history_backfill.py` has been moved to `phase0.data_governance.backfills.tushare_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
 - `phase0/data_sources.py` has been moved to `phase0.data_access.connectivity`. It is an external-provider read/connectivity layer, not a write-side governance job. The old root path remains a compatibility shim.
 
@@ -24,7 +25,7 @@ Current decisions:
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
-| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
+| `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers, write-side backfills | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/*_backfill.py` |
 | `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/connectivity.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/data_sources.py` and `phase0/tushare_source.py`; other provider/read modules still in `phase0/local_history.py`, `phase0/external_market_history.py`; possible future provider-only extraction from `phase0/financial_factors.py` and `phase0/import_history.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
@@ -406,6 +407,17 @@ The thirty-fourth slice starts reducing research metric duplication and strategy
 - Add compatibility and formula tests for the metrics helpers.
 
 This slice does not change metric formulas, annualization assumptions, strategy algorithms, training parameter search behavior, report paths, or generated artifact names. Other metric implementations with intentionally different missing-value or `ddof` semantics remain in place until their owning report flow gets a separate compatibility gate.
+
+## Thirty-Fifth Slice In This Branch
+
+The thirty-fifth slice moves the broad Tushare history and financial backfill job into the data-governance package:
+
+- Move `phase0/tushare_history_backfill.py` to `phase0.data_governance.backfills.tushare_history`.
+- Keep root-level `phase0.tushare_history_backfill` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update the data-update CLI to import `backfill_tushare_history_from_config` and `backfill_tushare_financials_from_config` from the new package path.
+- Extend backfill import compatibility tests to cover `TushareHistoryBackfillResult`, `TushareFinancialBackfillResult`, and both CLI-callable backfill functions.
+
+This slice does not change Tushare request payloads, throttling, retry behavior, database schemas, upsert behavior, audit report paths, CLI command names, generated artifact names, or financial-factor normalization logic. `phase0/update_history.py` remains in place until a separate slice moves it behind equivalent compatibility tests.
 
 ## Later Migration Stages
 

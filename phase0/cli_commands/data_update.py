@@ -14,7 +14,10 @@ from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_
 from phase0.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
 from phase0.financial_factors import update_financial_factors_from_config
 from phase0.import_history import import_from_config, import_index_history_from_config
-from phase0.tushare_history_backfill import backfill_tushare_financials_from_config, backfill_tushare_history_from_config
+from phase0.data_governance.backfills.tushare_history import (
+    backfill_tushare_financials_from_config,
+    backfill_tushare_history_from_config,
+)
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 
