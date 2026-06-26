@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 import requests
 
-from phase0.local_history import normalize_cn_symbol
+from phase0.data_access.local_history import normalize_cn_symbol
 
 
 TUSHARE_API_URL = "http://api.tushare.pro"

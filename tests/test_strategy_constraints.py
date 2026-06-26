@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from phase0.accounts import SimulatedAccountConfig, run_signal_account_execution
-from phase0.local_history import configure_local_history, load_snapshot_from_local_history_as_of
+from phase0.data_access.local_history import configure_local_history, load_snapshot_from_local_history_as_of
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints
 from phase0.walk_forward import _signal_trace_summary

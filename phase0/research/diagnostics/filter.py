@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from phase0.data_governance.external_market_history import configure_us_market_history
-from phase0.local_history import configure_local_history
+from phase0.data_access.local_history import configure_local_history
 from phase0.strategies import get_strategy
 from phase0.strategies.strong_index_participation import build_hard_filter_masks
 from phase0.throttle import configure_akshare_throttle

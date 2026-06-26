@@ -14,7 +14,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
-from phase0.local_history import configure_local_history, local_history_path, normalize_cn_symbol
+from phase0.data_access.local_history import configure_local_history, local_history_path, normalize_cn_symbol
 from phase0.reporting.paths import report_path
 
 

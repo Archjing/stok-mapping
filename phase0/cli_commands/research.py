@@ -8,7 +8,7 @@ from typing import Any
 from rich.console import Console
 
 from phase0.config import load_config
-from phase0.local_history import configure_local_history
+from phase0.data_access.local_history import configure_local_history
 from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
 from phase0.research.attribution.csi300 import run_strategy_csi300_attribution
 from phase0.research.attribution.fold import run_strategy_fold_attribution

@@ -13,7 +13,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
-from phase0.local_history import configure_local_history, load_index_daily_from_local_history
+from phase0.data_access.local_history import configure_local_history, load_index_daily_from_local_history
 from phase0.reporting.paths import report_config_path
 from scripts.export_execution_effectiveness_report import (
     _apply_profile_to_config,

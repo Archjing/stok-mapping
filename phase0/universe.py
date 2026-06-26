@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from phase0.env import prepare_imports
-from phase0.local_history import (
+from phase0.data_access.local_history import (
     configure_local_history,
     load_snapshot_from_local_history,
     load_snapshot_from_local_history_as_of,

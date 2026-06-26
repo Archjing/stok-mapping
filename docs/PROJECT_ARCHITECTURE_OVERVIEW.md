@@ -265,7 +265,7 @@ CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块�
 
 - [phase0/data_governance/import_history.py](../phase0/data_governance/import_history.py)
 - [phase0/data_governance/update_history.py](../phase0/data_governance/update_history.py)
-- [phase0/local_history.py](../phase0/local_history.py)
+- [phase0/data_access/local_history.py](../phase0/data_access/local_history.py)
 - [phase0/data_governance/financial_factors.py](../phase0/data_governance/financial_factors.py)
 - [phase0/data_governance/backfills/tushare_history.py](../phase0/data_governance/backfills/tushare_history.py)
 
@@ -334,7 +334,7 @@ Tushare 财务历史回填当前状态：
 核心模块：
 
 - [phase0/universe.py](../phase0/universe.py)
-- [phase0/local_history.py](../phase0/local_history.py)
+- [phase0/data_access/local_history.py](../phase0/data_access/local_history.py)
 - [phase0/adjustment.py](../phase0/adjustment.py)
 - [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
 

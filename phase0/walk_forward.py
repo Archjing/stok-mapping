@@ -19,7 +19,7 @@ from phase0.data_governance.external_market_history import (
     load_us_daily_from_history,
     us_market_history_runtime_fallback_enabled,
 )
-from phase0.local_history import (
+from phase0.data_access.local_history import (
     configure_local_history,
     load_daily_from_local_history,
     load_index_daily_from_local_history,

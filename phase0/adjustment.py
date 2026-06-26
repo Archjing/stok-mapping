@@ -8,7 +8,7 @@ from typing import Any
 
 import pandas as pd
 
-from phase0.local_history import normalize_cn_symbol
+from phase0.data_access.local_history import normalize_cn_symbol
 from phase0.reporting.paths import report_path
 
 

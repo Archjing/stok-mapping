@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 
 from phase0.config import load_config
-from phase0.local_history import configure_local_history
+from phase0.data_access.local_history import configure_local_history
 from phase0.universe import load_point_in_time_universe
 
 

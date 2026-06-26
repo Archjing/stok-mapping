@@ -6,7 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.local_history import local_history_path
+from phase0.data_access.local_history import local_history_path
 from phase0.strategies.base import BaseStrategy, StrategyOutput
 from phase0.strategies.low_vol_low_turnover_quality import LowVolLowTurnoverQualityStrategy
 from phase0.strategies.registry import register

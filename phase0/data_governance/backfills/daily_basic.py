@@ -11,7 +11,7 @@ import pandas as pd
 from phase0.config import load_config
 from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
 from phase0.data_governance.sql import safe_identifier
-from phase0.local_history import configure_local_history
+from phase0.data_access.local_history import configure_local_history
 from phase0.data_access.providers.tushare import fetch_tushare_trade_date, tushare_available, tushare_config
 
 

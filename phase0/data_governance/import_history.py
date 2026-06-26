@@ -12,7 +12,7 @@ from typing import Any, Iterable
 
 import pandas as pd
 
-from phase0.local_history import normalize_cn_symbol
+from phase0.data_access.local_history import normalize_cn_symbol
 
 
 @dataclass
