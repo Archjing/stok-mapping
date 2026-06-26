@@ -8,13 +8,24 @@ This plan defines the KISS-oriented path for consolidating Python code and shell
 
 The current branch starts with narrow, verifiable slices. It does not claim the full codebase consolidation is finished.
 
+## Migration Scope Guardrails
+
+Structural migration is not valuable by itself. A module should move only when the move produces a clear engineering benefit: lower coupling, cleaner dependency direction, better reuse, simpler tests, or less duplicate code. Modules with stable callers and high behavioral risk should stay in place until a concrete problem justifies moving them.
+
+Current decisions:
+
+- Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
+- Do not move `phase0/update_history.py` or `phase0/tushare_history_backfill.py` just to satisfy package shape. They are write-side data-governance jobs and should move only if we first extract shared helpers with tests and can preserve CLI/data-write behavior.
+- `phase0/tushare_source.py` is the only near-term candidate in this group, because it is closer to a provider adapter. Even there, migration is optional unless it proves a cleaner dependency direction such as `data_governance -> data_access.providers`.
+
 ## Current Functional Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
 | `reporting` | Report output paths, run directories, artifact registry, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
-| `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
+| `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`; possible future provider-only extraction from `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, and `phase0/import_history.py` |
+| `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
@@ -45,7 +56,7 @@ The second slice starts the data-governance package with modules whose responsib
 - Move `index_asof_backfill.py` into `phase0.data_governance.index_asof_backfill`.
 - Keep root-level shims for old imports, including tests that still depend on selected private helper imports.
 
-This slice intentionally does not move `local_history.py`, `update_history.py`, broad Tushare/AkShare backfill flows, or adjustment/financial production jobs. Those modules carry more write-side behavior and third-party provider coupling, so they need separate helper extraction and compatibility tests before migration.
+This slice intentionally does not move `local_history.py`, `universe.py`, `update_history.py`, broad Tushare/AkShare backfill flows, or adjustment/financial production jobs. Those modules carry current-market, point-in-time, write-side, or third-party provider coupling. They should move only when a later slice proves a concrete benefit and has compatibility tests ready.
 
 ## Third Slice In This Branch
 
@@ -222,7 +233,8 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
-| Provider/update coupling | `local_history.py`, `data_sources.py`, `external_market_history.py`, `tushare_source.py`, `update_history.py` | Split read-only data access from write-side governance jobs before moving |
+| Provider/update coupling | `local_history.py`, `data_sources.py`, `external_market_history.py`, `tushare_source.py`, `update_history.py` | Move only where it improves dependency direction or reuse; keep write-side jobs in place until helper extraction is tested |
+| Universe boundary | `universe.py` | Keep in place in this branch; revisit only if current snapshot construction and point-in-time loading are split into separately tested units |
 | Shell environment bootstrap | Maintenance shell scripts | Keep one small `scripts/lib/project_env.sh`; do not hide cron, lock, or external agent semantics in broad shell frameworks |
 
 ## Non-Goals
