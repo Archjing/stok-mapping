@@ -6,6 +6,12 @@ from phase0.research.admission import failure_attribution
 from phase0.research.admission.failure_attribution import SEVERITY_RANK
 from phase0.research.admission.failure_attribution import StrategyFailureAttributionResult as NewFailureResult
 from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
+from phase0.research.admission.strategy_scope import (
+    _force_strategy_set_enabled_for_admission as new_force_strategy_set_enabled,
+)
+from phase0.research.admission.strategy_scope import _resolve_strategy_scope as new_resolve_strategy_scope
+from phase0.strategy_admission import _force_strategy_set_enabled_for_admission as legacy_force_strategy_set_enabled
+from phase0.strategy_admission import _resolve_strategy_scope as legacy_resolve_strategy_scope
 from phase0.strategy_failure_attribution import SEVERITY_RANK as legacy_severity_rank
 from phase0.strategy_failure_attribution import run_strategy_failure_attribution as legacy_failure_runner
 
@@ -16,3 +22,8 @@ def test_legacy_strategy_failure_attribution_import_aliases_new_module() -> None
     assert legacy_severity_rank is SEVERITY_RANK
     assert new_failure_runner is run_strategy_failure_attribution
     assert StrategyFailureAttributionResult is NewFailureResult
+
+
+def test_strategy_scope_helpers_are_available_from_new_and_legacy_paths() -> None:
+    assert legacy_resolve_strategy_scope is new_resolve_strategy_scope
+    assert legacy_force_strategy_set_enabled is new_force_strategy_set_enabled

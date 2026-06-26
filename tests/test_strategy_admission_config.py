@@ -10,7 +10,6 @@ from phase0.strategy_admission import (
     _admission_command_hint,
     _attach_price_adjustment_status,
     _config_command_arg,
-    _force_strategy_set_enabled_for_admission,
     _write_report,
     _write_governance_report,
     _industry_missing_window_count,
@@ -18,10 +17,13 @@ from phase0.strategy_admission import (
     _price_adjustment_fail_window_count,
     _resolve_admission_gate,
     _resolve_diagnostic_suites,
-    _resolve_strategy_scope,
     _turnover_fail_window_count,
     _window_metrics,
     run_strategy_admission,
+)
+from phase0.research.admission.strategy_scope import (
+    _force_strategy_set_enabled_for_admission,
+    _resolve_strategy_scope,
 )
 from phase0.overfit import _metrics, _score, run_overfit_diagnostic
 from phase0.walk_forward import describe_walk_forward_presets
@@ -69,6 +71,16 @@ def test_strategy_scope_falls_back_to_legacy_compare_strategies() -> None:
 
     assert scope["source"] == "legacy_compare_strategies"
     assert scope["strategies"] == ["legacy"]
+
+
+def test_strategy_scope_rejects_unknown_strategy_set() -> None:
+    with pytest.raises(ValueError, match="unknown admission strategy_set: missing"):
+        _resolve_strategy_scope(
+            {"compare_strategies": ["legacy"]},
+            {"strategy_sets": {"known": ["a"]}},
+            strategy_set="missing",
+            strategies=None,
+        )
 
 
 def test_admission_command_hint_records_actual_config_path(tmp_path) -> None:

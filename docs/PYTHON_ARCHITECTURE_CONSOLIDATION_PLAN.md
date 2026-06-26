@@ -171,6 +171,17 @@ The fourteenth slice moves portfolio constraint logic into the strategy domain p
 
 This slice does not change constraint behavior, cost recomputation, strategy parameters, admission thresholds, or execution assumptions. The constraints module remains the shared post-strategy portfolio constraint engine used by walk-forward and research holdings replay.
 
+## Fifteenth Slice In This Branch
+
+The fifteenth slice starts decomposing the large admission runner with low-risk configuration helpers:
+
+- Add `phase0.research.admission.strategy_scope` for admission strategy-scope resolution and scoped strategy enablement helpers.
+- Keep `phase0.strategy_admission` as the admission runner module and re-export the moved helper names for old imports.
+- Update holdings exposure and ordinary admission tests to use the new helper path where they do not need the admission runner itself.
+- Extend `tests/test_research_admission_imports.py` so new helper paths and old-path compatibility are both covered.
+
+This slice intentionally does not move `run_strategy_admission`, admission window-matrix construction, constraint review, report writers, or governance report generation. It only moves pure config parsing / strategy-enable helpers and does not change admission outputs, strategy parameters, report paths, thresholds, or walk-forward execution.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
