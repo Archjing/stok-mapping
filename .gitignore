@@ -29,12 +29,35 @@ reports/cache/
 node_modules/
 
 # Local runtime outputs and audit artifacts.
-# Keep generated outputs on disk, but do not add routine reports/logs/databases to Git.
-# Curated strategy governance archives are intentionally versioned so research
-# decisions can be audited from main.
+# `reports/` has a fixed root layout. Keep generated outputs on disk, but do
+# not add routine reports/logs/databases to Git. Only curated governance
+# archives are versioned so research decisions can be audited from main.
 logs/
 reports/*
 !reports/README.md
+
+# Root report categories. The category directories are visible on main via
+# `.gitkeep`, while their generated contents stay local unless explicitly
+# unignored below.
+!reports/archive/
+reports/archive/*
+!reports/archive/.gitkeep
+!reports/database_health/
+reports/database_health/*
+!reports/database_health/.gitkeep
+!reports/phase0/
+reports/phase0/*
+!reports/phase0/.gitkeep
+!reports/runs/
+reports/runs/*
+!reports/runs/.gitkeep
+!reports/strategy_admission/
+reports/strategy_admission/*
+!reports/strategy_admission/.gitkeep
+
+# Strategy governance is the only reports subtree intended for versioned
+# research records. Keep human-readable summaries and briefings; leave bulk
+# machine outputs local unless force-added intentionally.
 !reports/strategy_governance/
 !reports/strategy_governance/**/
 reports/strategy_governance/**/*.csv
