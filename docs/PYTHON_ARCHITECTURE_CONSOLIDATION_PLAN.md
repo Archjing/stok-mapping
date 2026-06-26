@@ -226,7 +226,7 @@ The sixteenth slice starts the data-access provider package with the Tushare ada
 - Move `phase0/tushare_source.py` into `phase0.data_access.providers.tushare`.
 - Keep `phase0.tushare_source` as a module alias shim so old imports and monkeypatches still hit the provider module.
 - Update effective project imports in daily basic backfill, adjustment backfill, manual history update, Tushare history backfill, data-source connectivity, and index as-of backfill to use the new provider path.
-- Add `tests/test_data_access_provider_imports.py` so new provider imports and old-path compatibility are both covered.
+- Cover new provider imports and old-path compatibility through the shared `tests/test_data_access_compatibility.py` matrix.
 
 This slice does not move `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, or index as-of backfill. Those remain write-side data-governance jobs that call the provider. It also does not change Tushare payloads, normalization rules, retry behavior, request throttling, database writes, report paths, or CLI command names.
 
@@ -843,6 +843,16 @@ The seventy-second slice extracts Tushare financial backfill task-state helpers 
 - Add behavior tests for missing-field normalization, listing/delisting-aware task initialization, retry/shard selection, error truncation, and missing-field task interface updates.
 
 This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, task-table schema or state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, audit SQL queries, report rendering, or financial row write semantics.
+
+## Seventy-Third Slice In This Branch
+
+The seventy-third slice starts consolidating import-compatibility tests instead of splitting more production modules:
+
+- Add `tests/test_data_access_compatibility.py` as the shared compatibility test for data-access legacy wrappers.
+- Replace four small one-off data-access compatibility test files with a parameterized module/symbol matrix.
+- Keep external-market provider behavior tests separate because they validate dispatch behavior rather than import compatibility.
+
+This slice does not change production code, CLI commands, provider behavior, request payloads, data writes, or report paths. It reduces compatibility-test duplication while preserving the old-path alias checks needed for the later wrapper cleanup commit.
 
 ## Later Migration Stages
 
