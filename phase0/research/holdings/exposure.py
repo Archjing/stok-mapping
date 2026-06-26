@@ -17,7 +17,7 @@ from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history, load_index_daily_from_local_history, local_history_path
 from phase0.strategies import get_strategy
 from phase0.strategy_admission import _force_strategy_set_enabled_for_admission
-from phase0.strategy_constraints import apply_strategy_constraints
+from phase0.strategies.constraints import apply_strategy_constraints
 from phase0.throttle import configure_akshare_throttle
 from phase0.walk_forward import (
     _attach_benchmark_fold_metrics,
@@ -858,7 +858,10 @@ def _benchmark_daily_features(benchmark_symbol: str, daily_df: pd.DataFrame) -> 
     dates = pd.to_datetime(daily_df["date"], errors="coerce").dropna()
     if dates.empty:
         return pd.DataFrame()
-    index = load_index_daily_from_local_history(benchmark_symbol, dates.min().date(), dates.max().date())
+    try:
+        index = load_index_daily_from_local_history(benchmark_symbol, dates.min().date(), dates.max().date())
+    except (sqlite3.Error, pd.errors.DatabaseError):
+        return pd.DataFrame()
     if index.empty or "close" not in index.columns:
         return pd.DataFrame()
     out = index[["date", "close"]].copy().sort_values("date")
@@ -874,7 +877,10 @@ def _benchmark_price_status(benchmark_symbol: str, daily_df: pd.DataFrame) -> st
     dates = pd.to_datetime(daily_df["date"], errors="coerce").dropna()
     if dates.empty:
         return "empty"
-    index = load_index_daily_from_local_history(benchmark_symbol, dates.min().date(), dates.max().date())
+    try:
+        index = load_index_daily_from_local_history(benchmark_symbol, dates.min().date(), dates.max().date())
+    except (sqlite3.Error, pd.errors.DatabaseError):
+        return "not_available"
     return "available" if not index.empty else "not_available"
 
 
