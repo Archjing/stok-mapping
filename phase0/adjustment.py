@@ -9,6 +9,7 @@ from typing import Any
 import pandas as pd
 
 from phase0.local_history import normalize_cn_symbol
+from phase0.reporting.paths import report_path
 
 
 @dataclass(frozen=True)
@@ -297,8 +298,8 @@ def run_adjustment_audit(
     market = str(local_cfg.get("market", "CN"))
     current_adjust = str(local_cfg.get("adjust_type", "qfq"))
     backtest_adjust = str(local_cfg.get("price_adjustment_for_backtest", f"{current_adjust}_current"))
-    output_csv = output_csv or root / "reports" / "price_adjustment_audit.csv"
-    output_md = output_md or root / "reports" / "price_adjustment_audit.md"
+    output_csv = output_csv or report_path(root=root, config=config, category="database_health", parts=("price_adjustment_audit.csv",))
+    output_md = output_md or report_path(root=root, config=config, category="database_health", parts=("price_adjustment_audit.md",))
 
     rows: list[dict[str, Any]] = []
     warnings: list[str] = []

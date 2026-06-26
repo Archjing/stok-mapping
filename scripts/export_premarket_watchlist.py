@@ -24,6 +24,7 @@ from phase0.accounts import (
 )
 from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history
+from phase0.reporting.paths import report_config_path
 from phase0.strategies import get_strategy
 from phase0.walk_forward import _calc_metrics, _resolve_walk_forward_window
 from scripts.export_strategy_bill import (
@@ -38,8 +39,8 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_WATCHLIST_OUTPUT = "reports/phase0/phase0_premarket_watchlist.csv"
-DEFAULT_REPORT_OUTPUT = "reports/phase0/phase0_premarket_report.html"
+DEFAULT_WATCHLIST_OUTPUT = "phase0_premarket_watchlist.csv"
+DEFAULT_REPORT_OUTPUT = "phase0_premarket_report.html"
 DEFAULT_SIMULATION_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
 STRATEGY_DISPLAY_NAMES = {
     "legacy_momentum_low_turnover_v1": "低换手经典动量",
@@ -59,6 +60,25 @@ def _resolve_output_template(root: Path, value: str | Path, summary: dict[str, A
         signal_date=str(summary["signal_date"]),
     )
     return _resolve_path(root, formatted)
+
+
+def _resolve_report_output_template(
+    root: Path,
+    config: dict[str, Any],
+    value: str | Path,
+    summary: dict[str, Any],
+    *,
+    default_category: str,
+    explicit: bool,
+) -> Path:
+    brief_date = str(summary["check_time"])[:10]
+    formatted = str(value).format(
+        brief_date=brief_date,
+        signal_date=str(summary["signal_date"]),
+    )
+    if explicit:
+        return _resolve_path(root, formatted)
+    return report_config_path(root=root, config=config, value=formatted, default_category=default_category)
 
 
 def _format_pct(value: Any, digits: int = 2) -> str:
@@ -651,10 +671,10 @@ th {
 def export_premarket_watchlist(
     *,
     config_path: Path,
-    output: str | Path = DEFAULT_WATCHLIST_OUTPUT,
-    report_output: str | Path = DEFAULT_REPORT_OUTPUT,
+    output: str | Path | None = None,
+    report_output: str | Path | None = None,
     latest_report_output: str | Path | None = None,
-    panel_cache: str | Path = DEFAULT_PANEL_CACHE,
+    panel_cache: str | Path | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
     top_candidates: int = 20,
@@ -664,6 +684,12 @@ def export_premarket_watchlist(
     root = Path.cwd()
     config_path = _resolve_path(root, config_path)
     config = load_config(config_path)
+    explicit_output = output is not None
+    explicit_report_output = report_output is not None
+    explicit_panel_cache = panel_cache is not None
+    output = output or DEFAULT_WATCHLIST_OUTPUT
+    report_output = report_output or DEFAULT_REPORT_OUTPUT
+    panel_cache = panel_cache or DEFAULT_PANEL_CACHE
     configure_local_history(config.get("local_history", {}), root)
     configure_us_market_history(config.get("us_market_history", {}), root)
 
@@ -672,7 +698,11 @@ def export_premarket_watchlist(
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
     symbols = _parse_symbol_list(config, root)
     history_years = int(config["years"])
-    cache_path = _resolve_path(root, panel_cache)
+    cache_path = (
+        _resolve_path(root, panel_cache)
+        if explicit_panel_cache
+        else report_config_path(root=root, config=config, value=panel_cache, default_category="runs")
+    )
     db_path = _resolve_path(root, config.get("local_history", {}).get("path", ""))
     panel_as_of_date = _latest_trade_date(db_path)
     panel = _load_or_build_panel(
@@ -819,8 +849,22 @@ def export_premarket_watchlist(
         "strategy_display_name": STRATEGY_DISPLAY_NAMES.get(strategy_id, getattr(strategy, "display_name", strategy_id) or strategy_id),
         "strategy_description": STRATEGY_SHORT_DESCRIPTIONS.get(strategy_id, ""),
     }
-    output_path = _resolve_output_template(root, output, summary)
-    report_path = _resolve_output_template(root, report_output, summary)
+    output_path = _resolve_report_output_template(
+        root,
+        config,
+        output,
+        summary,
+        default_category="phase0",
+        explicit=explicit_output,
+    )
+    report_path = _resolve_report_output_template(
+        root,
+        config,
+        report_output,
+        summary,
+        default_category="phase0",
+        explicit=explicit_report_output,
+    )
     accounts = load_simulated_accounts(config, root)
     account_ledger_path = accounts[0].ledger_path if accounts else Path("")
     account_bill_path = Path("")
@@ -883,9 +927,9 @@ def export_premarket_watchlist(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--output", default=DEFAULT_WATCHLIST_OUTPUT)
-    parser.add_argument("--report-output", default=DEFAULT_REPORT_OUTPUT)
-    parser.add_argument("--panel-cache", default=DEFAULT_PANEL_CACHE)
+    parser.add_argument("--output", default=None)
+    parser.add_argument("--report-output", default=None)
+    parser.add_argument("--panel-cache", default=None)
     parser.add_argument("--refresh-cache", action="store_true")
     parser.add_argument("--no-panel-cache", action="store_true")
     parser.add_argument("--top-candidates", type=int, default=20)

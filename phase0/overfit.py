@@ -7,6 +7,8 @@ from typing import Any
 
 import pandas as pd
 
+from phase0.reporting.paths import report_path
+
 
 @dataclass(frozen=True)
 class OverfitDiagnosticResult:
@@ -26,9 +28,9 @@ def run_overfit_diagnostic(
     output_dir: Path | None = None,
     standard_names: bool = False,
 ) -> OverfitDiagnosticResult:
-    candidates_path = candidates_path or root / "reports" / "phase0_walk_forward_candidates.csv"
-    folds_path = folds_path or root / "reports" / "phase0_walk_forward_folds.csv"
-    output_dir = output_dir or root / "reports" / "overfit_diagnostic"
+    candidates_path = candidates_path or report_path(root=root, config=config, category="phase0", parts=("phase0_walk_forward_candidates.csv",))
+    folds_path = folds_path or report_path(root=root, config=config, category="phase0", parts=("phase0_walk_forward_folds.csv",))
+    output_dir = output_dir or report_path(root=root, config=config, category="phase0", parts=("overfit_diagnostic",))
     output_dir.mkdir(parents=True, exist_ok=True)
     if standard_names:
         csv_path = output_dir / "overfit__diagnostic.csv"

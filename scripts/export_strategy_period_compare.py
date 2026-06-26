@@ -13,6 +13,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_path
 from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, _default_report_strategy_id, _strategy_report_cfg
 
 
@@ -300,9 +301,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Compare strategy OOS periods")
     parser.add_argument("--config", type=Path, default=Path("config.yaml"))
     parser.add_argument("--strategy-id", default=None)
-    parser.add_argument("--early-curve", type=Path, default=Path("reports/phase0/phase0_low_turnover_oos_curve_201808_202210.csv"))
-    parser.add_argument("--current-curve", type=Path, default=Path("reports/phase0/phase0_low_turnover_oos_curve.csv"))
-    parser.add_argument("--output", type=Path, default=Path("reports/phase0/phase0_low_turnover_period_compare.html"))
+    parser.add_argument("--early-curve", type=Path, default=None)
+    parser.add_argument("--current-curve", type=Path, default=None)
+    parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--early-label", default="早期区间")
     parser.add_argument("--current-label", default="当前区间")
     parser.add_argument("--title", default=None)
@@ -310,20 +311,39 @@ def main() -> None:
     args = parser.parse_args()
     config_path = args.config if args.config.is_absolute() else Path.cwd() / args.config
     config = load_config(config_path)
+    root = config_path.parent
     strategy_id = str(args.strategy_id or _default_report_strategy_id(config) or DEFAULT_STRATEGY_ID)
     report_cfg = _period_compare_cfg(config, strategy_id)
     title = args.title or str(report_cfg.get("title") or DEFAULT_COMPARE_TITLE)
     note = args.note or str(report_cfg.get("note") or DEFAULT_COMPARE_NOTE)
+    early_curve = args.early_curve or report_path(
+        root=root,
+        config=config,
+        category="phase0",
+        parts=("phase0_low_turnover_oos_curve_201808_202210.csv",),
+    )
+    current_curve = args.current_curve or report_path(
+        root=root,
+        config=config,
+        category="phase0",
+        parts=("phase0_low_turnover_oos_curve.csv",),
+    )
+    output = args.output or report_path(
+        root=root,
+        config=config,
+        category="phase0",
+        parts=("phase0_low_turnover_period_compare.html",),
+    )
 
     summary = pd.DataFrame(
         [
-            _summarize(args.early_label, args.early_curve),
-            _summarize(args.current_label, args.current_curve),
+            _summarize(args.early_label, early_curve),
+            _summarize(args.current_label, current_curve),
         ]
     )
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(_build_html(summary, title=title, note=note), encoding="utf-8")
-    print(args.output)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(_build_html(summary, title=title, note=note), encoding="utf-8")
+    print(output)
 
 
 if __name__ == "__main__":

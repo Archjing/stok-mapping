@@ -13,6 +13,7 @@ from phase0.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.adjustment_backfill import ensure_dividend_table, upsert_dividends
 from phase0.config import load_config
 from phase0.financial_factors import ensure_financial_factor_table
+from phase0.reporting.paths import report_path
 from phase0.tushare_source import (
     fetch_tushare_adj_factor_trade_date,
     fetch_tushare_daily_basic_trade_date,
@@ -153,7 +154,7 @@ FINANCIAL_BACKFILL_SUMMARY_COLUMNS = [
 
 
 def _date_dir(root: Path) -> Path:
-    return root / "reports" / datetime.now().date().isoformat()
+    return report_path(root=root, category="database_health", parts=(datetime.now().date().isoformat(),))
 
 
 def _short_date_tag() -> str:
@@ -170,8 +171,8 @@ def _history_audit_paths(root: Path, *, start_date: str, end_date: str) -> tuple
     range_tag = f"{_compact_date_tag(start_date)}_{_compact_date_tag(end_date)}"
     detail_csv = date_dir / f"tushare_history_backfill_audit_{date_tag}_{range_tag}.csv"
     detail_md = date_dir / f"tushare_history_backfill_audit_{date_tag}_{range_tag}.md"
-    summary_csv = root / "reports" / "tushare_history_backfill_audit_summary.csv"
-    summary_md = root / "reports" / "tushare_history_backfill_audit_summary.md"
+    summary_csv = report_path(root=root, category="database_health", parts=("tushare_history_backfill_audit_summary.csv",))
+    summary_md = report_path(root=root, category="database_health", parts=("tushare_history_backfill_audit_summary.md",))
     return detail_csv, detail_md, summary_csv, summary_md
 
 
@@ -190,8 +191,8 @@ def _financial_audit_paths(
         range_tag = f"{_compact_date_tag(start_period)}_{_compact_date_tag(end_period)}"
     detail_csv = date_dir / f"tushare_financial_backfill_audit_{date_tag}_{range_tag}.csv"
     detail_md = date_dir / f"tushare_financial_backfill_audit_{date_tag}_{range_tag}.md"
-    summary_csv = root / "reports" / "tushare_financial_backfill_audit_summary.csv"
-    summary_md = root / "reports" / "tushare_financial_backfill_audit_summary.md"
+    summary_csv = report_path(root=root, category="database_health", parts=("tushare_financial_backfill_audit_summary.csv",))
+    summary_md = report_path(root=root, category="database_health", parts=("tushare_financial_backfill_audit_summary.md",))
     return detail_csv, detail_md, summary_csv, summary_md
 
 

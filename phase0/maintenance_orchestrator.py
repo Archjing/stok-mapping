@@ -13,6 +13,7 @@ from typing import Any
 from urllib.parse import quote
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_path as build_report_path
 
 
 VALID_DECISIONS = {"will_run", "skipped", "blocked"}
@@ -772,7 +773,7 @@ def _find_financial_backfill_report(root: Path, command_json: str) -> tuple[Path
     end_period = str(meta.get("end_period") or "")
     shard_index = int(meta.get("shard_index") or -1)
     shard_count = int(meta.get("shard_count") or -1)
-    summary_csv = root / "reports" / "tushare_financial_backfill_audit_summary.csv"
+    summary_csv = build_report_path(root=root, category="database_health", parts=("tushare_financial_backfill_audit_summary.csv",))
     matches = _read_summary_matches(
         summary_csv,
         start_period=start_period,
@@ -1815,7 +1816,11 @@ def maintenance_status(
     result = MaintenanceStatusResult(state_db=state_db, generated_at=now_iso, rows=rows, shards=shards)
     report_path: Path | None = None
     if write_report or output_md is not None:
-        report_path = output_md or (root / "reports" / "maintenance" / f"maintenance_status_{datetime.now().date().isoformat()}.md")
+        report_path = output_md or build_report_path(
+            root=root,
+            category="database_health",
+            parts=("maintenance", f"maintenance_status_{datetime.now().date().isoformat()}.md"),
+        )
         write_maintenance_status_report(result, report_path, root=root)
         result = MaintenanceStatusResult(
             state_db=result.state_db,

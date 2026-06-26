@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.local_history import configure_local_history, load_index_daily_from_local_history
+from phase0.reporting.paths import report_config_path
 from scripts.export_execution_effectiveness_report import (
     _apply_profile_to_config,
     _live_backtest_settings,
@@ -26,10 +27,10 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "reports/phase0/live_execution_backtest/oos_daily_assets.csv"
-DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "reports/phase0/live_execution_backtest/oos_report.html"
-DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "reports/phase0/live_execution_backtest/oos_curve.csv"
-DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "reports/phase0/live_execution_backtest/oos_fold_compare.csv"
+DEFAULT_PROFILE_OOS_DAILY_OUTPUT = "live_execution_backtest/oos_daily_assets.csv"
+DEFAULT_PROFILE_OOS_REPORT_OUTPUT = "live_execution_backtest/oos_report.html"
+DEFAULT_PROFILE_OOS_CURVE_OUTPUT = "live_execution_backtest/oos_curve.csv"
+DEFAULT_PROFILE_OOS_FOLD_OUTPUT = "live_execution_backtest/oos_fold_compare.csv"
 DEFAULT_CHECKPOINT_DATE = "2025-05-30"
 DEFAULT_CHECKPOINT_NOTE = (
     "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。"
@@ -499,17 +500,41 @@ def export_strategy_oos_report(
         enable_suspension_check=enable_suspension_check,
     )
     live_cfg = _live_backtest_settings(config)
-    output_root = Path(output_dir or oos_cfg.get("output_dir") or live_cfg.get("output_dir") or "reports/phase0/live_execution_backtest")
-    output_root = output_root if output_root.is_absolute() else root / output_root
+    if output_dir is not None:
+        output_root = Path(output_dir)
+        output_root = output_root if output_root.is_absolute() else root / output_root
+    else:
+        output_root = report_config_path(
+            root=root,
+            config=config,
+            value=oos_cfg.get("output_dir") or live_cfg.get("output_dir") or "live_execution_backtest",
+            default_category="phase0",
+        )
     use_config_paths = output_dir is None
     if daily_assets_path is None:
-        daily_assets_path = Path(str(oos_cfg.get("daily_assets"))) if use_config_paths and oos_cfg.get("daily_assets") else output_root / "oos_daily_assets.csv"
+        daily_assets_path = (
+            report_config_path(root=root, config=config, value=str(oos_cfg.get("daily_assets")), default_category="phase0")
+            if use_config_paths and oos_cfg.get("daily_assets")
+            else output_root / "oos_daily_assets.csv"
+        )
     if report_output is None:
-        report_output = Path(str(oos_cfg.get("report_output"))) if use_config_paths and oos_cfg.get("report_output") else output_root / "oos_report.html"
+        report_output = (
+            report_config_path(root=root, config=config, value=str(oos_cfg.get("report_output")), default_category="phase0")
+            if use_config_paths and oos_cfg.get("report_output")
+            else output_root / "oos_report.html"
+        )
     if curve_output is None:
-        curve_output = Path(str(oos_cfg.get("curve_output"))) if use_config_paths and oos_cfg.get("curve_output") else output_root / "oos_curve.csv"
+        curve_output = (
+            report_config_path(root=root, config=config, value=str(oos_cfg.get("curve_output")), default_category="phase0")
+            if use_config_paths and oos_cfg.get("curve_output")
+            else output_root / "oos_curve.csv"
+        )
     if fold_output is None:
-        fold_output = Path(str(oos_cfg.get("fold_output"))) if use_config_paths and oos_cfg.get("fold_output") else output_root / "oos_fold_compare.csv"
+        fold_output = (
+            report_config_path(root=root, config=config, value=str(oos_cfg.get("fold_output")), default_category="phase0")
+            if use_config_paths and oos_cfg.get("fold_output")
+            else output_root / "oos_fold_compare.csv"
+        )
     daily_assets_path = daily_assets_path if daily_assets_path.is_absolute() else root / daily_assets_path
     report_output = report_output if report_output.is_absolute() else root / report_output
     curve_output = curve_output if curve_output.is_absolute() else root / curve_output

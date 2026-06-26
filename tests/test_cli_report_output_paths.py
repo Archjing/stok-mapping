@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
+
 import phase0.cli as cli
 
 
@@ -10,6 +12,32 @@ def _assert_standard_run(path: Path, *, root: Path, command: str, scope: str) ->
     parts = relative.parts
     assert parts[0] == "reports"
     assert parts[1] == "runs"
+    assert len(parts) >= 5
+    assert f"__{command}__{scope}" in parts[3]
+
+
+def _write_config(path: Path) -> None:
+    path.write_text(
+        """
+phase0:
+  reporting:
+    root_dir: local_reports
+    categories:
+      phase0: phase_zero
+      runs: run_outputs
+  local_history: {}
+  data_sources: {}
+  walk_forward: {}
+""",
+        encoding="utf-8",
+    )
+
+
+def _assert_configured_run(path: Path, *, root: Path, command: str, scope: str) -> None:
+    relative = path.relative_to(root)
+    parts = relative.parts
+    assert parts[0] == "local_reports"
+    assert parts[1] == "run_outputs"
     assert len(parts) >= 5
     assert f"__{command}__{scope}" in parts[3]
 
@@ -29,6 +57,23 @@ def test_low_turnover_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: P
     _assert_standard_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
     assert Path(result["daily"]).name == "bill__daily_assets.csv"
     assert Path(result["preview"]).name == "bill__preview.html"
+
+
+def test_low_turnover_bill_uses_configured_run_dir(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    _write_config(config_path)
+    calls: list[dict[str, object]] = []
+
+    def fake_export_strategy_bill(**kwargs):
+        calls.append(kwargs)
+        return {"bill": kwargs["output"], "daily": kwargs["daily_output"], "preview": kwargs["preview_output"]}
+
+    monkeypatch.setattr("scripts.export_strategy_bill.export_strategy_bill", fake_export_strategy_bill)
+
+    result = cli._export_phase0_low_turnover_bill(config_path=config_path)
+
+    assert calls
+    _assert_configured_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
 
 
 def test_market_regime_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) -> None:
@@ -98,6 +143,47 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
     assert Path(result["watchlist"]).name == "premarket__watchlist.csv"
     assert Path(result["report"]).name == "premarket__report.html"
     assert calls[0]["latest_report_output"] == tmp_path / "reports" / "runs" / "latest" / "watchlist" / "index.html"
+
+
+def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    _write_config(config_path)
+    calls: list[dict[str, object]] = []
+
+    def fake_export_premarket_watchlist(**kwargs):
+        calls.append(kwargs)
+        return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
+
+    monkeypatch.setattr("scripts.export_premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+
+    result = cli._export_phase0_premarket(config_path=config_path)
+
+    assert calls
+    _assert_configured_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
+    assert Path(result["report"]).name == "premarket__report.html"
+    assert calls[0]["latest_report_output"] == tmp_path / "local_reports" / "run_outputs" / "latest" / "watchlist" / "index.html"
+
+
+def test_phase0_cost_sensitivity_uses_configured_phase0_category(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    _write_config(config_path)
+    saved_paths: list[Path] = []
+    report_paths: list[Path] = []
+
+    monkeypatch.setattr(cli, "configure_local_history", lambda cfg, root: None)
+    monkeypatch.setattr(cli, "configure_akshare_throttle", lambda cfg: None)
+    monkeypatch.setattr(cli, "run_cost_sensitivity", lambda cfg: pd.DataFrame({"scenario": ["base"]}))
+    monkeypatch.setattr(cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
+    monkeypatch.setattr(cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
+
+    exit_code = cli.run_phase0_cost_sensitivity(
+        config_path,
+        [{"name": "base", "slippage": 0.001, "commission": 0.0, "stamp_duty_sell": 0.0}],
+    )
+
+    assert exit_code == 0
+    assert saved_paths == [tmp_path / "local_reports" / "phase_zero" / "phase0_cost_sensitivity.csv"]
+    assert report_paths == [tmp_path / "local_reports" / "phase_zero" / "phase0_cost_sensitivity_report.md"]
 
 
 def test_account_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) -> None:

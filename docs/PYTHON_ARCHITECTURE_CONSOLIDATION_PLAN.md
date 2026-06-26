@@ -1,0 +1,71 @@
+# Python Architecture Consolidation Plan
+
+Last revised: 2026-06-26
+
+## Purpose
+
+This plan defines the KISS-oriented path for consolidating Python code by the project's actual functional architecture. The goal is to group related code, reduce duplicated helpers, and keep behavior stable while the strategy-research system continues to run.
+
+The current branch starts with a narrow, verifiable slice: the reporting/path layer. It does not claim the full codebase consolidation is finished.
+
+## Current Functional Layers
+
+| Layer | Responsibility | Current modules |
+| --- | --- | --- |
+| `reporting` | Report output paths, run directories, artifact registry, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py` |
+| `data_governance` | Local history, data-source updates, as-of coverage, adjustment audits, health checks, backfills | `phase0/local_history.py`, `phase0/update_history.py`, `phase0/import_history.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment*.py`, `phase0/tushare_*.py`, `scripts/check_local_history_consistency.py`, `scripts/audit_*_pti.py` |
+| `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, `phase0/strategy_*diagnostic.py`, `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
+| `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
+| `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
+| `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints |
+| `core` | Config/env/path helpers and small shared utilities that do not own business behavior | `phase0/config.py`, `phase0/env.py`, future shared helpers |
+
+## First Slice In This Branch
+
+The first slice consolidates report path and report artifact responsibilities:
+
+- Move report path logic into `phase0.reporting.paths`.
+- Move report artifact scanning/manifest logic into `phase0.reporting.registry`.
+- Move report writer helpers into `phase0.reporting.writers`.
+- Keep `phase0.report_paths` and `phase0.report_registry` as compatibility shims.
+- Make new report outputs read `phase0.reporting.root_dir/categories` from `config.yaml`.
+- Preserve explicit CLI path semantics: user-provided relative paths remain project-root relative unless a function explicitly documents report-config path behavior.
+
+This slice is intentionally small because report paths are a cross-cutting dependency. Stabilizing it first lowers risk for later data-governance and research-module moves.
+
+## Later Migration Stages
+
+| Stage | Scope | Acceptance gate |
+| --- | --- | --- |
+| P1 Reporting foundation | Finish `phase0.reporting.*` and config-driven output defaults | Report path tests, registry tests, targeted CLI path tests, `python -m phase0.cli --help` |
+| P2 Data governance package | Move data health, as-of, adjustment, local-history, and backfill modules behind compatibility shims | Existing data-health/as-of tests, CLI help for related commands, no table/schema changes |
+| P3 Domain strategies and research | Separate strategy implementations from walk-forward/admission/diagnostics | Strategy registry tests, walk-forward/admission targeted tests, no strategy parameter or cost-model changes |
+| P4 CLI and orchestration | Split `phase0.cli` into command modules and move scheduler orchestration | All CLI help paths pass, scheduler command names and env vars remain compatible |
+| P5 Intelligence | Split collection/import/validate/review code and keep scripts thin | Intelligence CLI help, ledger/candidate schema tests, no required external API calls in tests |
+| P6 Scripts cleanup | Convert heavy scripts into wrappers over packaged functions | Thin script smoke tests, import compatibility tests |
+
+## KISS Cleanup Backlog
+
+These are real redundancy candidates, but each should be cleaned only when its owning layer is migrated:
+
+| Redundancy | Current locations | KISS action |
+| --- | --- | --- |
+| `_resolve_path` variants | Multiple `phase0/` modules and `scripts/` | Centralize into a small core path helper after reporting semantics are stable |
+| SQL identifier validation | Data governance modules | Centralize into a single helper when moving data modules |
+| Annualized return / Sharpe / drawdown helpers | `walk_forward.py`, OOS/report scripts, market-regime scripts | Move to `research.metrics` only after matching NaN and annualization behavior with tests |
+| Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
+| Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
+| Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |
+| Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
+
+## Non-Goals
+
+- Do not rewrite strategy algorithms during structural migration.
+- Do not change data tables, as-of rules, adjustment modes, costs, or admission thresholds as part of package cleanup.
+- Do not commit `reports/`, `logs/`, SQLite databases, or generated research artifacts.
+- Do not make Harness or `codex-harness-runner` a runtime dependency of the product code.
+
+## Harness Working Rule
+
+Team Lead owns git boundaries, scope control, and final integration. Planner, implementer, reviewer, verifier, and memory-steward style agents can be used for bounded reviews or disjoint work. Completed subagents should be closed. Parallel write work must use separate git worktrees or disjoint file ownership.

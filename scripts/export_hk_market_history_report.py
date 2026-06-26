@@ -13,6 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_path
 
 HK_SYMBOL_NAME_MAP = {
     "HK.00005": "汇丰控股",
@@ -211,10 +212,18 @@ def build_report(config_path: Path, output_path: Path) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Export HK market history batch load report")
     parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    parser.add_argument("--output", default="reports/database_health/hk_market_history_batch_load_report.md", help="Output markdown report")
+    parser.add_argument("--output", default=None, help="Output markdown report")
     args = parser.parse_args()
-    report_path = build_report(Path(args.config).resolve(), Path(args.output))
-    print(report_path)
+    config_path = Path(args.config).resolve()
+    cfg = load_config(config_path)
+    output = Path(args.output) if args.output else report_path(
+        root=config_path.parent,
+        config=cfg,
+        category="database_health",
+        parts=("hk_market_history_batch_load_report.md",),
+    )
+    report_output = build_report(config_path, output)
+    print(report_output)
     return 0
 
 

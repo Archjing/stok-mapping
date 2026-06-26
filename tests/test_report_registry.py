@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 import phase0.cli as cli
-from phase0.report_registry import classify_legacy_artifact, scan_report_artifacts, write_report_manifest
+from phase0.reporting.registry import classify_legacy_artifact, scan_report_artifacts, write_report_manifest
 
 
 def _write(path: Path, text: str = "x") -> None:

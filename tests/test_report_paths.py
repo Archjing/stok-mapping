@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from phase0.report_paths import create_report_run, latest_dir, scratch_dir
+from phase0.reporting.paths import create_report_run, latest_dir, report_config_path, report_path, scratch_dir
 
 
 def test_create_report_run_uses_date_command_and_scope(tmp_path: Path) -> None:
@@ -68,3 +68,45 @@ def test_standard_report_artifact_names_for_core_commands(tmp_path: Path) -> Non
     assert health.artifact("database_health", "report", "md").name == "database_health__report.md"
     assert factors.artifact("factor_effectiveness", "summary", "csv").name == "factor_effectiveness__summary.csv"
     assert factors.artifact("factor_effectiveness", "report", "md").name == "factor_effectiveness__report.md"
+
+
+def test_report_paths_use_configured_report_root_and_categories(tmp_path: Path) -> None:
+    config = {
+        "reporting": {
+            "root_dir": "local_reports",
+            "categories": {
+                "runs": "run_outputs",
+                "phase0": "phase_zero",
+            },
+        }
+    }
+
+    run = create_report_run(
+        root=tmp_path,
+        config=config,
+        command="strategy-admission",
+        scope="baseline admission all v1",
+        now=datetime(2026, 6, 23, 10, 30, 12),
+    )
+
+    assert run.run_dir == tmp_path / "local_reports" / "run_outputs" / "2026-06-23" / run.run_id
+    assert latest_dir(root=tmp_path, config=config, channel="watchlist") == (
+        tmp_path / "local_reports" / "run_outputs" / "latest" / "watchlist"
+    )
+    assert scratch_dir(root=tmp_path, config=config, purpose="probe", now=datetime(2026, 6, 23, 1, 2, 3)) == (
+        tmp_path / "local_reports" / "run_outputs" / "scratch" / "2026-06-23" / "probe"
+    )
+    assert report_path(root=tmp_path, config=config, category="phase0", parts=("demo.csv",)) == (
+        tmp_path / "local_reports" / "phase_zero" / "demo.csv"
+    )
+
+
+def test_report_config_path_resolves_category_relative_values(tmp_path: Path) -> None:
+    config = {"reporting": {"root_dir": "local_reports", "categories": {"archive": "archived"}}}
+
+    assert report_config_path(root=tmp_path, config=config, value="archive/intelligence/report.md") == (
+        tmp_path / "local_reports" / "archived" / "intelligence" / "report.md"
+    )
+    assert report_config_path(root=tmp_path, config=config, value="custom.md", default_category="archive") == (
+        tmp_path / "local_reports" / "archived" / "custom.md"
+    )

@@ -71,6 +71,15 @@ phase0:
     max_snapshot_staleness_days: 1
     min_snapshot_coverage: 0.80
     allow_stale_universe_fallback: false
+  reporting:
+    root_dir: "reports"
+    categories:
+      archive: "archive"
+      database_health: "database_health"
+      phase0: "phase0"
+      runs: "runs"
+      strategy_admission: "strategy_admission"
+      strategy_governance: "strategy_governance"
   manual_history_update:
     enabled: true
     adjust_types: ["qfq"]
@@ -248,7 +257,7 @@ phase0:
   intelligence:
     ledger: "knowledge/intelligence/strategy_intelligence_ledger.csv"
     inbox_dir: "data/intelligence/inbox"
-    report_dir: "reports/archive/intelligence"
+    report_dir: "archive/intelligence"
     sources:
       - name: "local_papers"
         type: "local_dir"
@@ -628,18 +637,18 @@ phase0:
       legacy_momentum_low_turnover_v1:
         display_name: "低换手经典动量"
         bill:
-          output: "reports/phase0/phase0_low_turnover_bill.csv"
-          daily_output: "reports/phase0/phase0_low_turnover_daily_assets.csv"
-          preview_output: "reports/phase0/phase0_low_turnover_bill_preview.html"
-          panel_cache: "reports/runs/cache/low_turnover_panel.pkl"
+          output: "phase0/phase0_low_turnover_bill.csv"
+          daily_output: "phase0/phase0_low_turnover_daily_assets.csv"
+          preview_output: "phase0/phase0_low_turnover_bill_preview.html"
+          panel_cache: "runs/cache/low_turnover_panel.pkl"
           preview_title: "Phase 0 Low Turnover Bill Preview"
           score_label: "策略分数"
         oos:
-          output_dir: "reports/phase0/live_execution_backtest"
-          daily_assets: "reports/phase0/live_execution_backtest/oos_daily_assets.csv"
-          report_output: "reports/phase0/live_execution_backtest/oos_report.html"
-          curve_output: "reports/phase0/live_execution_backtest/oos_curve.csv"
-          fold_output: "reports/phase0/live_execution_backtest/oos_fold_compare.csv"
+          output_dir: "phase0/live_execution_backtest"
+          daily_assets: "phase0/live_execution_backtest/oos_daily_assets.csv"
+          report_output: "phase0/live_execution_backtest/oos_report.html"
+          curve_output: "phase0/live_execution_backtest/oos_curve.csv"
+          fold_output: "phase0/live_execution_backtest/oos_fold_compare.csv"
           title: "Phase 0 Low Turnover Continuous OOS Report"
           checkpoint_date: "2025-05-30"
           checkpoint_note: "这一步专门用来纠正账单预览的阅读偏差：这里的观察日期是历史观察点，不是当前日期。预览表按 walk-forward 折展示，中间还有折重置，不等于一条连续复利资金曲线。"
@@ -666,12 +675,12 @@ phase0:
       max_unfilled_or_partial_order_ratio: 0.60
       max_partial_fill_order_ratio: 0.05
       max_stale_valuation_positions_total: 0
-    output_dir: "reports/phase0/live_execution_backtest"
-    bill_output: "reports/phase0/live_execution_backtest/live_execution_bill.csv"
-    daily_output: "reports/phase0/live_execution_backtest/live_execution_daily_assets.csv"
-    preview_output: "reports/phase0/live_execution_backtest/live_execution_bill_preview.html"
-    fold_output: "reports/phase0/live_execution_backtest/live_execution_walk_forward_folds.csv"
-    report_output: "reports/phase0/live_execution_backtest/live_execution_effectiveness_report.md"
+    output_dir: "phase0/live_execution_backtest"
+    bill_output: "phase0/live_execution_backtest/live_execution_bill.csv"
+    daily_output: "phase0/live_execution_backtest/live_execution_daily_assets.csv"
+    preview_output: "phase0/live_execution_backtest/live_execution_bill_preview.html"
+    fold_output: "phase0/live_execution_backtest/live_execution_walk_forward_folds.csv"
+    report_output: "phase0/live_execution_backtest/live_execution_effectiveness_report.md"
     profiles:
       research:
         name: "策略研究回测"

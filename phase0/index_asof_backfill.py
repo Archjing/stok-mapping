@@ -11,6 +11,7 @@ import pandas as pd
 
 from phase0.config import load_config
 from phase0.local_history import normalize_cn_symbol
+from phase0.reporting.paths import report_path
 from phase0.tushare_source import TushareConfig, _call, tushare_available, tushare_config
 from phase0.update_history import _safe_identifier
 
@@ -281,7 +282,7 @@ def upsert_index_asof_rows(
 
 
 def _audit_paths(root: Path, *, index_code: str, start_date: str, end_date: str) -> tuple[Path, Path]:
-    date_dir = root / "reports" / datetime.now().date().isoformat()
+    date_dir = report_path(root=root, category="database_health", parts=(datetime.now().date().isoformat(),))
     compact_index = index_code.replace(".", "_")
     compact_range = f"{_compact_date(start_date)}_{_compact_date(end_date)}"
     return (

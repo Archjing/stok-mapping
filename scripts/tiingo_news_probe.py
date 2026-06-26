@@ -13,7 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from phase0.config import load_config
 from phase0.data_sources import DEFAULT_TIINGO_NEWS_SYMBOLS, fetch_tiingo_news
+from phase0.reporting.paths import report_config_path
+
+
+DEFAULT_OUTPUT = "archive/intelligence/tiingo_news_probe_report.md"
+
+
+def _resolve_path(root: Path, value: str | Path) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else root / path
 
 
 def _parse_csv_arg(raw: str | None) -> list[str]:
@@ -44,9 +54,13 @@ def main() -> int:
     parser.add_argument("--days", type=int, default=7)
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--token-env", default="TIINGO_API_TOKEN")
-    parser.add_argument("--output", default="reports/archive/intelligence/tiingo_news_probe_report.md")
+    parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--output", default=None)
     args = parser.parse_args()
 
+    root = Path.cwd()
+    config_path = _resolve_path(root, args.config)
+    config = load_config(config_path)
     load_dotenv(Path(".env"))
 
     end = date.today()
@@ -132,7 +146,11 @@ def main() -> int:
         lines.append("")
         lines.append("- Current token cannot fully validate Tiingo News API behavior. Check permission and rerun.")
 
-    output_path = Path(args.output)
+    output_path = (
+        _resolve_path(root, args.output)
+        if args.output is not None
+        else report_config_path(root=root, config=config, value=DEFAULT_OUTPUT)
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(output_path)

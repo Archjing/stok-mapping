@@ -11,7 +11,7 @@ import pandas as pd
 
 from phase0.external_market_history import configure_hk_market_history, configure_us_market_history
 from phase0.local_history import _safe_identifier, configure_local_history, local_history_path
-from phase0.report_paths import create_report_run
+from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds
 
 
@@ -533,7 +533,7 @@ def run_factor_effectiveness_report(
     configure_hk_market_history(cfg.get("hk_market_history", {}), root)
 
     if output_dir is None:
-        report_run = create_report_run(root=root, command="factor-effectiveness", scope="qfq_asof")
+        report_run = create_report_run(root=root, config=cfg, command="factor-effectiveness", scope="qfq_asof")
         output = report_run.run_dir
         summary_csv = report_run.artifact("factor_effectiveness", "summary", "csv")
         summary_md = report_run.artifact("factor_effectiveness", "report", "md")

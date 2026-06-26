@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from phase0.report_paths import create_report_run
+from phase0.reporting.paths import create_report_run
 
 
 VALID_SCOPES = {"all", "cn", "financial", "cross_market", "scheduler"}
@@ -1398,7 +1398,7 @@ def run_database_health_check(
         raise ValueError(f"unsupported db-health scope: {scope}")
     as_of = _parse_date(as_of_date)
     if output_dir is None:
-        report_run = create_report_run(root=root, command="db-health", scope=scope)
+        report_run = create_report_run(root=root, config=config, command="db-health", scope=scope)
         output = report_run.run_dir
         summary_csv = report_run.artifact("database_health", "summary", "csv")
         findings_csv = report_run.artifact("database_health", "findings", "csv")

@@ -13,6 +13,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_path
 
 
 def _resolve_path(root: Path, value: Any) -> Path:
@@ -206,15 +207,24 @@ def audit_financial_pti(
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="config.yaml")
-    parser.add_argument("--summary-output", default="reports/phase0/phase0_financial_pti_summary.csv")
-    parser.add_argument("--sample-output", default="reports/phase0/phase0_financial_pti_problem_samples.csv")
-    parser.add_argument("--html-output", default="reports/phase0/phase0_financial_pti_report.html")
+    parser.add_argument("--summary-output", default=None)
+    parser.add_argument("--sample-output", default=None)
+    parser.add_argument("--html-output", default=None)
     args = parser.parse_args()
+    config_path = Path(args.config)
+    root = Path.cwd()
+    cfg = load_config(config_path if config_path.is_absolute() else root / config_path)
     result = audit_financial_pti(
-        config_path=Path(args.config),
-        summary_output=Path(args.summary_output),
-        sample_output=Path(args.sample_output),
-        html_output=Path(args.html_output),
+        config_path=config_path,
+        summary_output=Path(args.summary_output)
+        if args.summary_output
+        else report_path(root=root, config=cfg, category="phase0", parts=("phase0_financial_pti_summary.csv",)),
+        sample_output=Path(args.sample_output)
+        if args.sample_output
+        else report_path(root=root, config=cfg, category="phase0", parts=("phase0_financial_pti_problem_samples.csv",)),
+        html_output=Path(args.html_output)
+        if args.html_output
+        else report_path(root=root, config=cfg, category="phase0", parts=("phase0_financial_pti_report.html",)),
     )
     print(f"verdict={result['verdict']}")
     print(f"summary={result['summary']}")

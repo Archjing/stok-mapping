@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
 from phase0.local_history import configure_local_history, local_history_path, normalize_cn_symbol
+from phase0.reporting.paths import report_path
 
 
 FIELD_ALIASES: dict[str, list[str]] = {
@@ -351,13 +352,26 @@ def main() -> None:
     parser.add_argument("--adjust-type", default="", help="override local adjust_type, default from config")
     parser.add_argument("--rtol", type=float, default=1e-6)
     parser.add_argument("--atol", type=float, default=1e-4)
-    parser.add_argument("--detail-output", type=Path, default=Path("reports/database_health/local_history_consistency_details.csv"))
-    parser.add_argument("--report-output", type=Path, default=Path("reports/database_health/local_history_consistency_report.html"))
+    parser.add_argument("--detail-output", type=Path, default=None)
+    parser.add_argument("--report-output", type=Path, default=None)
     args = parser.parse_args()
 
     config = load_config(args.config)
+    root = Path.cwd()
+    detail_output = args.detail_output or report_path(
+        root=root,
+        config=config,
+        category="database_health",
+        parts=("local_history_consistency_details.csv",),
+    )
+    report_output = args.report_output or report_path(
+        root=root,
+        config=config,
+        category="database_health",
+        parts=("local_history_consistency_report.html",),
+    )
     local_cfg = config.get("local_history", {})
-    configure_local_history(local_cfg, Path.cwd())
+    configure_local_history(local_cfg, root)
     db_path = local_history_path()
     if not db_path.exists():
         raise SystemExit(f"local history db not found: {db_path}")
@@ -407,9 +421,10 @@ def main() -> None:
     if "date" in mismatch_preview.columns:
         mismatch_preview["date"] = pd.to_datetime(mismatch_preview["date"]).dt.strftime("%Y-%m-%d")
 
-    args.detail_output.parent.mkdir(parents=True, exist_ok=True)
-    comparison.to_csv(args.detail_output, index=False, encoding="utf-8")
-    args.report_output.write_text(
+    detail_output.parent.mkdir(parents=True, exist_ok=True)
+    report_output.parent.mkdir(parents=True, exist_ok=True)
+    comparison.to_csv(detail_output, index=False, encoding="utf-8")
+    report_output.write_text(
         _build_html_report(
             summary,
             symbol_breakdown,
@@ -419,8 +434,8 @@ def main() -> None:
         ),
         encoding="utf-8",
     )
-    print(args.report_output)
-    print(args.detail_output)
+    print(report_output)
+    print(detail_output)
 
 
 if __name__ == "__main__":

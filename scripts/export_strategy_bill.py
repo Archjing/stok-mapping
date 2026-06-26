@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from phase0.config import load_config
 from phase0.external_market_history import configure_us_market_history
 from phase0.local_history import configure_local_history, load_daily_from_local_history
+from phase0.reporting.paths import report_config_path
 from phase0.strategies import get_strategy
 from phase0.walk_forward import (
     _add_cross_market_to_panel,
@@ -28,10 +29,10 @@ from phase0.walk_forward import (
 )
 
 
-DEFAULT_BILL_OUTPUT = "reports/phase0/phase0_low_turnover_bill.csv"
-DEFAULT_DAILY_OUTPUT = "reports/phase0/phase0_low_turnover_daily_assets.csv"
-DEFAULT_PREVIEW_OUTPUT = "reports/phase0/phase0_low_turnover_bill_preview.html"
-DEFAULT_PANEL_CACHE = "reports/runs/cache/low_turnover_panel.pkl"
+DEFAULT_BILL_OUTPUT = "phase0_low_turnover_bill.csv"
+DEFAULT_DAILY_OUTPUT = "phase0_low_turnover_daily_assets.csv"
+DEFAULT_PREVIEW_OUTPUT = "phase0_low_turnover_bill_preview.html"
+DEFAULT_PANEL_CACHE = "cache/low_turnover_panel.pkl"
 DEFAULT_STRATEGY_ID = "legacy_momentum_low_turnover_v1"
 DEFAULT_PREVIEW_HEAD_ROWS = 120
 DEFAULT_PREVIEW_TAIL_ROWS = 120
@@ -1122,6 +1123,10 @@ def export_strategy_bill(
     config = load_config(config_path)
     strategy_id = str(strategy_id or _default_report_strategy_id(config))
     report_cfg = _bill_report_cfg(config, strategy_id)
+    explicit_output = output is not None
+    explicit_daily_output = daily_output is not None
+    explicit_preview_output = preview_output is not None
+    explicit_panel_cache = panel_cache is not None
     output = output or report_cfg.get("output", DEFAULT_BILL_OUTPUT)
     daily_output = daily_output or report_cfg.get("daily_output", DEFAULT_DAILY_OUTPUT)
     preview_output = preview_output or report_cfg.get("preview_output", DEFAULT_PREVIEW_OUTPUT)
@@ -1199,7 +1204,11 @@ def export_strategy_bill(
             all_daily.append(daily)
     else:
         symbols = _parse_symbol_list(config, root)
-        cache_path = _resolve_path(root, panel_cache)
+        cache_path = (
+            _resolve_path(root, panel_cache)
+            if explicit_panel_cache
+            else report_config_path(root=root, config=config, value=panel_cache or DEFAULT_PANEL_CACHE, default_category="runs")
+        )
         panel = _load_or_build_panel(
             cache_path=cache_path,
             refresh_cache=bool(refresh_cache),
@@ -1244,9 +1253,17 @@ def export_strategy_bill(
     daily_df = pd.concat(all_daily, ignore_index=True) if all_daily else pd.DataFrame()
     bill_df = _filter_date_window(bill_df, date_col="交易日期", start=valid_start, end=valid_end)
     daily_df = _filter_date_window(daily_df, date_col="date", start=valid_start, end=valid_end)
-    output_path = _resolve_path(root, output)
-    daily_path = _resolve_path(root, daily_output)
-    preview_path = _resolve_path(root, preview_output)
+    output_path = _resolve_path(root, output) if explicit_output else report_config_path(root=root, config=config, value=output, default_category="phase0")
+    daily_path = (
+        _resolve_path(root, daily_output)
+        if explicit_daily_output
+        else report_config_path(root=root, config=config, value=daily_output, default_category="phase0")
+    )
+    preview_path = (
+        _resolve_path(root, preview_output)
+        if explicit_preview_output
+        else report_config_path(root=root, config=config, value=preview_output, default_category="phase0")
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     daily_path.parent.mkdir(parents=True, exist_ok=True)
     preview_path.parent.mkdir(parents=True, exist_ok=True)

@@ -14,6 +14,7 @@ import pandas as pd
 import requests
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_config_path
 
 LEDGER_COLUMNS = [
     "intelligence_id",
@@ -157,7 +158,7 @@ def _configured_path(
     intel_cfg: dict[str, Any],
     override: str | Path | None,
     config_key: str,
-    fallback: str,
+    fallback: str | Path,
 ) -> Path:
     raw = override or intel_cfg.get(config_key) or fallback
     return _resolve_path(root, raw)
@@ -542,7 +543,7 @@ def review_intelligence_candidates(
     cfg = load_config(config_path)
     intel_cfg = cfg.get("intelligence", {})
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
+    report_dir = intel_cfg.get("report_dir", "archive/intelligence")
     candidates_path = _resolve_path(root, candidates_csv)
     review_csv = _configured_path(
         root=root,
@@ -556,7 +557,7 @@ def review_intelligence_candidates(
         intel_cfg=intel_cfg,
         override=output_report,
         config_key="review_report",
-        fallback=f"{report_dir}/intelligence_review_report_{_date_tag()}.md",
+        fallback=report_config_path(root=root, config=cfg, value=f"{report_dir}/intelligence_review_report_{_date_tag()}.md"),
     )
     rows = _read_candidate_rows(candidates_path)
     if limit is not None and limit > 0:
@@ -709,7 +710,7 @@ def import_local_intelligence(
     cfg = load_config(config_path)
     intel_cfg = cfg.get("intelligence", {})
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
+    report_dir = intel_cfg.get("report_dir", "archive/intelligence")
     raw_source = source_dir or "refdocs/papers"
     output = _configured_path(
         root=root,
@@ -723,7 +724,7 @@ def import_local_intelligence(
         intel_cfg=intel_cfg,
         override=output_report,
         config_key="import_report",
-        fallback=f"{report_dir}/intelligence_import_local_report_{_date_tag()}.md",
+        fallback=report_config_path(root=root, config=cfg, value=f"{report_dir}/intelligence_import_local_report_{_date_tag()}.md"),
     )
     rows, warnings = _collect_local_dir(root, raw_source, limit)
     _write_candidates(rows, output)
@@ -858,7 +859,7 @@ def collect_intelligence(
     intel_cfg = cfg.get("intelligence", {})
     sources = intel_cfg.get("sources", [])
     inbox_dir = intel_cfg.get("inbox_dir", "data/intelligence/inbox")
-    report_dir = intel_cfg.get("report_dir", "reports/archive/intelligence")
+    report_dir = intel_cfg.get("report_dir", "archive/intelligence")
     output = _configured_path(
         root=root,
         intel_cfg=intel_cfg,
@@ -871,7 +872,7 @@ def collect_intelligence(
         intel_cfg=intel_cfg,
         override=output_report,
         config_key="collect_report",
-        fallback=f"{report_dir}/intelligence_collect_report_{_date_tag()}.md",
+        fallback=report_config_path(root=root, config=cfg, value=f"{report_dir}/intelligence_collect_report_{_date_tag()}.md"),
     )
     rows: list[dict[str, str]] = []
     warnings: list[str] = []
@@ -1033,7 +1034,11 @@ def validate_intelligence_ledger(
         intel_cfg=intel_cfg,
         override=output_report,
         config_key="validate_report",
-        fallback=f"reports/archive/intelligence/intelligence_validate_report_{_date_tag()}.md",
+        fallback=report_config_path(
+            root=root,
+            config=cfg,
+            value=f"{intel_cfg.get('report_dir', 'archive/intelligence')}/intelligence_validate_report_{_date_tag()}.md",
+        ),
     )
     errors: list[str] = []
     warnings: list[str] = []

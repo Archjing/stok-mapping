@@ -12,6 +12,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_config_path
 from scripts.export_strategy_bill import (
     _default_report_strategy_id,
     _execution_settings,
@@ -19,7 +20,7 @@ from scripts.export_strategy_bill import (
 )
 
 
-DEFAULT_OUTPUT_DIR = "reports/phase0/live_execution_backtest"
+DEFAULT_OUTPUT_DIR = "live_execution_backtest"
 DEFAULT_BILL_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_bill.csv"
 DEFAULT_DAILY_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_daily_assets.csv"
 DEFAULT_PREVIEW_OUTPUT = f"{DEFAULT_OUTPUT_DIR}/live_execution_bill_preview.html"
@@ -49,6 +50,11 @@ def _live_backtest_settings(config: dict[str, Any]) -> dict[str, Any]:
         "report_output": str(cfg.get("report_output", DEFAULT_REPORT_OUTPUT)),
         "gate_source": str(cfg.get("gate_source", "account_daily_assets")),
     }
+
+
+def _resolve_cli_path(root: Path, value: str | Path) -> Path:
+    path = Path(value)
+    return path if path.is_absolute() else root / path
 
 
 def _profile_settings(config: dict[str, Any], profile: str) -> dict[str, Any]:
@@ -476,6 +482,16 @@ def export_execution_effectiveness_report(
         live_cfg["fold_output"] = str(fold_output)
     if report_output is not None:
         live_cfg["report_output"] = str(report_output)
+    bill_output_path = report_config_path(root=root, config=config, value=live_cfg["bill_output"], default_category="phase0")
+    daily_output_path = report_config_path(root=root, config=config, value=live_cfg["daily_output"], default_category="phase0")
+    preview_output_path = report_config_path(root=root, config=config, value=live_cfg["preview_output"], default_category="phase0")
+    fold_path = _resolve_cli_path(root, fold_output) if fold_output is not None else report_config_path(root=root, config=config, value=live_cfg["fold_output"], default_category="phase0")
+    report_path = _resolve_cli_path(root, report_output) if report_output is not None else report_config_path(root=root, config=config, value=live_cfg["report_output"], default_category="phase0")
+    live_cfg["bill_output"] = str(bill_output_path)
+    live_cfg["daily_output"] = str(daily_output_path)
+    live_cfg["preview_output"] = str(preview_output_path)
+    live_cfg["fold_output"] = str(fold_path)
+    live_cfg["report_output"] = str(report_path)
     bill_walk_forward_overrides = {
         key: effective_config.get("walk_forward", {}).get(key)
         for key in ["slippage", "commission", "stamp_duty_sell"]
@@ -484,9 +500,9 @@ def export_execution_effectiveness_report(
     bill_result = export_strategy_bill(
         config_path=config_path,
         strategy_id=strategy_id,
-        output=live_cfg["bill_output"],
-        daily_output=live_cfg["daily_output"],
-        preview_output=live_cfg["preview_output"],
+        output=bill_output_path,
+        daily_output=daily_output_path,
+        preview_output=preview_output_path,
         refresh_cache=refresh_cache,
         no_panel_cache=no_panel_cache,
         walk_forward_overrides=bill_walk_forward_overrides,
@@ -511,10 +527,6 @@ def export_execution_effectiveness_report(
     live_cfg["commission"] = effective_config.get("walk_forward", {}).get("commission", "")
     live_cfg["stamp_duty_sell"] = effective_config.get("walk_forward", {}).get("stamp_duty_sell", "")
 
-    fold_path = Path(live_cfg["fold_output"])
-    report_path = Path(live_cfg["report_output"])
-    fold_path = fold_path if fold_path.is_absolute() else root / fold_path
-    report_path = report_path if report_path.is_absolute() else root / report_path
     fold_path.parent.mkdir(parents=True, exist_ok=True)
     folds.to_csv(fold_path, index=False, encoding="utf-8-sig")
     _write_report(

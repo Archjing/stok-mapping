@@ -42,8 +42,8 @@ from phase0.reporting import (
     write_effectiveness_gate_report,
     write_walk_forward_report,
 )
-from phase0.report_paths import create_report_run, latest_dir
-from phase0.report_registry import scan_report_artifacts, write_report_manifest
+from phase0.reporting.paths import create_report_run, latest_dir, report_category_dir, report_path
+from phase0.reporting.registry import scan_report_artifacts, write_report_manifest
 from phase0.strategy_admission import run_strategy_admission
 from phase0.strategy_csi300_attribution import run_strategy_csi300_attribution
 from phase0.strategy_core_reachability import run_strategy_core_reachability_diagnostic
@@ -100,6 +100,12 @@ def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
         console.print(f"[yellow]Warning:[/yellow] ECS watchlist sync failed: {exc}")
         return
     console.print(f"Watchlist ECS: {remote}:{remote_dir}")
+
+
+def _load_report_config_if_available(config_path: Path) -> dict | None:
+    if not config_path.exists():
+        return None
+    return load_config(config_path)
 
 
 def _format_duration(seconds: float) -> str:
@@ -222,7 +228,8 @@ def _export_phase0_low_turnover_bill(
     from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
 
     resolved_strategy_id = strategy_id or DEFAULT_STRATEGY_ID
-    report_run = create_report_run(root=config_path.resolve().parent, command="bill", scope=resolved_strategy_id)
+    cfg = _load_report_config_if_available(config_path)
+    report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="bill", scope=resolved_strategy_id)
 
     return export_strategy_bill(
         config_path=config_path,
@@ -248,7 +255,8 @@ def _export_phase0_market_regime_report(*, root: Path | None = None) -> dict:
         / "phase0_outputs"
         / "phase0_low_turnover_oos_curve.csv"
     )
-    report_run = create_report_run(root=resolved_root, command="market-regime", scope="low_turnover")
+    cfg = _load_report_config_if_available(resolved_root / "config.yaml")
+    report_run = create_report_run(root=resolved_root, config=cfg, command="market-regime", scope="low_turnover")
 
     return export_market_regime_report(
         input_path=legacy_input if legacy_input.exists() else archive_input,
@@ -298,7 +306,8 @@ def _export_phase0_oos_report(
 def _export_phase0_financial_pti(config_path: Path) -> dict:
     from scripts.audit_financial_pti import audit_financial_pti
 
-    report_run = create_report_run(root=config_path.resolve().parent, command="financial-pti", scope="qfq_asof")
+    cfg = _load_report_config_if_available(config_path)
+    report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="financial-pti", scope="qfq_asof")
 
     return audit_financial_pti(
         config_path=config_path,
@@ -311,7 +320,8 @@ def _export_phase0_financial_pti(config_path: Path) -> dict:
 def _export_phase0_universe_pit(config_path: Path, *, as_of_date: str) -> dict:
     from scripts.audit_universe_pit import audit_universe_pit
 
-    report_run = create_report_run(root=config_path.resolve().parent, command="universe-pti", scope=as_of_date)
+    cfg = _load_report_config_if_available(config_path)
+    report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="universe-pti", scope=as_of_date)
 
     return audit_universe_pit(
         config_path=config_path,
@@ -333,12 +343,13 @@ def _export_phase0_premarket(
     report_run = None
     latest_report_output = None
     if output is None or report_output is None:
-        report_run = create_report_run(root=config_path.resolve().parent, command="premarket", scope="watchlist")
+        cfg = _load_report_config_if_available(config_path)
+        report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="premarket", scope="watchlist")
     if output is None and report_run is not None:
         output = report_run.artifact("premarket", "watchlist", "csv")
     if report_output is None and report_run is not None:
         report_output = report_run.artifact("premarket", "report", "html")
-        latest_report_output = latest_dir(root=config_path.resolve().parent, channel="watchlist") / "index.html"
+        latest_report_output = latest_dir(root=config_path.resolve().parent, config=cfg, channel="watchlist") / "index.html"
 
     kwargs = {
         "config_path": config_path,
@@ -369,7 +380,7 @@ def _export_brief_account_bill(*, config_path: Path, brief_date: str | None = No
         brief_date = str(row[0]) if row and row[0] else ""
     if not brief_date:
         raise ValueError("no account daily asset rows found; run brief watchlist first")
-    report_run = create_report_run(root=config_path.resolve().parent, command="brief-account-bill", scope=account.account_id)
+    report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="brief-account-bill", scope=account.account_id)
     output = report_run.artifact("account_bill", "report", "html")
     export_account_bill_html(account=account, brief_date=brief_date, output_path=output)
     return {"account": account.account_id, "brief_date": brief_date, "account_bill": output}
@@ -512,9 +523,9 @@ def run_phase0(config_path: Path) -> int:
                 continue
         quality_summary = aggregate_quality(quality_results)
 
-    report_dir = root / "reports"
+    report_dir = report_category_dir(root=root, config=cfg, category="phase0")
     write_data_source_report(
-        report_dir / "phase0_data_source_report.md",
+        report_path(root=root, config=cfg, category="phase0", parts=("phase0_data_source_report.md",)),
         connectivity=connectivity,
         quality=quality_results,
         quality_summary=quality_summary,
@@ -529,15 +540,19 @@ def run_phase0(config_path: Path) -> int:
     summary = wf["summary"]
 
     if not folds_df.empty:
-        save_walk_forward_csv(folds_df, report_dir / "phase0_walk_forward_folds.csv")
+        save_walk_forward_csv(folds_df, report_path(root=root, config=cfg, category="phase0", parts=("phase0_walk_forward_folds.csv",)))
     if candidate_folds_df is not None and not candidate_folds_df.empty:
-        save_walk_forward_csv(candidate_folds_df, report_dir / "phase0_walk_forward_candidates.csv")
+        save_walk_forward_csv(candidate_folds_df, report_path(root=root, config=cfg, category="phase0", parts=("phase0_walk_forward_candidates.csv",)))
     universe_audit_df = wf.get("universe_audit")
     if universe_audit_df is not None and not universe_audit_df.empty:
-        save_walk_forward_csv(universe_audit_df, report_dir / "phase0_walk_forward_universe_audit.csv")
-    write_walk_forward_report(report_dir / "phase0_walk_forward_report.md", summary=summary, folds_df=folds_df)
+        save_walk_forward_csv(universe_audit_df, report_path(root=root, config=cfg, category="phase0", parts=("phase0_walk_forward_universe_audit.csv",)))
+    write_walk_forward_report(
+        report_path(root=root, config=cfg, category="phase0", parts=("phase0_walk_forward_report.md",)),
+        summary=summary,
+        folds_df=folds_df,
+    )
     write_effectiveness_gate_report(
-        report_dir / "phase0_effectiveness_report.md",
+        report_path(root=root, config=cfg, category="phase0", parts=("phase0_effectiveness_report.md",)),
         wf_summary=summary,
         gate_cfg=cfg.get("walk_forward", {}).get("gate", {}),
     )
@@ -565,7 +580,7 @@ def run_phase0_cost_sensitivity(config_path: Path, scenarios: list[dict[str, flo
         "enabled": True,
         "scenarios": scenarios,
     }
-    report_dir = root / "reports"
+    report_dir = report_category_dir(root=root, config=cfg, category="phase0")
     console.print("[bold]Phase 0 cost sensitivity started[/bold]")
     console.print("Scenarios:")
     for scenario in scenarios:
@@ -578,8 +593,11 @@ def run_phase0_cost_sensitivity(config_path: Path, scenarios: list[dict[str, flo
 
     sensitivity_df = run_cost_sensitivity(cfg)
     if not sensitivity_df.empty:
-        save_walk_forward_csv(sensitivity_df, report_dir / "phase0_cost_sensitivity.csv")
-    write_cost_sensitivity_report(report_dir / "phase0_cost_sensitivity_report.md", sensitivity_df)
+        save_walk_forward_csv(sensitivity_df, report_path(root=root, config=cfg, category="phase0", parts=("phase0_cost_sensitivity.csv",)))
+    write_cost_sensitivity_report(
+        report_path(root=root, config=cfg, category="phase0", parts=("phase0_cost_sensitivity_report.md",)),
+        sensitivity_df,
+    )
 
     console.print("[green]Phase 0 cost sensitivity complete[/green]")
     console.print(f"Reports: {report_dir}")
@@ -677,7 +695,7 @@ def run_watchlist_pipeline(
     )
     report_path = Path(result["report"])
     watchlist_today_paths = [
-        latest_dir(root=config_path.parent, channel="watchlist") / "index.html",
+        latest_dir(root=config_path.parent, config=cfg, channel="watchlist") / "index.html",
         config_path.parent / "reports" / "watchlist_today" / "index.html",
         Path("/mnt/d/ZJ/Dev/brief_today/index.html"),
     ]

@@ -9,6 +9,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from phase0.reporting.paths import report_path
+
 
 def _calc_metrics(returns: pd.Series) -> dict[str, float]:
     clean = returns.replace([np.inf, -np.inf], np.nan).fillna(0.0)
@@ -260,16 +262,23 @@ def export_market_regime_report(
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input", default="reports/phase0/phase0_low_turnover_oos_curve.csv")
-    parser.add_argument("--summary-output", default="reports/phase0/phase0_market_regime_summary.csv")
-    parser.add_argument("--segment-output", default="reports/phase0/phase0_market_regime_segments.csv")
-    parser.add_argument("--html-output", default="reports/phase0/phase0_market_regime_report.html")
+    parser.add_argument("--input", default=None)
+    parser.add_argument("--summary-output", default=None)
+    parser.add_argument("--segment-output", default=None)
+    parser.add_argument("--html-output", default=None)
     args = parser.parse_args()
+    root = Path.cwd()
     result = export_market_regime_report(
-        input_path=Path(args.input),
-        summary_output=Path(args.summary_output),
-        segment_output=Path(args.segment_output),
-        html_output=Path(args.html_output),
+        input_path=Path(args.input) if args.input else report_path(root=root, category="phase0", parts=("phase0_low_turnover_oos_curve.csv",)),
+        summary_output=Path(args.summary_output)
+        if args.summary_output
+        else report_path(root=root, category="phase0", parts=("phase0_market_regime_summary.csv",)),
+        segment_output=Path(args.segment_output)
+        if args.segment_output
+        else report_path(root=root, category="phase0", parts=("phase0_market_regime_segments.csv",)),
+        html_output=Path(args.html_output)
+        if args.html_output
+        else report_path(root=root, category="phase0", parts=("phase0_market_regime_report.html",)),
     )
     print(f"summary={result['summary']}")
     print(f"segments={result['segments']}")

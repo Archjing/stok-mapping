@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from phase0.overfit import run_overfit_diagnostic
-from phase0.report_paths import create_report_run
+from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import run_walk_forward
 
 
@@ -125,7 +125,7 @@ def run_strategy_admission(
     explicit_output_dir = output_dir is not None
     if output_dir is None:
         scope_name = strategy_scope.get("strategy_set") or "_".join(strategy_names[:3]) or "default"
-        report_run = create_report_run(root=root, command="strategy-admission", scope=str(scope_name))
+        report_run = create_report_run(root=root, config=config, command="strategy-admission", scope=str(scope_name))
         output_dir = report_run.run_dir
     else:
         report_run = None

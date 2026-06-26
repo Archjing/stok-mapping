@@ -15,6 +15,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from phase0.config import load_config
+from phase0.reporting.paths import report_path
 from phase0.throttle import configure_akshare_throttle, fetch_with_akshare_retries
 
 
@@ -271,7 +272,7 @@ def main() -> int:
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--start-date", default=(date.today() - timedelta(days=30)).strftime("%Y%m%d"))
     parser.add_argument("--end-date", default=date.today().strftime("%Y%m%d"))
-    parser.add_argument("--output-dir", default="reports/phase0/hk_a_mapping_factors")
+    parser.add_argument("--output-dir", default=None)
     parser.add_argument("--holding-tail", type=int, default=20, help="Rows kept per holding symbol when date range has no rows")
     parser.add_argument(
         "--holding-symbol",
@@ -281,11 +282,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    config_path = Path(args.config).resolve()
+    cfg = load_config(config_path)
+    output_dir = Path(args.output_dir) if args.output_dir else report_path(
+        root=config_path.parent,
+        config=cfg,
+        category="phase0",
+        parts=("hk_a_mapping_factors",),
+    )
+
     import akshare as ak
 
-    cfg = load_config(Path(args.config))
     configure_akshare_throttle(cfg.get("data_sources", {}).get("akshare", {}))
-    out_dir = Path(args.output_dir)
+    out_dir = output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
     results: list[FetchResult] = []

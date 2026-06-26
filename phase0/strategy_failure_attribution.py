@@ -13,6 +13,7 @@ from phase0.strategy_admission import (
     _price_adjustment_fail_window_count,
     _resolve_admission_gate,
 )
+from phase0.reporting.paths import report_path
 
 
 SEVERITY_RANK = {"none": 0, "low": 1, "medium": 2, "high": 3, "critical": 4}
@@ -41,7 +42,12 @@ def run_strategy_failure_attribution(
     output_dir: Path | None = None,
 ) -> StrategyFailureAttributionResult:
     """Attribute failed admission decisions from existing CSV artifacts only."""
-    admission_dir = admission_dir or root / "reports" / "strategy_admission"
+    admission_dir = admission_dir or report_path(
+        root=root,
+        config=config or {},
+        category="strategy_admission",
+        parts=(),
+    )
     output_dir = output_dir or admission_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
