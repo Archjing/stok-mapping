@@ -163,7 +163,7 @@ The tenth slice adds a research admission package for admission-result diagnosti
 
 - Move `strategy_failure_attribution.py` into `phase0.research.admission.failure_attribution`.
 - Update `phase0.cli` and ordinary failure-attribution tests to import from the new package path.
-- Keep a root-level alias shim and `tests/test_research_admission_imports.py` so old imports remain compatible during the transition.
+- Keep a root-level alias shim and consolidated coverage in `tests/test_research_compatibility.py` so old imports remain compatible during the transition.
 
 This slice intentionally does not move `strategy_admission.py` itself. Failure attribution still depends on selected admission gate helper functions, but it remains a read-only diagnostic that consumes existing admission/overfit CSV artifacts and writes attribution reports.
 
@@ -173,7 +173,7 @@ The eleventh slice folds benchmark attribution into the research attribution pac
 
 - Move `strategy_csi300_attribution.py` into `phase0.research.attribution.csi300`.
 - Update `phase0.cli` and ordinary CSI300 attribution tests to import from the new package path.
-- Keep a root-level alias shim and extend `tests/test_research_attribution_imports.py` so old imports remain compatible during the transition.
+- Keep a root-level alias shim and consolidated coverage in `tests/test_research_compatibility.py` so old imports remain compatible during the transition.
 
 This slice intentionally does not move holdings exposure, core reachability, or missing-core audit. CSI300 attribution still reads local SQLite benchmark as-of tables, but it is a read-only attribution diagnostic and does not write database state or rerun strategies.
 
@@ -215,7 +215,7 @@ The fifteenth slice starts decomposing the large admission runner with low-risk 
 - Add `phase0.research.admission.strategy_scope` for admission strategy-scope resolution and scoped strategy enablement helpers.
 - Keep `phase0.strategy_admission` as the admission runner module and re-export the moved helper names for old imports.
 - Update holdings exposure and ordinary admission tests to use the new helper path where they do not need the admission runner itself.
-- Extend `tests/test_research_admission_imports.py` so new helper paths and old-path compatibility are both covered.
+- Extend consolidated coverage in `tests/test_research_compatibility.py` so new helper paths and old-path compatibility are both covered.
 
 This slice intentionally does not move `run_strategy_admission`, admission window-matrix construction, constraint review, report writers, or governance report generation. It only moves pure config parsing / strategy-enable helpers and does not change admission outputs, strategy parameters, report paths, thresholds, or walk-forward execution.
 
@@ -894,6 +894,16 @@ The seventy-seventh slice consolidates pure research compatibility tests:
 - Keep the holdings monkeypatch behavior test in `tests/test_research_holdings_imports.py` because it verifies old-path monkeypatches still affect the new module object.
 
 This slice does not change production code, CLI commands, research diagnostics, attribution, reports, strategy behavior, or generated outputs. It reduces compatibility-test duplication while preserving old-path alias coverage.
+
+## Seventy-Eighth Slice In This Branch
+
+The seventy-eighth slice finishes consolidating the remaining pure research alias tests:
+
+- Extend `tests/test_research_compatibility.py` to cover attribution, core-coverage, failure-attribution, and split admission helper exports.
+- Remove alias-only attribution and admission compatibility test files now covered by the shared matrix.
+- Keep only the core-reachability monkeypatch behavior test in `tests/test_research_core_coverage_imports.py`, because it verifies old-path monkeypatches still affect the new module object.
+
+This slice does not delete compatibility wrappers, change production code, alter CLI behavior, or touch generated artifacts. Wrapper deletion still waits for post-merge validation and a separate cleanup commit.
 
 ## Later Migration Stages
 

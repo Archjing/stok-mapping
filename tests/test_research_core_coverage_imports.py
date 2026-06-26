@@ -1,41 +1,8 @@
 from __future__ import annotations
 
 import pandas as pd
-import phase0
-import phase0.strategy_core_reachability as legacy_core_reachability
-import phase0.strategy_missing_core_audit as legacy_missing_core_audit
 import pytest
-from phase0.research.core_coverage import (
-    MissingCoreAuditResult,
-    StrategyCoreReachabilityResult,
-    run_missing_core_audit as new_missing_core_runner,
-    run_strategy_core_reachability_diagnostic as new_core_reachability_runner,
-)
-from phase0.research.core_coverage import core_reachability, missing_core_audit
-from phase0.research.core_coverage.core_reachability import StrategyCoreReachabilityResult as NewCoreReachabilityResult
-from phase0.research.core_coverage.core_reachability import (
-    _diagnose_fold,
-    _seed_benchmark_panel,
-    run_strategy_core_reachability_diagnostic,
-)
-from phase0.research.core_coverage.missing_core_audit import MissingCoreAuditResult as NewMissingCoreResult
-from phase0.research.core_coverage.missing_core_audit import run_missing_core_audit
-from phase0.strategy_core_reachability import (
-    _diagnose_fold as legacy_diagnose_fold,
-    _seed_benchmark_panel as legacy_seed_benchmark_panel,
-    run_strategy_core_reachability_diagnostic as legacy_core_reachability_runner,
-)
-from phase0.strategy_missing_core_audit import run_missing_core_audit as legacy_missing_core_runner
-
-
-def test_legacy_strategy_core_reachability_import_aliases_new_module() -> None:
-    assert legacy_core_reachability is core_reachability
-    assert phase0.strategy_core_reachability is core_reachability
-    assert legacy_core_reachability_runner is run_strategy_core_reachability_diagnostic
-    assert legacy_diagnose_fold is _diagnose_fold
-    assert legacy_seed_benchmark_panel is _seed_benchmark_panel
-    assert new_core_reachability_runner is run_strategy_core_reachability_diagnostic
-    assert StrategyCoreReachabilityResult is NewCoreReachabilityResult
+from phase0.research.core_coverage import core_reachability
 
 
 def test_legacy_strategy_core_reachability_monkeypatch_hits_new_module(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -89,10 +56,3 @@ def test_legacy_strategy_core_reachability_monkeypatch_hits_new_module(monkeypat
     added = seeded[seeded["symbol"].eq("B")].iloc[0]
     assert bool(added["benchmark_seeded"]) is True
     assert added["industry"] == "Tech"
-
-
-def test_legacy_strategy_missing_core_audit_import_aliases_new_module() -> None:
-    assert legacy_missing_core_audit is missing_core_audit
-    assert legacy_missing_core_runner is run_missing_core_audit
-    assert new_missing_core_runner is run_missing_core_audit
-    assert MissingCoreAuditResult is NewMissingCoreResult
