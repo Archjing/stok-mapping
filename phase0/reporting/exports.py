@@ -134,7 +134,7 @@ def export_phase0_premarket(
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
-    from scripts.export_premarket_watchlist import export_premarket_watchlist
+    from phase0.reporting.premarket_watchlist import export_premarket_watchlist
 
     report_run = None
     latest_report_output = None

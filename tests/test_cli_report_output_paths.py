@@ -272,7 +272,7 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
 
-    monkeypatch.setattr("scripts.export_premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
     result = report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml")
 
@@ -292,7 +292,7 @@ def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
 
-    monkeypatch.setattr("scripts.export_premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
     result = report_exports.export_phase0_premarket(config_path=config_path)
 

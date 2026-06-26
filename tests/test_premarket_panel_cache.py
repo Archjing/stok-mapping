@@ -3,7 +3,7 @@ from datetime import date
 from pathlib import Path
 
 from phase0.reporting.strategy_bill import _panel_cache_key
-from scripts.export_premarket_watchlist import _latest_trade_date
+from phase0.reporting.premarket_watchlist import _latest_trade_date
 
 
 def test_panel_cache_key_includes_as_of_date() -> None:
