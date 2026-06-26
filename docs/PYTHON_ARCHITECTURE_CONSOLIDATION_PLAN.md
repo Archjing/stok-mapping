@@ -131,7 +131,7 @@ This slice intentionally does not move or rewrite `run_project_scheduler.sh`, `i
 The seventh slice starts retiring old Python import paths inside the project:
 
 - Update ordinary data-governance, research diagnostic, and research attribution tests to import from `phase0.data_governance.*` and `phase0.research.*`.
-- Keep `tests/test_data_governance_imports.py`, `tests/test_research_diagnostics_imports.py`, and `tests/test_research_attribution_imports.py` as explicit compatibility tests for old root-level shims.
+- Keep explicit compatibility coverage for old root-level shims, now including the consolidated `tests/test_data_governance_compatibility.py` plus the research compatibility tests.
 - Confirm an `rg` audit leaves old Python import paths only in those compatibility tests and historical/planning documentation.
 
 This slice does not remove any root-level compatibility shim. Wrapper deletion is deferred until after main-branch merge and the complete validation cycle described below.
@@ -853,6 +853,16 @@ The seventy-third slice starts consolidating import-compatibility tests instead 
 - Keep external-market provider behavior tests separate because they validate dispatch behavior rather than import compatibility.
 
 This slice does not change production code, CLI commands, provider behavior, request payloads, data writes, or report paths. It reduces compatibility-test duplication while preserving the old-path alias checks needed for the later wrapper cleanup commit.
+
+## Seventy-Fourth Slice In This Branch
+
+The seventy-fourth slice continues consolidating pure import-compatibility tests:
+
+- Add `tests/test_data_governance_compatibility.py` as the shared compatibility test for data-governance legacy wrappers.
+- Replace five small one-off data-governance compatibility test files with a parameterized module/symbol matrix.
+- Keep script-wrapper tests for financial PTI, local-history consistency, and universe PIT separate because they verify direct script `--help` execution, not only import aliasing.
+
+This slice does not change production code, CLI commands, data writes, data-governance behavior, report paths, or script wrapper behavior. It reduces compatibility-test duplication while preserving the old-path alias checks needed for the later wrapper cleanup commit.
 
 ## Later Migration Stages
 
