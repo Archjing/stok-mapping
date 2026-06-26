@@ -2,8 +2,14 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.execution import strategy_ledger
-import phase0.reporting.strategy_bill as strategy_bill
+import phase0.accounts as legacy_accounts
+from phase0.execution import accounts, strategy_ledger
+from phase0.execution.accounts import (
+    SimulatedAccountConfig,
+    export_account_bill_html,
+    load_simulated_accounts,
+    run_signal_account_execution,
+)
 from phase0.execution.strategy_ledger import (
     append_order_record,
     execution_settings,
@@ -14,6 +20,39 @@ from phase0.execution.strategy_ledger import (
     prepare_execution_frame,
     trade_block_reasons,
 )
+from phase0.reporting import account_bill
+import phase0.reporting.strategy_bill as strategy_bill
+
+
+def test_legacy_accounts_import_aliases_execution_module() -> None:
+    assert legacy_accounts is accounts
+    assert legacy_accounts.SimulatedAccountConfig is SimulatedAccountConfig
+    assert legacy_accounts.load_simulated_accounts is load_simulated_accounts
+    assert legacy_accounts.run_signal_account_execution is run_signal_account_execution
+    assert legacy_accounts.export_account_bill_html is export_account_bill_html
+
+
+def test_execution_accounts_public_imports_are_available() -> None:
+    assert SimulatedAccountConfig.__name__ == "SimulatedAccountConfig"
+    assert callable(load_simulated_accounts)
+    assert callable(run_signal_account_execution)
+    assert callable(export_account_bill_html)
+
+
+def test_execution_accounts_reexports_account_bill_helpers() -> None:
+    assert accounts.format_money is account_bill.format_money
+    assert accounts.format_pct is account_bill.format_pct
+    assert accounts.format_num is account_bill.format_num
+    assert accounts.load_latest_account_snapshot is account_bill.load_latest_account_snapshot
+    assert accounts.export_account_bill_html is account_bill.export_account_bill_html
+
+
+def test_account_bill_reporting_imports_are_available() -> None:
+    assert callable(account_bill.format_money)
+    assert callable(account_bill.format_pct)
+    assert callable(account_bill.format_num)
+    assert callable(account_bill.load_latest_account_snapshot)
+    assert callable(account_bill.export_account_bill_html)
 
 
 def test_strategy_ledger_execution_imports_are_available() -> None:

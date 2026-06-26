@@ -47,6 +47,26 @@ import pytest
             "phase0.data_governance.import_history",
             ["ImportResult", "IndexImportResult", "import_from_config", "import_index_history_from_config"],
         ),
+        (
+            "phase0.daily_basic_backfill",
+            "phase0.data_governance.backfills.daily_basic",
+            ["DailyBasicBackfillResult", "backfill_daily_basic_from_config"],
+        ),
+        (
+            "phase0.adjustment_backfill",
+            "phase0.data_governance.backfills.adjustment",
+            ["AdjustmentBackfillResult", "backfill_adjustment_factors_from_config"],
+        ),
+        (
+            "phase0.tushare_history_backfill",
+            "phase0.data_governance.backfills.tushare_history",
+            [
+                "TushareHistoryBackfillResult",
+                "TushareFinancialBackfillResult",
+                "backfill_tushare_history_from_config",
+                "backfill_tushare_financials_from_config",
+            ],
+        ),
     ],
 )
 def test_data_governance_legacy_imports_alias_new_modules(

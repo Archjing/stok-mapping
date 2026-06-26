@@ -184,7 +184,7 @@ The twelfth slice adds a core coverage research package for core reachability an
 - Move `strategy_core_reachability.py` into `phase0.research.core_coverage.core_reachability`.
 - Move `strategy_missing_core_audit.py` into `phase0.research.core_coverage.missing_core_audit`.
 - Update `phase0.cli` and ordinary core-coverage tests to import from the new package paths.
-- Keep root-level alias shims and add `tests/test_research_core_coverage_imports.py` so old imports remain compatible during the transition.
+- Keep root-level alias shims and consolidate old-import/monkeypatch coverage in `tests/test_research_compatibility.py` and `tests/test_research_monkeypatch_compatibility.py`.
 
 Core reachability checks benchmark core-weight reachability through existing PIT universe folds and optional read-only panel seeding; missing-core audit consumes existing core-reachability/admission CSV artifacts, checks point-in-time universe membership and local-history coverage, and writes audit CSV/Markdown. These modules do not rebuild holdings, change strategy algorithms, or write database state.
 
@@ -194,7 +194,7 @@ The thirteenth slice adds a holdings research package for research-only historic
 
 - Move `strategy_holdings_exposure.py` into `phase0.research.holdings.exposure`.
 - Update `phase0.cli` and ordinary holdings exposure tests to import from the new package path.
-- Keep a root-level alias shim and add `tests/test_research_holdings_imports.py` so old imports remain compatible during the transition.
+- Keep a root-level alias shim and consolidate old-import/monkeypatch coverage in `tests/test_research_compatibility.py` and `tests/test_research_monkeypatch_compatibility.py`.
 
 This slice keeps the existing diagnostic boundary: holdings exposure replays selected historical strategy folds to rebuild daily holdings, industry exposure, summary, coverage, report, and run-log artifacts. It does not write SQLite state, rerun strategy admission, change strategy algorithms, or create trading signals.
 
@@ -891,7 +891,7 @@ The seventy-seventh slice consolidates pure research compatibility tests:
 
 - Add `tests/test_research_compatibility.py` as the shared matrix for root-level strategy/research shims and package exports.
 - Replace repeated alias-only tests for diagnostics, factor effectiveness, overfit, participation, summaries, and holdings exposure.
-- Keep the holdings monkeypatch behavior test in `tests/test_research_holdings_imports.py` because it verifies old-path monkeypatches still affect the new module object.
+- Keep holdings monkeypatch behavior coverage in `tests/test_research_monkeypatch_compatibility.py` because it verifies old-path monkeypatches still affect the new module object.
 
 This slice does not change production code, CLI commands, research diagnostics, attribution, reports, strategy behavior, or generated outputs. It reduces compatibility-test duplication while preserving old-path alias coverage.
 
@@ -901,9 +901,32 @@ The seventy-eighth slice finishes consolidating the remaining pure research alia
 
 - Extend `tests/test_research_compatibility.py` to cover attribution, core-coverage, failure-attribution, and split admission helper exports.
 - Remove alias-only attribution and admission compatibility test files now covered by the shared matrix.
-- Keep only the core-reachability monkeypatch behavior test in `tests/test_research_core_coverage_imports.py`, because it verifies old-path monkeypatches still affect the new module object.
+- Keep core-reachability monkeypatch behavior coverage in `tests/test_research_monkeypatch_compatibility.py`, because it verifies old-path monkeypatches still affect the new module object.
 
 This slice does not delete compatibility wrappers, change production code, alter CLI behavior, or touch generated artifacts. Wrapper deletion still waits for post-merge validation and a separate cleanup commit.
+
+## Seventy-Ninth Slice In This Branch
+
+The seventy-ninth slice consolidates strategy-admission split-module compatibility tests:
+
+- Add `tests/test_research_admission_compatibility.py` as the shared runner/gate/review/report compatibility matrix.
+- Remove separate admission gate, report, review, and runner import-only test files.
+- Keep the admission report command/artifact contract test in the consolidated file because it verifies user-facing command text and required artifact names.
+
+This slice does not change the admission runner, gates, review logic, report output, CLI behavior, or compatibility wrappers. It only reduces admission test fragmentation.
+
+## Eightieth Slice In This Branch
+
+The eightieth slice batches the remaining small compatibility-test consolidation work instead of continuing one-file slices:
+
+- Add `tests/test_data_governance_script_wrappers.py` for data-governance script shims that alias packaged modules and, where supported, still show direct `--help`.
+- Move root backfill shim checks into `tests/test_data_governance_compatibility.py` and remove the one-off backfill import test.
+- Add `tests/test_intelligence_script_wrappers.py` for intelligence script shims plus the HK-A mapping normalization behavior tests.
+- Add `tests/test_execution_reporting_compatibility.py` for execution account, account-bill, strategy-ledger, and strategy-bill re-export compatibility plus BFQ execution-price behavior tests.
+- Add `tests/test_research_monkeypatch_compatibility.py` for the two old-path monkeypatch behavior checks that must remain loud until compatibility shims are retired.
+- Remove the replaced one-off import/script wrapper files for financial PTI, local-history consistency, universe PIT, HK-A mapping, Tiingo probe, accounts, account bill, strategy ledger, holdings exposure, and core reachability.
+
+This slice does not change production code, CLI command behavior, data writes, report paths, strategy behavior, or compatibility wrappers. It reduces test-file fragmentation while preserving the explicit old-path protection needed before the later wrapper-removal commit.
 
 ## Later Migration Stages
 

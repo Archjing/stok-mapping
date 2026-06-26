@@ -1,35 +1,57 @@
 from __future__ import annotations
 
+from importlib import import_module
 import subprocess
 import sys
 
 import pandas as pd
+import pytest
 
-import scripts.export_hk_a_mapping_factors as legacy_hk_mapping
-from phase0.intelligence import hk_a_mapping_factors
 from phase0.intelligence.hk_a_mapping_factors import _normalize_ah_comparison, _normalize_hsgt_hist
 
 
-def test_hk_a_mapping_factors_new_imports_are_available() -> None:
-    assert callable(_normalize_ah_comparison)
-    assert callable(_normalize_hsgt_hist)
+@pytest.mark.parametrize(
+    ("script_module_name", "intelligence_module_name", "symbols", "script_path", "help_flag"),
+    [
+        (
+            "scripts.export_hk_a_mapping_factors",
+            "phase0.intelligence.hk_a_mapping_factors",
+            ["_normalize_ah_comparison", "_normalize_hsgt_hist"],
+            "scripts/export_hk_a_mapping_factors.py",
+            "--holding-symbol",
+        ),
+        (
+            "scripts.tiingo_news_probe",
+            "phase0.intelligence.tiingo_news_probe",
+            ["main"],
+            "scripts/tiingo_news_probe.py",
+            "--tickers",
+        ),
+    ],
+)
+def test_intelligence_script_wrappers_alias_packaged_modules_and_show_help(
+    script_module_name: str,
+    intelligence_module_name: str,
+    symbols: list[str],
+    script_path: str,
+    help_flag: str,
+) -> None:
+    script_module = import_module(script_module_name)
+    intelligence_module = import_module(intelligence_module_name)
 
+    assert script_module is intelligence_module
+    for symbol in symbols:
+        assert getattr(script_module, symbol) is getattr(intelligence_module, symbol)
 
-def test_legacy_hk_a_mapping_script_aliases_intelligence_module() -> None:
-    assert legacy_hk_mapping is hk_a_mapping_factors
-    assert legacy_hk_mapping._normalize_ah_comparison is _normalize_ah_comparison
-
-
-def test_legacy_hk_a_mapping_script_help_runs_directly() -> None:
     result = subprocess.run(
-        [sys.executable, "scripts/export_hk_a_mapping_factors.py", "--help"],
+        [sys.executable, script_path, "--help"],
         check=False,
         capture_output=True,
         text=True,
     )
 
     assert result.returncode == 0
-    assert "--holding-symbol" in result.stdout
+    assert help_flag in result.stdout
 
 
 def test_hk_a_mapping_normalizes_ah_comparison_with_local_prices() -> None:
