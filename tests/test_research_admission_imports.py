@@ -6,6 +6,10 @@ from phase0.research.admission import failure_attribution
 from phase0.research.admission.gate import overfit_blocks_admission as new_overfit_blocks_admission
 from phase0.research.admission.gate import resolve_admission_gate as new_resolve_admission_gate
 from phase0.research.admission.gate import resolve_diagnostic_suites as new_resolve_diagnostic_suites
+from phase0.research.admission.review import admission_action as new_admission_action
+from phase0.research.admission.review import build_constraint_review as new_build_constraint_review
+from phase0.research.admission.review import build_window_matrix as new_build_window_matrix
+from phase0.research.admission.review import price_adjustment_fail_window_count as new_price_adjustment_fail_window_count
 from phase0.research.admission.failure_attribution import SEVERITY_RANK
 from phase0.research.admission.failure_attribution import StrategyFailureAttributionResult as NewFailureResult
 from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
@@ -14,7 +18,11 @@ from phase0.research.admission.strategy_scope import (
 )
 from phase0.research.admission.strategy_scope import _resolve_strategy_scope as new_resolve_strategy_scope
 from phase0.strategy_admission import _force_strategy_set_enabled_for_admission as legacy_force_strategy_set_enabled
+from phase0.strategy_admission import _admission_action as legacy_admission_action
+from phase0.strategy_admission import _build_constraint_review as legacy_build_constraint_review
+from phase0.strategy_admission import _build_window_matrix as legacy_build_window_matrix
 from phase0.strategy_admission import _overfit_blocks_admission as legacy_overfit_blocks_admission
+from phase0.strategy_admission import _price_adjustment_fail_window_count as legacy_price_adjustment_fail_window_count
 from phase0.strategy_admission import _resolve_admission_gate as legacy_resolve_admission_gate
 from phase0.strategy_admission import _resolve_diagnostic_suites as legacy_resolve_diagnostic_suites
 from phase0.strategy_admission import _resolve_strategy_scope as legacy_resolve_strategy_scope
@@ -39,3 +47,10 @@ def test_admission_gate_helpers_are_available_from_new_and_legacy_paths() -> Non
     assert legacy_resolve_admission_gate is new_resolve_admission_gate
     assert legacy_resolve_diagnostic_suites is new_resolve_diagnostic_suites
     assert legacy_overfit_blocks_admission is new_overfit_blocks_admission
+
+
+def test_admission_review_helpers_are_available_from_new_and_legacy_paths() -> None:
+    assert legacy_build_window_matrix is new_build_window_matrix
+    assert legacy_build_constraint_review is new_build_constraint_review
+    assert legacy_admission_action is new_admission_action
+    assert legacy_price_adjustment_fail_window_count is new_price_adjustment_fail_window_count

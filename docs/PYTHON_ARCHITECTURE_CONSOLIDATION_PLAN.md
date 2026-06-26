@@ -537,6 +537,17 @@ The forty-fifth slice extracts pure admission gate helpers from the admission ru
 
 This slice does not change admission thresholds, admission actions, window matrix construction, constraint review logic, walk-forward execution, overfit execution, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
 
+## Forty-Sixth Slice In This Branch
+
+The forty-sixth slice extracts admission review calculations from the admission runner:
+
+- Add `phase0.research.admission.review` for price-adjustment status attachment, window-matrix construction, window metrics, constraint review, admission action selection, and related count/numeric helpers.
+- Keep `phase0.strategy_admission` as the runner and re-export the old private helper names as compatibility aliases over the new review functions.
+- Update failure attribution and ordinary admission tests to import review helpers from the new package path when they do not need the runner itself.
+- Add import compatibility tests proving the old runner-private names and new review helper names are the same function objects.
+
+This slice does not change `run_strategy_admission`, strategy scope resolution, walk-forward execution, overfit execution, report writing, governance report writing, report filenames, report paths, CLI command names, generated artifacts, thresholds, or strategy algorithms.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
