@@ -12,7 +12,6 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
-from phase0.accounts import SimulatedAccountConfig, run_signal_account_execution
 from phase0.data_access.connectivity import fetch_cn_daily, fetch_hk_daily, fetch_yf_daily
 from phase0.data_governance.external_market_history import (
     configure_us_market_history,
@@ -33,6 +32,7 @@ from phase0.research.metrics import (
     max_drawdown as _max_drawdown,
     sharpe as _sharpe,
 )
+from phase0.execution.accounts import SimulatedAccountConfig, run_signal_account_execution
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints

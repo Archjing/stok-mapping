@@ -27,6 +27,7 @@ Current decisions:
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
 - `phase0/data_sources.py` has been moved to `phase0.data_access.connectivity`. It is an external-provider read/connectivity layer, not a write-side governance job. The old root path remains a compatibility shim.
 - `phase0/throttle.py` has been moved to `phase0.data_access.throttle`. It owns external-provider request throttling and retry pacing, so it belongs beside provider access code; the old root path remains a compatibility shim.
+- `phase0/accounts.py` has been moved to `phase0.execution.accounts`. It owns simulated-account configuration, signal execution simulation, account ledgers, and account bill export; the old root path remains a compatibility shim.
 
 ## Current Functional Layers
 
@@ -36,7 +37,8 @@ Current decisions:
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, price-adjustment governance, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/adjustment.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
-| `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
+| `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py` |
+| `execution` | Simulated accounts, account-level execution simulation, ledgers, account database tables, and account bill export | `phase0/execution/accounts.py`, compatibility shim `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
@@ -548,6 +550,17 @@ The forty-sixth slice extracts admission review calculations from the admission 
 
 This slice does not change `run_strategy_admission`, strategy scope resolution, walk-forward execution, overfit execution, report writing, governance report writing, report filenames, report paths, CLI command names, generated artifacts, thresholds, or strategy algorithms.
 
+## Forty-Seventh Slice In This Branch
+
+The forty-seventh slice moves simulated-account execution into the execution package:
+
+- Move `phase0/accounts.py` to `phase0.execution.accounts`.
+- Keep root-level `phase0.accounts` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update effective imports in walk-forward, report exports, premarket watchlist export, and ordinary strategy-constraint tests to use the new execution package path.
+- Add import compatibility tests covering the account config/result API, signal execution entrypoint, simulated-account loading, and account bill export.
+
+This slice intentionally keeps account bill HTML generation in `phase0.execution.accounts` for now to avoid mixing a package move with a second behavioral split. A later reporting slice can extract `phase0.reporting.account_bill` with focused snapshot/report tests. This slice does not change execution price modes, lot rounding, limit/suspension checks, participation-rate logic, ledger/database schemas, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
@@ -587,7 +600,11 @@ These are real redundancy candidates, but each should be cleaned only when its o
 | Markdown/HTML table writers | Several strategy/report scripts | Add small `reporting.tables` helpers; do not introduce a large templating framework |
 | Large CLI file | `phase0/cli.py` | Split by command group after output paths are stable |
 | Large strategy bill script | `scripts/export_strategy_bill.py` | Extract reusable research/execution functions later; keep CLI wrapper compatibility |
+| Large execution/report scripts | `scripts/export_strategy_oos_report.py`, `scripts/export_execution_effectiveness_report.py`, `scripts/export_premarket_watchlist.py` | Move implementation into `phase0.reporting` / `phase0.execution` modules and leave scripts as thin wrappers |
+| Data audit scripts | `scripts/check_local_history_consistency.py`, `scripts/audit_financial_pti.py`, `scripts/audit_universe_pit.py` | Move reusable audit logic into data-governance or validation modules with CLI entrypoints |
 | Similar low-turnover wrappers | `scripts/export_low_turnover_*` | Consolidate to strategy-id based wrappers after current users are mapped |
+| External probe scripts | `scripts/tiingo_news_probe.py`, `scripts/export_hk_a_mapping_factors.py`, `scripts/export_hk_market_history_report.py` | Keep network side effects explicit; migrate only after provider boundaries and output contracts are covered by tests |
+| Developer/agent helpers | `scripts/cloe_*.sh`, `scripts/openclaw_agent.sh`, `scripts/deepseek_agent_mcp.py`, `scripts/install_dev_cron.sh`, `scripts/lib/*` | Keep under `scripts/` as local developer/ops tooling; do not fold into runtime business packages |
 | Provider/update coupling | Local history readers, external market history jobs, update jobs, Tushare write-side jobs | Move only where it improves dependency direction or reuse; keep shims until post-merge validation proves old paths are unused by effective project code |
 | Universe boundary | `universe.py` | Keep in place in this branch; revisit only if current snapshot construction and point-in-time loading are split into separately tested units |
 | Shell environment bootstrap | Maintenance shell scripts | Keep one small `scripts/lib/project_env.sh`; do not hide cron, lock, or external agent semantics in broad shell frameworks |
