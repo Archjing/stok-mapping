@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategy_missing_core_audit import _classify_reason, _symbol_summary
+from phase0.research.core_coverage.missing_core_audit import _classify_reason, _symbol_summary
 
 
 def test_missing_core_classification_distinguishes_universe_stages() -> None:

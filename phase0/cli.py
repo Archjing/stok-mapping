@@ -48,12 +48,12 @@ from phase0.research.attribution.fold import run_strategy_fold_attribution
 from phase0.strategy_admission import run_strategy_admission
 from phase0.research.attribution.csi300 import run_strategy_csi300_attribution
 from phase0.strategy_core_reachability import run_strategy_core_reachability_diagnostic
+from phase0.research.core_coverage.missing_core_audit import run_missing_core_audit
 from phase0.research.diagnostics.exposure import run_strategy_exposure_diagnostic
 from phase0.research.diagnostics.filter import run_strategy_filter_diagnostic
 from phase0.research.diagnostics.market_context import run_strategy_market_context
 from phase0.research.admission.failure_attribution import run_strategy_failure_attribution
 from phase0.strategy_holdings_exposure import run_strategy_holdings_exposure
-from phase0.strategy_missing_core_audit import run_missing_core_audit
 from phase0.research.participation.overlay import run_strategy_participation_overlay
 from phase0.research.summaries.role_card import run_strategy_role_card
 from phase0.throttle import configure_akshare_throttle
