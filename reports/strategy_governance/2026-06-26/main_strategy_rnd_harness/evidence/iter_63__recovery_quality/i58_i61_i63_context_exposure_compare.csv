@@ -1,0 +1,6 @@
+fold,market_context_label,avg_target_i58,avg_live_i58,avg_target_i61,avg_live_i61,recovery_days_i61,mid_high_days_i61,avg_target_i63,avg_live_i63,recovery_days_i63,recovery_quality_days,weak_recovery_days,mid_high_days_i63,weak_mid_target_days
+1,absolute_loss_but_benchmark_weak_context,0.211624,0.211007,0.211624,0.211007,0,0,0.211624,0.211007,0,0,0,0,60
+2,risk_context_pressure,0.149986,0.149369,0.238463,0.235788,56,43,0.235377,0.233731,56,34,22,40,3
+3,absolute_loss_but_benchmark_weak_context,0.15,0.149378,0.193568,0.190871,22,21,0.172822,0.170124,22,11,11,1,20
+4,relative_lag_in_strong_benchmark_context,0.149718,0.149091,0.2742,0.273572,49,60,0.232706,0.232078,49,17,32,20,40
+5,relative_lag_in_strong_benchmark_context,0.387402,0.385749,0.46968,0.468028,46,100,0.46968,0.468028,46,41,5,100,62

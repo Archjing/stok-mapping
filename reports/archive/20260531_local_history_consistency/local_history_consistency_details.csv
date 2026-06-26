@@ -1,9 +1,0 @@
-symbol,date,open_snapshot,high_snapshot,low_snapshot,close_snapshot,volume_snapshot,amount_snapshot,open_local,high_local,low_local,close_local,volume_local,amount_local,row_status,open_result,high_result,low_result,close_result,volume_result,amount_result,matched_fields,total_checked_fields,possible_reason,snapshot_source,adjust_type
-SH.600519,2025-05-06,1507.44,1507.44,1492.77,1498.64,18300.0,2838614215.0,1507.44,1507.44,1492.77,1498.64,18300.0,2838614215.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SH.600519,2025-05-07,1518.44,1518.44,1498.64,1503.44,27462.0,4275142569.0,1518.44,1518.44,1498.64,1503.44,27462.0,4275142569.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SH.600519,2025-05-08,1501.44,1541.22,1498.27,1526.63,33481.0,5265446444.0,1501.44,1541.22,1498.27,1526.63,33481.0,5265446444.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SH.600519,2025-05-09,1527.43,1545.89,1523.49,1539.62,23672.0,3757574546.0,1527.43,1545.89,1523.49,1539.62,23672.0,3757574546.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SZ.300750,2025-05-06,226.0,228.39,223.29,223.72,196877.0,4591289270.0,226.0,228.39,223.29,223.72,196877.0,4591289270.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SZ.300750,2025-05-07,228.54,232.97,228.17,230.7,312810.0,7444719326.0,228.54,232.97,228.17,230.7,312810.0,7444719326.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SZ.300750,2025-05-08,231.58,240.77,230.07,236.66,312856.0,7666995082.0,231.58,240.77,230.07,236.66,312856.0,7666995082.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq
-SZ.300750,2025-05-09,238.16,241.86,236.74,240.36,236933.0,5858468263.0,238.16,241.86,236.74,240.36,236933.0,5858468263.0,match,match,match,match,match,match,match,6,6,,smoke_test,qfq

@@ -1,4 +1,0 @@
-severity,check_id,table_name,symbol,date,field,message,sample_value,expected_rule
-warning,scheduler.a_share_history.last_file,,,,,scheduler last-run marker is stale,2026-06-05,mtime within 3 days
-warning,scheduler.us_market_history.last_file,,,,,scheduler last-run marker is stale,2026-06-05,mtime within 3 days
-warning,scheduler.hk_market_history.last_file,,,,,scheduler last-run marker is stale,2026-06-04,mtime within 3 days

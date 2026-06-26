@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>I66 Recovery Active Industry Audit</title>
+<style>
+:root {
+  --bg: #f7f8f5;
+  --panel: #ffffff;
+  --ink: #20242a;
+  --muted: #68737d;
+  --line: #d9ded8;
+  --green: #2f7d52;
+  --red: #b54747;
+  --blue: #2f5f93;
+  --amber: #a66b1f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--ink); }
+main { max-width: 1220px; margin: 0 auto; padding: 28px 24px 42px; }
+header { display: grid; grid-template-columns: 1.35fr .65fr; gap: 24px; align-items: end; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+h1 { margin: 0 0 10px; font-size: 30px; line-height: 1.15; letter-spacing: 0; }
+.subtitle { color: var(--muted); font-size: 15px; line-height: 1.65; max-width: 760px; }
+.meta { color: var(--muted); font-size: 13px; line-height: 1.7; text-align: right; }
+.grid { display: grid; grid-template-columns: 1.2fr .8fr; gap: 22px; margin-top: 22px; align-items: stretch; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; }
+.panel h2 { margin: 0 0 14px; font-size: 18px; }
+.fold-row { display: grid; grid-template-columns: 70px 1fr 1fr; gap: 14px; align-items: center; padding: 14px 0; border-top: 1px solid #eef0ec; }
+.fold-row:first-of-type { border-top: 0; }
+.fold-label { font-weight: 700; font-size: 16px; }
+.metric-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.bar-track { height: 18px; background: #edf0ed; border-radius: 4px; position: relative; overflow: hidden; }
+.bar { height: 100%; border-radius: 4px; }
+.value { font-size: 13px; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.tag { display: inline-flex; align-items: center; border: 1px solid var(--line); background: #fafbf8; border-radius: 999px; padding: 4px 8px; font-size: 12px; color: #39424a; }
+.callout { border-left: 4px solid var(--blue); padding: 10px 12px; background: #f3f6f9; margin: 12px 0; line-height: 1.6; }
+.callout.warn { border-left-color: var(--amber); background: #fbf7ef; }
+.kv { display: grid; grid-template-columns: 1fr auto; gap: 8px; padding: 8px 0; border-top: 1px solid #eef0ec; font-size: 14px; }
+.kv:first-child { border-top: 0; }
+.small { color: var(--muted); font-size: 13px; line-height: 1.6; }
+ul { margin: 10px 0 0 18px; padding: 0; line-height: 1.7; }
+.footer { margin-top: 20px; color: var(--muted); font-size: 12px; }
+@media (max-width: 860px) {
+  main { padding: 20px 14px 34px; }
+  header, .grid { grid-template-columns: 1fr; }
+  .meta { text-align: left; }
+  .fold-row { grid-template-columns: 1fr; gap: 8px; }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>I66 Recovery Active Industry Audit</h1>
+    <div class="subtitle">这轮不是新增策略，而是解释 I63 recovery 期为什么不稳定：看策略持仓行业相对沪深300的偏离，判断后续该继续加仓，还是先过滤“可交易 recovery”。</div>
+  </div>
+  <div class="meta">日期：2026-06-26<br>口径：T-1 沪深300权重<br>输入：I63 recovery quality holdings</div>
+</header>
+<section class="grid">
+  <div class="panel">
+    <h2>Recovery 结果和行业偏离</h2>
+
+    <div class="fold-row">
+      <div class="fold-label">Fold 2</div>
+      <div>
+        <div class="metric-label">recovery 期沪深300收益</div>
+        <div class="bar-track"><div class="bar" style="width:29.0%; background:var(--red);"></div></div>
+        <div class="value">-0.0415，56 天，quality 34 天</div>
+      </div>
+      <div>
+        <div class="metric-label">平均行业偏离强度</div>
+        <div class="bar-track"><div class="bar" style="width:100.0%; background:var(--blue);"></div></div>
+        <div class="value">L1 0.3861，平均仓位 38.66%</div>
+      </div>
+      <div></div>
+      <div class="tags"><span class="tag">超配：白酒=56</span></div>
+      <div class="tags"><span class="tag">低配：软件服务=25; 证券=21; 半导体=10</span></div>
+    </div>
+
+    <div class="fold-row">
+      <div class="fold-label">Fold 3</div>
+      <div>
+        <div class="metric-label">recovery 期沪深300收益</div>
+        <div class="bar-track"><div class="bar" style="width:10.3%; background:var(--green);"></div></div>
+        <div class="value">+0.0147，22 天，quality 11 天</div>
+      </div>
+      <div>
+        <div class="metric-label">平均行业偏离强度</div>
+        <div class="bar-track"><div class="bar" style="width:97.4%; background:var(--blue);"></div></div>
+        <div class="value">L1 0.3761，平均仓位 20.00%</div>
+      </div>
+      <div></div>
+      <div class="tags"><span class="tag">超配：白酒=21</span></div>
+      <div class="tags"><span class="tag">低配：半导体=16; 证券=5</span></div>
+    </div>
+
+    <div class="fold-row">
+      <div class="fold-label">Fold 4</div>
+      <div>
+        <div class="metric-label">recovery 期沪深300收益</div>
+        <div class="bar-track"><div class="bar" style="width:15.4%; background:var(--red);"></div></div>
+        <div class="value">-0.0221，49 天，quality 17 天</div>
+      </div>
+      <div>
+        <div class="metric-label">平均行业偏离强度</div>
+        <div class="bar-track"><div class="bar" style="width:97.0%; background:var(--blue);"></div></div>
+        <div class="value">L1 0.3745，平均仓位 34.59%</div>
+      </div>
+      <div></div>
+      <div class="tags"><span class="tag">超配：白酒=35; 银行=13</span></div>
+      <div class="tags"><span class="tag">低配：证券=18; 半导体=17; 软件服务=13</span></div>
+    </div>
+
+    <div class="fold-row">
+      <div class="fold-label">Fold 5</div>
+      <div>
+        <div class="metric-label">recovery 期沪深300收益</div>
+        <div class="bar-track"><div class="bar" style="width:100.0%; background:var(--green);"></div></div>
+        <div class="value">+0.1432，46 天，quality 41 天</div>
+      </div>
+      <div>
+        <div class="metric-label">平均行业偏离强度</div>
+        <div class="bar-track"><div class="bar" style="width:98.3%; background:var(--blue);"></div></div>
+        <div class="value">L1 0.3797，平均仓位 46.33%</div>
+      </div>
+      <div></div>
+      <div class="tags"><span class="tag">超配：银行=46</span></div>
+      <div class="tags"><span class="tag">低配：小金属=37; 软件服务=3; 半导体=3; 元器件=3</span></div>
+    </div>
+
+  </div>
+  <aside class="panel">
+    <h2>这轮读数</h2>
+    <div class="callout"><strong>结论：</strong>不要继续简单提高 recovery 仓位。先判断 recovery 是否可交易，再决定贴近沪深300还是做行业倾斜。</div>
+    <div class="kv"><span>fold2</span><strong>指数 recovery 为负，超配白酒无效</strong></div>
+    <div class="kv"><span>fold4</span><strong>指数 recovery 为负，银行/白酒也无效</strong></div>
+    <div class="kv"><span>fold5</span><strong>指数 recovery 为正，银行主线有效</strong></div>
+    <div class="callout warn"><strong>下一步：</strong>设计“可交易 recovery”过滤：看恢复宽度、行业扩散、成交额扩散、核心行业同步性。</div>
+    <p class="small">说明：图中的行业偏离使用 normalized active weight，即把策略实际部署的仓位内部归一化后，再减去沪深300行业权重。原始 active weight 也保留在 CSV，用于避免把低仓位误读成行业选择问题。</p>
+  </aside>
+</section>
+<div class="footer">Generated from recovery_active_industry_fold_summary.csv and recovery_active_industry_focus_top.csv. Large raw attribution CSV is kept local as an intermediate artifact.</div>
+</main>
+</body>
+</html>

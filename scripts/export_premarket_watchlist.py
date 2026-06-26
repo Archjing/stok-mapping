@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import html
+import shutil
 import sqlite3
 import sys
 from datetime import datetime
@@ -652,6 +653,7 @@ def export_premarket_watchlist(
     config_path: Path,
     output: str | Path = DEFAULT_WATCHLIST_OUTPUT,
     report_output: str | Path = DEFAULT_REPORT_OUTPUT,
+    latest_report_output: str | Path | None = None,
     panel_cache: str | Path = DEFAULT_PANEL_CACHE,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
@@ -817,6 +819,8 @@ def export_premarket_watchlist(
         "strategy_display_name": STRATEGY_DISPLAY_NAMES.get(strategy_id, getattr(strategy, "display_name", strategy_id) or strategy_id),
         "strategy_description": STRATEGY_SHORT_DESCRIPTIONS.get(strategy_id, ""),
     }
+    output_path = _resolve_output_template(root, output, summary)
+    report_path = _resolve_output_template(root, report_output, summary)
     accounts = load_simulated_accounts(config, root)
     account_ledger_path = accounts[0].ledger_path if accounts else Path("")
     account_bill_path = Path("")
@@ -834,11 +838,8 @@ def export_premarket_watchlist(
     account_snapshot = rebuilt_account_snapshot if rebuilt_account_snapshot else (load_latest_account_snapshot(accounts[0]) if accounts else {})
     if accounts and account_snapshot:
         bill_date = str(account_snapshot.get("brief_date", summary["brief_date"]))
-        account_bill_path = _resolve_output_template(
-            root,
-            f"reports/{bill_date}/simulated_account_bill_{bill_date}.html",
-            {**summary, "check_time": f"{bill_date} 00:00"},
-        )
+        account_bill_path = report_path.with_name("account_bill__report.html")
+        account_bill_path.parent.mkdir(parents=True, exist_ok=True)
         export_account_bill_html(
             account=accounts[0],
             brief_date=bill_date,
@@ -852,12 +853,15 @@ def export_premarket_watchlist(
         "start_date": account_snapshot.get("start_date", ""),
         "initial_cash": accounts[0].initial_cash if accounts else np.nan,
     }
-    output_path = _resolve_output_template(root, output, summary)
-    report_path = _resolve_output_template(root, report_output, summary)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     watchlist.to_csv(output_path, index=False, encoding="utf-8-sig")
     report_path.write_text(_format_html(watchlist, summary), encoding="utf-8")
+    latest_report_path = Path("")
+    if latest_report_output is not None:
+        latest_report_path = _resolve_output_template(root, latest_report_output, summary)
+        latest_report_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(report_path, latest_report_path)
     _write_simulation_ledger(
         path=ledger_path,
         brief_date=brief_date,
@@ -867,6 +871,7 @@ def export_premarket_watchlist(
     return {
         "watchlist": output_path,
         "report": report_path,
+        "latest_report": latest_report_path,
         "ledger": ledger_path,
         "account_ledger": account_ledger_path,
         "account_bill": account_bill_path,

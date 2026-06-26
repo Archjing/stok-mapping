@@ -29,9 +29,14 @@ reports/cache/
 node_modules/
 
 # Local runtime outputs and audit artifacts.
-# Keep these on disk, but do not add new generated reports/logs/databases to Git.
+# Keep generated outputs on disk, but do not add routine reports/logs/databases to Git.
+# Curated strategy governance archives are intentionally versioned so research
+# decisions can be audited from main.
 logs/
-reports/
+reports/*
+!reports/README.md
+!reports/strategy_governance/
+!reports/strategy_governance/**
 *.sqlite
 *.sqlite-*
 *.db

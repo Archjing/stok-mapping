@@ -1,0 +1,2 @@
+index_symbol,requested_start,requested_end,loaded_start,loaded_end,trading_days,missing_days_estimate,source,coverage_status,asof_shift_applied,trend_window,vol_window
+SH.000300,2021-04-01,2026-03-31,2020-04-07,2026-03-31,1450,94,local_history_sqlite,available,True,120,20

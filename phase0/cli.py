@@ -42,7 +42,7 @@ from phase0.reporting import (
     write_effectiveness_gate_report,
     write_walk_forward_report,
 )
-from phase0.report_paths import latest_dir
+from phase0.report_paths import create_report_run, latest_dir
 from phase0.report_registry import scan_report_artifacts, write_report_manifest
 from phase0.strategy_admission import run_strategy_admission
 from phase0.strategy_csi300_attribution import run_strategy_csi300_attribution
@@ -219,24 +219,42 @@ def _export_phase0_low_turnover_bill(
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
 ) -> dict:
-    from scripts.export_strategy_bill import export_strategy_bill
+    from scripts.export_strategy_bill import DEFAULT_STRATEGY_ID, export_strategy_bill
+
+    resolved_strategy_id = strategy_id or DEFAULT_STRATEGY_ID
+    report_run = create_report_run(root=config_path.resolve().parent, command="bill", scope=resolved_strategy_id)
 
     return export_strategy_bill(
         config_path=config_path,
         strategy_id=strategy_id,
+        output=report_run.artifact("bill", "transactions", "csv"),
+        daily_output=report_run.artifact("bill", "daily_assets", "csv"),
+        preview_output=report_run.artifact("bill", "preview", "html"),
         refresh_cache=refresh_cache,
         no_panel_cache=no_panel_cache,
     )
 
 
-def _export_phase0_market_regime_report() -> dict:
+def _export_phase0_market_regime_report(*, root: Path | None = None) -> dict:
     from scripts.export_market_regime_report import export_market_regime_report
 
+    resolved_root = root or Path.cwd()
+    legacy_input = resolved_root / "reports" / "phase0_low_turnover_oos_curve.csv"
+    archive_input = (
+        resolved_root
+        / "reports"
+        / "archive"
+        / "legacy_root_reports"
+        / "phase0_outputs"
+        / "phase0_low_turnover_oos_curve.csv"
+    )
+    report_run = create_report_run(root=resolved_root, command="market-regime", scope="low_turnover")
+
     return export_market_regime_report(
-        input_path=Path("reports/phase0_low_turnover_oos_curve.csv"),
-        summary_output=Path("reports/phase0_market_regime_summary.csv"),
-        segment_output=Path("reports/phase0_market_regime_segments.csv"),
-        html_output=Path("reports/phase0_market_regime_report.html"),
+        input_path=legacy_input if legacy_input.exists() else archive_input,
+        summary_output=report_run.artifact("market_regime", "summary", "csv"),
+        segment_output=report_run.artifact("market_regime", "segments", "csv"),
+        html_output=report_run.artifact("market_regime", "report", "html"),
     )
 
 
@@ -280,21 +298,25 @@ def _export_phase0_oos_report(
 def _export_phase0_financial_pti(config_path: Path) -> dict:
     from scripts.audit_financial_pti import audit_financial_pti
 
+    report_run = create_report_run(root=config_path.resolve().parent, command="financial-pti", scope="qfq_asof")
+
     return audit_financial_pti(
         config_path=config_path,
-        summary_output=Path("reports/phase0_financial_pti_summary.csv"),
-        sample_output=Path("reports/phase0_financial_pti_problem_samples.csv"),
-        html_output=Path("reports/phase0_financial_pti_report.html"),
+        summary_output=report_run.artifact("financial_pti", "summary", "csv"),
+        sample_output=report_run.artifact("financial_pti", "problem_samples", "csv"),
+        html_output=report_run.artifact("financial_pti", "report", "html"),
     )
 
 
 def _export_phase0_universe_pit(config_path: Path, *, as_of_date: str) -> dict:
     from scripts.audit_universe_pit import audit_universe_pit
 
+    report_run = create_report_run(root=config_path.resolve().parent, command="universe-pti", scope=as_of_date)
+
     return audit_universe_pit(
         config_path=config_path,
         as_of_date=as_of_date,
-        report_output=Path(f"reports/phase0_universe_pit_audit_{as_of_date}.html"),
+        report_output=report_run.artifact("universe_pti", "report", "html"),
     )
 
 
@@ -308,15 +330,25 @@ def _export_phase0_premarket(
 ) -> dict:
     from scripts.export_premarket_watchlist import export_premarket_watchlist
 
+    report_run = None
+    latest_report_output = None
+    if output is None or report_output is None:
+        report_run = create_report_run(root=config_path.resolve().parent, command="premarket", scope="watchlist")
+    if output is None and report_run is not None:
+        output = report_run.artifact("premarket", "watchlist", "csv")
+    if report_output is None and report_run is not None:
+        report_output = report_run.artifact("premarket", "report", "html")
+        latest_report_output = latest_dir(root=config_path.resolve().parent, channel="watchlist") / "index.html"
+
     kwargs = {
         "config_path": config_path,
+        "output": output,
+        "report_output": report_output,
         "refresh_cache": refresh_cache,
         "no_panel_cache": no_panel_cache,
     }
-    if output is not None:
-        kwargs["output"] = output
-    if report_output is not None:
-        kwargs["report_output"] = report_output
+    if latest_report_output is not None:
+        kwargs["latest_report_output"] = latest_report_output
     return export_premarket_watchlist(**kwargs)
 
 
@@ -337,7 +369,8 @@ def _export_brief_account_bill(*, config_path: Path, brief_date: str | None = No
         brief_date = str(row[0]) if row and row[0] else ""
     if not brief_date:
         raise ValueError("no account daily asset rows found; run brief watchlist first")
-    output = config_path.parent / "reports" / brief_date / f"simulated_account_bill_{brief_date}.html"
+    report_run = create_report_run(root=config_path.resolve().parent, command="brief-account-bill", scope=account.account_id)
+    output = report_run.artifact("account_bill", "report", "html")
     export_account_bill_html(account=account, brief_date=brief_date, output_path=output)
     return {"account": account.account_id, "brief_date": brief_date, "account_bill": output}
 
@@ -639,8 +672,6 @@ def run_watchlist_pipeline(
 
     result = _export_phase0_premarket(
         config_path=config_path,
-        output="reports/{brief_date}/phase0_premarket_watchlist_{brief_date}.csv",
-        report_output="reports/{brief_date}/phase0_watchlist_report_{brief_date}.html",
         refresh_cache=should_refresh_cache,
         no_panel_cache=bool(no_panel_cache),
     )
