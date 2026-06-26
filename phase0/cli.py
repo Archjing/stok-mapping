@@ -4,7 +4,6 @@ import argparse
 import os
 import shutil
 import subprocess
-from collections import Counter
 from pathlib import Path
 
 from rich.console import Console
@@ -15,6 +14,11 @@ from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
 from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
 from phase0.cli_commands.intelligence import handle_intelligence_command, register_intelligence_commands
+from phase0.cli_commands.system import (
+    handle_system_command,
+    register_system_commands,
+    summarize_system_maintenance_status,
+)
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.db_health import run_database_health_check
@@ -56,25 +60,6 @@ from phase0.tushare_history_backfill import backfill_tushare_financials_from_con
 from phase0.universe import build_local_factor_universe
 from phase0.update_history import update_manual_history_from_config
 from phase0.walk_forward import describe_walk_forward_presets, run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
-
-
-def summarize_system_maintenance_status(result) -> dict[str, object]:
-    last_run_status_counts = Counter(row.last_run_status or "not_available" for row in result.rows)
-    last_decision_counts = Counter(row.last_decision or "not_available" for row in result.rows)
-    shard_status_counts = Counter(shard.status or "not_available" for shard in result.shards)
-    return {
-        "task_count": len(result.rows),
-        "last_run_status_counts": dict(sorted(last_run_status_counts.items())),
-        "last_decision_counts": dict(sorted(last_decision_counts.items())),
-        "running_shard_count": int(shard_status_counts.get("running", 0)),
-        "shard_status_counts": dict(sorted(shard_status_counts.items())),
-    }
-
-
-def _format_counts(counts: dict[str, int]) -> str:
-    if not counts:
-        return "none"
-    return ", ".join(f"{key}={value}" for key, value in sorted(counts.items()))
 
 
 def _sync_watchlist_to_ecs(console: Console, local_dir: Path) -> None:
@@ -1041,10 +1026,7 @@ def main() -> int:
     maintain_resume_parser.add_argument("--task", choices=["tushare_financial_backfill"], default="tushare_financial_backfill", help="Task name")
     maintain_resume_parser.add_argument("--run-id", type=int, default=None, help="Optional run id")
     maintain_resume_parser.add_argument("--dry-run", action="store_true", help="Show matched shards without restarting them")
-    system_parser = sub.add_parser("system", help="System orchestrator commands")
-    system_sub = system_parser.add_subparsers(dest="system_cmd")
-    system_status_parser = system_sub.add_parser("status", help="Show read-only system status summary")
-    system_status_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    register_system_commands(sub)
     brief_parser = sub.add_parser("brief", help="Brief delivery commands")
     brief_sub = brief_parser.add_subparsers(dest="brief_cmd")
     brief_daily_parser = brief_sub.add_parser("daily", help="Generate the daily brief; currently uses watchlist output")
@@ -1872,22 +1854,7 @@ def main() -> int:
             return 0
         parser.error("maintain requires a subcommand: tick, status, supervise, run, stop, or resume")
     if args.cmd == "system":
-        console = Console()
-        if args.system_cmd == "status":
-            config_path = Path(args.config).resolve()
-            console.print("[bold]System status started[/bold]")
-            maintenance_result = maintenance_status(config_path, refresh_state=False, read_only=True)
-            summary = summarize_system_maintenance_status(maintenance_result)
-            console.print("[green]System status complete[/green]")
-            console.print(f"Maintenance state DB: {maintenance_result.state_db}")
-            console.print(f"Maintenance generated at: {maintenance_result.generated_at}")
-            console.print(f"Maintenance tasks: {summary['task_count']}")
-            console.print(f"Maintenance last_run_status: {_format_counts(summary['last_run_status_counts'])}")
-            console.print(f"Maintenance last_decision: {_format_counts(summary['last_decision_counts'])}")
-            console.print(f"Maintenance running shards: {summary['running_shard_count']}")
-            console.print(f"Maintenance shard_status: {_format_counts(summary['shard_status_counts'])}")
-            return 0
-        parser.error("system requires a subcommand: status")
+        return handle_system_command(args, parser=parser)
     if args.cmd == "brief":
         if args.brief_cmd in {"daily", "daily-brief", "watchlist"}:
             return run_daily_brief_pipeline(

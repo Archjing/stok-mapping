@@ -236,6 +236,17 @@ The nineteenth slice continues CLI decomposition with the strategy-intelligence 
 
 This slice only moves strategy-intelligence command routing. It does not change intelligence collection sources, candidate CSV schema, ledger validation rules, review heuristics, report path policy, external API behavior, or generated intelligence artifacts.
 
+## Twentieth Slice In This Branch
+
+The twentieth slice extracts the read-only system status command from the large top-level CLI:
+
+- Add `phase0.cli_commands.system` for `system status` parser registration, system command handling, and maintenance-status summarization.
+- Update `phase0.cli` to delegate system parser setup and execution to the new command module.
+- Keep `phase0.cli.summarize_system_maintenance_status` available as a compatibility import during the transition.
+- Update maintenance-orchestrator CLI tests so monkeypatches target the new command module while still checking the old summary import path.
+
+This slice only moves the read-only system-status route. It does not change `maintain` task execution, maintenance state refresh behavior, status database schema, scheduler timing, long-task controls, report writing, or generated maintenance artifacts.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

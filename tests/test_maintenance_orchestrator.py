@@ -2,7 +2,9 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import phase0.cli as cli
+import phase0.cli_commands.system as system_cli
 from phase0.cli import summarize_system_maintenance_status
+from phase0.cli_commands.system import summarize_system_maintenance_status as new_summarize_system_maintenance_status
 from phase0.maintenance_orchestrator import (
     MaintenanceShardStatusRow,
     MaintenanceStatusResult,
@@ -91,6 +93,7 @@ def test_system_status_summary_counts_maintenance_rows_and_running_shards() -> N
         "running_shard_count": 1,
         "shard_status_counts": {"running": 1, "succeeded": 1},
     }
+    assert new_summarize_system_maintenance_status(result) == summary
 
 
 def test_system_status_cli_reads_maintenance_status_without_refresh(monkeypatch, capsys) -> None:
@@ -105,8 +108,8 @@ def test_system_status_cli_reads_maintenance_status_without_refresh(monkeypatch,
             shards=[],
         )
 
-    monkeypatch.setattr(cli, "maintenance_status", fake_maintenance_status)
-    monkeypatch.setattr(cli, "Console", lambda: SimpleNamespace(print=print))
+    monkeypatch.setattr(system_cli, "maintenance_status", fake_maintenance_status)
+    monkeypatch.setattr(system_cli, "Console", lambda: SimpleNamespace(print=print))
     monkeypatch.setattr(
         cli.argparse.ArgumentParser,
         "exit",
