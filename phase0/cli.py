@@ -44,6 +44,7 @@ from phase0.reporting import (
 )
 from phase0.reporting.paths import create_report_run, latest_dir, report_category_dir, report_path
 from phase0.reporting.registry import scan_report_artifacts, write_report_manifest
+from phase0.research.attribution.fold import run_strategy_fold_attribution
 from phase0.strategy_admission import run_strategy_admission
 from phase0.strategy_csi300_attribution import run_strategy_csi300_attribution
 from phase0.strategy_core_reachability import run_strategy_core_reachability_diagnostic
@@ -51,7 +52,6 @@ from phase0.research.diagnostics.exposure import run_strategy_exposure_diagnosti
 from phase0.research.diagnostics.filter import run_strategy_filter_diagnostic
 from phase0.research.diagnostics.market_context import run_strategy_market_context
 from phase0.strategy_failure_attribution import run_strategy_failure_attribution
-from phase0.strategy_fold_attribution import run_strategy_fold_attribution
 from phase0.strategy_holdings_exposure import run_strategy_holdings_exposure
 from phase0.strategy_missing_core_audit import run_missing_core_audit
 from phase0.strategy_participation_overlay import run_strategy_participation_overlay

@@ -16,7 +16,7 @@ The current branch starts with narrow, verifiable slices. It does not claim the 
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
 | `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/research/diagnostics/*`, root compatibility shims for migrated diagnostics, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining `phase0/strategy_*diagnostic.py`, `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, role cards | `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining `phase0/strategy_*attribution.py`, `phase0/strategy_role_card.py` |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints |
@@ -58,13 +58,23 @@ The third slice starts the research package with leaf strategy diagnostics that 
 
 This slice intentionally does not move `walk_forward.py`, `strategy_admission.py`, attribution modules, holdings exposure, CSI300 attribution, strategy constraints, strategy implementations, or export scripts. Those carry broader execution or domain behavior and need separate compatibility gates.
 
+## Fourth Slice In This Branch
+
+The fourth slice adds a research attribution package for low-coupling modules that read existing CSV artifacts and write attribution outputs:
+
+- Move `strategy_alpha_source_audit.py` into `phase0.research.attribution.alpha_source`.
+- Move `strategy_fold_attribution.py` into `phase0.research.attribution.fold`.
+- Keep root-level modules as alias shims so old imports and module-level monkeypatches remain compatible.
+
+This slice intentionally does not move `strategy_failure_attribution.py`, because it imports admission gate helpers and is closer to the admission workflow. It also does not move participation overlays, participation-path audits, role cards, holdings exposure, CSI300 attribution, core reachability, or missing-core audit because those belong to separate research subpackages or depend on heavier execution/data internals.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
 | --- | --- | --- |
 | P1 Reporting foundation | Finish `phase0.reporting.*` and config-driven output defaults | Report path tests, registry tests, targeted CLI path tests, `python -m phase0.cli --help` |
 | P2 Data governance package | Move audit/quality/as-of governance modules first; keep write-heavy providers and broad backfills in place until helper extraction | Existing data-health/as-of tests, import compatibility tests, CLI help for related commands, no table/schema changes |
-| P3 Domain strategies and research | Start with leaf research diagnostics, then separate strategy implementations from walk-forward/admission/diagnostics | Research diagnostic import/tests, strategy registry tests, walk-forward/admission targeted tests, no strategy parameter or cost-model changes |
+| P3 Domain strategies and research | Start with leaf research diagnostics and attribution helpers, then separate strategy implementations from walk-forward/admission/diagnostics | Research diagnostic/attribution import tests, strategy registry tests, walk-forward/admission targeted tests, no strategy parameter or cost-model changes |
 | P4 CLI and orchestration | Split `phase0.cli` into command modules and move scheduler orchestration | All CLI help paths pass, scheduler command names and env vars remain compatible |
 | P5 Intelligence | Split collection/import/validate/review code and keep scripts thin | Intelligence CLI help, ledger/candidate schema tests, no required external API calls in tests |
 | P6 Scripts cleanup | Convert heavy scripts into wrappers over packaged functions | Thin script smoke tests, import compatibility tests |
