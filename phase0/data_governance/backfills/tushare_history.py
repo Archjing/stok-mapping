@@ -12,6 +12,12 @@ import pandas as pd
 from phase0.data_governance.adjustment import ensure_adj_factor_table, upsert_adj_factors
 from phase0.config import load_config
 from phase0.data_governance.backfills.adjustment import ensure_dividend_table, upsert_dividends
+from phase0.data_governance.backfills.tushare_financial_rows import (
+    financial_non_null_count as _financial_non_null_count,
+    merge_financial_missing_fields as _merge_financial_missing_fields,
+    replace_financial_rows as _replace_financial_rows,
+    upsert_financial_row_preserving_valid as _upsert_financial_row_preserving_valid,
+)
 from phase0.data_governance.backfills.tushare_history_audit_queries import (
     coverage_audit as _coverage_audit,
     financial_backfill_audit as _financial_backfill_audit,
@@ -29,8 +35,8 @@ from phase0.data_governance.backfills.tushare_history_reports import (
     write_history_detail_audit as _write_history_detail_audit,
 )
 from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
-from phase0.data_governance.sql import safe_identifier
 from phase0.data_governance.financial_factors import ensure_financial_factor_table
+from phase0.data_governance.sql import safe_identifier
 from phase0.data_access.providers.tushare import (
     fetch_tushare_adj_factor_trade_date,
     fetch_tushare_daily_basic_trade_date,
@@ -198,127 +204,6 @@ def _sleep_for_rate(last_request_at: float, max_requests_per_minute: int) -> flo
     if sleep_for > 0:
         time.sleep(sleep_for)
     return time.monotonic()
-
-
-def _replace_financial_rows(conn: sqlite3.Connection, *, table_name: str, rows: pd.DataFrame) -> int:
-    if rows.empty:
-        return 0
-    table = _safe_identifier(table_name)
-    ensure_financial_factor_table(conn, table=table)
-    out = rows.copy()
-    keep = [
-        "market",
-        "symbol",
-        "report_date",
-        "fiscal_year",
-        "fiscal_quarter",
-        "announce_date",
-        "name",
-        "industry",
-        "roe",
-        "revenue",
-        "revenue_growth",
-        "net_profit",
-        "profit_growth",
-        "operating_cash_flow",
-        "operating_cash_flow_to_net_profit",
-        "debt_to_asset",
-        "total_assets",
-        "total_liabilities",
-        "total_equity",
-        "source",
-        "updated_at",
-    ]
-    for col in keep:
-        if col not in out.columns:
-            out[col] = None
-    out = out[keep].where(pd.notna(out), None)
-    for market, report_date in out[["market", "report_date"]].dropna().drop_duplicates().itertuples(index=False):
-        conn.execute(f"DELETE FROM {table} WHERE market = ? AND report_date = ?", (str(market), str(report_date)))
-    out.to_sql(table, conn, if_exists="append", index=False)
-    return int(len(out))
-
-
-def _financial_non_null_count(row: pd.Series | dict[str, Any]) -> int:
-    fields = [
-        "announce_date",
-        "roe",
-        "revenue",
-        "revenue_growth",
-        "net_profit",
-        "profit_growth",
-        "operating_cash_flow",
-        "operating_cash_flow_to_net_profit",
-        "debt_to_asset",
-        "total_assets",
-        "total_liabilities",
-        "total_equity",
-    ]
-    return sum(1 for field in fields if pd.notna(row.get(field)))
-
-
-def _upsert_financial_row_preserving_valid(
-    conn: sqlite3.Connection,
-    *,
-    table_name: str,
-    row: pd.Series,
-    replace_existing: bool,
-) -> int:
-    if _financial_non_null_count(row) == 0:
-        return 0
-    table = _safe_identifier(table_name)
-    ensure_financial_factor_table(conn, table=table)
-    market = str(row.get("market") or "CN")
-    symbol = str(row.get("symbol") or "")
-    report_date = str(row.get("report_date") or "")
-    if not symbol or not report_date:
-        return 0
-    existing = pd.read_sql_query(
-        f"SELECT * FROM {table} WHERE market = ? AND symbol = ? AND report_date = ?",
-        conn,
-        params=(market, symbol, report_date),
-    )
-    if not existing.empty and not replace_existing:
-        if _financial_non_null_count(existing.iloc[0].to_dict()) >= _financial_non_null_count(row):
-            return 0
-    keep = [
-        "market",
-        "symbol",
-        "report_date",
-        "fiscal_year",
-        "fiscal_quarter",
-        "announce_date",
-        "name",
-        "industry",
-        "roe",
-        "revenue",
-        "revenue_growth",
-        "net_profit",
-        "profit_growth",
-        "operating_cash_flow",
-        "operating_cash_flow_to_net_profit",
-        "debt_to_asset",
-        "total_assets",
-        "total_liabilities",
-        "total_equity",
-        "source",
-        "updated_at",
-    ]
-    values = {col: row.get(col) for col in keep}
-    values["market"] = market
-    values["symbol"] = symbol
-    values["report_date"] = report_date
-    placeholders = ", ".join(["?"] * len(keep))
-    updates = ", ".join([f"{col}=excluded.{col}" for col in keep if col not in {"market", "symbol", "report_date"}])
-    conn.execute(
-        f"""
-        INSERT INTO {table} ({", ".join(keep)})
-        VALUES ({placeholders})
-        ON CONFLICT(market, symbol, report_date) DO UPDATE SET {updates}
-        """,
-        tuple(None if pd.isna(values[col]) else values[col] for col in keep),
-    )
-    return 1
 
 
 def _ensure_financial_backfill_task_table(conn: sqlite3.Connection, *, table_name: str = "tushare_financial_backfill_tasks") -> None:
@@ -643,53 +528,6 @@ def _mark_financial_task(
         """,
         (status, error[:1000], datetime.now().isoformat(timespec="seconds"), period, symbol),
     )
-
-
-def _merge_financial_missing_fields(
-    conn: sqlite3.Connection,
-    *,
-    table_name: str,
-    row: pd.Series,
-    fields: list[str],
-) -> int:
-    table = _safe_identifier(table_name)
-    market = str(row.get("market") or "CN")
-    symbol = str(row.get("symbol") or "")
-    report_date = str(row.get("report_date") or "")
-    if not symbol or not report_date:
-        return 0
-    existing = pd.read_sql_query(
-        f"SELECT * FROM {table} WHERE market = ? AND symbol = ? AND report_date = ?",
-        conn,
-        params=(market, symbol, report_date),
-    )
-    if existing.empty:
-        return _upsert_financial_row_preserving_valid(conn, table_name=table_name, row=row, replace_existing=False)
-
-    updates: dict[str, Any] = {}
-    existing_row = existing.iloc[0].to_dict()
-    for field in fields:
-        value = row.get(field)
-        if pd.notna(value) and pd.isna(existing_row.get(field)):
-            updates[field] = value
-    if not updates:
-        return 0
-    for field in ["announce_date", "source", "updated_at"]:
-        value = row.get(field)
-        if pd.notna(value) and (field == "updated_at" or pd.isna(existing_row.get(field))):
-            updates[field] = value
-    assignments = ", ".join([f"{_safe_identifier(field)} = ?" for field in updates])
-    conn.execute(
-        f"""
-        UPDATE {table}
-        SET {assignments}
-        WHERE market = ?
-          AND symbol = ?
-          AND report_date = ?
-        """,
-        tuple(None if pd.isna(value) else value for value in updates.values()) + (market, symbol, report_date),
-    )
-    return 1
 
 
 def backfill_tushare_financials_from_config(

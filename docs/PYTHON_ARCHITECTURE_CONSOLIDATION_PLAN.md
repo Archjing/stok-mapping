@@ -824,6 +824,16 @@ The seventieth slice extracts read-only Tushare backfill audit queries from the 
 
 This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, upsert behavior, task-table state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, or report rendering.
 
+## Seventy-First Slice In This Branch
+
+The seventy-first slice extracts Tushare financial-factor row persistence helpers from the broad write-side backfill job:
+
+- Add `phase0.data_governance.backfills.tushare_financial_rows` for financial factor row replacement, row completeness counting, preserve-more-complete upsert, and missing-field merge helpers.
+- Keep `phase0.data_governance.backfills.tushare_history` as the write-side orchestration module and retain the old private helper aliases for compatibility.
+- Add behavior tests for period-level row replacement, preserving more complete existing rows, and missing-field patch semantics.
+
+This slice does not change Tushare API request payloads, provider selection, token checks, SQLite schemas, task-table schema or state transitions, rate limiting, retry behavior, CLI command names, report filenames, generated artifact schemas, audit SQL queries, or report rendering.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
