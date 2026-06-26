@@ -5,7 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
-from phase0.strategy_csi300_attribution import run_strategy_csi300_attribution
+from phase0.research.attribution.csi300 import run_strategy_csi300_attribution
 
 
 def _create_history_db(path) -> None:

@@ -130,6 +130,16 @@ The tenth slice adds a research admission package for admission-result diagnosti
 
 This slice intentionally does not move `strategy_admission.py` itself. Failure attribution still depends on selected admission gate helper functions, but it remains a read-only diagnostic that consumes existing admission/overfit CSV artifacts and writes attribution reports.
 
+## Eleventh Slice In This Branch
+
+The eleventh slice folds benchmark attribution into the research attribution package:
+
+- Move `strategy_csi300_attribution.py` into `phase0.research.attribution.csi300`.
+- Update `phase0.cli` and ordinary CSI300 attribution tests to import from the new package path.
+- Keep a root-level alias shim and extend `tests/test_research_attribution_imports.py` so old imports remain compatible during the transition.
+
+This slice intentionally does not move holdings exposure, core reachability, or missing-core audit. CSI300 attribution still reads local SQLite benchmark as-of tables, but it is a read-only attribution diagnostic and does not write database state or rerun strategies.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
