@@ -16,7 +16,7 @@ The current branch starts with narrow, verifiable slices. It does not claim the 
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, bounded maintenance helpers | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py` |
 | `data_access/providers` | Local history reads, external providers, Tushare/AkShare/YFinance adapters, broad update/backfill production jobs | Currently still in `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/external_market_history.py`, `phase0/tushare_source.py`, `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/adjustment*.py`, `phase0/daily_basic_backfill.py`, `phase0/financial_factors.py`, `phase0/import_history.py` |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -149,7 +149,17 @@ The twelfth slice adds a core coverage research package for core reachability an
 - Update `phase0.cli` and ordinary core-coverage tests to import from the new package paths.
 - Keep root-level alias shims and add `tests/test_research_core_coverage_imports.py` so old imports remain compatible during the transition.
 
-This slice intentionally does not move `strategy_holdings_exposure.py`. Core reachability checks benchmark core-weight reachability through existing PIT universe folds and optional read-only panel seeding; missing-core audit consumes existing core-reachability/admission CSV artifacts, checks point-in-time universe membership and local-history coverage, and writes audit CSV/Markdown. These modules do not rebuild holdings, change strategy algorithms, or write database state.
+Core reachability checks benchmark core-weight reachability through existing PIT universe folds and optional read-only panel seeding; missing-core audit consumes existing core-reachability/admission CSV artifacts, checks point-in-time universe membership and local-history coverage, and writes audit CSV/Markdown. These modules do not rebuild holdings, change strategy algorithms, or write database state.
+
+## Thirteenth Slice In This Branch
+
+The thirteenth slice adds a holdings research package for research-only historical holdings exposure rebuilds:
+
+- Move `strategy_holdings_exposure.py` into `phase0.research.holdings.exposure`.
+- Update `phase0.cli` and ordinary holdings exposure tests to import from the new package path.
+- Keep a root-level alias shim and add `tests/test_research_holdings_imports.py` so old imports remain compatible during the transition.
+
+This slice keeps the existing diagnostic boundary: holdings exposure replays selected historical strategy folds to rebuild daily holdings, industry exposure, summary, coverage, report, and run-log artifacts. It does not write SQLite state, rerun strategy admission, change strategy algorithms, or create trading signals.
 
 ## Later Migration Stages
 

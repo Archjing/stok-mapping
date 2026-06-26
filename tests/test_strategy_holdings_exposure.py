@@ -4,7 +4,7 @@ import sqlite3
 
 import pandas as pd
 
-from phase0.strategy_holdings_exposure import (
+from phase0.research.holdings.exposure import (
     _coverage_summary,
     _daily_exposure_from_holdings,
     _ensure_optional_fold_metric_columns,
