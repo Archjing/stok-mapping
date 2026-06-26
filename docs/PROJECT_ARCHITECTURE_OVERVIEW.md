@@ -264,7 +264,7 @@ CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块�
 核心模块：
 
 - [phase0/import_history.py](../phase0/import_history.py)
-- [phase0/update_history.py](../phase0/update_history.py)
+- [phase0/data_governance/update_history.py](../phase0/data_governance/update_history.py)
 - [phase0/local_history.py](../phase0/local_history.py)
 - [phase0/financial_factors.py](../phase0/financial_factors.py)
 - [phase0/data_governance/backfills/tushare_history.py](../phase0/data_governance/backfills/tushare_history.py)

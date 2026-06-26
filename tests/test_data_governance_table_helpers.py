@@ -6,6 +6,7 @@ import pandas as pd
 import pytest
 
 import phase0.update_history as update_history
+import phase0.data_governance.update_history as governance_update_history
 from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
 from phase0.data_governance.sql import safe_identifier, to_sql_value
 
@@ -88,6 +89,9 @@ def test_daily_basic_table_helper_creates_and_upserts_rows() -> None:
 
 
 def test_update_history_private_helper_names_remain_compatible() -> None:
+    assert update_history is governance_update_history
+    assert update_history.ManualHistoryUpdateResult is governance_update_history.ManualHistoryUpdateResult
+    assert update_history.update_manual_history_from_config is governance_update_history.update_manual_history_from_config
     assert update_history._safe_identifier is safe_identifier
     assert update_history._to_sql_value is to_sql_value
     assert update_history._ensure_daily_basic_table is ensure_daily_basic_table

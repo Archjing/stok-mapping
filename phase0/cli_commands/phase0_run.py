@@ -21,7 +21,7 @@ from phase0.reporting import (
 from phase0.reporting.exports import export_phase0_low_turnover_bill
 from phase0.reporting.paths import report_category_dir, report_path
 from phase0.throttle import configure_akshare_throttle
-from phase0.update_history import update_manual_history_from_config
+from phase0.data_governance.update_history import update_manual_history_from_config
 from phase0.walk_forward import describe_walk_forward_presets, run_cost_sensitivity, run_walk_forward, save_walk_forward_csv
 
 

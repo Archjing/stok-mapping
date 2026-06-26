@@ -15,7 +15,7 @@ Structural migration is not valuable by itself. A module should move only when t
 Current decisions:
 
 - Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
-- Do not move `phase0/update_history.py` just to satisfy package shape. It is a write-side data-governance job and should move only if we first extract shared helpers with tests and can preserve CLI/data-write behavior.
+- `phase0/update_history.py` has been moved to `phase0.data_governance.update_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/tushare_history_backfill.py` has been moved to `phase0.data_governance.backfills.tushare_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
 - `phase0/data_sources.py` has been moved to `phase0.data_access.connectivity`. It is an external-provider read/connectivity layer, not a write-side governance job. The old root path remains a compatibility shim.
@@ -417,7 +417,18 @@ The thirty-fifth slice moves the broad Tushare history and financial backfill jo
 - Update the data-update CLI to import `backfill_tushare_history_from_config` and `backfill_tushare_financials_from_config` from the new package path.
 - Extend backfill import compatibility tests to cover `TushareHistoryBackfillResult`, `TushareFinancialBackfillResult`, and both CLI-callable backfill functions.
 
-This slice does not change Tushare request payloads, throttling, retry behavior, database schemas, upsert behavior, audit report paths, CLI command names, generated artifact names, or financial-factor normalization logic. `phase0/update_history.py` remains in place until a separate slice moves it behind equivalent compatibility tests.
+This slice does not change Tushare request payloads, throttling, retry behavior, database schemas, upsert behavior, audit report paths, CLI command names, generated artifact names, or financial-factor normalization logic.
+
+## Thirty-Sixth Slice In This Branch
+
+The thirty-sixth slice moves the A-share manual history incremental update job into the data-governance package:
+
+- Move `phase0/update_history.py` to `phase0.data_governance.update_history`.
+- Keep root-level `phase0.update_history` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update effective project imports in data-update CLI, Phase 0 run CLI, delivery CLI, and daily coverage eligibility tests to use the new package path.
+- Extend data-governance compatibility tests so `ManualHistoryUpdateResult`, `update_manual_history_from_config`, and the old private helper names remain available through the old root path.
+
+This slice does not change data-source fallback order, AkShare/Tushare request behavior, SQLite schemas, upsert behavior, universe rebuild policy, CLI command names, console output, generated artifact paths, or freshness/coverage thresholds.
 
 ## Later Migration Stages
 

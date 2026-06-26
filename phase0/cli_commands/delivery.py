@@ -11,9 +11,9 @@ from rich.console import Console
 
 from phase0.cli_commands.output import print_manual_history_update_result
 from phase0.config import load_config
+from phase0.data_governance.update_history import update_manual_history_from_config
 from phase0.reporting.exports import export_brief_account_bill, export_phase0_premarket
 from phase0.reporting.paths import latest_dir
-from phase0.update_history import update_manual_history_from_config
 
 
 DELIVERY_COMMANDS = frozenset({"brief", "daily-brief"})

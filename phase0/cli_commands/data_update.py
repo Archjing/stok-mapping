@@ -18,8 +18,8 @@ from phase0.data_governance.backfills.tushare_history import (
     backfill_tushare_financials_from_config,
     backfill_tushare_history_from_config,
 )
+from phase0.data_governance.update_history import update_manual_history_from_config
 from phase0.universe import build_local_factor_universe
-from phase0.update_history import update_manual_history_from_config
 
 
 DATA_UPDATE_COMMANDS = frozenset(
