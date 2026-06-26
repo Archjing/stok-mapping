@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from phase0.config import load_config
-from phase0.execution.accounts import export_account_bill_html, load_simulated_accounts
+from phase0.execution.accounts import load_simulated_accounts
+from phase0.reporting.account_bill import export_account_bill_html
 from phase0.reporting.paths import create_report_run, latest_dir
 
 

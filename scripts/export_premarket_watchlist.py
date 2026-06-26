@@ -17,11 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from phase0.config import load_config
 from phase0.execution.accounts import (
     build_account_ledger,
-    export_account_bill_html,
-    load_latest_account_snapshot,
     load_simulated_accounts,
     price_mode_label,
 )
+from phase0.reporting.account_bill import export_account_bill_html, load_latest_account_snapshot
 from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.data_access.local_history import configure_local_history
 from phase0.reporting.paths import report_config_path

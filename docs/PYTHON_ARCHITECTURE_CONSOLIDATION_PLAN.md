@@ -27,18 +27,19 @@ Current decisions:
 - `phase0/tushare_source.py` has been moved as a provider-only slice because it produces a cleaner dependency direction: write-side jobs now depend on `phase0.data_access.providers.tushare`, while the old root path remains a compatibility shim.
 - `phase0/data_sources.py` has been moved to `phase0.data_access.connectivity`. It is an external-provider read/connectivity layer, not a write-side governance job. The old root path remains a compatibility shim.
 - `phase0/throttle.py` has been moved to `phase0.data_access.throttle`. It owns external-provider request throttling and retry pacing, so it belongs beside provider access code; the old root path remains a compatibility shim.
-- `phase0/accounts.py` has been moved to `phase0.execution.accounts`. It owns simulated-account configuration, signal execution simulation, account ledgers, and account bill export; the old root path remains a compatibility shim.
+- `phase0/accounts.py` has been moved to `phase0.execution.accounts`. It owns simulated-account configuration, signal execution simulation, account ledgers, and account database writes; the old root path remains a compatibility shim.
+- Account bill HTML and latest-snapshot presentation helpers now live in `phase0.reporting.account_bill`, with execution-layer re-exports kept for compatibility during the transition.
 
 ## Current Functional Layers
 
 | Layer | Responsibility | Current modules |
 | --- | --- | --- |
-| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
+| `reporting` | Report output paths, run directories, artifact registry, report-export helpers, account bill presentation, Markdown/HTML/CSV writers | `phase0/reporting/paths.py`, `phase0/reporting/registry.py`, `phase0/reporting/writers.py`, `phase0/reporting/exports.py`, `phase0/reporting/account_bill.py`, compatibility shims `phase0/report_paths.py`, `phase0/report_registry.py`, report-export helper aliases in `phase0/cli.py` |
 | `data_governance` | Data quality checks, governance audits, as-of coverage validation, price-adjustment governance, bounded maintenance helpers, write-side backfills, local history maintenance jobs | `phase0/data_governance/quality.py`, `phase0/data_governance/db_health.py`, `phase0/data_governance/index_asof_audit.py`, `phase0/data_governance/index_asof_backfill.py`, `phase0/data_governance/adjustment.py`, `phase0/data_governance/import_history.py`, `phase0/data_governance/update_history.py`, `phase0/data_governance/financial_factors.py`, `phase0/data_governance/external_market_history.py`, `phase0/data_governance/backfills/*`, compatibility shims in `phase0/quality.py`, `phase0/db_health.py`, `phase0/index_asof_*.py`, `phase0/adjustment.py`, `phase0/*_backfill.py`, `phase0/import_history.py`, `phase0/financial_factors.py`, `phase0/external_market_history.py` |
 | `data_access/providers` | Local history reads, external provider adapters, and request pacing; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/throttle.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, `phase0/throttle.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py` |
-| `execution` | Simulated accounts, account-level execution simulation, ledgers, account database tables, and account bill export | `phase0/execution/accounts.py`, compatibility shim `phase0/accounts.py` |
+| `execution` | Simulated accounts, account-level execution simulation, ledgers, account database tables, and execution assumptions | `phase0/execution/accounts.py`, compatibility shim `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
@@ -559,7 +560,19 @@ The forty-seventh slice moves simulated-account execution into the execution pac
 - Update effective imports in walk-forward, report exports, premarket watchlist export, and ordinary strategy-constraint tests to use the new execution package path.
 - Add import compatibility tests covering the account config/result API, signal execution entrypoint, simulated-account loading, and account bill export.
 
-This slice intentionally keeps account bill HTML generation in `phase0.execution.accounts` for now to avoid mixing a package move with a second behavioral split. A later reporting slice can extract `phase0.reporting.account_bill` with focused snapshot/report tests. This slice does not change execution price modes, lot rounding, limit/suspension checks, participation-rate logic, ledger/database schemas, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
+This slice intentionally kept account bill HTML generation in `phase0.execution.accounts` during the package move to avoid mixing two behaviorally sensitive edits. It does not change execution price modes, lot rounding, limit/suspension checks, participation-rate logic, ledger/database schemas, report filenames, report paths, CLI command names, generated artifacts, or strategy algorithms.
+
+## Forty-Eighth Slice In This Branch
+
+The forty-eighth slice separates account-bill presentation from simulated-account execution:
+
+- Add `phase0.reporting.account_bill` for money/percentage/number formatting, latest account snapshot loading, HTML table rendering, and account bill HTML export.
+- Keep `phase0.execution.accounts` re-exporting the account-bill helpers during the transition, so old callers remain compatible.
+- Update report exports and premarket watchlist export to import presentation helpers from the reporting package instead of the execution package.
+- Lighten `phase0.reporting.__init__` so importing submodules such as `phase0.reporting.account_bill` does not eagerly import heavy report-export functions and create execution/reporting import cycles.
+- Add import compatibility tests proving execution-layer account-bill re-exports point to the reporting functions.
+
+This slice does not change account bill HTML content, ledger/database schemas, latest-snapshot SQL, report filenames, report paths, CLI command names, generated artifacts, execution rules, or strategy algorithms.
 
 ## Later Migration Stages
 
