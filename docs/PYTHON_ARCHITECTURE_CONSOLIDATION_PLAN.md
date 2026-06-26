@@ -31,7 +31,7 @@ Current decisions:
 - Financial factor point-in-time audit implementation now lives in `phase0.data_governance.financial_pti`; `scripts/audit_financial_pti.py` is a direct-execution-compatible shim.
 - Local history external-snapshot consistency audit implementation now lives in `phase0.data_governance.local_history_consistency`; `scripts/check_local_history_consistency.py` is a direct-execution-compatible shim.
 - Universe point-in-time audit implementation now lives in `phase0.data_governance.universe_pit`; `scripts/audit_universe_pit.py` is a compatibility shim for legacy imports.
-- Strategy intelligence implementation now lives in the `phase0.intelligence` package. The original collection/import/review/validation API remains exported from `phase0.intelligence`; schema/common helpers, candidate CSV I/O, candidate review, and ledger validation now live in dedicated submodules, and Tiingo news probing now lives in `phase0.intelligence.tiingo_news_probe`; `scripts/tiingo_news_probe.py` is a direct-execution-compatible shim.
+- Strategy intelligence implementation now lives in the `phase0.intelligence` package. The original collection/import/review/validation API remains exported from `phase0.intelligence`; schema/common helpers, candidate CSV I/O, candidate collection/import, candidate review, and ledger validation now live in dedicated submodules, and Tiingo news probing now lives in `phase0.intelligence.tiingo_news_probe`; `scripts/tiingo_news_probe.py` is a direct-execution-compatible shim.
 - `phase0/accounts.py` has been moved to `phase0.execution.accounts`. It owns simulated-account configuration, signal execution simulation, account ledgers, and account database writes; the old root path remains a compatibility shim.
 - Account bill HTML and latest-snapshot presentation helpers now live in `phase0.reporting.account_bill`, with execution-layer re-exports kept for compatibility during the transition.
 - Strategy bill export implementation now lives in `phase0.reporting.strategy_bill`; `scripts/export_strategy_bill.py` is a direct-execution-compatible shim.
@@ -54,7 +54,7 @@ Current decisions:
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py` |
 | `execution` | Simulated accounts, account-level execution simulation, strategy-ledger execution matching, ledgers, account database tables, and execution assumptions | `phase0/execution/accounts.py`, `phase0/execution/strategy_ledger.py`, compatibility shim `phase0/accounts.py` |
 | `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py` compatibility shim, remaining heavy `phase0/strategy_*` research modules |
-| `intelligence` | Strategy intelligence collection, import, validation, review, external signal/probe scripts | `phase0/intelligence/__init__.py`, `phase0/intelligence/schema.py`, `phase0/intelligence/common.py`, `phase0/intelligence/candidates.py`, `phase0/intelligence/review.py`, `phase0/intelligence/validation.py`, `phase0/intelligence/tiingo_news_probe.py`, `phase0/intelligence/hk_a_mapping_factors.py`, compatibility shims `scripts/tiingo_news_probe.py` and `scripts/export_hk_a_mapping_factors.py`, LLM/integration scripts |
+| `intelligence` | Strategy intelligence collection, import, validation, review, external signal/probe scripts | `phase0/intelligence/__init__.py`, `phase0/intelligence/schema.py`, `phase0/intelligence/common.py`, `phase0/intelligence/candidates.py`, `phase0/intelligence/collection.py`, `phase0/intelligence/review.py`, `phase0/intelligence/validation.py`, `phase0/intelligence/tiingo_news_probe.py`, `phase0/intelligence/hk_a_mapping_factors.py`, compatibility shims `scripts/tiingo_news_probe.py` and `scripts/export_hk_a_mapping_factors.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
 | `core` | Config/env/path helpers and small shared utilities that do not own business behavior | `phase0/config.py`, `phase0/env.py`, future shared helpers |
@@ -793,6 +793,16 @@ The sixty-seventh slice splits candidate review out of the strategy-intelligence
 - Add import compatibility tests for candidate CSV helpers and review helpers.
 
 This slice does not change intelligence CLI commands, candidate CSV columns, review CSV columns, review heuristics, review report wording, report filenames, report paths, generated artifact schemas, collection behavior, validation behavior, or online source fetching.
+
+## Sixty-Eighth Slice In This Branch
+
+The sixty-eighth slice splits strategy-intelligence collection and local import out of the package root:
+
+- Add `phase0.intelligence.collection` for candidate row construction, local source scanning, RSS/arXiv/OpenAlex/Crossref metadata collection, and collect/import report writing.
+- Keep `phase0.intelligence` as a compatibility export surface for `collect_intelligence`, `import_local_intelligence`, and the old private collection helper aliases.
+- Add import compatibility tests for the new collection module and old package-root aliases.
+
+This slice does not change intelligence CLI commands, local import behavior, online source request URLs or parameters, candidate CSV columns, collect/import report wording, report filenames, report paths, generated artifact schemas, review behavior, validation behavior, or Tiingo/HK-A probe behavior.
 
 ## Later Migration Stages
 
