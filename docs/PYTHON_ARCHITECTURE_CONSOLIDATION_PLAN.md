@@ -740,6 +740,26 @@ The sixty-second slice moves the HK-to-A-share mapping factor probe into the int
 
 This slice does not change AKShare calls, output filenames, report paths, generated CSV/HTML schemas, or whether HK-A mapping is treated as research-only external signal exploration.
 
+## Sixty-Third Slice In This Branch
+
+The sixty-third slice finishes the strategy-bill execution ledger boundary:
+
+- Move `strategy_bill._load_bfq_execution_price_frame` into `phase0.execution.strategy_ledger.load_bfq_execution_price_frame`.
+- Keep `phase0.reporting.strategy_bill._load_bfq_execution_price_frame` as a compatibility alias for existing private imports.
+- Add execution-ledger tests for raw-price loading, missing required columns, and no-raw-row fallback behavior.
+
+This slice does not change account matching, execution price semantics, bfq_raw lookup behavior, report output paths, generated bill schemas, strategy parameters, or cost assumptions.
+
+## Sixty-Fourth Slice In This Branch
+
+The sixty-fourth slice extracts admission report writing from the admission runner:
+
+- Add `phase0.research.admission.reports` for admission Markdown writers, governance-report writers, command hints, artifact-name helpers, and local formatting helpers.
+- Keep `phase0.strategy_admission` as the admission runner and re-export the old private helper names for compatibility.
+- Add import compatibility tests for the new report helper path and old runner-private aliases.
+
+This slice does not change `run_strategy_admission`, walk-forward execution, overfit execution, admission gates, matrix/review calculations, report filenames, report paths, CLI command names, generated artifact schemas, or strategy algorithms.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
