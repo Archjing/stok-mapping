@@ -9,7 +9,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from phase0.overfit import run_overfit_diagnostic
+from phase0.research.diagnostics.overfit import run_overfit_diagnostic
 from phase0.reporting.paths import create_report_run
 from phase0.research.admission.strategy_scope import (
     _force_strategy_set_enabled_for_admission,

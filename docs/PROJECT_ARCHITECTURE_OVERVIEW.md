@@ -516,7 +516,7 @@ updated_at
 核心模块：
 
 - [phase0/walk_forward.py](../phase0/walk_forward.py)
-- [phase0/overfit.py](../phase0/overfit.py)
+- [phase0/research/diagnostics/overfit.py](../phase0/research/diagnostics/overfit.py)
 - [phase0/factor_effectiveness.py](../phase0/factor_effectiveness.py)
 - [phase0/strategy_admission.py](../phase0/strategy_admission.py)
 - [phase0/reporting.py](../phase0/reporting.py)

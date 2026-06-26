@@ -25,7 +25,7 @@ from phase0.research.admission.strategy_scope import (
     _force_strategy_set_enabled_for_admission,
     _resolve_strategy_scope,
 )
-from phase0.overfit import _metrics, _score, run_overfit_diagnostic
+from phase0.research.diagnostics.overfit import _metrics, _score, run_overfit_diagnostic
 from phase0.walk_forward import describe_walk_forward_presets
 
 

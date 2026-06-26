@@ -16,6 +16,7 @@ Current decisions:
 
 - Keep `phase0/universe.py` in place for this branch. It sits on the boundary between current-market snapshot construction, point-in-time universe loading, and walk-forward research. Moving it now would add import churn without improving correctness or reducing meaningful duplication.
 - `phase0/local_history.py` has been moved to `phase0.data_access.local_history`. It is the SQLite-backed local history read/configuration layer; the old root path remains a compatibility shim.
+- `phase0/overfit.py` has been moved to `phase0.research.diagnostics.overfit`. It is a research diagnostic consumed by the admission runner and strategy-research CLI; the old root path remains a compatibility shim.
 - `phase0/update_history.py` has been moved to `phase0.data_governance.update_history` after shared SQL and daily-basic table helpers were extracted and compatibility tests were added. The old root path remains a compatibility shim.
 - `phase0/import_history.py` has been moved to `phase0.data_governance.import_history`. It is a write-side local history initialization and index-history rebuild job; the old root path remains a compatibility shim.
 - `phase0/financial_factors.py` has been moved to `phase0.data_governance.financial_factors`. It is a write-side quarterly financial factor maintenance job and table helper; the old root path remains a compatibility shim.
@@ -33,7 +34,7 @@ Current decisions:
 | `data_access/providers` | Local history reads and external provider adapters; it should not own write-side governance jobs | `phase0/data_access/local_history.py`, `phase0/data_access/connectivity.py`, `phase0/data_access/providers/tushare.py`, compatibility shims `phase0/local_history.py`, `phase0/data_sources.py`, and `phase0/tushare_source.py` |
 | `universe` | Current universe construction and point-in-time universe loading | Stable root module `phase0/universe.py`; no migration planned in this branch |
 | `domain/strategies` | Strategy interfaces, strategy implementations, portfolio constraints, execution assumptions that are part of strategy behavior | `phase0/strategies/*`, `phase0/strategies/constraints.py`, compatibility shim `phase0/strategy_constraints.py`, parts of `phase0/accounts.py` |
-| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/overfit.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
+| `research` | Walk-forward, admission, overfit checks, factor effectiveness, attribution, diagnostics, holdings exposure rebuilds, participation diagnostics, core coverage audits, research summaries/role cards | `phase0/research/admission/*`, `phase0/research/diagnostics/*`, `phase0/research/attribution/*`, `phase0/research/core_coverage/*`, `phase0/research/holdings/*`, `phase0/research/participation/*`, `phase0/research/summaries/*`, root compatibility shims for migrated research modules, `phase0/walk_forward.py`, `phase0/strategy_admission.py`, `phase0/factor_effectiveness.py`, remaining heavy `phase0/strategy_*` research modules |
 | `intelligence` | Strategy intelligence collection, import, validation, review, external probe scripts | `phase0/intelligence.py`, `scripts/tiingo_news_probe.py`, LLM/integration scripts |
 | `cli` | Argument parsing and command routing | `phase0/cli.py`, thin wrappers under `scripts/` |
 | `orchestration` | Scheduled maintenance, long-task control, process coordination, runtime status | `phase0/maintenance_orchestrator.py`, scheduler shell entrypoints, shared shell environment helpers |
@@ -477,6 +478,17 @@ The fortieth slice moves the SQLite-backed local history read layer into the dat
 - Add an import compatibility test covering `LocalHistorySettings`, symbol normalization, configuration, local DB path resolution, daily/index history reads, and point-in-time snapshot loading.
 
 This slice does not change local SQLite schemas, price-adjustment modes, point-in-time snapshot logic, symbol normalization behavior, runtime fallback policy, CLI command names, generated artifact paths, or strategy algorithms.
+
+## Forty-First Slice In This Branch
+
+The forty-first slice moves the strategy overfit diagnostic into the research diagnostics package:
+
+- Move `phase0/overfit.py` to `phase0.research.diagnostics.overfit`.
+- Keep root-level `phase0.overfit` as a module alias shim so old imports and monkeypatches remain compatible during the transition.
+- Update effective imports in the admission runner, strategy-research CLI command module, and ordinary admission tests to use the new package path.
+- Add an import compatibility test covering `OverfitDiagnosticResult`, `run_overfit_diagnostic`, and selected scoring helpers.
+
+This slice does not change overfit scoring rules, last-fold lift detection, report filenames, report paths, admission thresholds, CLI command names, generated artifacts, or strategy algorithms.
 
 ## Later Migration Stages
 
