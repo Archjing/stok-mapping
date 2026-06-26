@@ -2,14 +2,18 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+# shellcheck source=scripts/lib/project_env.sh
+source "${SCRIPT_DIR}/lib/project_env.sh"
+
+PROJECT_ROOT="$(stok_project_root)"
 CRON_START="# stok-mapping project scheduler start"
 CRON_END="# stok-mapping project scheduler end"
 LEGACY_CRON_START="# stok-mapping manual history update start"
 LEGACY_CRON_END="# stok-mapping manual history update end"
 SCHEDULER_CRON_LINE="* * * * * bash ${PROJECT_ROOT}/scripts/run_project_scheduler.sh >> ${PROJECT_ROOT}/logs/project_scheduler.log 2>&1"
 
-mkdir -p "${PROJECT_ROOT}/logs"
+stok_ensure_logs_dir "${PROJECT_ROOT}"
 
 tmp_file="$(mktemp)"
 trap 'rm -f "${tmp_file}"' EXIT

@@ -204,6 +204,16 @@ The sixteenth slice starts the data-access provider package with the Tushare ada
 
 This slice does not move `phase0/update_history.py`, `phase0/tushare_history_backfill.py`, `phase0/daily_basic_backfill.py`, `phase0/adjustment_backfill.py`, or index as-of backfill. Those remain write-side data-governance jobs that call the provider. It also does not change Tushare payloads, normalization rules, retry behavior, request throttling, database writes, report paths, or CLI command names.
 
+## Seventeenth Slice In This Branch
+
+The seventeenth slice reduces shell bootstrap duplication in the scheduler entrypoints:
+
+- Update `scripts/run_project_scheduler.sh` to reuse `scripts/lib/project_env.sh` for project-root resolution, Python interpreter path, logs directory creation, and `.env` loading.
+- Update `scripts/install_dev_cron.sh` to reuse `scripts/lib/project_env.sh` for project-root resolution and logs directory creation.
+- Add `tests/test_scheduler_shell_wrappers.py` with fake Python and fake crontab binaries so the scheduler wrapper and cron installer are verified without running real maintenance tasks or changing the user's crontab.
+
+This slice preserves the single cron line, the `maintain status` schema warm-up, the `maintain tick` execution command, `.env` loading, and log-directory behavior. It does not change scheduler task timing, maintenance orchestration, Python business logic, or data writes.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |
