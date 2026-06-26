@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 import phase0.cli as cli
+import phase0.cli_commands.dashboard as dashboard_cli
 from phase0.reporting.registry import classify_legacy_artifact, scan_report_artifacts, write_report_manifest
 
 
@@ -146,9 +147,9 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
         calls.append((root, manifest_path, reports_dir))
         return root / "reports" / "runs" / "report_dashboard" / "manifest.json"
 
-    monkeypatch.setattr(cli, "write_report_manifest", fake_write_report_manifest)
+    monkeypatch.setattr(dashboard_cli, "write_report_manifest", fake_write_report_manifest)
     monkeypatch.setattr(
-        cli,
+        dashboard_cli,
         "scan_report_artifacts",
         lambda root: [
             SimpleNamespace(run_id="run-a", type="markdown", legacy_category="legacy_module_dir"),
@@ -156,7 +157,7 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
             SimpleNamespace(run_id="run-b", type="html", legacy_category="legacy_date_dir"),
         ],
     )
-    monkeypatch.setattr(cli, "Console", lambda: SimpleNamespace(print=print))
+    monkeypatch.setattr(dashboard_cli, "Console", lambda: SimpleNamespace(print=print))
     monkeypatch.setattr("sys.argv", ["phase0.cli", "dashboard", "scan", "--config", str(config_path)])
 
     exit_code = cli.main()
@@ -170,3 +171,39 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
     assert "Artifacts: 3" in captured.out
     assert "csv=1, html=1, markdown=1" in captured.out
     assert "Categories: legacy_date_dir=1, legacy_module_dir=2" in captured.out
+
+
+def test_dashboard_scan_handler_writes_manifest_and_prints_counts(monkeypatch, capsys, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("phase0: {}\n", encoding="utf-8")
+    calls = []
+
+    def fake_write_report_manifest(*, root, manifest_path=None, reports_dir=None):
+        calls.append((root, manifest_path, reports_dir))
+        return root / "custom_manifest.json"
+
+    monkeypatch.setattr(dashboard_cli, "write_report_manifest", fake_write_report_manifest)
+    monkeypatch.setattr(
+        dashboard_cli,
+        "scan_report_artifacts",
+        lambda root: [
+            SimpleNamespace(run_id="run-a", type="markdown", legacy_category="legacy_module_dir"),
+            SimpleNamespace(run_id="run-b", type="csv", legacy_category="legacy_module_dir"),
+        ],
+    )
+    monkeypatch.setattr(dashboard_cli, "Console", lambda: SimpleNamespace(print=print))
+    parser = cli.argparse.ArgumentParser()
+    args = cli.argparse.Namespace(
+        dashboard_cmd="scan",
+        config=str(config_path),
+        manifest=str(tmp_path / "manifest.json"),
+    )
+
+    exit_code = dashboard_cli.handle_dashboard_command(args, parser=parser)
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert calls == [(tmp_path, tmp_path / "manifest.json", None)]
+    assert "Runs: 2" in captured.out
+    assert "Artifacts: 2" in captured.out
+    assert "csv=1, markdown=1" in captured.out

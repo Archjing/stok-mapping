@@ -214,6 +214,17 @@ The seventeenth slice reduces shell bootstrap duplication in the scheduler entry
 
 This slice preserves the single cron line, the `maintain status` schema warm-up, the `maintain tick` execution command, `.env` loading, and log-directory behavior. It does not change scheduler task timing, maintenance orchestration, Python business logic, or data writes.
 
+## Eighteenth Slice In This Branch
+
+The eighteenth slice starts splitting the large top-level CLI with a low-risk dashboard command group:
+
+- Add `phase0.cli_commands.dashboard` for `dashboard scan` parser registration and command handling.
+- Update `phase0.cli` to delegate dashboard parser setup and execution to the new command module.
+- Keep the public command unchanged: `python -m phase0.cli dashboard scan`.
+- Update dashboard tests so the existing `cli.main()` smoke path remains covered, while registry monkeypatches target the new command module.
+
+This slice only moves report-dashboard command routing. It does not change report registry scanning, manifest schema, report path policy, strategy commands, maintenance commands, data writes, or generated report artifacts.
+
 ## Later Migration Stages
 
 | Stage | Scope | Acceptance gate |

@@ -13,6 +13,7 @@ from phase0.adjustment_backfill import backfill_adjustment_factors_from_config
 from phase0.config import load_config
 from phase0.accounts import export_account_bill_html, load_simulated_accounts
 from phase0.adjustment import run_adjustment_audit
+from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
 from phase0.daily_basic_backfill import backfill_daily_basic_from_config
 from phase0.data_sources import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.db_health import run_database_health_check
@@ -43,7 +44,6 @@ from phase0.reporting import (
     write_walk_forward_report,
 )
 from phase0.reporting.paths import create_report_run, latest_dir, report_category_dir, report_path
-from phase0.reporting.registry import scan_report_artifacts, write_report_manifest
 from phase0.research.attribution.fold import run_strategy_fold_attribution
 from phase0.strategy_admission import run_strategy_admission
 from phase0.research.attribution.csi300 import run_strategy_csi300_attribution
@@ -1008,11 +1008,7 @@ def main() -> int:
         default="never",
         help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
     )
-    dashboard_parser = sub.add_parser("dashboard", help="Report dashboard commands")
-    dashboard_sub = dashboard_parser.add_subparsers(dest="dashboard_cmd")
-    dashboard_scan_parser = dashboard_sub.add_parser("scan", help="Scan reports and write dashboard manifest")
-    dashboard_scan_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    dashboard_scan_parser.add_argument("--manifest", default=None, help="Optional manifest output path")
+    register_dashboard_commands(sub)
     intelligence_parser = sub.add_parser(
         "intelligence",
         help="Collect, import, review, and validate strategy intelligence metadata",
@@ -1772,25 +1768,7 @@ def main() -> int:
             return 2
         return 0
     if args.cmd == "dashboard":
-        console = Console()
-        if args.dashboard_cmd == "scan":
-            config_path = Path(args.config).resolve()
-            root = config_path.parent
-            manifest_path = Path(args.manifest).resolve() if args.manifest else None
-            console.print("[bold]Report dashboard scan started[/bold]")
-            manifest = write_report_manifest(root=root, manifest_path=manifest_path)
-            artifacts = scan_report_artifacts(root)
-            run_count = len({artifact.run_id for artifact in artifacts})
-            type_counts = Counter(artifact.type for artifact in artifacts)
-            category_counts = Counter(artifact.legacy_category for artifact in artifacts)
-            console.print("[green]Report dashboard scan complete[/green]")
-            console.print(f"Manifest: {manifest}")
-            console.print(f"Runs: {run_count}")
-            console.print(f"Artifacts: {len(artifacts)}")
-            console.print(f"Artifact types: {_format_counts(dict(type_counts))}")
-            console.print(f"Categories: {_format_counts(dict(category_counts))}")
-            return 0
-        parser.error("dashboard requires a subcommand: scan")
+        return handle_dashboard_command(args, parser=parser)
     if args.cmd == "intelligence":
         console = Console()
         if args.intelligence_cmd == "collect":
