@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, Callable
 
 import numpy as np
@@ -16,8 +17,15 @@ def execution_settings(config: dict[str, Any]) -> dict[str, Any]:
         "conservative_price_buffer": float(cfg.get("conservative_price_buffer", 0.001)),
         "lot_size": int(cfg.get("lot_size", 100)),
         "max_participation_rate": float(cfg.get("max_participation_rate", 0.05)),
+        "min_commission": float(cfg.get("min_commission", 0.0)),
+        "transfer_fee_rate": float(cfg.get("transfer_fee_rate", 0.0)),
+        "min_trade_amount": float(cfg.get("min_trade_amount", 0.0)),
         "enable_limit_check": bool(cfg.get("enable_limit_check", True)),
         "enable_suspension_check": bool(cfg.get("enable_suspension_check", True)),
+        "enable_t_plus_one": bool(cfg.get("enable_t_plus_one", True)),
+        "enable_special_limit_rules": bool(cfg.get("enable_special_limit_rules", True)),
+        "st_limit_pct": float(cfg.get("st_limit_pct", 0.05)),
+        "new_stock_no_limit_days": int(cfg.get("new_stock_no_limit_days", 5)),
         "limit_up_down_pct": {
             "default": float(limit_cfg.get("default", 0.10)),
             "star": float(limit_cfg.get("star", 0.20)),
@@ -27,7 +35,30 @@ def execution_settings(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def limit_pct(symbol: str, execution_cfg: dict[str, Any]) -> float:
+def looks_like_st(name: Any) -> bool:
+    text = str(name or "").upper()
+    return "ST" in text or "退" in text
+
+
+def is_new_stock_no_limit(row: pd.Series, execution_cfg: dict[str, Any]) -> bool:
+    if not bool(execution_cfg.get("enable_special_limit_rules", True)):
+        return False
+    limit_days = int(execution_cfg.get("new_stock_no_limit_days", 0) or 0)
+    if limit_days <= 0:
+        return False
+    trade_date = pd.to_datetime(row.get("date", ""), errors="coerce")
+    list_date = pd.to_datetime(row.get("list_date", ""), errors="coerce")
+    if pd.isna(trade_date) or pd.isna(list_date):
+        return False
+    age_days = int((trade_date.normalize() - list_date.normalize()).days)
+    return 0 <= age_days < limit_days
+
+
+def limit_pct(symbol: str, execution_cfg: dict[str, Any], row: pd.Series | None = None) -> float:
+    if bool(execution_cfg.get("enable_special_limit_rules", True)) and row is not None:
+        name = row.get("stock_name", row.get("name", ""))
+        if looks_like_st(name):
+            return float(execution_cfg.get("st_limit_pct", 0.05))
     limits = execution_cfg.get("limit_up_down_pct", {})
     code = str(symbol).split(".")[-1]
     market = str(symbol).split(".")[0]
@@ -46,17 +77,86 @@ def lot_floor(quantity: float, lot_size: int) -> int:
     return max(0, int(np.floor(quantity / lot_size) * lot_size))
 
 
+def calc_trade_cost(
+    gross: float,
+    action: str,
+    *,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    execution_cfg: dict[str, Any],
+) -> float:
+    amount = max(0.0, float(gross))
+    if amount <= 0:
+        return 0.0
+    slippage_cost = amount * float(slippage)
+    commission_cost = amount * float(commission)
+    min_commission = float(execution_cfg.get("min_commission", 0.0) or 0.0)
+    if min_commission > 0 and float(commission) > 0:
+        commission_cost = max(commission_cost, min_commission)
+    transfer_fee = amount * float(execution_cfg.get("transfer_fee_rate", 0.0) or 0.0)
+    stamp = amount * float(stamp_duty_sell) if action == "卖" else 0.0
+    return float(slippage_cost + commission_cost + transfer_fee + stamp)
+
+
+def affordable_buy_qty(
+    *,
+    cash: float,
+    price: float,
+    target_qty: int,
+    lot_size: int,
+    slippage: float,
+    commission: float,
+    stamp_duty_sell: float,
+    execution_cfg: dict[str, Any],
+) -> int:
+    qty = min(int(target_qty), lot_floor(float(cash) / float(price), lot_size))
+    step = max(int(lot_size), 1)
+    while qty > 0:
+        gross = qty * float(price)
+        cost = calc_trade_cost(
+            gross,
+            "买",
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+            execution_cfg=execution_cfg,
+        )
+        if gross + cost <= float(cash) + 1e-9:
+            return int(qty)
+        qty = lot_floor(qty - step, lot_size)
+    return 0
+
+
+def reason_counts(records_for_date: list[dict[str, Any]]) -> str:
+    counts: dict[str, int] = {}
+    for record in records_for_date:
+        reason = str(record.get("unfilled_reason", "") or "")
+        if not reason:
+            continue
+        for item in reason.split("；"):
+            key = item.strip() or "unknown"
+            counts[key] = counts.get(key, 0) + 1
+    return json.dumps(counts, ensure_ascii=False, sort_keys=True)
+
+
 def prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFrame, execution_cfg: dict[str, Any]) -> pd.DataFrame:
     sf = signal_frame.copy()
     sf["date"] = pd.to_datetime(sf["date"])
     sf["symbol"] = sf["symbol"].astype(str)
 
-    cols = [col for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount", "execution_adjust_type"] if col in price_frame.columns]
+    cols = [
+        col
+        for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount", "execution_adjust_type", "name", "stock_name", "list_date"]
+        if col in price_frame.columns and (col in {"date", "symbol"} or col not in sf.columns)
+    ]
     prices = price_frame[cols].copy()
     prices["date"] = pd.to_datetime(prices["date"])
     prices["symbol"] = prices["symbol"].astype(str)
     if "execution_adjust_type" not in prices.columns:
         prices["execution_adjust_type"] = "unknown"
+    if "list_date" not in sf.columns and "list_date" not in prices.columns:
+        sf["list_date"] = ""
     for col in ["open", "high", "low", "close", "volume", "amount"]:
         if col not in prices.columns:
             prices[col] = np.nan
@@ -132,8 +232,14 @@ def trade_block_reasons(row: pd.Series, action: str, execution_cfg: dict[str, An
         if pd.notna(amount) and amount <= 0:
             reasons.append("停牌/成交额为0")
     previous_close = row.get("previous_close")
-    if bool(execution_cfg.get("enable_limit_check", True)) and pd.notna(previous_close) and float(previous_close) > 0 and pd.notna(open_price):
-        limit = limit_pct(str(row.get("symbol", "")), execution_cfg)
+    if (
+        bool(execution_cfg.get("enable_limit_check", True))
+        and not is_new_stock_no_limit(row, execution_cfg)
+        and pd.notna(previous_close)
+        and float(previous_close) > 0
+        and pd.notna(open_price)
+    ):
+        limit = limit_pct(str(row.get("symbol", "")), execution_cfg, row)
         limit_up = float(previous_close) * (1.0 + limit)
         limit_down = float(previous_close) * (1.0 - limit)
         tolerance = 0.001
@@ -210,7 +316,9 @@ def ledger_for_fold(
         return pd.DataFrame(), pd.DataFrame()
     sf = prepare_execution_frame(signal_frame, price_frame, execution_cfg)
     sf = sf.sort_values(["date", "symbol"]).reset_index(drop=True)
-    sf["stock_name"] = sf["symbol"].map(names).fillna("")
+    mapped_names = sf["symbol"].map(names)
+    source_names = sf["stock_name"] if "stock_name" in sf.columns else sf.get("name", "")
+    sf["stock_name"] = mapped_names.where(mapped_names.notna() & (mapped_names.astype(str) != ""), source_names).fillna("")
     for col in ["score", "rank"]:
         if col not in sf.columns:
             sf[col] = np.nan
@@ -265,6 +373,7 @@ def ledger_for_fold(
 
     cash = float(initial_cash)
     positions: dict[str, int] = {}
+    available_positions: dict[str, int] = {}
     previous_total_assets = float(initial_cash)
     daily_rows: list[dict[str, Any]] = []
     trade_rows: list[dict[str, Any]] = []
@@ -365,6 +474,13 @@ def ledger_for_fold(
                 target_qty = lot_floor(value_to_sell / price, lot_size)
             target_qty = max(0, min(held_qty, target_qty))
             block_reasons = trade_block_reasons(row, "卖", execution_cfg)
+            if bool(execution_cfg.get("enable_t_plus_one", True)):
+                sellable_qty = int(available_positions.get(symbol, 0))
+                target_qty = min(target_qty, sellable_qty)
+                if sellable_qty <= 0:
+                    block_reasons.append("T+1可卖库存不足")
+            if float(execution_cfg.get("min_trade_amount", 0.0) or 0.0) > 0 and target_qty * price < float(execution_cfg.get("min_trade_amount", 0.0)):
+                block_reasons.append("低于最小成交金额")
             market_qty = max_market_qty(row)
             qty = 0 if block_reasons else min(target_qty, market_qty)
             qty = max(0, min(held_qty, qty))
@@ -391,9 +507,17 @@ def ledger_for_fold(
                 )
                 continue
             gross = qty * price
-            cost = gross * (slippage + commission + stamp_duty_sell)
+            cost = calc_trade_cost(
+                gross,
+                "卖",
+                slippage=slippage,
+                commission=commission,
+                stamp_duty_sell=stamp_duty_sell,
+                execution_cfg=execution_cfg,
+            )
             cash += gross - cost
             positions[symbol] = held_qty - qty
+            available_positions[symbol] = max(0, int(available_positions.get(symbol, 0)) - int(qty))
             if positions[symbol] <= 0:
                 positions.pop(symbol, None)
             sell_amount += gross
@@ -457,17 +581,29 @@ def ledger_for_fold(
                     income_type="",
                 )
                 continue
-            buy_rate = slippage + commission
-            max_affordable_qty = lot_floor(cash / (price * (1.0 + buy_rate)), lot_size)
-            target_qty = lot_floor(value_to_buy / (price * (1.0 + buy_rate)), lot_size)
+            target_qty = lot_floor(value_to_buy / price, lot_size)
             block_reasons = trade_block_reasons(row, "买", execution_cfg)
+            if float(execution_cfg.get("min_trade_amount", 0.0) or 0.0) > 0 and target_qty * price < float(execution_cfg.get("min_trade_amount", 0.0)):
+                block_reasons.append("低于最小成交金额")
             market_qty = max_market_qty(row)
+            max_affordable_qty = affordable_buy_qty(
+                cash=cash,
+                price=price,
+                target_qty=target_qty,
+                lot_size=lot_size,
+                slippage=slippage,
+                commission=commission,
+                stamp_duty_sell=stamp_duty_sell,
+                execution_cfg=execution_cfg,
+            )
             qty = 0 if block_reasons else min(max_affordable_qty, target_qty, market_qty)
             qty = max(0, qty)
             if qty <= 0:
                 reasons = list(block_reasons)
                 if target_qty <= 0:
                     reasons.append("目标金额低于一手")
+                if target_qty > 0 and target_qty * price < float(execution_cfg.get("min_trade_amount", 0.0) or 0.0):
+                    reasons.append("低于最小成交金额")
                 if max_affordable_qty <= 0:
                     reasons.append("现金不足一手")
                 if market_qty <= 0:
@@ -493,7 +629,14 @@ def ledger_for_fold(
                 )
                 continue
             gross = qty * price
-            cost = gross * buy_rate
+            cost = calc_trade_cost(
+                gross,
+                "买",
+                slippage=slippage,
+                commission=commission,
+                stamp_duty_sell=stamp_duty_sell,
+                execution_cfg=execution_cfg,
+            )
             cash -= gross + cost
             positions[symbol] = int(positions.get(symbol, 0)) + qty
             buy_amount += gross
@@ -563,12 +706,14 @@ def ledger_for_fold(
                 "profit_rate": profit_rate,
                 "unfilled_orders": unfilled_orders,
                 "stale_valuation_positions": stale_valuation_positions,
+                "block_reason_counts": reason_counts(records_for_date),
             }
         )
         for symbol, price in valuation_by_symbol.items():
             if pd.notna(price) and float(price) > 0:
                 last_valuation_prices[str(symbol)] = float(price)
         previous_total_assets = account_total_assets
+        available_positions = dict(positions)
 
     daily = pd.DataFrame(daily_rows).sort_values("date") if daily_rows else pd.DataFrame()
     trades = pd.DataFrame(trade_rows)
