@@ -5,11 +5,12 @@ from pathlib import Path
 
 import pandas as pd
 
+from phase0.config import load_config
 from phase0.data_access.local_history import configure_local_history, load_snapshot_from_local_history_as_of
 from phase0.execution.accounts import SimulatedAccountConfig, run_signal_account_execution
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints
-from phase0.walk_forward import _signal_trace_summary
+from phase0.walk_forward import _build_account_execution_config, _merge_signal_metadata, _signal_trace_summary
 
 
 def _sample_output() -> StrategyOutput:
@@ -445,3 +446,49 @@ def test_signal_account_execution_uses_st_limit_rule() -> None:
     assert result.metrics["account_executed_order_count"] == 0
     assert result.metrics["account_unfilled_order_count"] == 1
     assert "涨停不可买" in result.metrics["account_block_reason_counts"]
+
+
+def test_default_walk_forward_account_execution_uses_live_like_rules() -> None:
+    phase0_cfg = load_config(Path("config.yaml"))
+    wcfg = phase0_cfg["walk_forward"]
+    strategy_cfg = wcfg["strategy_v2"]
+
+    account = _build_account_execution_config(phase0_cfg, wcfg, strategy_cfg)
+
+    assert account is not None
+    assert account.execution_price_mode == "next_open"
+    assert account.lot_size == 100
+    assert account.max_participation_rate == 0.05
+    assert account.min_commission == 5.0
+    assert account.transfer_fee_rate == 0.00001
+    assert account.min_trade_amount == 1000.0
+    assert account.enable_t_plus_one is True
+    assert account.enable_limit_check is True
+    assert account.enable_suspension_check is True
+    assert account.enable_special_limit_rules is True
+    assert account.st_limit_pct == 0.05
+    assert account.new_stock_no_limit_days == 5
+
+
+def test_signal_metadata_merges_list_date_for_execution_rules() -> None:
+    signal = pd.DataFrame([{"date": "2024-01-03", "symbol": "AAA", "weight": 1.0}])
+    panel = pd.DataFrame(
+        [
+            {
+                "date": "2024-01-03",
+                "symbol": "AAA",
+                "name": "Alpha",
+                "industry": "tech",
+                "list_date": "2024-01-02",
+                "open": 10.0,
+                "close": 10.5,
+                "volume": 1000000,
+                "amount": 10500000.0,
+            }
+        ]
+    )
+
+    out = _merge_signal_metadata(signal, panel)
+
+    assert out.iloc[0]["list_date"] == "2024-01-02"
+    assert out.iloc[0]["open"] == 10.0

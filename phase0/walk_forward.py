@@ -1729,7 +1729,7 @@ def _merge_signal_metadata(signal_frame: pd.DataFrame, panel: pd.DataFrame) -> p
     signal = signal_frame.copy()
     signal["symbol"] = signal["symbol"].astype(str)
     price_cols = ["open", "high", "low", "close", "volume", "amount", "previous_close"]
-    merge_cols = ["industry", "name"]
+    merge_cols = ["industry", "name", "list_date"]
     if "date" in signal.columns and "date" in panel.columns:
         merge_cols.extend(price_cols)
     meta_cols = [col for col in ["date", "symbol", *merge_cols] if col in panel.columns]
@@ -1750,7 +1750,7 @@ def _merge_signal_metadata(signal_frame: pd.DataFrame, panel: pd.DataFrame) -> p
         return signal
 
     merged = signal.merge(meta.rename(columns={col: f"__meta_{col}" for col in meta.columns if col not in join_cols}), on=join_cols, how="left")
-    for col in ["industry", "name", *price_cols]:
+    for col in ["industry", "name", "list_date", *price_cols]:
         meta_col = f"__meta_{col}"
         if meta_col not in merged.columns:
             continue

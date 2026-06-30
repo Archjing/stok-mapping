@@ -427,13 +427,20 @@ phase0:
           max_industry_weight: 0.35
           unknown_industry_policy: "allow"
       account_execution:
-        enabled: false
+        enabled: true
         initial_cash: 1000000
         execution_price_mode: "next_open"
         lot_size: 100
         max_participation_rate: 0.05
+        min_commission: 5.0
+        transfer_fee_rate: 0.00001
+        min_trade_amount: 1000.0
+        enable_t_plus_one: true
         enable_limit_check: true
         enable_suspension_check: true
+        enable_special_limit_rules: true
+        st_limit_pct: 0.05
+        new_stock_no_limit_days: 5
       top_n: 3
       mom_windows: [3, 5, 10, 20]
       mom_quantiles: [0.5, 0.6]
