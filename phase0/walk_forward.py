@@ -1841,15 +1841,22 @@ def _build_account_execution_config(
         commission=float(cfg.get("commission", wcfg.get("commission", 0.0))),
         stamp_duty_sell=float(cfg.get("stamp_duty_sell", wcfg.get("stamp_duty_sell", 0.0))),
         slippage=float(cfg.get("slippage", wcfg.get("slippage", 0.0))),
+        min_commission=float(cfg.get("min_commission", execution_cfg.get("min_commission", 0.0))),
+        transfer_fee_rate=float(cfg.get("transfer_fee_rate", execution_cfg.get("transfer_fee_rate", 0.0))),
+        min_trade_amount=float(cfg.get("min_trade_amount", execution_cfg.get("min_trade_amount", 0.0))),
         conservative_price_buffer=float(cfg.get("conservative_price_buffer", execution_cfg.get("conservative_price_buffer", 0.001))),
         enable_limit_check=bool(cfg.get("enable_limit_check", execution_cfg.get("enable_limit_check", True))),
         enable_suspension_check=bool(cfg.get("enable_suspension_check", execution_cfg.get("enable_suspension_check", True))),
+        enable_t_plus_one=bool(cfg.get("enable_t_plus_one", execution_cfg.get("enable_t_plus_one", True))),
+        enable_special_limit_rules=bool(cfg.get("enable_special_limit_rules", execution_cfg.get("enable_special_limit_rules", True))),
         limit_up_down_pct={
             "default": float(execution_cfg.get("limit_up_down_pct", {}).get("default", 0.10)),
             "star": float(execution_cfg.get("limit_up_down_pct", {}).get("star", 0.20)),
             "chinext": float(execution_cfg.get("limit_up_down_pct", {}).get("chinext", 0.20)),
             "bj": float(execution_cfg.get("limit_up_down_pct", {}).get("bj", 0.30)),
         },
+        st_limit_pct=float(cfg.get("st_limit_pct", execution_cfg.get("st_limit_pct", 0.05))),
+        new_stock_no_limit_days=int(cfg.get("new_stock_no_limit_days", execution_cfg.get("new_stock_no_limit_days", 5))),
     )
 
 

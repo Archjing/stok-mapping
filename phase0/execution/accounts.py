@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import re
 import sqlite3
@@ -28,6 +29,7 @@ class SimulatedAccountConfig:
     initial_cash: float
     ledger_path: Path
     database_path: Path
+    simulation_start_date: str = ""
     enabled: bool = True
     execution_price_mode: str = "next_open"
     max_participation_rate: float = 0.05
@@ -35,10 +37,17 @@ class SimulatedAccountConfig:
     commission: float = 0.0
     stamp_duty_sell: float = 0.0
     slippage: float = 0.0
+    min_commission: float = 0.0
+    transfer_fee_rate: float = 0.0
+    min_trade_amount: float = 0.0
     conservative_price_buffer: float = 0.001
     enable_limit_check: bool = True
     enable_suspension_check: bool = True
+    enable_t_plus_one: bool = True
+    enable_special_limit_rules: bool = True
     limit_up_down_pct: dict[str, float] | None = None
+    st_limit_pct: float = 0.05
+    new_stock_no_limit_days: int = 5
 
 
 @dataclass(frozen=True)
@@ -82,6 +91,7 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
                 initial_cash=float(raw.get("initial_cash", walk_forward.get("initial_cash", 1_000_000))),
                 ledger_path=ledger_path,
                 database_path=database_path,
+                simulation_start_date=str(raw.get("simulation_start_date", raw.get("start_date", "")) or ""),
                 enabled=True,
                 execution_price_mode=str(raw.get("execution_price_mode", execution.get("price_mode", "next_open"))),
                 max_participation_rate=float(raw.get("max_participation_rate", execution.get("max_participation_rate", 0.05))),
@@ -89,15 +99,22 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
                 commission=float(raw.get("commission", walk_forward.get("commission", 0.0))),
                 stamp_duty_sell=float(raw.get("stamp_duty_sell", walk_forward.get("stamp_duty_sell", 0.0))),
                 slippage=float(raw.get("slippage", walk_forward.get("slippage", 0.0))),
+                min_commission=float(raw.get("min_commission", execution.get("min_commission", 0.0))),
+                transfer_fee_rate=float(raw.get("transfer_fee_rate", execution.get("transfer_fee_rate", 0.0))),
+                min_trade_amount=float(raw.get("min_trade_amount", execution.get("min_trade_amount", 0.0))),
                 conservative_price_buffer=float(raw.get("conservative_price_buffer", execution.get("conservative_price_buffer", 0.001))),
                 enable_limit_check=bool(raw.get("enable_limit_check", execution.get("enable_limit_check", True))),
                 enable_suspension_check=bool(raw.get("enable_suspension_check", execution.get("enable_suspension_check", True))),
+                enable_t_plus_one=bool(raw.get("enable_t_plus_one", execution.get("enable_t_plus_one", True))),
+                enable_special_limit_rules=bool(raw.get("enable_special_limit_rules", execution.get("enable_special_limit_rules", True))),
                 limit_up_down_pct={
                     "default": float(limit_cfg.get("default", 0.10)),
                     "star": float(limit_cfg.get("star", 0.20)),
                     "chinext": float(limit_cfg.get("chinext", 0.20)),
                     "bj": float(limit_cfg.get("bj", 0.30)),
                 },
+                st_limit_pct=float(raw.get("st_limit_pct", execution.get("st_limit_pct", 0.05))),
+                new_stock_no_limit_days=int(raw.get("new_stock_no_limit_days", execution.get("new_stock_no_limit_days", 5))),
             )
         )
     return accounts
@@ -151,7 +168,24 @@ def _resolve_path(root: Path, value: Any) -> Path:
     return path if path.is_absolute() else root / path
 
 
-def _limit_pct(symbol: str, account: SimulatedAccountConfig) -> float:
+def _looks_like_st(name: Any) -> bool:
+    text = str(name or "").upper()
+    return "ST" in text or "退" in text
+
+
+def _is_new_stock_no_limit(price_row: dict[str, Any], account: SimulatedAccountConfig) -> bool:
+    if not account.enable_special_limit_rules or account.new_stock_no_limit_days <= 0:
+        return False
+    trade_date = pd.to_datetime(price_row.get("date", ""), errors="coerce")
+    list_date = pd.to_datetime(price_row.get("list_date", ""), errors="coerce")
+    if pd.isna(trade_date) or pd.isna(list_date):
+        return False
+    return 0 <= int((trade_date.normalize() - list_date.normalize()).days) < int(account.new_stock_no_limit_days)
+
+
+def _limit_pct(symbol: str, account: SimulatedAccountConfig, price_row: dict[str, Any] | None = None) -> float:
+    if account.enable_special_limit_rules and price_row and _looks_like_st(price_row.get("name", "")):
+        return float(account.st_limit_pct)
     limits = account.limit_up_down_pct or {}
     code = str(symbol).split(".")[-1]
     market = str(symbol).split(".")[0]
@@ -164,13 +198,37 @@ def _limit_pct(symbol: str, account: SimulatedAccountConfig) -> float:
     return float(limits.get("default", 0.10))
 
 
+def _trade_cost(trade_amount: float, side: str, account: SimulatedAccountConfig) -> float:
+    amount = max(0.0, float(trade_amount))
+    if amount <= 0:
+        return 0.0
+    slippage_cost = amount * float(account.slippage)
+    commission_cost = amount * float(account.commission)
+    if account.min_commission > 0 and account.commission > 0:
+        commission_cost = max(commission_cost, float(account.min_commission))
+    transfer_fee = amount * float(account.transfer_fee_rate)
+    stamp = amount * float(account.stamp_duty_sell) if side == "sell" else 0.0
+    return float(slippage_cost + commission_cost + transfer_fee + stamp)
+
+
+def _affordable_buy_shares(*, cash_asset: float, price: float, requested_shares: float, account: SimulatedAccountConfig) -> float:
+    shares = min(float(requested_shares), round_lot_floor(float(cash_asset) / float(price), account.lot_size))
+    step = max(int(account.lot_size), 1)
+    while shares > 0:
+        amount = shares * float(price)
+        if amount + _trade_cost(amount, "buy", account) <= float(cash_asset) + 1e-9:
+            return float(shares)
+        shares = round_lot_floor(shares - step, account.lot_size)
+    return 0.0
+
+
 def _load_execution_prices(
     *,
     root: Path,
     local_history_cfg: dict[str, Any] | None,
     execution_date: str,
     symbols: list[str],
-) -> dict[str, dict[str, float]]:
+) -> dict[str, dict[str, Any]]:
     if not symbols:
         return {}
     cfg = local_history_cfg or {}
@@ -180,8 +238,24 @@ def _load_execution_prices(
     daily_table = _safe_identifier(str(cfg.get("daily_table", "market_daily_bars")))
     market = str(cfg.get("market", "CN"))
     adjust_type = str(cfg.get("execution_adjust_type", "bfq"))
-    placeholders = ",".join("?" for _ in symbols)
-    query = f"""
+    meta_table = _safe_identifier(str(cfg.get("meta_table", "market_stocks")))
+    try:
+        with sqlite3.connect(db_path) as conn:
+            meta_cols = {str(row[1]) for row in conn.execute(f"PRAGMA table_info({meta_table})").fetchall()}
+            can_join_meta = {"market", "symbol"}.issubset(meta_cols)
+            meta_join = (
+                f"""
+        LEFT JOIN {meta_table} s
+          ON s.market = b.market
+         AND s.symbol = b.symbol
+                """
+                if can_join_meta
+                else ""
+            )
+            name_expr = "s.name" if can_join_meta and "name" in meta_cols else "''"
+            list_date_expr = "s.list_date" if can_join_meta and "list_date" in meta_cols else "''"
+            placeholders = ",".join("?" for _ in symbols)
+            query = f"""
         SELECT b.symbol, b.open, b.high, b.low, b.close, b.volume, b.amount,
                (
                    SELECT p.close
@@ -192,21 +266,24 @@ def _load_execution_prices(
                      AND p.date < b.date
                    ORDER BY p.date DESC
                    LIMIT 1
-               ) AS previous_close
+               ) AS previous_close,
+               {name_expr} AS name,
+               {list_date_expr} AS list_date
         FROM {daily_table} b
+        {meta_join}
         WHERE b.market = ?
           AND b.adjust_type = ?
           AND b.date = ?
           AND b.symbol IN ({placeholders})
     """
-    try:
-        with sqlite3.connect(db_path) as conn:
             rows = conn.execute(query, (market, adjust_type, execution_date, *symbols)).fetchall()
     except (sqlite3.Error, ValueError):
         return {}
-    out: dict[str, dict[str, float]] = {}
-    for symbol, open_, high, low, close, volume, amount, previous_close in rows:
+    out: dict[str, dict[str, Any]] = {}
+    for symbol, open_, high, low, close, volume, amount, previous_close, name, list_date in rows:
         out[str(symbol)] = {
+            "symbol": str(symbol),
+            "date": str(execution_date),
             "open": float(open_) if open_ is not None else np.nan,
             "high": float(high) if high is not None else np.nan,
             "low": float(low) if low is not None else np.nan,
@@ -214,6 +291,8 @@ def _load_execution_prices(
             "volume": float(volume) if volume is not None else np.nan,
             "amount": float(amount) if amount is not None else np.nan,
             "previous_close": float(previous_close) if previous_close is not None else np.nan,
+            "name": str(name or ""),
+            "list_date": str(list_date or ""),
         }
     return out
 
@@ -247,8 +326,14 @@ def _trade_block_reasons(price_row: dict[str, float], side: str, account: Simula
             reasons.append("停牌/成交额为0")
     previous_close = float(price_row.get("previous_close", np.nan))
     check_price = close_price if account.execution_price_mode == "close" else open_price
-    if account.enable_limit_check and pd.notna(previous_close) and previous_close > 0 and pd.notna(check_price):
-        limit_pct = _limit_pct(str(price_row.get("symbol", "")), account)
+    if (
+        account.enable_limit_check
+        and not _is_new_stock_no_limit(price_row, account)
+        and pd.notna(previous_close)
+        and previous_close > 0
+        and pd.notna(check_price)
+    ):
+        limit_pct = _limit_pct(str(price_row.get("symbol", "")), account, price_row)
         limit_up = previous_close * (1.0 + limit_pct)
         limit_down = previous_close * (1.0 - limit_pct)
         tolerance = 0.001
@@ -259,8 +344,21 @@ def _trade_block_reasons(price_row: dict[str, float], side: str, account: Simula
     return reasons
 
 
+def _order_block_reason_counts(reasons: list[str]) -> str:
+    counts: dict[str, int] = {}
+    for reason in reasons:
+        key = str(reason or "unknown")
+        counts[key] = counts.get(key, 0) + 1
+    return json.dumps(counts, ensure_ascii=False, sort_keys=True)
+
+
 def watchlist_to_account_frame(watchlist: pd.DataFrame, brief_date: str) -> pd.DataFrame:
     if watchlist.empty:
+        return pd.DataFrame(columns=["brief_date", "signal_date", "symbol", "name", "signal_close", "target_weight", "weight_change"])
+    target_weight_col = "模拟账户目标权重" if "模拟账户目标权重" in watchlist.columns else "目标权重"
+    weight_change_col = "模拟账户权重变化" if "模拟账户权重变化" in watchlist.columns else "权重变化"
+    required = {"股票代码", "股票名称", "收盘价", target_weight_col, weight_change_col}
+    if not required.issubset(watchlist.columns):
         return pd.DataFrame(columns=["brief_date", "signal_date", "symbol", "name", "signal_close", "target_weight", "weight_change"])
     if "信号日期" in watchlist.columns:
         signal_dates = watchlist["信号日期"].astype(str)
@@ -273,26 +371,39 @@ def watchlist_to_account_frame(watchlist: pd.DataFrame, brief_date: str) -> pd.D
             "symbol": watchlist["股票代码"].astype(str),
             "name": watchlist["股票名称"].astype(str),
             "signal_close": pd.to_numeric(watchlist["收盘价"], errors="coerce"),
-            "target_weight": watchlist["目标权重"].map(parse_percent),
-            "weight_change": watchlist["权重变化"].map(parse_percent),
+            "target_weight": watchlist[target_weight_col].map(parse_percent),
+            "weight_change": watchlist[weight_change_col].map(parse_percent),
         }
     )
 
 
-def collect_watchlist_frames(root: Path, current_watchlist: pd.DataFrame, current_brief_date: str) -> dict[str, pd.DataFrame]:
+def _has_account_weight_columns(df: pd.DataFrame) -> bool:
+    target_col = "模拟账户目标权重" if "模拟账户目标权重" in df.columns else "目标权重"
+    change_col = "模拟账户权重变化" if "模拟账户权重变化" in df.columns else "权重变化"
+    return {"股票代码", "股票名称", "收盘价", target_col, change_col}.issubset(df.columns)
+
+
+def collect_watchlist_frames(
+    root: Path,
+    current_watchlist: pd.DataFrame,
+    current_brief_date: str,
+    *,
+    simulation_start_date: str = "",
+) -> dict[str, pd.DataFrame]:
     frames: dict[str, pd.DataFrame] = {}
     report_root = root / "reports"
     if report_root.exists():
         for path in sorted(report_root.glob("????-??-??/phase0_premarket_watchlist*.csv")):
             brief_date = path.parent.name
+            if simulation_start_date and brief_date < simulation_start_date:
+                continue
             if brief_date > current_brief_date or brief_date in frames:
                 continue
             try:
                 df = pd.read_csv(path, encoding="utf-8-sig")
             except Exception:
                 continue
-            required = {"股票代码", "股票名称", "收盘价", "目标权重", "权重变化"}
-            if required.issubset(df.columns):
+            if _has_account_weight_columns(df):
                 frames[brief_date] = watchlist_to_account_frame(df, brief_date)
     frames[current_brief_date] = watchlist_to_account_frame(current_watchlist, current_brief_date)
     return dict(sorted(frames.items()))
@@ -306,7 +417,12 @@ def build_account_ledger(
     account: SimulatedAccountConfig,
     local_history_cfg: dict[str, Any] | None = None,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
-    frames = collect_watchlist_frames(root, current_watchlist, current_brief_date)
+    frames = collect_watchlist_frames(
+        root,
+        current_watchlist,
+        current_brief_date,
+        simulation_start_date=account.simulation_start_date,
+    )
     if not frames:
         return pd.DataFrame(), {}
 
@@ -317,6 +433,7 @@ def build_account_ledger(
     trade_rows: list[dict[str, Any]] = []
     position_rows: list[dict[str, Any]] = []
     start_date = next(iter(frames.keys()))
+    available_shares: dict[str, float] = {}
 
     for brief_date, frame in frames.items():
         required_symbols = set(previous_positions) | set(frame["symbol"].astype(str))
@@ -366,6 +483,9 @@ def build_account_ledger(
         cash_asset = previous_cash_asset
         estimated_trade_amount = 0.0
         estimated_volume = 0.0
+        day_unfilled_orders = 0
+        day_partial_fill_orders = 0
+        day_block_reasons: list[str] = []
 
         def planned_side(symbol: str) -> str:
             shares = float(post_trade_positions.get(symbol, (0.0, np.nan, ""))[0])
@@ -396,39 +516,59 @@ def build_account_ledger(
                 current_value = current_shares * float(close_price)
                 target_trade_amount = abs(target_value - current_value)
                 raw_shares = target_trade_amount / float(price)
-                shares = round_lot_floor(raw_shares, account.lot_size)
+                requested_shares = round_lot_floor(raw_shares, account.lot_size)
+                shares = requested_shares
                 if shares <= 0:
                     continue
                 trade_amount = shares * float(price)
                 block_reasons = _trade_block_reasons(price_row, side, account)
+                if account.min_trade_amount > 0 and trade_amount < account.min_trade_amount:
+                    block_reasons.append("低于最小成交金额")
+                if side == "sell" and account.enable_t_plus_one:
+                    sellable = float(available_shares.get(symbol, 0.0))
+                    shares = min(shares, sellable)
+                    trade_amount = shares * float(price)
+                    if sellable <= 0:
+                        block_reasons.append("T+1可卖库存不足")
                 volume = float(price_row.get("volume", np.nan))
                 if pd.notna(volume) and account.max_participation_rate > 0:
                     market_shares = round_lot_floor(volume * account.max_participation_rate, account.lot_size)
                     shares = min(shares, market_shares)
                     trade_amount = shares * float(price)
                 if block_reasons or shares <= 0:
+                    day_unfilled_orders += 1
+                    day_block_reasons.extend(block_reasons or ["成交股数为0"])
                     continue
                 if side == "buy":
-                    buy_rate = account.slippage + account.commission
-                    affordable_shares = round_lot_floor(cash_asset / (float(price) * (1.0 + buy_rate)), account.lot_size)
-                    shares = min(shares, affordable_shares)
+                    shares = _affordable_buy_shares(
+                        cash_asset=cash_asset,
+                        price=float(price),
+                        requested_shares=shares,
+                        account=account,
+                    )
                     trade_amount = shares * float(price)
-                    if affordable_shares <= 0:
+                    if shares <= 0:
+                        day_unfilled_orders += 1
+                        day_block_reasons.append("现金不足")
                         continue
                 if side == "sell":
                     shares = min(shares, current_shares)
                     trade_amount = shares * float(price)
                     if shares <= 0:
+                        day_unfilled_orders += 1
+                        day_block_reasons.append("可卖持仓不足")
                         continue
+                if shares < requested_shares - 1e-12:
+                    day_partial_fill_orders += 1
                 lots = shares / float(account.lot_size) if account.lot_size else np.nan
+                trade_cost = _trade_cost(trade_amount, side, account)
                 if side == "buy":
-                    trade_cost = trade_amount * (account.slippage + account.commission)
                     cash_asset -= trade_amount + trade_cost
                     new_shares = current_shares + shares
                 else:
-                    trade_cost = trade_amount * (account.slippage + account.commission + account.stamp_duty_sell)
                     cash_asset += trade_amount - trade_cost
                     new_shares = current_shares - shares
+                    available_shares[symbol] = max(0.0, float(available_shares.get(symbol, 0.0)) - float(shares))
                 if new_shares > 1e-12:
                     post_trade_positions[symbol] = (
                         new_shares,
@@ -457,6 +597,8 @@ def build_account_ledger(
                         "lot_size": account.lot_size,
                         "raw_shares": raw_shares,
                         "rounding_rule": "floor_to_lot_size",
+                        "trade_status": "部分成交" if shares < requested_shares - 1e-12 else "全部成交",
+                        "block_reasons": "",
                         "weight_before": current_weight,
                         "weight_after": target_weight,
                         "weight_change": weight_change,
@@ -484,6 +626,9 @@ def build_account_ledger(
                 "estimated_volume": estimated_volume,
                 "execution_price_mode": account.execution_price_mode,
                 "max_participation_rate": account.max_participation_rate,
+                "unfilled_orders": int(day_unfilled_orders),
+                "partial_fill_orders": int(day_partial_fill_orders),
+                "block_reason_counts": _order_block_reason_counts(day_block_reasons),
                 "confirmed": 1,
             }
         )
@@ -508,6 +653,7 @@ def build_account_ledger(
         previous_total_asset = total_asset
         previous_cash_asset = cash_asset
         previous_positions = post_trade_positions
+        available_shares = {symbol: float(shares) for symbol, (shares, _close, _name) in post_trade_positions.items()}
 
     ledger = pd.DataFrame(rows)
     account.ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -540,6 +686,8 @@ def run_signal_account_execution(
     position_rows: list[dict[str, Any]] = []
     unfilled_orders_total = 0
     partial_fill_orders_total = 0
+    block_reasons_total: list[str] = []
+    available_shares: dict[str, float] = {}
 
     for date_value, frame in signal.groupby("date", sort=True):
         trade_date = str(pd.Timestamp(date_value).date())
@@ -587,6 +735,7 @@ def run_signal_account_execution(
         estimated_volume = 0.0
         day_unfilled_orders = 0
         day_partial_fill_orders = 0
+        day_block_reasons: list[str] = []
 
         def planned_side(symbol: str) -> str:
             current_shares = float(post_trade_positions.get(symbol, (0.0, np.nan, ""))[0])
@@ -625,6 +774,14 @@ def run_signal_account_execution(
                 continue
             trade_amount = shares * float(price)
             block_reasons = _trade_block_reasons(price_row, side, account)
+            if account.min_trade_amount > 0 and trade_amount < account.min_trade_amount:
+                block_reasons.append("低于最小成交金额")
+            if side == "sell" and account.enable_t_plus_one:
+                sellable = float(available_shares.get(symbol, 0.0))
+                shares = min(shares, sellable)
+                trade_amount = shares * float(price)
+                if sellable <= 0:
+                    block_reasons.append("T+1可卖库存不足")
             volume = float(price_row.get("volume", np.nan))
             if pd.notna(volume) and account.max_participation_rate > 0:
                 market_shares = round_lot_floor(volume * account.max_participation_rate, account.lot_size)
@@ -633,15 +790,22 @@ def run_signal_account_execution(
             if block_reasons or shares <= 0:
                 day_unfilled_orders += 1
                 unfilled_orders_total += 1
+                day_block_reasons.extend(block_reasons or ["成交股数为0"])
+                block_reasons_total.extend(block_reasons or ["成交股数为0"])
                 continue
             if side == "buy":
-                buy_rate = account.slippage + account.commission
-                affordable_shares = round_lot_floor(cash_asset / (float(price) * (1.0 + buy_rate)), account.lot_size)
-                shares = min(shares, affordable_shares)
+                shares = _affordable_buy_shares(
+                    cash_asset=cash_asset,
+                    price=float(price),
+                    requested_shares=shares,
+                    account=account,
+                )
                 trade_amount = shares * float(price)
-                if affordable_shares <= 0 or shares <= 0:
+                if shares <= 0:
                     day_unfilled_orders += 1
                     unfilled_orders_total += 1
+                    day_block_reasons.append("现金不足")
+                    block_reasons_total.append("现金不足")
                     continue
             else:
                 shares = min(shares, current_shares)
@@ -649,20 +813,22 @@ def run_signal_account_execution(
                 if shares <= 0:
                     day_unfilled_orders += 1
                     unfilled_orders_total += 1
+                    day_block_reasons.append("可卖持仓不足")
+                    block_reasons_total.append("可卖持仓不足")
                     continue
             if shares < requested_shares - 1e-12:
                 day_partial_fill_orders += 1
                 partial_fill_orders_total += 1
 
             lots = shares / float(account.lot_size) if account.lot_size else np.nan
+            trade_cost = _trade_cost(trade_amount, side, account)
             if side == "buy":
-                trade_cost = trade_amount * (account.slippage + account.commission)
                 cash_asset -= trade_amount + trade_cost
                 new_shares = current_shares + shares
             else:
-                trade_cost = trade_amount * (account.slippage + account.commission + account.stamp_duty_sell)
                 cash_asset += trade_amount - trade_cost
                 new_shares = current_shares - shares
+                available_shares[symbol] = max(0.0, float(available_shares.get(symbol, 0.0)) - float(shares))
             if new_shares > 1e-12:
                 post_trade_positions[symbol] = (new_shares, close_price, names.get(symbol, ""))
             else:
@@ -684,6 +850,8 @@ def run_signal_account_execution(
                     "raw_shares": float(raw_shares),
                     "requested_shares": float(requested_shares),
                     "is_partial": bool(shares < requested_shares - 1e-12),
+                    "trade_status": "部分成交" if shares < requested_shares - 1e-12 else "全部成交",
+                    "block_reasons": "",
                     "weight_before": float(current_weight),
                     "weight_after": float(target_weight),
                     "weight_change": float(weight_change),
@@ -711,6 +879,7 @@ def run_signal_account_execution(
                 "estimated_volume": float(estimated_volume),
                 "unfilled_orders": int(day_unfilled_orders),
                 "partial_fill_orders": int(day_partial_fill_orders),
+                "block_reason_counts": _order_block_reason_counts(day_block_reasons),
                 "stale_valuation_positions": int(stale_valuation_positions),
             }
         )
@@ -731,11 +900,13 @@ def run_signal_account_execution(
         previous_total_asset = total_asset
         previous_cash_asset = cash_asset
         previous_positions = post_trade_positions
+        available_shares = {symbol: float(shares) for symbol, (shares, _close, _name) in post_trade_positions.items()}
 
     daily = pd.DataFrame(daily_rows)
     trades = pd.DataFrame(trade_rows)
     positions = pd.DataFrame(position_rows)
     metrics = _signal_execution_metrics(daily, trades, unfilled_orders_total, partial_fill_orders_total)
+    metrics["account_block_reason_counts"] = _order_block_reason_counts(block_reasons_total)
     return SignalAccountExecutionResult(daily, trades, positions, metrics)
 
 
@@ -770,6 +941,7 @@ def _price_rows_from_signal_day(frame: pd.DataFrame) -> dict[str, dict[str, floa
             open_price = close
         out[symbol] = {
             "symbol": symbol,
+            "date": str(row.get("date", "")),
             "open": open_price,
             "high": float(row.get("high", np.nan)),
             "low": float(row.get("low", np.nan)),
@@ -778,6 +950,7 @@ def _price_rows_from_signal_day(frame: pd.DataFrame) -> dict[str, dict[str, floa
             "amount": float(row.get("amount", np.nan)),
             "previous_close": float(row.get("previous_close", np.nan)),
             "name": str(row.get("name", "")),
+            "list_date": str(row.get("list_date", "")),
         }
     return out
 
@@ -857,6 +1030,7 @@ def _empty_signal_execution_metrics() -> dict[str, Any]:
         "account_partial_fill_order_count": 0,
         "account_unfilled_or_partial_order_ratio": 0.0,
         "account_partial_fill_order_ratio": 0.0,
+        "account_block_reason_counts": "{}",
         "account_stale_valuation_positions_total": 0,
         "account_lot_size": 0,
     }
@@ -869,6 +1043,7 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
             account_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             initial_cash REAL NOT NULL,
+            simulation_start_date TEXT,
             enabled INTEGER NOT NULL,
             execution_price_mode TEXT NOT NULL,
             max_participation_rate REAL NOT NULL,
@@ -890,6 +1065,9 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
             estimated_volume REAL,
             execution_price_mode TEXT NOT NULL,
             max_participation_rate REAL NOT NULL,
+            unfilled_orders INTEGER NOT NULL DEFAULT 0,
+            partial_fill_orders INTEGER NOT NULL DEFAULT 0,
+            block_reason_counts TEXT,
             PRIMARY KEY (account_id, brief_date)
         );
 
@@ -910,6 +1088,8 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
             lot_size INTEGER NOT NULL,
             raw_shares REAL,
             rounding_rule TEXT,
+            trade_status TEXT,
+            block_reasons TEXT,
             weight_before REAL NOT NULL,
             weight_after REAL NOT NULL,
             weight_change REAL NOT NULL,
@@ -936,6 +1116,16 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
         str(row[1])
         for row in conn.execute("PRAGMA table_info(account_trades)").fetchall()
     }
+    existing_daily_cols = {
+        str(row[1])
+        for row in conn.execute("PRAGMA table_info(account_daily_assets)").fetchall()
+    }
+    existing_account_cols = {
+        str(row[1])
+        for row in conn.execute("PRAGMA table_info(simulated_accounts)").fetchall()
+    }
+    if "simulation_start_date" not in existing_account_cols:
+        conn.execute("ALTER TABLE simulated_accounts ADD COLUMN simulation_start_date TEXT")
     if "raw_shares" not in existing_trade_cols:
         conn.execute("ALTER TABLE account_trades ADD COLUMN raw_shares REAL")
     if "rounding_rule" not in existing_trade_cols:
@@ -946,6 +1136,16 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE account_trades ADD COLUMN signal_date TEXT")
     if "cost" not in existing_trade_cols:
         conn.execute("ALTER TABLE account_trades ADD COLUMN cost REAL DEFAULT 0")
+    if "trade_status" not in existing_trade_cols:
+        conn.execute("ALTER TABLE account_trades ADD COLUMN trade_status TEXT")
+    if "block_reasons" not in existing_trade_cols:
+        conn.execute("ALTER TABLE account_trades ADD COLUMN block_reasons TEXT")
+    if "unfilled_orders" not in existing_daily_cols:
+        conn.execute("ALTER TABLE account_daily_assets ADD COLUMN unfilled_orders INTEGER NOT NULL DEFAULT 0")
+    if "partial_fill_orders" not in existing_daily_cols:
+        conn.execute("ALTER TABLE account_daily_assets ADD COLUMN partial_fill_orders INTEGER NOT NULL DEFAULT 0")
+    if "block_reason_counts" not in existing_daily_cols:
+        conn.execute("ALTER TABLE account_daily_assets ADD COLUMN block_reason_counts TEXT")
 
 
 def write_account_database(
@@ -961,13 +1161,14 @@ def write_account_database(
         conn.execute(
             """
             INSERT OR REPLACE INTO simulated_accounts
-            (account_id, name, initial_cash, enabled, execution_price_mode, max_participation_rate, lot_size, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            (account_id, name, initial_cash, simulation_start_date, enabled, execution_price_mode, max_participation_rate, lot_size, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """,
             (
                 account.account_id,
                 account.name,
                 account.initial_cash,
+                account.simulation_start_date,
                 1 if account.enabled else 0,
                 account.execution_price_mode,
                 account.max_participation_rate,
@@ -982,8 +1183,9 @@ def write_account_database(
                 """
                 INSERT OR REPLACE INTO account_daily_assets
                 (account_id, brief_date, start_date, total_asset, stock_asset, cash_asset, daily_pnl, daily_return,
-                 target_exposure, estimated_trade_amount, estimated_volume, execution_price_mode, max_participation_rate)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 target_exposure, estimated_trade_amount, estimated_volume, execution_price_mode, max_participation_rate,
+                 unfilled_orders, partial_fill_orders, block_reason_counts)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 daily_assets[
                     [
@@ -1000,6 +1202,9 @@ def write_account_database(
                         "estimated_volume",
                         "execution_price_mode",
                         "max_participation_rate",
+                        "unfilled_orders",
+                        "partial_fill_orders",
+                        "block_reason_counts",
                     ]
                 ].itertuples(index=False, name=None),
             )
@@ -1008,8 +1213,8 @@ def write_account_database(
                 """
                 INSERT OR REPLACE INTO account_trades
                 (account_id, brief_date, signal_date, symbol, name, side, trade_time, price_mode, price, amount, cost, shares,
-                 lots, lot_size, raw_shares, rounding_rule, weight_before, weight_after, weight_change, is_estimated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 lots, lot_size, raw_shares, rounding_rule, trade_status, block_reasons, weight_before, weight_after, weight_change, is_estimated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 trades[
                     [
@@ -1029,6 +1234,8 @@ def write_account_database(
                         "lot_size",
                         "raw_shares",
                         "rounding_rule",
+                        "trade_status",
+                        "block_reasons",
                         "weight_before",
                         "weight_after",
                         "weight_change",

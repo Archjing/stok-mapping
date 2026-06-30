@@ -614,6 +614,7 @@ phase0:
         name: "默认模拟账户"
         enabled: true
         initial_cash: 1000000
+        simulation_start_date: "2026-06-30"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
         execution_price_mode: "next_open"
@@ -624,8 +625,15 @@ phase0:
     conservative_price_buffer: 0.001
     lot_size: 100
     max_participation_rate: 0.05
+    min_commission: 5.0
+    transfer_fee_rate: 0.00001
+    min_trade_amount: 1000.0
+    enable_t_plus_one: true
     enable_limit_check: true
     enable_suspension_check: true
+    enable_special_limit_rules: true
+    st_limit_pct: 0.05
+    new_stock_no_limit_days: 5
     limit_up_down_pct:
       default: 0.10
       star: 0.20
@@ -693,8 +701,13 @@ phase0:
           conservative_price_buffer: 0.001
           lot_size: 100
           max_participation_rate: 0.0
+          min_commission: 0.0
+          transfer_fee_rate: 0.0
+          min_trade_amount: 0.0
+          enable_t_plus_one: false
           enable_limit_check: false
           enable_suspension_check: false
+          enable_special_limit_rules: false
           limit_up_down_pct:
             default: 0.10
             star: 0.20
@@ -711,8 +724,15 @@ phase0:
           conservative_price_buffer: 0.001
           lot_size: 100
           max_participation_rate: 0.05
+          min_commission: 5.0
+          transfer_fee_rate: 0.00001
+          min_trade_amount: 1000.0
+          enable_t_plus_one: true
           enable_limit_check: true
           enable_suspension_check: true
+          enable_special_limit_rules: true
+          st_limit_pct: 0.05
+          new_stock_no_limit_days: 5
           limit_up_down_pct:
             default: 0.10
             star: 0.20

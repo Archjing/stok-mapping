@@ -12,6 +12,11 @@ def _silent_console() -> SimpleNamespace:
     return SimpleNamespace(print=lambda text: None)
 
 
+def _recording_console() -> tuple[SimpleNamespace, list[str]]:
+    lines: list[str] = []
+    return SimpleNamespace(print=lambda text: lines.append(str(text))), lines
+
+
 def _history_result(*, ok: bool = True, status: str = "updated", inserted_rows: int = 1) -> SimpleNamespace:
     return SimpleNamespace(
         ok=ok,
@@ -130,6 +135,7 @@ def test_update_history_handler_rebuilds_universe_when_configured(monkeypatch, t
 
 def test_update_financials_handler_forwards_periods_and_rebuilds_universe(monkeypatch, tmp_path: Path) -> None:
     calls: list[tuple[str, dict[str, object]]] = []
+    console, lines = _recording_console()
 
     def fake_load_config(path: Path) -> dict[str, object]:
         return {"financial_factors": {"rebuild_universe_after": True}}
@@ -165,10 +171,15 @@ def test_update_financials_handler_forwards_periods_and_rebuilds_universe(monkey
     exit_code = data_update_cli.handle_data_update_command(
         args,
         parser=argparse.ArgumentParser(),
-        console=_silent_console(),
+        console=console,
     )
 
     assert exit_code == 0
+    assert lines[:3] == [
+        "Financial factor update started",
+        f"Config: {tmp_path / 'config.yaml'}",
+        "Periods override: recent 16 quarters",
+    ]
     assert calls == [
         ("update_financials", {"cfg": {"financial_factors": {"rebuild_universe_after": True}}, "root": tmp_path, "periods": 16}),
         ("build_universe", {"cfg": {"financial_factors": {"rebuild_universe_after": True}}, "root": tmp_path}),

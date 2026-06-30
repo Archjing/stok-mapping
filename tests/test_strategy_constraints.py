@@ -312,3 +312,136 @@ def test_signal_account_execution_uses_next_day_target_and_lot_size() -> None:
     assert result.trades.iloc[0]["date"] == "2024-01-03"
     assert result.trades.iloc[0]["shares"] % 100 == 0
     assert result.daily_assets.iloc[0]["stock_asset"] == 0.0
+
+
+def test_signal_account_execution_applies_min_commission_and_transfer_fee() -> None:
+    signal = pd.DataFrame(
+        [
+            {"date": "2024-01-02", "symbol": "AAA", "weight_unshifted": 0.5, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+            {"date": "2024-01-03", "symbol": "AAA", "weight_unshifted": 0.5, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+        ]
+    )
+    account = SimulatedAccountConfig(
+        account_id="test",
+        name="test",
+        initial_cash=100000.0,
+        ledger_path=Path("."),
+        database_path=Path("."),
+        lot_size=100,
+        execution_price_mode="next_open",
+        max_participation_rate=0.0,
+        commission=0.00025,
+        min_commission=5.0,
+        transfer_fee_rate=0.00001,
+        enable_limit_check=False,
+        enable_suspension_check=False,
+    )
+
+    result = run_signal_account_execution(signal_frame=signal, account=account)
+
+    amount = float(result.trades.iloc[0]["amount"])
+    expected_cost = amount * account.slippage + max(5.0, amount * account.commission) + amount * account.transfer_fee_rate
+    assert float(result.trades.iloc[0]["cost"]) == expected_cost
+
+
+def test_signal_account_execution_allows_next_day_sell_after_t_plus_one() -> None:
+    signal = pd.DataFrame(
+        [
+            {"date": "2024-01-02", "symbol": "AAA", "weight_unshifted": 1.0, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+            {"date": "2024-01-03", "symbol": "AAA", "weight_unshifted": 0.0, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+            {"date": "2024-01-04", "symbol": "AAA", "weight_unshifted": 0.0, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+        ]
+    )
+    account = SimulatedAccountConfig(
+        account_id="test",
+        name="test",
+        initial_cash=100000.0,
+        ledger_path=Path("."),
+        database_path=Path("."),
+        lot_size=100,
+        execution_price_mode="next_open",
+        max_participation_rate=0.0,
+        enable_limit_check=False,
+        enable_suspension_check=False,
+        enable_t_plus_one=True,
+    )
+
+    result = run_signal_account_execution(signal_frame=signal, account=account)
+
+    assert result.metrics["account_executed_order_count"] == 2
+    assert result.metrics["account_unfilled_order_count"] == 0
+    assert result.trades["side"].tolist() == ["buy", "sell"]
+
+
+def test_signal_account_execution_blocks_min_trade_amount() -> None:
+    signal = pd.DataFrame(
+        [
+            {"date": "2024-01-02", "symbol": "AAA", "weight_unshifted": 0.01, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+            {"date": "2024-01-03", "symbol": "AAA", "weight_unshifted": 0.01, "open": 10.0, "close": 10.0, "volume": 1000000, "amount": 10000000.0},
+        ]
+    )
+    account = SimulatedAccountConfig(
+        account_id="test",
+        name="test",
+        initial_cash=100000.0,
+        ledger_path=Path("."),
+        database_path=Path("."),
+        lot_size=100,
+        execution_price_mode="next_open",
+        max_participation_rate=0.0,
+        min_trade_amount=2000.0,
+        enable_limit_check=False,
+        enable_suspension_check=False,
+    )
+
+    result = run_signal_account_execution(signal_frame=signal, account=account)
+
+    assert result.metrics["account_executed_order_count"] == 0
+    assert result.metrics["account_unfilled_order_count"] == 1
+    assert "低于最小成交金额" in result.metrics["account_block_reason_counts"]
+
+
+def test_signal_account_execution_uses_st_limit_rule() -> None:
+    signal = pd.DataFrame(
+        [
+            {
+                "date": "2024-01-02",
+                "symbol": "AAA",
+                "name": "*ST Alpha",
+                "weight_unshifted": 0.5,
+                "open": 10.0,
+                "close": 10.0,
+                "volume": 1000000,
+                "amount": 10000000.0,
+            },
+            {
+                "date": "2024-01-03",
+                "symbol": "AAA",
+                "name": "*ST Alpha",
+                "weight_unshifted": 0.5,
+                "open": 10.5,
+                "close": 10.5,
+                "volume": 1000000,
+                "amount": 10500000.0,
+            },
+        ]
+    )
+    account = SimulatedAccountConfig(
+        account_id="test",
+        name="test",
+        initial_cash=100000.0,
+        ledger_path=Path("."),
+        database_path=Path("."),
+        lot_size=100,
+        execution_price_mode="next_open",
+        max_participation_rate=0.0,
+        enable_limit_check=True,
+        enable_suspension_check=False,
+        enable_special_limit_rules=True,
+    )
+
+    result = run_signal_account_execution(signal_frame=signal, account=account)
+
+    assert result.metrics["account_executed_order_count"] == 0
+    assert result.metrics["account_unfilled_order_count"] == 1
+    assert "涨停不可买" in result.metrics["account_block_reason_counts"]

@@ -197,6 +197,10 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
     if args.cmd == "update-financials":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
+        update_console.print("Financial factor update started")
+        update_console.print(f"Config: {config_path}")
+        if args.periods is not None:
+            update_console.print(f"Periods override: recent {args.periods} quarters")
         result = update_financial_factors_from_config(cfg, config_path.parent, periods=args.periods)
         color = "green" if result.ok else "red"
         update_console.print(f"[{color}]Financial factor update status: {result.status}[/{color}]")
