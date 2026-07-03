@@ -76,11 +76,20 @@ class WalkForwardRuntime:
     prepared_panel_cache_enabled: bool = True
     prepared_panel_disk_cache_enabled: bool = False
     prepared_panel_cache_dir: Path | None = None
+    fold_panel_cache_enabled: bool = True
+    fold_panel_disk_cache_enabled: bool = False
+    fold_panel_cache_dir: Path | None = None
     refresh_cache: bool = False
+    source_signature: dict[str, Any] = field(default_factory=dict)
     profile_events: list[dict[str, Any]] = field(default_factory=list)
     prepared_panel_cache: dict[str, pd.DataFrame] = field(default_factory=dict)
+    fold_panel_cache: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = field(default_factory=dict)
     cache_stats: dict[str, int] = field(
         default_factory=lambda: {
+            "fold_panel_memory_hits": 0,
+            "fold_panel_disk_hits": 0,
+            "fold_panel_misses": 0,
+            "fold_panel_saves": 0,
             "prepared_panel_memory_hits": 0,
             "prepared_panel_disk_hits": 0,
             "prepared_panel_misses": 0,
@@ -183,13 +192,42 @@ def _panel_signature(panel: pd.DataFrame) -> dict[str, Any]:
     return out
 
 
+def _path_signature(path: Path) -> dict[str, Any]:
+    try:
+        stat = path.stat()
+        return {
+            "path": str(path),
+            "exists": True,
+            "mtime_ns": int(stat.st_mtime_ns),
+            "size": int(stat.st_size),
+        }
+    except OSError:
+        return {"path": str(path), "exists": False, "mtime_ns": 0, "size": 0}
+
+
+def _walk_forward_source_signature(config: dict[str, Any], root: Path) -> dict[str, Any]:
+    paths: list[Path] = []
+    local_path = config.get("local_history", {}).get("path")
+    if local_path:
+        paths.append(Path(local_path) if Path(str(local_path)).is_absolute() else root / str(local_path))
+    us_path = config.get("us_market_history", {}).get("path")
+    if us_path:
+        paths.append(Path(us_path) if Path(str(us_path)).is_absolute() else root / str(us_path))
+    return {
+        "price_adjustment_for_backtest": str(config.get("local_history", {}).get("price_adjustment_for_backtest", "")),
+        "sources": [_path_signature(path) for path in paths],
+    }
+
+
 def _resolve_walk_forward_runtime(config: dict[str, Any], root: Path) -> WalkForwardRuntime:
     wcfg = config.get("walk_forward", {})
     execution_cfg = wcfg.get("execution", {}) or {}
     cache_cfg = wcfg.get("cache", {}) or {}
     prepared_cfg = cache_cfg.get("prepared_panel", {}) or {}
+    fold_cfg = cache_cfg.get("fold_panel", {}) or {}
     profile_output = execution_cfg.get("profile_output_dir", "logs/perf")
-    cache_dir = prepared_cfg.get("dir", cache_cfg.get("prepared_panel_dir", "data/cache/walk_forward/prepared"))
+    prepared_cache_dir = prepared_cfg.get("dir", cache_cfg.get("prepared_panel_dir", "data/cache/walk_forward/prepared"))
+    fold_cache_dir = fold_cfg.get("dir", cache_cfg.get("fold_panel_dir", "data/cache/walk_forward/folds"))
     return WalkForwardRuntime(
         root=root,
         profile_enabled=bool(execution_cfg.get("profile", False)),
@@ -197,8 +235,48 @@ def _resolve_walk_forward_runtime(config: dict[str, Any], root: Path) -> WalkFor
         cache_enabled=bool(cache_cfg.get("enabled", True)),
         prepared_panel_cache_enabled=bool(prepared_cfg.get("enabled", cache_cfg.get("enabled", True))),
         prepared_panel_disk_cache_enabled=bool(prepared_cfg.get("disk_enabled", False)),
-        prepared_panel_cache_dir=(root / str(cache_dir)) if cache_dir else None,
-        refresh_cache=bool(cache_cfg.get("refresh", False) or prepared_cfg.get("refresh", False)),
+        prepared_panel_cache_dir=(root / str(prepared_cache_dir)) if prepared_cache_dir else None,
+        fold_panel_cache_enabled=bool(fold_cfg.get("enabled", cache_cfg.get("enabled", True))),
+        fold_panel_disk_cache_enabled=bool(fold_cfg.get("disk_enabled", False)),
+        fold_panel_cache_dir=(root / str(fold_cache_dir)) if fold_cache_dir else None,
+        refresh_cache=bool(cache_cfg.get("refresh", False) or prepared_cfg.get("refresh", False) or fold_cfg.get("refresh", False)),
+        source_signature=_walk_forward_source_signature(config, root),
+    )
+
+
+def _date_set_signature(values: set[pd.Timestamp]) -> dict[str, Any]:
+    normalized = sorted(pd.Timestamp(item).normalize().date().isoformat() for item in values)
+    return {
+        "count": int(len(normalized)),
+        "start": normalized[0] if normalized else "",
+        "end": normalized[-1] if normalized else "",
+        "hash": _stable_hash(normalized),
+    }
+
+
+def _fold_panel_cache_key(
+    *,
+    symbols: list[str],
+    years: int,
+    train_dates: set[pd.Timestamp],
+    valid_dates: set[pd.Timestamp],
+    train_as_of_date: date,
+    valid_as_of_date: date,
+    strategy_cfg: dict[str, Any],
+) -> str:
+    runtime = _runtime()
+    return _stable_hash(
+        {
+            "version": 1,
+            "symbols": sorted(str(item) for item in symbols),
+            "years": int(years),
+            "train_dates": _date_set_signature(train_dates),
+            "valid_dates": _date_set_signature(valid_dates),
+            "train_as_of_date": str(train_as_of_date),
+            "valid_as_of_date": str(valid_as_of_date),
+            "strategy_cfg": strategy_cfg,
+            "source_signature": runtime.source_signature if runtime is not None else {},
+        }
     )
 
 
@@ -290,6 +368,17 @@ def _write_walk_forward_profile(runtime: WalkForwardRuntime, *, summary: dict[st
     summary["walk_forward_profile_csv_path"] = str(csv_path)
     payload = {
         "summary": summary,
+        "cache_manifest": {
+            "cache_enabled": bool(runtime.cache_enabled),
+            "fold_panel_cache_enabled": bool(runtime.fold_panel_cache_enabled),
+            "fold_panel_disk_cache_enabled": bool(runtime.fold_panel_disk_cache_enabled),
+            "fold_panel_cache_dir": str(runtime.fold_panel_cache_dir or ""),
+            "prepared_panel_cache_enabled": bool(runtime.prepared_panel_cache_enabled),
+            "prepared_panel_disk_cache_enabled": bool(runtime.prepared_panel_disk_cache_enabled),
+            "prepared_panel_cache_dir": str(runtime.prepared_panel_cache_dir or ""),
+            "refresh_cache": bool(runtime.refresh_cache),
+            "source_signature": runtime.source_signature,
+        },
         "cache_stats": dict(runtime.cache_stats),
         "events": list(runtime.profile_events),
     }
@@ -2182,6 +2271,41 @@ def _build_panel_for_fold_asof(
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
+    runtime = _runtime()
+    cache_key = _fold_panel_cache_key(
+        symbols=symbols,
+        years=years,
+        train_dates=train_dates,
+        valid_dates=valid_dates,
+        train_as_of_date=train_as_of_date,
+        valid_as_of_date=valid_as_of_date,
+        strategy_cfg=strategy_cfg,
+    )
+    if runtime is not None and runtime.cache_enabled and runtime.fold_panel_cache_enabled and not runtime.refresh_cache:
+        if cache_key in runtime.fold_panel_cache:
+            runtime.cache_stats["fold_panel_memory_hits"] += 1
+            train_cached, valid_cached = runtime.fold_panel_cache[cache_key]
+            return train_cached.copy(), valid_cached.copy()
+        if runtime.fold_panel_disk_cache_enabled and runtime.fold_panel_cache_dir is not None:
+            cache_path = runtime.fold_panel_cache_dir / f"{cache_key}.pkl"
+            if cache_path.exists():
+                try:
+                    payload = pd.read_pickle(cache_path)
+                    if (
+                        isinstance(payload, dict)
+                        and payload.get("cache_key") == cache_key
+                        and isinstance(payload.get("train_panel"), pd.DataFrame)
+                        and isinstance(payload.get("valid_panel"), pd.DataFrame)
+                    ):
+                        runtime.cache_stats["fold_panel_disk_hits"] += 1
+                        train_panel = payload["train_panel"].copy()
+                        valid_panel = payload["valid_panel"].copy()
+                        runtime.fold_panel_cache[cache_key] = (train_panel.copy(), valid_panel.copy())
+                        return train_panel, valid_panel
+                except Exception:
+                    pass
+    if runtime is not None and runtime.cache_enabled and runtime.fold_panel_cache_enabled:
+        runtime.cache_stats["fold_panel_misses"] += 1
     with _profile_step(
         "build_fold_asof_panel",
         symbol_count=int(len(symbols)),
@@ -2192,16 +2316,40 @@ def _build_panel_for_fold_asof(
         train_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=train_as_of_date))
         valid_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=valid_as_of_date))
         if train_panel.empty or valid_panel.empty:
-            return pd.DataFrame(), pd.DataFrame()
+            return _store_fold_panel_cache(cache_key, pd.DataFrame(), pd.DataFrame())
         train_panel["date"] = pd.to_datetime(train_panel["date"]).dt.normalize()
         valid_panel["date"] = pd.to_datetime(valid_panel["date"]).dt.normalize()
         train_panel = train_panel[train_panel["date"].isin(train_dates)].copy()
         valid_panel = valid_panel[valid_panel["date"].isin(valid_dates)].copy()
         if train_panel.empty or valid_panel.empty:
-            return train_panel, valid_panel
+            return _store_fold_panel_cache(cache_key, train_panel, valid_panel)
         train_panel = _add_cross_market_to_panel(train_panel, years, strategy_cfg, xfeatures)
         valid_panel = _add_cross_market_to_panel(valid_panel, years, strategy_cfg, xfeatures)
+        return _store_fold_panel_cache(cache_key, train_panel, valid_panel)
+
+
+def _store_fold_panel_cache(
+    cache_key: str,
+    train_panel: pd.DataFrame,
+    valid_panel: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    runtime = _runtime()
+    if runtime is None or not runtime.cache_enabled or not runtime.fold_panel_cache_enabled:
         return train_panel, valid_panel
+    runtime.fold_panel_cache[cache_key] = (train_panel.copy(), valid_panel.copy())
+    if runtime.fold_panel_disk_cache_enabled and runtime.fold_panel_cache_dir is not None:
+        cache_path = runtime.fold_panel_cache_dir / f"{cache_key}.pkl"
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.to_pickle(
+            {
+                "cache_key": cache_key,
+                "train_panel": train_panel,
+                "valid_panel": valid_panel,
+            },
+            cache_path,
+        )
+        runtime.cache_stats["fold_panel_saves"] += 1
+    return train_panel, valid_panel
 
 
 def _empty_pit_fold_frame() -> pd.DataFrame:

@@ -338,6 +338,10 @@ phase0:
         enabled: true
         disk_enabled: false
         dir: "data/cache/walk_forward/prepared"
+      fold_panel:
+        enabled: true
+        disk_enabled: false
+        dir: "data/cache/walk_forward/folds"
     initial_cash: 1000000
     commission: 0.00025
     stamp_duty_sell: 0.0005

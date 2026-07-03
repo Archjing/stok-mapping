@@ -139,14 +139,14 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 
 `phase0 run` 会在策略评估前按 `us_market_history.run_before_phase0` 更新 US market 本地库。策略读取的是落库后的 `us_daily_bars`，不是运行时临时 yfinance 请求；若本地库覆盖率不足且 `runtime_yfinance_fallback: false`，跨市场特征会退化为空并记录告警，避免在线源静默改变回测结果。
 
-Walk-forward 加速采用保守缓存边界：公共原始行情、fold 构造和 benchmark 数据可以复用；策略自己的 `prepare_panel` 只按 `strategy_id + strategy_cfg + fold 输入指纹` 缓存，不跨策略共享。诊断耗时时可运行：
+Walk-forward 加速采用保守缓存边界：同一股票池、同一日期窗口、同一 as-of 口径和同一数据源签名下的 fold panel 可以复用；策略自己的 `prepare_panel` 只按 `strategy_id + strategy_cfg + fold 输入指纹` 缓存，不跨策略共享。诊断耗时时可运行：
 
 ```bash
 ./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
   --presets baseline_2y_1y_5fold --profile
 ```
 
-生成的 profile JSON/CSV 位于 `logs/perf/`，本地缓存默认位于 `data/cache/walk_forward/`，均不纳入普通 Git 提交。
+生成的 profile JSON/CSV 位于 `logs/perf/`；JSON 中包含 cache manifest，可复查数据源 mtime/size、复权口径、cache 开关和命中统计。本地缓存默认位于 `data/cache/walk_forward/`，不纳入普通 Git 提交。
 
 当前 `Tiingo` 和 `FRED` 已完成最小接入，正式入口均在 `phase0/data_access/connectivity.py`。`phase0/data_sources.py` 仅保留为旧导入兼容入口：
 
