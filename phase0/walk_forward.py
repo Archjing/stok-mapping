@@ -84,6 +84,7 @@ class WalkForwardRuntime:
     profile_events: list[dict[str, Any]] = field(default_factory=list)
     prepared_panel_cache: dict[str, pd.DataFrame] = field(default_factory=dict)
     fold_panel_cache: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = field(default_factory=dict)
+    universe_cache: dict[str, Any] = field(default_factory=dict)
     cache_stats: dict[str, int] = field(
         default_factory=lambda: {
             "fold_panel_memory_hits": 0,
@@ -96,6 +97,8 @@ class WalkForwardRuntime:
             "prepared_panel_saves": 0,
             "symbol_cache_clears": 0,
             "symbol_cache_reuses": 0,
+            "universe_memory_hits": 0,
+            "universe_misses": 0,
         }
     )
 
@@ -292,6 +295,35 @@ def _fold_panel_cache_key(
             "source_signature": runtime.source_signature if runtime is not None else {},
         }
     )
+
+
+def _point_in_time_universe_cache_key(config: dict[str, Any], root: Path, as_of_date: date) -> str:
+    runtime = _runtime()
+    return _stable_hash(
+        {
+            "version": 1,
+            "as_of_date": str(as_of_date),
+            "universe": config.get("universe", {}),
+            "source_signature": runtime.source_signature if runtime is not None else {},
+            "root": str(root),
+        }
+    )
+
+
+def _load_point_in_time_universe_cached(config: dict[str, Any], root: Path, as_of_date: date) -> Any:
+    runtime = _runtime()
+    if runtime is None or not runtime.cache_enabled:
+        with _profile_step("load_point_in_time_universe", as_of_date=str(as_of_date), cache="disabled"):
+            return load_point_in_time_universe(config, root, as_of_date)
+    cache_key = _point_in_time_universe_cache_key(config, root, as_of_date)
+    if not runtime.refresh_cache and cache_key in runtime.universe_cache:
+        runtime.cache_stats["universe_memory_hits"] += 1
+        return runtime.universe_cache[cache_key]
+    runtime.cache_stats["universe_misses"] += 1
+    with _profile_step("load_point_in_time_universe", as_of_date=str(as_of_date), cache="miss"):
+        universe = load_point_in_time_universe(config, root, as_of_date)
+    runtime.universe_cache[cache_key] = universe
+    return universe
 
 
 def _prepared_panel_cache_key(
@@ -2428,7 +2460,7 @@ def iter_point_in_time_universe_folds(
         train_start_date = pd.Timestamp(min(train_dates)).date()
         valid_start_date = pd.Timestamp(min(valid_dates)).date()
         valid_end_date = pd.Timestamp(max(valid_dates)).date()
-        universe = load_point_in_time_universe(config, root, train_end_date)
+        universe = _load_point_in_time_universe_cached(config, root, train_end_date)
         warnings = list(universe.warnings)
         audit = {
             "fold": fold_idx,

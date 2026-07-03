@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 
@@ -196,3 +197,28 @@ def test_symbol_cache_clears_when_source_signature_changes(tmp_path: Path) -> No
         assert second.cache_stats["symbol_cache_reuses"] == 0
     finally:
         wf._SYMBOL_CACHE_SOURCE_HASH = original_hash
+
+
+def test_point_in_time_universe_cache_reuses_same_asof(monkeypatch, tmp_path: Path) -> None:
+    calls: list[str] = []
+
+    def fake_load_point_in_time_universe(config, root, as_of_date):
+        calls.append(str(as_of_date))
+        return SimpleNamespace(symbols=["SH.600000"], as_of_date=str(as_of_date))
+
+    monkeypatch.setattr(wf, "load_point_in_time_universe", fake_load_point_in_time_universe)
+    runtime = wf.WalkForwardRuntime(
+        root=tmp_path,
+        source_signature={"sources": [{"path": "a.sqlite", "mtime_ns": 1, "size": 10}]},
+    )
+    token = wf._WALK_FORWARD_RUNTIME.set(runtime)
+    try:
+        first = wf._load_point_in_time_universe_cached({"universe": {"target_size": 500}}, tmp_path, pd.Timestamp("2024-01-03").date())
+        second = wf._load_point_in_time_universe_cached({"universe": {"target_size": 500}}, tmp_path, pd.Timestamp("2024-01-03").date())
+    finally:
+        wf._WALK_FORWARD_RUNTIME.reset(token)
+
+    assert calls == ["2024-01-03"]
+    assert first is second
+    assert runtime.cache_stats["universe_misses"] == 1
+    assert runtime.cache_stats["universe_memory_hits"] == 1
