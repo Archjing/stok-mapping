@@ -139,7 +139,7 @@ yfinance -> us_market_history.sqlite -> cross-market overlay -> walk-forward/rep
 
 `phase0 run` 会在策略评估前按 `us_market_history.run_before_phase0` 更新 US market 本地库。策略读取的是落库后的 `us_daily_bars`，不是运行时临时 yfinance 请求；若本地库覆盖率不足且 `runtime_yfinance_fallback: false`，跨市场特征会退化为空并记录告警，避免在线源静默改变回测结果。
 
-Walk-forward 加速采用保守缓存边界：同一数据源签名下，admission 多 preset 不再反复清空 symbol 级行情 LRU；同一训练窗结束日的 point-in-time universe 快照可复用；同一股票池、同一日期窗口、同一 as-of 口径和同一数据源签名下的 fold panel 可以复用；策略自己的 `prepare_panel` 只按 `strategy_id + strategy_cfg + fold 输入指纹` 缓存，不跨策略共享。诊断耗时时可运行：
+Walk-forward 加速采用保守缓存边界：同一数据源签名下，admission 多 preset 不再反复清空 symbol 级行情 LRU；同一训练窗结束日的 point-in-time universe 快照可复用；同一股票池、同一日期窗口、同一 as-of 口径和同一数据源签名下的 fold panel 可以复用；同一基准指数区间指标可复用；策略自己的 `prepare_panel` 只按 `strategy_id + strategy_cfg + fold 输入指纹` 缓存，不跨策略共享。诊断耗时时可运行：
 
 ```bash
 ./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \

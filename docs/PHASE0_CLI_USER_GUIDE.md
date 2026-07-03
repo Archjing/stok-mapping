@@ -114,8 +114,8 @@ uv sync
 ```
 
 Walk-forward runtime cache 默认只缓存安全边界：同一数据源签名下，admission 多 preset 可复用 symbol 级行情 LRU；
-同一训练窗结束日的 point-in-time universe 快照；同一股票池、同一日期窗口、同一 as-of 口径和同一数据源签名下的 fold panel，
-以及“同一策略 + 同一配置 + 同一 fold 输入”的 prepared panel。prepared panel 不会跨不同策略共享。
+同一训练窗结束日的 point-in-time universe 快照；同一股票池、同一日期窗口、同一 as-of 口径和同一数据源签名下的 fold panel；
+同一基准指数区间指标；以及“同一策略 + 同一配置 + 同一 fold 输入”的 prepared panel。prepared panel 不会跨不同策略共享。
 profile JSON 会记录 cache manifest，包括数据源 mtime/size、复权口径、cache 开关和命中统计。需要排查缓存影响时可加 `--no-wf-cache`；
 启用磁盘缓存后需要重建时可加 `--refresh-wf-cache`。
 

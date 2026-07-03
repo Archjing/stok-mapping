@@ -85,6 +85,7 @@ class WalkForwardRuntime:
     prepared_panel_cache: dict[str, pd.DataFrame] = field(default_factory=dict)
     fold_panel_cache: dict[str, tuple[pd.DataFrame, pd.DataFrame]] = field(default_factory=dict)
     universe_cache: dict[str, Any] = field(default_factory=dict)
+    benchmark_cache: dict[str, dict[str, Any]] = field(default_factory=dict)
     cache_stats: dict[str, int] = field(
         default_factory=lambda: {
             "fold_panel_memory_hits": 0,
@@ -99,6 +100,8 @@ class WalkForwardRuntime:
             "symbol_cache_reuses": 0,
             "universe_memory_hits": 0,
             "universe_misses": 0,
+            "benchmark_memory_hits": 0,
+            "benchmark_misses": 0,
         }
     )
 
@@ -555,24 +558,46 @@ def _benchmark_fold_metrics(config: dict[str, Any], valid_start: Any, valid_end:
             "benchmark_sharpe": np.nan,
             "benchmark_max_drawdown": np.nan,
         }
-    index_df = load_index_daily_from_local_history(symbol, start, end)
+    runtime = _runtime()
+    cache_key = _stable_hash(
+        {
+            "version": 1,
+            "symbol": symbol,
+            "start": str(start),
+            "end": str(end),
+            "source_signature": runtime.source_signature if runtime is not None else {},
+        }
+    )
+    if runtime is not None and runtime.cache_enabled and not runtime.refresh_cache and cache_key in runtime.benchmark_cache:
+        runtime.cache_stats["benchmark_memory_hits"] += 1
+        return dict(runtime.benchmark_cache[cache_key])
+    if runtime is not None and runtime.cache_enabled:
+        runtime.cache_stats["benchmark_misses"] += 1
+    with _profile_step("load_benchmark_fold", symbol=symbol, start=str(start), end=str(end)):
+        index_df = load_index_daily_from_local_history(symbol, start, end)
     if index_df.empty or "close" not in index_df.columns:
-        return {
+        metrics = {
             "benchmark_symbol": symbol,
             "benchmark_status": "not_available",
             "benchmark_annualized_return": np.nan,
             "benchmark_sharpe": np.nan,
             "benchmark_max_drawdown": np.nan,
         }
+        if runtime is not None and runtime.cache_enabled:
+            runtime.benchmark_cache[cache_key] = metrics
+        return metrics
     close = pd.to_numeric(index_df.sort_values("date")["close"], errors="coerce")
     returns = close.pct_change().fillna(0.0)
-    return {
+    metrics = {
         "benchmark_symbol": symbol,
         "benchmark_status": "available",
         "benchmark_annualized_return": _annualized_return(returns),
         "benchmark_sharpe": _sharpe(returns),
         "benchmark_max_drawdown": _max_drawdown(returns),
     }
+    if runtime is not None and runtime.cache_enabled:
+        runtime.benchmark_cache[cache_key] = metrics
+    return metrics
 
 
 def _attach_benchmark_fold_metrics(

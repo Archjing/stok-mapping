@@ -222,3 +222,30 @@ def test_point_in_time_universe_cache_reuses_same_asof(monkeypatch, tmp_path: Pa
     assert first is second
     assert runtime.cache_stats["universe_misses"] == 1
     assert runtime.cache_stats["universe_memory_hits"] == 1
+
+
+def test_benchmark_fold_metrics_cache_reuses_same_window(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[str, str, str]] = []
+
+    def fake_load_index_daily_from_local_history(symbol, start, end):
+        calls.append((symbol, str(start), str(end)))
+        return pd.DataFrame(
+            {
+                "date": pd.to_datetime(["2024-01-02", "2024-01-03", "2024-01-04"]),
+                "close": [100.0, 101.0, 103.0],
+            }
+        )
+
+    monkeypatch.setattr(wf, "load_index_daily_from_local_history", fake_load_index_daily_from_local_history)
+    runtime = wf.WalkForwardRuntime(root=tmp_path)
+    token = wf._WALK_FORWARD_RUNTIME.set(runtime)
+    try:
+        first = wf._benchmark_fold_metrics({"benchmark_symbol": "SH.000300"}, "2024-01-02", "2024-01-04")
+        second = wf._benchmark_fold_metrics({"benchmark_symbol": "SH.000300"}, "2024-01-02", "2024-01-04")
+    finally:
+        wf._WALK_FORWARD_RUNTIME.reset(token)
+
+    assert calls == [("SH.000300", "2024-01-02", "2024-01-04")]
+    assert first == second
+    assert runtime.cache_stats["benchmark_misses"] == 1
+    assert runtime.cache_stats["benchmark_memory_hits"] == 1
