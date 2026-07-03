@@ -11,6 +11,7 @@ worktrees/
 .codex/claude_agent.local.json
 data/raw_data/
 data/features/
+data/cache/walk_forward/
 data/manual_history.lnk
 data/manual_history/*
 !data/manual_history/.gitkeep

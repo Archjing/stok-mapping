@@ -49,6 +49,9 @@ def run_strategy_admission(
     strategies: list[str] | None = None,
     output_dir: Path | None = None,
     trace_callback: Any | None = None,
+    profile_run: bool = False,
+    no_wf_cache: bool = False,
+    refresh_wf_cache: bool = False,
 ) -> StrategyAdmissionResult:
     wcfg = config.get("walk_forward", {})
     available_presets = wcfg.get("presets", {}) or {}
@@ -83,6 +86,13 @@ def run_strategy_admission(
         scenario_cfg = copy.deepcopy(config)
         scenario_wcfg = scenario_cfg.setdefault("walk_forward", {})
         scenario_wcfg["preset_name"] = preset_name
+        scenario_execution_cfg = scenario_wcfg.setdefault("execution", {})
+        scenario_execution_cfg["profile"] = bool(profile_run)
+        scenario_cache_cfg = scenario_wcfg.setdefault("cache", {})
+        if no_wf_cache:
+            scenario_cache_cfg["enabled"] = False
+        if refresh_wf_cache:
+            scenario_cache_cfg["refresh"] = True
         scenario_strategy_cfg = scenario_wcfg.setdefault("strategy_v2", {})
         scenario_strategy_cfg["compare_strategies"] = strategy_names
         _force_strategy_set_enabled_for_admission(scenario_strategy_cfg, strategy_names)

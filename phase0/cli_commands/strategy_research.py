@@ -96,6 +96,9 @@ def register_strategy_research_commands(subparsers: argparse._SubParsersAction) 
     admission_parser.add_argument("--strategies", nargs="+", default=None, help="Strategy IDs to evaluate")
     admission_parser.add_argument("--output-dir", default=None, help="Output directory for admission reports")
     admission_parser.add_argument("--trace-run", action="store_true", help="Print fold-level walk-forward trace while running")
+    admission_parser.add_argument("--profile", action="store_true", help="Write walk-forward timing profile JSON under logs/perf")
+    admission_parser.add_argument("--no-wf-cache", action="store_true", help="Disable walk-forward runtime caches for this run")
+    admission_parser.add_argument("--refresh-wf-cache", action="store_true", help="Refresh walk-forward disk caches before use")
 
     factor_parser = subparsers.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
@@ -144,6 +147,9 @@ def handle_strategy_research_command(
             strategies=args.strategies,
             output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
             trace_callback=(lambda payload: _print_walk_forward_trace(research_console, payload)) if args.trace_run else None,
+            profile_run=bool(args.profile),
+            no_wf_cache=bool(args.no_wf_cache),
+            refresh_wf_cache=bool(args.refresh_wf_cache),
         )
         research_console.print("[green]Strategy admission review complete[/green]")
         research_console.print(f"Strategies: {result.strategies}")

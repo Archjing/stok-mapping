@@ -15,7 +15,7 @@ def test_phase0_run_command_registration_preserves_args() -> None:
     subparsers = parser.add_subparsers(dest="cmd")
     phase0_run_cli.register_phase0_run_commands(subparsers)
 
-    run_args = parser.parse_args(["run", "--config", "custom.yaml"])
+    run_args = parser.parse_args(["run", "--config", "custom.yaml", "--profile", "--no-wf-cache", "--refresh-wf-cache"])
     scenario_args = parser.parse_args(
         [
             "cost-sensitivity",
@@ -31,6 +31,9 @@ def test_phase0_run_command_registration_preserves_args() -> None:
 
     assert run_args.cmd == "run"
     assert run_args.config == "custom.yaml"
+    assert run_args.profile is True
+    assert run_args.no_wf_cache is True
+    assert run_args.refresh_wf_cache is True
     assert scenario_args.cmd == "cost-sensitivity"
     assert scenario_args.config == "custom.yaml"
     assert scenario_args.scenario == ["base:0.001", "stress:0.003"]
@@ -86,14 +89,36 @@ def test_run_handler_runs_health_gate_before_phase0(monkeypatch, tmp_path: Path)
         calls.append(("gate", kwargs))
         return 0
 
-    def fake_run_phase0(config_path: Path) -> int:
-        calls.append(("run", {"config_path": config_path}))
+    def fake_run_phase0(
+        config_path: Path,
+        *,
+        profile: bool = False,
+        no_wf_cache: bool = False,
+        refresh_wf_cache: bool = False,
+    ) -> int:
+        calls.append(
+            (
+                "run",
+                {
+                    "config_path": config_path,
+                    "profile": profile,
+                    "no_wf_cache": no_wf_cache,
+                    "refresh_wf_cache": refresh_wf_cache,
+                },
+            )
+        )
         return 0
 
     monkeypatch.setattr(phase0_run_cli, "load_config", fake_load_config)
     monkeypatch.setattr(phase0_run_cli, "_run_db_health_gate", fake_run_db_health_gate)
     monkeypatch.setattr(phase0_run_cli, "run_phase0", fake_run_phase0)
-    args = SimpleNamespace(cmd="run", config=str(tmp_path / "config.yaml"))
+    args = SimpleNamespace(
+        cmd="run",
+        config=str(tmp_path / "config.yaml"),
+        profile=True,
+        no_wf_cache=True,
+        refresh_wf_cache=True,
+    )
 
     exit_code = phase0_run_cli.handle_phase0_run_command(
         args,
@@ -108,7 +133,15 @@ def test_run_handler_runs_health_gate_before_phase0(monkeypatch, tmp_path: Path)
     assert calls[0][1]["scope"] == "cn"
     assert calls[0][1]["fail_on"] == "error"
     assert calls[0][1]["label"] == "Phase 0 run"
-    assert calls[1] == ("run", {"config_path": (tmp_path / "config.yaml").resolve()})
+    assert calls[1] == (
+        "run",
+        {
+            "config_path": (tmp_path / "config.yaml").resolve(),
+            "profile": True,
+            "no_wf_cache": True,
+            "refresh_wf_cache": True,
+        },
+    )
 
 
 def test_phase0_run_compatibility_exports_remain_available() -> None:

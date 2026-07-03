@@ -813,6 +813,54 @@ def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_fo
     assert "overfit__diagnostic.csv" in result.governance_md.read_text(encoding="utf-8")
 
 
+def test_strategy_admission_forwards_walk_forward_runtime_overrides(monkeypatch, tmp_path) -> None:
+    seen_configs: list[dict] = []
+
+    def fake_run_walk_forward(config, trace_callback=None):
+        seen_configs.append(config)
+        return {
+            "summary": {
+                "reason": "no eligible universe",
+                "walk_forward_train_years": 2,
+                "walk_forward_validate_years": 1,
+                "walk_forward_start_date": "2020-04-01",
+                "walk_forward_end_date": "2026-03-31",
+                "walk_forward_expected_folds": 1,
+                "walk_forward_actual_folds": 0,
+            },
+            "candidate_folds": pd.DataFrame(),
+        }
+
+    monkeypatch.setattr(admission_runner, "run_walk_forward", fake_run_walk_forward)
+    monkeypatch.setattr(
+        admission_runner,
+        "run_overfit_diagnostic",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("overfit diagnostic should not run without folds")),
+    )
+
+    run_strategy_admission(
+        config={
+            "local_history": {"price_adjustment_for_backtest": "qfq_asof"},
+            "walk_forward": {
+                "presets": {"baseline": {"train_years": 2, "validate_years": 1}},
+                "admission": {},
+                "strategy_v2": {"compare_strategies": ["demo_strategy"]},
+            },
+        },
+        root=tmp_path,
+        presets=["baseline"],
+        profile_run=True,
+        no_wf_cache=True,
+        refresh_wf_cache=True,
+    )
+
+    assert len(seen_configs) == 1
+    walk_forward_cfg = seen_configs[0]["walk_forward"]
+    assert walk_forward_cfg["execution"]["profile"] is True
+    assert walk_forward_cfg["cache"]["enabled"] is False
+    assert walk_forward_cfg["cache"]["refresh"] is True
+
+
 def test_force_strategy_set_enabled_supports_regime_gate_strategy() -> None:
     strategy_cfg = {"local_factor": {"quality_low_turnover_regime_gate": {"enabled": False}}}
 

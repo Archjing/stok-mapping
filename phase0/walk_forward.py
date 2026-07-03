@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import re
 import sqlite3
-from dataclasses import dataclass
+import sys
+import time
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, field
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator
 
 import numpy as np
 import pandas as pd
@@ -59,6 +65,237 @@ FINANCIAL_DIAGNOSTIC_STRATEGIES = {
 }
 
 TraceCallback = Callable[[dict[str, Any]], None]
+
+
+@dataclass
+class WalkForwardRuntime:
+    root: Path
+    profile_enabled: bool = False
+    profile_output_dir: Path | None = None
+    cache_enabled: bool = True
+    prepared_panel_cache_enabled: bool = True
+    prepared_panel_disk_cache_enabled: bool = False
+    prepared_panel_cache_dir: Path | None = None
+    refresh_cache: bool = False
+    profile_events: list[dict[str, Any]] = field(default_factory=list)
+    prepared_panel_cache: dict[str, pd.DataFrame] = field(default_factory=dict)
+    cache_stats: dict[str, int] = field(
+        default_factory=lambda: {
+            "prepared_panel_memory_hits": 0,
+            "prepared_panel_disk_hits": 0,
+            "prepared_panel_misses": 0,
+            "prepared_panel_saves": 0,
+        }
+    )
+
+
+_WALK_FORWARD_RUNTIME: ContextVar[WalkForwardRuntime | None] = ContextVar("_WALK_FORWARD_RUNTIME", default=None)
+
+
+def _runtime() -> WalkForwardRuntime | None:
+    return _WALK_FORWARD_RUNTIME.get()
+
+
+@contextmanager
+def _profile_step(name: str, **fields: Any) -> Iterator[None]:
+    runtime = _runtime()
+    if runtime is None or not runtime.profile_enabled:
+        yield
+        return
+    started = time.perf_counter()
+    try:
+        yield
+    finally:
+        runtime.profile_events.append(
+            {
+                "event": name,
+                "duration_ms": round((time.perf_counter() - started) * 1000.0, 3),
+                **_profile_safe_fields(fields),
+            }
+        )
+
+
+def _profile_safe_fields(fields: dict[str, Any]) -> dict[str, Any]:
+    safe: dict[str, Any] = {}
+    for key, value in fields.items():
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            safe[key] = value
+        elif isinstance(value, (date, pd.Timestamp)):
+            safe[key] = str(value)
+        else:
+            safe[key] = str(value)
+    return safe
+
+
+def _json_default(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, (date, pd.Timestamp)):
+        return str(value)
+    if isinstance(value, set):
+        return sorted(str(item) for item in value)
+    if isinstance(value, tuple):
+        return list(value)
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    return str(value)
+
+
+def _stable_hash(payload: Any) -> str:
+    encoded = json.dumps(payload, sort_keys=True, ensure_ascii=True, default=_json_default).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _strategy_code_signature(strategy: Any) -> dict[str, Any]:
+    module = sys.modules.get(strategy.__class__.__module__)
+    path = Path(getattr(module, "__file__", "") or "")
+    try:
+        stat = path.stat()
+        return {"module": strategy.__class__.__module__, "file": str(path), "mtime_ns": int(stat.st_mtime_ns)}
+    except OSError:
+        return {"module": strategy.__class__.__module__, "file": str(path), "mtime_ns": 0}
+
+
+def _panel_signature(panel: pd.DataFrame) -> dict[str, Any]:
+    if panel.empty:
+        return {"rows": 0, "columns": list(panel.columns)}
+    out: dict[str, Any] = {
+        "rows": int(len(panel)),
+        "columns": list(panel.columns),
+    }
+    try:
+        row_hashes = pd.util.hash_pandas_object(panel, index=True).values
+        out["content_hash"] = hashlib.sha256(row_hashes.tobytes()).hexdigest()
+    except Exception:
+        out["content_hash"] = ""
+    if "date" in panel.columns:
+        dates = pd.to_datetime(panel["date"], errors="coerce")
+        out["date_min"] = str(dates.min().date()) if dates.notna().any() else ""
+        out["date_max"] = str(dates.max().date()) if dates.notna().any() else ""
+        out["date_count"] = int(dates.nunique(dropna=True))
+    if "symbol" in panel.columns:
+        symbols = panel["symbol"].dropna().astype(str)
+        out["symbol_count"] = int(symbols.nunique())
+        out["symbols_hash"] = _stable_hash(sorted(symbols.unique().tolist()))
+    return out
+
+
+def _resolve_walk_forward_runtime(config: dict[str, Any], root: Path) -> WalkForwardRuntime:
+    wcfg = config.get("walk_forward", {})
+    execution_cfg = wcfg.get("execution", {}) or {}
+    cache_cfg = wcfg.get("cache", {}) or {}
+    prepared_cfg = cache_cfg.get("prepared_panel", {}) or {}
+    profile_output = execution_cfg.get("profile_output_dir", "logs/perf")
+    cache_dir = prepared_cfg.get("dir", cache_cfg.get("prepared_panel_dir", "data/cache/walk_forward/prepared"))
+    return WalkForwardRuntime(
+        root=root,
+        profile_enabled=bool(execution_cfg.get("profile", False)),
+        profile_output_dir=(root / str(profile_output)) if profile_output else None,
+        cache_enabled=bool(cache_cfg.get("enabled", True)),
+        prepared_panel_cache_enabled=bool(prepared_cfg.get("enabled", cache_cfg.get("enabled", True))),
+        prepared_panel_disk_cache_enabled=bool(prepared_cfg.get("disk_enabled", False)),
+        prepared_panel_cache_dir=(root / str(cache_dir)) if cache_dir else None,
+        refresh_cache=bool(cache_cfg.get("refresh", False) or prepared_cfg.get("refresh", False)),
+    )
+
+
+def _prepared_panel_cache_key(
+    *,
+    strategy_name: str,
+    strategy: Any,
+    panel: pd.DataFrame,
+    strategy_cfg: dict[str, Any],
+) -> str:
+    return _stable_hash(
+        {
+            "version": 1,
+            "strategy_name": strategy_name,
+            "strategy_class": strategy.__class__.__qualname__,
+            "panel_scope": getattr(strategy, "panel_scope", ""),
+            "candidate_name": getattr(strategy, "candidate_name", ""),
+            "strategy_cfg": strategy_cfg,
+            "panel": _panel_signature(panel),
+            "code": _strategy_code_signature(strategy),
+        }
+    )
+
+
+def _prepare_strategy_panel_cached(
+    *,
+    strategy_name: str,
+    strategy: Any,
+    panel: pd.DataFrame,
+    strategy_cfg: dict[str, Any],
+) -> pd.DataFrame:
+    runtime = _runtime()
+    if runtime is None or not runtime.cache_enabled or not runtime.prepared_panel_cache_enabled:
+        with _profile_step(
+            "strategy_prepare_panel",
+            strategy_id=strategy_name,
+            cache="disabled",
+            input_rows=int(len(panel)),
+        ):
+            return strategy.prepare_panel(panel, strategy_cfg)
+
+    cache_key = _prepared_panel_cache_key(
+        strategy_name=strategy_name,
+        strategy=strategy,
+        panel=panel,
+        strategy_cfg=strategy_cfg,
+    )
+    if not runtime.refresh_cache and cache_key in runtime.prepared_panel_cache:
+        runtime.cache_stats["prepared_panel_memory_hits"] += 1
+        return runtime.prepared_panel_cache[cache_key].copy()
+
+    cache_path = None
+    if runtime.prepared_panel_disk_cache_enabled and runtime.prepared_panel_cache_dir is not None:
+        cache_path = runtime.prepared_panel_cache_dir / f"{cache_key}.pkl"
+        if not runtime.refresh_cache and cache_path.exists():
+            try:
+                payload = pd.read_pickle(cache_path)
+                if isinstance(payload, dict) and payload.get("cache_key") == cache_key and isinstance(payload.get("panel"), pd.DataFrame):
+                    runtime.cache_stats["prepared_panel_disk_hits"] += 1
+                    runtime.prepared_panel_cache[cache_key] = payload["panel"].copy()
+                    return payload["panel"].copy()
+            except Exception:
+                pass
+
+    runtime.cache_stats["prepared_panel_misses"] += 1
+    with _profile_step(
+        "strategy_prepare_panel",
+        strategy_id=strategy_name,
+        cache="miss",
+        input_rows=int(len(panel)),
+    ):
+        prepared = strategy.prepare_panel(panel, strategy_cfg)
+    runtime.prepared_panel_cache[cache_key] = prepared.copy()
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.to_pickle({"cache_key": cache_key, "panel": prepared}, cache_path)
+        runtime.cache_stats["prepared_panel_saves"] += 1
+    return prepared
+
+
+def _write_walk_forward_profile(runtime: WalkForwardRuntime, *, summary: dict[str, Any]) -> Path | None:
+    if not runtime.profile_enabled or runtime.profile_output_dir is None:
+        return None
+    runtime.profile_output_dir.mkdir(parents=True, exist_ok=True)
+    run_id = time.strftime("%Y%m%d_%H%M%S")
+    preset = str(summary.get("walk_forward_preset") or "unknown").replace("/", "_")
+    path = runtime.profile_output_dir / f"walk_forward_profile_{preset}_{run_id}.json"
+    csv_path = path.with_suffix(".csv")
+    summary["walk_forward_profile_csv_path"] = str(csv_path)
+    payload = {
+        "summary": summary,
+        "cache_stats": dict(runtime.cache_stats),
+        "events": list(runtime.profile_events),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=_json_default), encoding="utf-8")
+    pd.DataFrame(runtime.profile_events).to_csv(csv_path, index=False, encoding="utf-8")
+    return path
 
 
 def _parse_optional_date(value: Any) -> date | None:
@@ -616,25 +853,33 @@ def _load_symbol_map(
     as_of_date: date | str | None = None,
     price_adjustment: str | None = None,
 ) -> dict[str, pd.DataFrame]:
-    data: dict[str, pd.DataFrame] = {}
-    # 回测前逐只加载股票历史行情，模拟实盘研究阶段先准备可观察股票池的数据。
-    for sym in symbols:
-        df = _load_symbol(sym, years=years, as_of_date=as_of_date, price_adjustment=price_adjustment)
-        if not df.empty:
-            data[sym] = df
-    return data
+    with _profile_step(
+        "load_symbol_map",
+        symbol_count=int(len(symbols)),
+        years=int(years),
+        as_of_date=str(as_of_date or ""),
+        price_adjustment=str(price_adjustment or ""),
+    ):
+        data: dict[str, pd.DataFrame] = {}
+        # 回测前逐只加载股票历史行情，模拟实盘研究阶段先准备可观察股票池的数据。
+        for sym in symbols:
+            df = _load_symbol(sym, years=years, as_of_date=as_of_date, price_adjustment=price_adjustment)
+            if not df.empty:
+                data[sym] = df
+        return data
 
 
 def _align_symbol_map(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    frames = []
-    # 多只股票合成长表，后续才能在同一交易日做横截面排名和组合调仓。
-    for sym, df in data.items():
-        d = df.copy()
-        d["symbol"] = sym
-        frames.append(d)
-    if not frames:
-        return pd.DataFrame()
-    return pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
+    with _profile_step("align_symbol_map", symbol_count=int(len(data))):
+        frames = []
+        # 多只股票合成长表，后续才能在同一交易日做横截面排名和组合调仓。
+        for sym, df in data.items():
+            d = df.copy()
+            d["symbol"] = sym
+            frames.append(d)
+        if not frames:
+            return pd.DataFrame()
+        return pd.concat(frames, ignore_index=True).sort_values(["date", "symbol"]).reset_index(drop=True)
 
 
 def _emit_trace(callback: TraceCallback | None, payload: dict[str, Any]) -> None:
@@ -1937,19 +2182,26 @@ def _build_panel_for_fold_asof(
     strategy_cfg: dict[str, Any],
     xfeatures: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    train_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=train_as_of_date))
-    valid_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=valid_as_of_date))
-    if train_panel.empty or valid_panel.empty:
-        return pd.DataFrame(), pd.DataFrame()
-    train_panel["date"] = pd.to_datetime(train_panel["date"]).dt.normalize()
-    valid_panel["date"] = pd.to_datetime(valid_panel["date"]).dt.normalize()
-    train_panel = train_panel[train_panel["date"].isin(train_dates)].copy()
-    valid_panel = valid_panel[valid_panel["date"].isin(valid_dates)].copy()
-    if train_panel.empty or valid_panel.empty:
+    with _profile_step(
+        "build_fold_asof_panel",
+        symbol_count=int(len(symbols)),
+        years=int(years),
+        train_as_of_date=str(train_as_of_date),
+        valid_as_of_date=str(valid_as_of_date),
+    ):
+        train_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=train_as_of_date))
+        valid_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=valid_as_of_date))
+        if train_panel.empty or valid_panel.empty:
+            return pd.DataFrame(), pd.DataFrame()
+        train_panel["date"] = pd.to_datetime(train_panel["date"]).dt.normalize()
+        valid_panel["date"] = pd.to_datetime(valid_panel["date"]).dt.normalize()
+        train_panel = train_panel[train_panel["date"].isin(train_dates)].copy()
+        valid_panel = valid_panel[valid_panel["date"].isin(valid_dates)].copy()
+        if train_panel.empty or valid_panel.empty:
+            return train_panel, valid_panel
+        train_panel = _add_cross_market_to_panel(train_panel, years, strategy_cfg, xfeatures)
+        valid_panel = _add_cross_market_to_panel(valid_panel, years, strategy_cfg, xfeatures)
         return train_panel, valid_panel
-    train_panel = _add_cross_market_to_panel(train_panel, years, strategy_cfg, xfeatures)
-    valid_panel = _add_cross_market_to_panel(valid_panel, years, strategy_cfg, xfeatures)
-    return train_panel, valid_panel
 
 
 def _empty_pit_fold_frame() -> pd.DataFrame:
@@ -2111,7 +2363,12 @@ def _run_strategy_on_explicit_fold(
         train_dates=train_dates,
         valid_dates=valid_dates,
     )
-    prepared = strategy.prepare_panel(pd.concat([train, valid], ignore_index=True), strategy_cfg_for_prepare)
+    prepared = _prepare_strategy_panel_cached(
+        strategy_name=strategy_name,
+        strategy=strategy,
+        panel=pd.concat([train, valid], ignore_index=True),
+        strategy_cfg=strategy_cfg_for_prepare,
+    )
     if prepared.empty:
         return []
     prepared["date"] = pd.to_datetime(prepared["date"]).dt.normalize()
@@ -2270,7 +2527,12 @@ def _run_strategy_on_symbol_panel(
     strategy = get_strategy(strategy_name)
     if not strategy.is_enabled(strategy_cfg):
         return []
-    panel = strategy.prepare_panel(panel, strategy_cfg)
+    panel = _prepare_strategy_panel_cached(
+        strategy_name=strategy_name,
+        strategy=strategy,
+        panel=panel,
+        strategy_cfg=strategy_cfg,
+    )
     if panel.empty:
         return []
 
@@ -2956,7 +3218,7 @@ def _window_summary_fields(window_cfg: dict[str, Any], folds_df: pd.DataFrame) -
     }
 
 
-def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
+def _run_walk_forward_impl(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
     wcfg = config["walk_forward"]
     window_cfg = _resolve_walk_forward_window(wcfg)
     years = _effective_history_years(int(config["years"]), window_cfg)
@@ -3122,7 +3384,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
     candidate_folds_df = pd.DataFrame(candidate_rows)
     if folds_df.empty:
         empty_summary_df = pd.DataFrame()
-        return {
+        result = {
             "folds": folds_df,
             "candidate_folds": candidate_folds_df,
             "universe_audit": universe_audit_df,
@@ -3137,6 +3399,7 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
                 "universe_lookahead_guard": bool(use_point_in_time_universe),
             },
         }
+        return result
 
     summary = {
         "status": "ok",
@@ -3196,6 +3459,28 @@ def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | 
         summary["oos_return_decay_ratio"] = 0.0
 
     return {"folds": folds_df, "candidate_folds": candidate_folds_df, "universe_audit": universe_audit_df, "summary": summary}
+
+
+def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
+    root = Path.cwd()
+    runtime = _resolve_walk_forward_runtime(config, root)
+    token = _WALK_FORWARD_RUNTIME.set(runtime)
+    try:
+        with _profile_step("run_walk_forward"):
+            result = _run_walk_forward_impl(config, trace_callback=trace_callback)
+        summary = result.setdefault("summary", {})
+        summary["walk_forward_cache_enabled"] = bool(runtime.cache_enabled)
+        summary["walk_forward_prepared_panel_cache_enabled"] = bool(runtime.prepared_panel_cache_enabled)
+        summary["walk_forward_prepared_panel_disk_cache_enabled"] = bool(runtime.prepared_panel_disk_cache_enabled)
+        summary["walk_forward_cache_stats"] = dict(runtime.cache_stats)
+        profile_path = _write_walk_forward_profile(runtime, summary=summary)
+        if profile_path is not None:
+            summary["walk_forward_profile_path"] = str(profile_path)
+        if runtime.profile_enabled:
+            result["profile_events"] = pd.DataFrame(runtime.profile_events)
+        return result
+    finally:
+        _WALK_FORWARD_RUNTIME.reset(token)
 
 
 def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:

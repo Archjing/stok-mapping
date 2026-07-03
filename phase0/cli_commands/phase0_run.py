@@ -28,10 +28,39 @@ from phase0.walk_forward import describe_walk_forward_presets, run_cost_sensitiv
 PHASE0_RUN_COMMANDS = frozenset({"cost-sensitivity", "run"})
 
 
-def run_phase0(config_path: Path) -> int:
+def _apply_walk_forward_runtime_overrides(
+    cfg: dict[str, Any],
+    *,
+    profile: bool = False,
+    no_wf_cache: bool = False,
+    refresh_wf_cache: bool = False,
+) -> None:
+    wcfg = cfg.setdefault("walk_forward", {})
+    if profile:
+        wcfg.setdefault("execution", {})["profile"] = True
+    cache_cfg = wcfg.setdefault("cache", {})
+    if no_wf_cache:
+        cache_cfg["enabled"] = False
+    if refresh_wf_cache:
+        cache_cfg["refresh"] = True
+
+
+def run_phase0(
+    config_path: Path,
+    *,
+    profile: bool = False,
+    no_wf_cache: bool = False,
+    refresh_wf_cache: bool = False,
+) -> int:
     console = Console()
     root = config_path.parent
     cfg = load_config(config_path)
+    _apply_walk_forward_runtime_overrides(
+        cfg,
+        profile=profile,
+        no_wf_cache=no_wf_cache,
+        refresh_wf_cache=refresh_wf_cache,
+    )
     configure_local_history(cfg.get("local_history", {}), root)
     configure_akshare_throttle(cfg.get("data_sources", {}).get("akshare", {}))
 
@@ -236,6 +265,9 @@ def _configured_cost_scenarios(cfg: dict) -> list[dict[str, float | str]]:
 def register_phase0_run_commands(subparsers: argparse._SubParsersAction) -> None:
     run_parser = subparsers.add_parser("run", help="Run phase0 pipeline")
     run_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    run_parser.add_argument("--profile", action="store_true", help="Write walk-forward timing profile JSON under logs/perf")
+    run_parser.add_argument("--no-wf-cache", action="store_true", help="Disable walk-forward runtime caches for this run")
+    run_parser.add_argument("--refresh-wf-cache", action="store_true", help="Refresh walk-forward disk caches before use")
     cost_parser = subparsers.add_parser("cost-sensitivity", help="Run explicit phase0 cost sensitivity scenarios")
     cost_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     cost_parser.add_argument(
@@ -279,6 +311,11 @@ def handle_phase0_run_command(args: argparse.Namespace, *, parser: argparse.Argu
         )
         if gate_exit != 0:
             return gate_exit
-        return run_phase0(config_path)
+        return run_phase0(
+            config_path,
+            profile=bool(args.profile),
+            no_wf_cache=bool(args.no_wf_cache),
+            refresh_wf_cache=bool(args.refresh_wf_cache),
+        )
     parser.error("phase0 run command expected one of: " + ", ".join(sorted(PHASE0_RUN_COMMANDS)))
     return 2

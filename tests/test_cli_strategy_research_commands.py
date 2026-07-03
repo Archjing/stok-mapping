@@ -43,6 +43,9 @@ def test_strategy_research_command_registration_preserves_args() -> None:
             "--output-dir",
             "admission",
             "--trace-run",
+            "--profile",
+            "--no-wf-cache",
+            "--refresh-wf-cache",
         ]
     )
     factor_args = parser.parse_args(["factor-effectiveness", "--output-dir", "factor"])
@@ -58,6 +61,9 @@ def test_strategy_research_command_registration_preserves_args() -> None:
     assert admission_args.strategies == ["s1", "s2"]
     assert admission_args.output_dir == "admission"
     assert admission_args.trace_run is True
+    assert admission_args.profile is True
+    assert admission_args.no_wf_cache is True
+    assert admission_args.refresh_wf_cache is True
     assert factor_args.cmd == "factor-effectiveness"
     assert factor_args.config == "config.yaml"
     assert factor_args.output_dir == "factor"
@@ -158,6 +164,9 @@ def test_strategy_admission_handler_forwards_scope_and_trace(monkeypatch, tmp_pa
         strategies=["sample_strategy"],
         output_dir=str(tmp_path / "admission"),
         trace_run=True,
+        profile=True,
+        no_wf_cache=True,
+        refresh_wf_cache=True,
     )
 
     exit_code = strategy_research_cli.handle_strategy_research_command(
@@ -180,6 +189,9 @@ def test_strategy_admission_handler_forwards_scope_and_trace(monkeypatch, tmp_pa
     assert calls[1]["strategies"] == ["sample_strategy"]
     assert calls[1]["output_dir"] == (tmp_path / "admission").resolve()
     assert callable(calls[1]["trace_callback"])
+    assert calls[1]["profile_run"] is True
+    assert calls[1]["no_wf_cache"] is True
+    assert calls[1]["refresh_wf_cache"] is True
     assert any("WF fold result" in line for line in trace_messages)
 
 

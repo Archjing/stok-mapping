@@ -97,6 +97,10 @@ uv sync
 ./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
   --presets baseline_2y_1y_5fold --trace-run
 
+# 诊断耗时：生成 logs/perf/walk_forward_profile_<preset>_<run_id>.json/.csv
+./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
+  --presets baseline_2y_1y_5fold --profile
+
 # 使用配置中的专项 strategy set
 ./.venv/bin/python -m phase0.cli strategy-admission --config config.yaml \
   --presets baseline_2y_1y_5fold quality_3y_1y_4fold \
@@ -108,6 +112,9 @@ uv sync
   --strategies low_vol_low_turnover_quality_v1 quality_low_turnover_monthly_v1 \
   --trace-run
 ```
+
+Walk-forward runtime cache 默认只缓存安全边界：原始行情加载、fold 面板构造，以及“同一策略 + 同一配置 + 同一 fold 输入”的 prepared panel。
+prepared panel 不会跨不同策略共享。需要排查缓存影响时可加 `--no-wf-cache`；启用磁盘缓存后需要重建时可加 `--refresh-wf-cache`。
 
 ### 3.2 导出类命令
 

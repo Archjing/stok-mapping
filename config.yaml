@@ -325,6 +325,19 @@ phase0:
         expected_folds: 2
         description: "质量/低换手策略严格复核窗口；自然日期窗口，交易日历过滤。"
     min_samples: 200
+    execution:
+      # Profiling is opt-in. Use `strategy-admission --profile` when diagnosing runtime.
+      profile: false
+      profile_output_dir: "logs/perf"
+    cache:
+      # Runtime cache only shares safe boundaries: raw/fold inputs and per-strategy prepared panels.
+      # Prepared panels are never shared across different strategy IDs/configs/folds.
+      enabled: true
+      refresh: false
+      prepared_panel:
+        enabled: true
+        disk_enabled: false
+        dir: "data/cache/walk_forward/prepared"
     initial_cash: 1000000
     commission: 0.00025
     stamp_duty_sell: 0.0005
