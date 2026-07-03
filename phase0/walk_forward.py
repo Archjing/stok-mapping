@@ -94,15 +94,29 @@ class WalkForwardRuntime:
             "prepared_panel_disk_hits": 0,
             "prepared_panel_misses": 0,
             "prepared_panel_saves": 0,
+            "symbol_cache_clears": 0,
+            "symbol_cache_reuses": 0,
         }
     )
 
 
 _WALK_FORWARD_RUNTIME: ContextVar[WalkForwardRuntime | None] = ContextVar("_WALK_FORWARD_RUNTIME", default=None)
+_SYMBOL_CACHE_SOURCE_HASH: str | None = None
 
 
 def _runtime() -> WalkForwardRuntime | None:
     return _WALK_FORWARD_RUNTIME.get()
+
+
+def _manage_symbol_cache_for_runtime(runtime: WalkForwardRuntime) -> None:
+    global _SYMBOL_CACHE_SOURCE_HASH
+    source_hash = _stable_hash(runtime.source_signature)
+    if runtime.refresh_cache or not runtime.cache_enabled or _SYMBOL_CACHE_SOURCE_HASH != source_hash:
+        _load_symbol_cached.cache_clear()
+        _SYMBOL_CACHE_SOURCE_HASH = source_hash
+        runtime.cache_stats["symbol_cache_clears"] = runtime.cache_stats.get("symbol_cache_clears", 0) + 1
+    else:
+        runtime.cache_stats["symbol_cache_reuses"] = runtime.cache_stats.get("symbol_cache_reuses", 0) + 1
 
 
 @contextmanager
@@ -3390,7 +3404,11 @@ def _run_walk_forward_impl(config: dict[str, Any], *, trace_callback: TraceCallb
     strategy_cfg = wcfg.get("strategy_v2", {})
     account_execution = _build_account_execution_config(config, wcfg, strategy_cfg)
     configure_akshare_throttle(config.get("data_sources", {}).get("akshare", {}))
-    _load_symbol_cached.cache_clear()
+    runtime = _runtime()
+    if runtime is not None:
+        _manage_symbol_cache_for_runtime(runtime)
+    else:
+        _load_symbol_cached.cache_clear()
 
     candidate_rows: list[dict[str, Any]] = []
     candidate_summary_rows: list[dict[str, Any]] = []

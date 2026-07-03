@@ -155,3 +155,44 @@ def test_fold_panel_cache_reuses_same_asof_input(monkeypatch, tmp_path: Path) ->
     assert second_train["close"].tolist() == [10.0, 11.0]
     assert first_valid["close"].tolist() == [12.0]
     assert second_valid["close"].tolist() == [12.0]
+
+
+def test_symbol_cache_reuses_same_source_signature(tmp_path: Path) -> None:
+    original_hash = wf._SYMBOL_CACHE_SOURCE_HASH
+    try:
+        wf._SYMBOL_CACHE_SOURCE_HASH = None
+        runtime = wf.WalkForwardRuntime(
+            root=tmp_path,
+            source_signature={"sources": [{"path": "a.sqlite", "mtime_ns": 1, "size": 10}]},
+        )
+
+        wf._manage_symbol_cache_for_runtime(runtime)
+        wf._manage_symbol_cache_for_runtime(runtime)
+
+        assert runtime.cache_stats["symbol_cache_clears"] == 1
+        assert runtime.cache_stats["symbol_cache_reuses"] == 1
+    finally:
+        wf._SYMBOL_CACHE_SOURCE_HASH = original_hash
+
+
+def test_symbol_cache_clears_when_source_signature_changes(tmp_path: Path) -> None:
+    original_hash = wf._SYMBOL_CACHE_SOURCE_HASH
+    try:
+        wf._SYMBOL_CACHE_SOURCE_HASH = None
+        first = wf.WalkForwardRuntime(
+            root=tmp_path,
+            source_signature={"sources": [{"path": "a.sqlite", "mtime_ns": 1, "size": 10}]},
+        )
+        second = wf.WalkForwardRuntime(
+            root=tmp_path,
+            source_signature={"sources": [{"path": "a.sqlite", "mtime_ns": 2, "size": 10}]},
+        )
+
+        wf._manage_symbol_cache_for_runtime(first)
+        wf._manage_symbol_cache_for_runtime(second)
+
+        assert first.cache_stats["symbol_cache_clears"] == 1
+        assert second.cache_stats["symbol_cache_clears"] == 1
+        assert second.cache_stats["symbol_cache_reuses"] == 0
+    finally:
+        wf._SYMBOL_CACHE_SOURCE_HASH = original_hash
