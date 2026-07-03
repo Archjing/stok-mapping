@@ -22,7 +22,7 @@ from phase0.research.admission.strategy_scope import (
 )
 from phase0.research.diagnostics.overfit import run_overfit_diagnostic
 from phase0.reporting.paths import create_report_run
-from phase0.walk_forward import run_walk_forward
+from phase0.walk_forward import create_walk_forward_runtime, run_walk_forward
 
 
 @dataclass(frozen=True)
@@ -82,6 +82,7 @@ def run_strategy_admission(
 
     all_folds: list[pd.DataFrame] = []
     failure_rows: list[dict[str, Any]] = []
+    shared_runtime = None
     for preset_name in preset_names:
         scenario_cfg = copy.deepcopy(config)
         scenario_wcfg = scenario_cfg.setdefault("walk_forward", {})
@@ -96,7 +97,9 @@ def run_strategy_admission(
         scenario_strategy_cfg = scenario_wcfg.setdefault("strategy_v2", {})
         scenario_strategy_cfg["compare_strategies"] = strategy_names
         _force_strategy_set_enabled_for_admission(scenario_strategy_cfg, strategy_names)
-        result = run_walk_forward(scenario_cfg, trace_callback=trace_callback)
+        if shared_runtime is None:
+            shared_runtime = create_walk_forward_runtime(scenario_cfg, Path.cwd())
+        result = run_walk_forward(scenario_cfg, trace_callback=trace_callback, runtime=shared_runtime)
         summary = result.get("summary", {}) or {}
         folds = result.get("candidate_folds", pd.DataFrame())
         if folds is None or folds.empty:

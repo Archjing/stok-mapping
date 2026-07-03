@@ -264,6 +264,10 @@ def _resolve_walk_forward_runtime(config: dict[str, Any], root: Path) -> WalkFor
     )
 
 
+def create_walk_forward_runtime(config: dict[str, Any], root: Path | None = None) -> WalkForwardRuntime:
+    return _resolve_walk_forward_runtime(config, root or Path.cwd())
+
+
 def _date_set_signature(values: set[pd.Timestamp]) -> dict[str, Any]:
     normalized = sorted(pd.Timestamp(item).normalize().date().isoformat() for item in values)
     return {
@@ -3684,9 +3688,14 @@ def _run_walk_forward_impl(config: dict[str, Any], *, trace_callback: TraceCallb
     return {"folds": folds_df, "candidate_folds": candidate_folds_df, "universe_audit": universe_audit_df, "summary": summary}
 
 
-def run_walk_forward(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
+def run_walk_forward(
+    config: dict[str, Any],
+    *,
+    trace_callback: TraceCallback | None = None,
+    runtime: WalkForwardRuntime | None = None,
+) -> dict[str, Any]:
     root = Path.cwd()
-    runtime = _resolve_walk_forward_runtime(config, root)
+    runtime = runtime or _resolve_walk_forward_runtime(config, root)
     token = _WALK_FORWARD_RUNTIME.set(runtime)
     try:
         with _profile_step("run_walk_forward"):

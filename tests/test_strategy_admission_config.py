@@ -697,7 +697,7 @@ def test_governance_report_records_scope_boundaries_and_required_artifacts(tmp_p
 
 
 def test_strategy_admission_default_output_uses_standard_run_paths(monkeypatch, tmp_path) -> None:
-    def fake_run_walk_forward(config, trace_callback=None):
+    def fake_run_walk_forward(config, trace_callback=None, runtime=None):
         return {
             "summary": {
                 "walk_forward_train_years": 2,
@@ -776,7 +776,7 @@ def test_strategy_admission_default_output_uses_standard_run_paths(monkeypatch, 
 def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_folds(
     monkeypatch, tmp_path
 ) -> None:
-    def fake_run_walk_forward(config, trace_callback=None):
+    def fake_run_walk_forward(config, trace_callback=None, runtime=None):
         return {
             "summary": {
                 "reason": "no eligible universe",
@@ -816,7 +816,7 @@ def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_fo
 def test_strategy_admission_forwards_walk_forward_runtime_overrides(monkeypatch, tmp_path) -> None:
     seen_configs: list[dict] = []
 
-    def fake_run_walk_forward(config, trace_callback=None):
+    def fake_run_walk_forward(config, trace_callback=None, runtime=None):
         seen_configs.append(config)
         return {
             "summary": {
@@ -859,6 +859,54 @@ def test_strategy_admission_forwards_walk_forward_runtime_overrides(monkeypatch,
     assert walk_forward_cfg["execution"]["profile"] is True
     assert walk_forward_cfg["cache"]["enabled"] is False
     assert walk_forward_cfg["cache"]["refresh"] is True
+
+
+def test_strategy_admission_reuses_walk_forward_runtime_across_presets(monkeypatch, tmp_path) -> None:
+    runtimes: list[object] = []
+    created: list[dict] = []
+
+    def fake_create_walk_forward_runtime(config, root):
+        created.append({"config": config, "root": root})
+        return SimpleNamespace(name="shared-runtime")
+
+    def fake_run_walk_forward(config, trace_callback=None, runtime=None):
+        runtimes.append(runtime)
+        return {
+            "summary": {
+                "reason": "no eligible universe",
+                "walk_forward_train_years": 2,
+                "walk_forward_validate_years": 1,
+                "walk_forward_start_date": "2020-04-01",
+                "walk_forward_end_date": "2026-03-31",
+                "walk_forward_expected_folds": 1,
+                "walk_forward_actual_folds": 0,
+            },
+            "candidate_folds": pd.DataFrame(),
+        }
+
+    monkeypatch.setattr(admission_runner, "create_walk_forward_runtime", fake_create_walk_forward_runtime)
+    monkeypatch.setattr(admission_runner, "run_walk_forward", fake_run_walk_forward)
+
+    run_strategy_admission(
+        config={
+            "local_history": {"price_adjustment_for_backtest": "qfq_asof"},
+            "walk_forward": {
+                "presets": {
+                    "baseline": {"train_years": 2, "validate_years": 1},
+                    "quality": {"train_years": 3, "validate_years": 1},
+                },
+                "admission": {},
+                "strategy_v2": {"compare_strategies": ["demo_strategy"]},
+            },
+        },
+        root=tmp_path,
+        presets=["baseline", "quality"],
+    )
+
+    assert len(created) == 1
+    assert len(runtimes) == 2
+    assert runtimes[0] is runtimes[1]
+    assert runtimes[0] is not None
 
 
 def test_force_strategy_set_enabled_supports_regime_gate_strategy() -> None:
