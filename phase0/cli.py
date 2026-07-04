@@ -22,6 +22,7 @@ from phase0.cli_commands.phase0_run import (
 )
 from phase0.cli_commands.reports import REPORT_EXPORT_COMMANDS, handle_report_export_command, register_report_export_commands
 from phase0.cli_commands.research import RESEARCH_COMMANDS, handle_research_command, register_research_commands
+from phase0.cli_commands.site import SITE_COMMANDS, handle_site_command, register_site_commands
 from phase0.cli_commands.strategy_research import (
     STRATEGY_RESEARCH_COMMANDS,
     _print_walk_forward_trace,
@@ -115,6 +116,7 @@ def main() -> int:
         "Operations": [
             "dashboard",
             "maintain",
+            "site",
             "system",
         ],
     }
@@ -133,6 +135,7 @@ def main() -> int:
             "  dashboard: scan\n"
             "  intelligence: collect, import-local, review-candidates, validate\n"
             "  maintain: resume, run, status, stop, supervise, tick\n"
+            "  site: build, publish, sync\n"
             "  system: status\n"
         ),
     )
@@ -146,6 +149,7 @@ def main() -> int:
     register_intelligence_commands(sub)
     register_maintenance_commands(sub)
     register_system_commands(sub)
+    register_site_commands(sub)
     register_delivery_commands(sub)
     register_data_update_commands(sub)
 
@@ -166,6 +170,8 @@ def main() -> int:
         return handle_maintenance_command(args, parser=parser)
     if args.cmd == "system":
         return handle_system_command(args, parser=parser)
+    if args.cmd in SITE_COMMANDS:
+        return handle_site_command(args, parser=parser)
     if args.cmd in DELIVERY_COMMANDS:
         return handle_delivery_command(args, parser=parser)
     if args.cmd in DATA_UPDATE_COMMANDS:

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>盘前观察池试用简报</title>
+  <link rel="stylesheet" href="{{ stylesheet_href }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23426a79'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23d5ccba'>B</text></svg>">
+</head>
+<body>
+<div class="theme-bar">
+  <button class="theme-btn" id="themeToggle" title="切换配色">
+      <span class="icon" id="themeIcon">☀️</span>
+      <span class="label-light">Belafonte Day</span>
+      <span class="label-dark">Belafonte Night</span>
+    </button>
+</div>
+  <div class="page">
+    <div class="title-row">
+      <h1>Phase 0 盘前观察池</h1>
+      <span class="generated-at">生成时间：{{ generated_at }}</span>
+    </div>
+    <p>
+      阶段试用简报 · 策略信号观察版。{{ strategy_description }}
+      本页基于最近一个已入库交易日收盘后的信号生成，供下一交易日 07:30 盘前检查持仓、候选和调仓关注项。
+      <a class="helper-link" href="#terms">术语说明</a>
+      <a class="helper-link" href="#disclaimer">免责声明</a>
+    </p>
+
+    <div class="summary">
+      {% for card in summary_cards %}
+      <div{% if card.accent %} class="{{ card.accent }}"{% endif %}>
+        <span>{{ card.label }}</span>
+        <strong>{{ card.value }}</strong>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% if account_snapshot %}
+    <section class="account-snapshot">
+      <h2>模拟账户快照</h2>
+      <p><strong>模拟起始日：{{ account_snapshot.start_date }} ｜ 初始资产：{{ account_snapshot.initial_cash }}</strong></p>
+      <p>展示最近一个已确认模拟账单日；当前观察池为计划层，不直接代表已成交记录。</p>
+      <div class="table-wrap account-table">
+        <table>
+          <thead>
+            <tr>
+              {% for header in account_snapshot.headers %}
+              <th>{{ header }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in account_snapshot.rows %}
+            <tr>
+              {% for cell in row %}
+              <td>{{ cell }}</td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+    {% endif %}
+
+    <div class="table-wrap">
+      <table class="watchlist-table">
+        <thead>
+          <tr>
+            {% for header in headers %}
+            <th title="{{ header_tips.get(header, '') }}">{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr{% if row.class %} class="{{ row.class }}"{% endif %}>
+            {% for cell in row.cells %}
+            <td{% if cell.class %} class="{{ cell.class }}"{% endif %}{% if cell.title %} title="{{ cell.title }}"{% endif %}>{{ cell.value }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <section class="terms" id="terms">
+      <h2>术语说明：</h2>
+      <p><span class="term">动作</span> 是当前模拟账户口径，表示账户从上一确认持仓滚动到本期目标持仓时的计划调仓行为；它不是已成交记录，也不是自动下单指令。</p>
+      <p><span class="term">信号动作</span> 是策略研究信号口径，表示策略模型根据最新数据给出的目标状态变化；它用于解释模型状态，不等同于账户最终动作。</p>
+      <p><span class="term">当前权重</span> 是当前模拟账户上一确认持仓对应权重；新账户未买入时为 0，不取策略研究组合的内部权重。</p>
+      <p><span class="term">目标权重</span> 是按本期策略目标生成的模拟账户计划目标权重；是否能成交仍取决于现金、整手、涨跌停、停牌和流动性约束。</p>
+      <p><span class="term">权重变化</span> 是目标权重减当前权重，表示计划调仓幅度，不代表实际成交后的最终权重。</p>
+      <p><span class="term">持仓天数</span> 是当前模拟账户真实持仓口径，按已确认账户持仓记录连续计数；新账户尚未买入时显示 0。</p>
+      <p><span class="term">信号持有天数</span> 是策略研究信号口径，来自策略内部低换手和最短持有期状态，不等同于账户真实持仓天数。</p>
+      <p><span class="term">成交价口径</span> 描述执行假设采用的价格。“执行日收盘价”指观察池对应执行日 15:00 附近的收盘价；“执行日开盘价”指观察池对应执行日 09:30 附近的开盘价；“执行日开盘保守价”指在执行日开盘价基础上叠加保守缓冲后的估算价格。</p>
+      <p><span class="term">最大成交参与率</span> 是流动性约束，限制单只股票交易量最多参与市场成交量的比例。</p>
+      <p><span class="term">执行风险提示</span> 用于提示停牌、流动性、涨跌停等可能影响成交的因素。</p>
+      <p><span class="term">账户说明</span> 解释本次动作如何承接上一期模拟账户持仓。</p>
+      <p><span class="term">观察理由</span> 概括该股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。表格中“强势达标”是“动量分数超过买入阈值”的简写，表示模型强度达到入选条件，不等同于技术分析里常说的“超买”。</p>
+    </section>
+
+    <div class="notice" id="disclaimer">
+      <strong>风险提示与免责声明：</strong>
+      本页面仅基于项目内已入库历史数据、当前策略参数和模拟账户状态生成，用于研究复盘、盘前观察和策略验证；
+      相关信号、权重、观察理由和执行风险提示均不构成投资建议、收益承诺或自动交易指令。
+      实际交易需结合实时行情、账户约束、流动性、政策风险和个人风险承受能力独立判断。
+    </div>
+  </div>
+<button class="back-to-top" id="backToTop" title="top" aria-label="top">^</button>
+<script>
+(function() {
+  var STORAGE_KEY = 'belafonte-theme';
+  var html = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  var icon = document.getElementById('themeIcon');
+  var saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+    if (icon) icon.textContent = '🌙';
+  } else {
+    html.setAttribute('data-theme', 'light');
+    if (icon) icon.textContent = '☀️';
+  }
+  if (btn) {
+    btn.addEventListener('click', function() {
+      var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem(STORAGE_KEY, next);
+      if (icon) icon.textContent = next === 'dark' ? '🌙' : '☀️';
+    });
+  }
+  var topBtn = document.getElementById('backToTop');
+  if (topBtn) {
+    window.addEventListener('scroll', function() {
+      topBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+    topBtn.addEventListener('click', function() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+})();
+</script>
+</body>
+</html>

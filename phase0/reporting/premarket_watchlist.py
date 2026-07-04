@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import argparse
-import html
 import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 import numpy as np
 import pandas as pd
 
@@ -15,6 +15,7 @@ from phase0.config import load_config
 from phase0.data_access.local_history import configure_local_history
 from phase0.data_governance.external_market_history import configure_us_market_history
 from phase0.execution.accounts import (
+    SimulatedAccountConfig,
     build_account_ledger,
     load_simulated_accounts,
     price_mode_label,
@@ -38,6 +39,11 @@ from phase0.reporting.strategy_bill import (
 DEFAULT_WATCHLIST_OUTPUT = "phase0_premarket_watchlist.csv"
 DEFAULT_REPORT_OUTPUT = "phase0_premarket_report.html"
 DEFAULT_SIMULATION_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
+WATCHLIST_TEMPLATE_DIR = Path(__file__).with_name("templates")
+WATCHLIST_STATIC_DIR = Path(__file__).with_name("static")
+WATCHLIST_TEMPLATE_NAME = "watchlist.html"
+WATCHLIST_STATIC_ASSETS = ("style.css",)
+WATCHLIST_STYLESHEET_NAME = WATCHLIST_STATIC_ASSETS[0]
 STRATEGY_DISPLAY_NAMES = {
     "legacy_momentum_low_turnover_v1": "低换手经典动量",
 }
@@ -47,6 +53,47 @@ STRATEGY_SHORT_DESCRIPTIONS = {
         "通过持有区间、周期调仓、最短持有天数和换手惩罚减少来回换股。"
     ),
 }
+WATCHLIST_RIGHT_ALIGNED_HEADERS = {"收盘价"}
+WATCHLIST_CENTER_ALIGNED_NUMERIC_HEADERS = {
+    "当前权重",
+    "目标权重",
+    "权重变化",
+    "动量分数",
+    "当日排名",
+    "持仓天数",
+    "信号持有天数",
+    "最大成交参与率",
+}
+
+
+def _default_strategy_id(config: dict[str, Any]) -> str:
+    reports_cfg = config.get("strategy_reports", {}) or {}
+    return str(reports_cfg.get("default_strategy_id") or "legacy_momentum_low_turnover_v1")
+
+
+def _select_simulated_account(accounts: list[SimulatedAccountConfig], account_id: str | None) -> SimulatedAccountConfig | None:
+    if not accounts:
+        return None
+    if not account_id:
+        return accounts[0]
+    for account in accounts:
+        if account.account_id == account_id:
+            return account
+    available = ", ".join(account.account_id for account in accounts) or "<none>"
+    raise ValueError(f"simulated account {account_id!r} is not configured; available accounts: {available}")
+
+
+def _account_execution_cfg(account: SimulatedAccountConfig | None, execution_cfg: dict[str, Any]) -> dict[str, Any]:
+    if account is None:
+        return execution_cfg
+    resolved = dict(execution_cfg)
+    resolved["price_mode"] = account.execution_price_mode
+    resolved["max_participation_rate"] = account.max_participation_rate
+    resolved["enable_limit_check"] = account.enable_limit_check
+    resolved["enable_suspension_check"] = account.enable_suspension_check
+    if account.limit_up_down_pct:
+        resolved["limit_up_down_pct"] = dict(account.limit_up_down_pct)
+    return resolved
 
 
 def _resolve_output_template(root: Path, value: str | Path, summary: dict[str, Any]) -> Path:
@@ -111,6 +158,9 @@ def _display_cell(header: str, value: Any) -> str:
     text = str(value)
     if header == "成交价口径":
         return price_mode_label(text)
+    if header == "执行风险提示":
+        summary, _detail = _split_risk_note(text)
+        return summary
     if header == "观察理由":
         labels = {
             "动量分数超过买入阈值": "强势达标",
@@ -123,9 +173,45 @@ def _display_cell(header: str, value: Any) -> str:
 
 def _cell_title(header: str, value: Any, display_value: str) -> str:
     text = str(value)
+    if header == "执行风险提示":
+        _summary, detail = _split_risk_note(text)
+        return detail
     if header == "观察理由" and text != display_value:
         return text
     return ""
+
+
+def _split_risk_note(text: str) -> tuple[str, str]:
+    raw = str(text)
+    for sep in ("，", "；", ",", ";"):
+        if sep in raw:
+            head, tail = raw.split(sep, 1)
+            return head.strip(), tail.strip()
+    return raw.strip(), ""
+
+
+def _watchlist_cell_class(header: str) -> str:
+    if header in WATCHLIST_RIGHT_ALIGNED_HEADERS:
+        return "num-right"
+    if header in WATCHLIST_CENTER_ALIGNED_NUMERIC_HEADERS:
+        return "num-center"
+    return ""
+
+
+def _watchlist_template_env() -> Environment:
+    return Environment(
+        loader=FileSystemLoader(WATCHLIST_TEMPLATE_DIR),
+        autoescape=select_autoescape(("html", "xml")),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+
+
+def _copy_watchlist_assets(html_path: Path) -> None:
+    for asset_name in WATCHLIST_STATIC_ASSETS:
+        asset = WATCHLIST_STATIC_DIR / asset_name
+        if asset.exists():
+            shutil.copyfile(asset, html_path.parent / asset_name)
 
 
 def _parse_pct(value: Any) -> float:
@@ -178,7 +264,7 @@ def _trade_reason(row: pd.Series, params: dict[str, Any]) -> str:
     action = str(row.get("sim_trade_action") or _trade_action(row))
     score = row.get("score")
     rank = row.get("rank")
-    held_days = row.get("held_days")
+    held_days = row.get("strategy_held_days", row.get("held_days"))
     buy_top_n = int(params.get("buy_top_n", 0) or 0)
     hold_top_n = int(params.get("hold_top_n", 0) or 0)
     buy_threshold = float(params.get("buy_threshold", np.nan))
@@ -199,11 +285,11 @@ def _trade_reason(row: pd.Series, params: dict[str, Any]) -> str:
             if hold_top_n and pd.notna(rank) and float(rank) > hold_top_n:
                 parts.append(f"排名跌出持有前{hold_top_n}")
         if pd.notna(held_days):
-            parts.append(f"已持有{int(held_days)}个交易日")
+            parts.append(f"策略信号已持有{int(held_days)}个交易日")
     if action == "继续持有":
         parts.append("仍在持有观察区内")
         if pd.notna(held_days):
-            parts.append(f"已持有{int(held_days)}个交易日")
+            parts.append(f"策略信号已持有{int(held_days)}个交易日")
     if not parts:
         parts.append("未触发交易，仅保留观察")
     return "；".join(parts)
@@ -270,7 +356,15 @@ def _latest_trade_date(db_path: Path) -> str:
     return str(row[0]) if row and row[0] else ""
 
 
-def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path) -> tuple[dict[str, float], str]:
+def _load_previous_sim_positions(
+    root: Path,
+    brief_date: str,
+    ledger_path: Path,
+    *,
+    simulation_start_date: str = "",
+    account_id: str = "",
+    strategy_id: str = "",
+) -> tuple[dict[str, float], str]:
     if ledger_path.exists():
         try:
             ledger = pd.read_csv(ledger_path, encoding="utf-8-sig")
@@ -278,6 +372,14 @@ def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path)
             ledger = pd.DataFrame()
         if not ledger.empty and {"brief_date", "symbol", "target_weight"}.issubset(ledger.columns):
             prior = ledger[ledger["brief_date"].astype(str) < brief_date].copy()
+            if simulation_start_date:
+                prior = prior[prior["brief_date"].astype(str) >= simulation_start_date].copy()
+            if account_id and "account_id" in prior.columns:
+                prior = prior[prior["account_id"].astype(str) == account_id].copy()
+            elif account_id and account_id != "default":
+                prior = prior.iloc[0:0].copy()
+            if strategy_id and "strategy_id" in prior.columns:
+                prior = prior[prior["strategy_id"].astype(str) == strategy_id].copy()
             if not prior.empty:
                 source_date = str(prior["brief_date"].max())
                 latest = prior[prior["brief_date"].astype(str) == source_date].copy()
@@ -289,6 +391,8 @@ def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path)
     if report_root.exists():
         for path in report_root.glob("????-??-??/phase0_premarket_watchlist*.csv"):
             report_date = path.parent.name
+            if simulation_start_date and report_date < simulation_start_date:
+                continue
             if report_date < brief_date:
                 candidates.append((report_date, path))
     for source_date, path in sorted(candidates, reverse=True):
@@ -298,14 +402,117 @@ def _load_previous_sim_positions(root: Path, brief_date: str, ledger_path: Path)
             continue
         if previous.empty or "股票代码" not in previous.columns:
             continue
+        if account_id and "账户ID" in previous.columns:
+            account_values = {str(value) for value in previous["账户ID"].dropna().astype(str).unique()}
+            if account_values and account_id not in account_values:
+                continue
+        elif account_id and account_id != "default":
+            continue
+        if strategy_id and "策略ID" in previous.columns:
+            strategy_values = {str(value) for value in previous["策略ID"].dropna().astype(str).unique()}
+            if strategy_values and strategy_id not in strategy_values:
+                continue
         weight_col = "目标权重"
-        if "模拟目标权重" in previous.columns:
-            weight_col = "模拟目标权重"
+        for candidate_col in ("模拟账户目标权重", "模拟目标权重"):
+            if candidate_col in previous.columns:
+                weight_col = candidate_col
+                break
         if weight_col not in previous.columns:
             continue
         weights = previous[weight_col].map(_parse_pct)
         return dict(zip(previous["股票代码"].astype(str), weights.astype(float), strict=False)), source_date
     return {}, ""
+
+
+def _load_confirmed_account_positions(account: Any, brief_date: str) -> tuple[dict[str, float], str, bool]:
+    if not account or not getattr(account, "database_path", Path("")).exists():
+        return {}, "", False
+    try:
+        from phase0.execution.accounts import ensure_account_tables
+
+        with sqlite3.connect(account.database_path) as conn:
+            ensure_account_tables(conn)
+            row = conn.execute(
+                """
+                SELECT MAX(brief_date)
+                FROM account_daily_assets
+                WHERE account_id = ?
+                  AND brief_date < ?
+                """,
+                (account.account_id, brief_date),
+            ).fetchone()
+            source_date = str(row[0]) if row and row[0] else ""
+            if not source_date:
+                return {}, "", False
+            position_rows = conn.execute(
+                """
+                SELECT symbol, target_weight
+                FROM account_positions
+                WHERE account_id = ?
+                  AND brief_date = ?
+                  AND shares > 0
+                """,
+                (account.account_id, source_date),
+            ).fetchall()
+    except sqlite3.Error:
+        return {}, "", False
+    weights = {str(symbol): float(weight or 0.0) for symbol, weight in position_rows}
+    return weights, f"确认账单{source_date}", True
+
+
+def _load_account_holding_days(account: Any, brief_date: str) -> dict[str, int]:
+    if not account or not getattr(account, "database_path", Path("")).exists():
+        return {}
+    try:
+        from phase0.execution.accounts import ensure_account_tables
+
+        with sqlite3.connect(account.database_path) as conn:
+            ensure_account_tables(conn)
+            account_dates = [
+                str(row[0])
+                for row in conn.execute(
+                    """
+                    SELECT brief_date
+                    FROM account_daily_assets
+                    WHERE account_id = ?
+                      AND brief_date < ?
+                    ORDER BY brief_date
+                    """,
+                    (account.account_id, brief_date),
+                ).fetchall()
+            ]
+            if not account_dates:
+                return {}
+            position_rows = conn.execute(
+                """
+                SELECT symbol, brief_date
+                FROM account_positions
+                WHERE account_id = ?
+                  AND brief_date < ?
+                  AND shares > 0
+                ORDER BY symbol, brief_date
+                """,
+                (account.account_id, brief_date),
+            ).fetchall()
+    except sqlite3.Error:
+        return {}
+
+    held_dates_by_symbol: dict[str, set[str]] = {}
+    for symbol, position_date in position_rows:
+        held_dates_by_symbol.setdefault(str(symbol), set()).add(str(position_date))
+
+    holding_days: dict[str, int] = {}
+    latest_date = account_dates[-1]
+    for symbol, held_dates in held_dates_by_symbol.items():
+        if latest_date not in held_dates:
+            continue
+        days = 0
+        for account_date in reversed(account_dates):
+            if account_date not in held_dates:
+                break
+            days += 1
+        holding_days[symbol] = days
+    return holding_days
 
 
 def _write_simulation_ledger(
@@ -314,17 +521,25 @@ def _write_simulation_ledger(
     brief_date: str,
     signal_date: str,
     watchlist: pd.DataFrame,
+    account_id: str = "",
+    strategy_id: str = "",
 ) -> None:
+    current_weight_col = "模拟账户当前权重" if "模拟账户当前权重" in watchlist.columns else "当前权重"
+    target_weight_col = "模拟账户目标权重" if "模拟账户目标权重" in watchlist.columns else "目标权重"
+    weight_change_col = "模拟账户权重变化" if "模拟账户权重变化" in watchlist.columns else "权重变化"
+    action_col = "模拟账户动作" if "模拟账户动作" in watchlist.columns else ("动作" if "动作" in watchlist.columns else "交易动作")
     rows = pd.DataFrame(
         {
+            "account_id": account_id,
+            "strategy_id": strategy_id,
             "brief_date": brief_date,
             "signal_date": signal_date,
             "symbol": watchlist["股票代码"].astype(str),
             "name": watchlist["股票名称"].astype(str),
-            "action": watchlist["交易动作"].astype(str),
-            "current_weight": watchlist["当前权重"].map(_parse_pct),
-            "target_weight": watchlist["目标权重"].map(_parse_pct),
-            "weight_change": watchlist["权重变化"].map(_parse_pct),
+            "action": watchlist[action_col].astype(str),
+            "current_weight": watchlist[current_weight_col].map(_parse_pct),
+            "target_weight": watchlist[target_weight_col].map(_parse_pct),
+            "weight_change": watchlist[weight_change_col].map(_parse_pct),
         }
     )
     rows = rows[(rows["current_weight"].abs() > 1e-12) | (rows["target_weight"].abs() > 1e-12)].copy()
@@ -336,38 +551,34 @@ def _write_simulation_ledger(
     else:
         existing = pd.DataFrame()
     if not existing.empty and "brief_date" in existing.columns:
-        existing = existing[existing["brief_date"].astype(str) != brief_date].copy()
+        same_brief_date = existing["brief_date"].astype(str) == brief_date
+        if account_id and "account_id" in existing.columns:
+            same_account = existing["account_id"].astype(str) == account_id
+        else:
+            same_account = pd.Series(True, index=existing.index)
+        if strategy_id and "strategy_id" in existing.columns:
+            same_strategy = existing["strategy_id"].astype(str) == strategy_id
+        else:
+            same_strategy = pd.Series(True, index=existing.index)
+        existing = existing[~(same_brief_date & same_account & same_strategy)].copy()
     out = pd.concat([existing, rows], ignore_index=True) if not existing.empty else rows
     if not out.empty:
-        out = out.sort_values(["brief_date", "symbol"]).reset_index(drop=True)
+        sort_cols = [col for col in ["brief_date", "account_id", "strategy_id", "symbol"] if col in out.columns]
+        out = out.sort_values(sort_cols).reset_index(drop=True)
     path.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(path, index=False, encoding="utf-8-sig")
 
 
-def _format_account_snapshot_rows(rows: list[dict[str, Any]], meta: dict[str, Any]) -> str:
+def _account_snapshot_context(rows: list[dict[str, Any]], meta: dict[str, Any]) -> dict[str, Any] | None:
     if not rows:
-        return ""
+        return None
     headers = ["账单日期", "总资产", "股票资产", "现金资产", "执行价口径", "成交金额", "成交股数", "收益额", "说明"]
-    body = []
-    for row in rows:
-        body.append(
-            "<tr>"
-            + "".join(f"<td>{html.escape(str(row.get(header, '')))}</td>" for header in headers)
-            + "</tr>"
-        )
-    return (
-        "<section class=\"account-snapshot\"><h2>模拟账户快照</h2>"
-        "<p><strong>"
-        f"模拟起始日：{html.escape(str(meta.get('start_date', '')))}"
-        f" ｜ 初始资产：{html.escape(_format_money(meta.get('initial_cash', np.nan)))}"
-        "</strong></p>"
-        "<p>展示最近一个已确认模拟账单日；当前观察池为计划层，不直接代表已成交记录。</p>"
-        "<div class=\"table-wrap account-table\"><table><thead><tr>"
-        + "".join(f"<th>{html.escape(header)}</th>" for header in headers)
-        + "</tr></thead><tbody>"
-        + "\n".join(body)
-        + "</tbody></table></div></section>\n"
-    )
+    return {
+        "headers": headers,
+        "rows": [[str(row.get(header, "")) for header in headers] for row in rows],
+        "start_date": str(meta.get("start_date", "")),
+        "initial_cash": _format_money(meta.get("initial_cash", np.nan)),
+    }
 
 
 def _build_account_snapshot_rows(
@@ -404,187 +615,67 @@ def _build_account_snapshot_rows(
     ]
 
 
+def _account_summary_cards(account_snapshot: dict[str, Any], *, initial_cash: float | None = None) -> list[tuple[str, str]]:
+    if not account_snapshot:
+        cash = float(initial_cash) if initial_cash is not None and pd.notna(initial_cash) else np.nan
+        return [
+            ("总资产（元）", _format_money(cash)),
+            ("可用资金（元）", _format_money(cash)),
+            ("持仓市值（元）", _format_money(0.0)),
+            ("当前仓位（%）", _format_pct(0.0)),
+            ("当前收益率（%）", "暂无"),
+        ]
+    total_asset = float(account_snapshot.get("total_asset", np.nan))
+    stock_asset = float(account_snapshot.get("stock_asset", np.nan))
+    cash_asset = float(account_snapshot.get("cash_asset", np.nan))
+    position_pct = float(account_snapshot.get("target_exposure", np.nan))
+    current_return = float(account_snapshot.get("daily_return", np.nan))
+    return [
+        ("总资产（元）", _format_money(total_asset)),
+        ("可用资金（元）", _format_money(cash_asset)),
+        ("持仓市值（元）", _format_money(stock_asset)),
+        ("当前仓位（%）", _format_pct(position_pct)),
+        ("当前收益率（%）", _format_pct(current_return)),
+    ]
+
+
 def _format_html(watchlist: pd.DataFrame, summary: dict[str, Any]) -> str:
-    style = """
-<style>
-body {
-  margin: 0;
-  padding: 24px;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #1f2937;
-  background: #f5f7fb;
-}
-.page {
-  max-width: 1280px;
-  margin: 0 auto;
-}
-h1 {
-  margin: 0 0 8px;
-  font-size: 24px;
-}
-.title-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  flex-wrap: wrap;
-}
-.title-row h1 {
-  margin: 0;
-}
-.generated-at {
-  color: #8b95a1;
-  font-size: 13px;
-}
-.helper-link {
-  color: #2563eb;
-  text-decoration: none;
-  font-size: 13px;
-}
-.helper-link:hover {
-  text-decoration: underline;
-}
-p {
-  margin: 0 0 16px;
-  color: #4b5563;
-}
-.summary {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 10px;
-  margin: 16px 0 18px;
-}
-.summary div {
-  border: 1px solid #d0d7de;
-  background: #fff;
-  padding: 10px 12px;
-}
-.summary span {
-  display: block;
-  color: #6b7280;
-  font-size: 12px;
-}
-.summary strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 16px;
-}
-.notice {
-  color: #6b7280;
-  font-size: 12px;
-  padding: 0;
-  margin: 8px 0 16px;
-  line-height: 1.6;
-}
-.notice strong {
-  color: #4b5563;
-  font-weight: 600;
-}
-.table-wrap {
-  overflow: auto;
-  max-height: 70vh;
-  border: 1px solid #d0d7de;
-  background: #fff;
-}
-.account-snapshot {
-  margin: 0 0 18px;
-}
-.account-snapshot h2 {
-  margin: 0 0 6px;
-  font-size: 16px;
-}
-.account-snapshot p {
-  margin: 0 0 8px;
-  color: #6b7280;
-  font-size: 12px;
-}
-.account-snapshot p strong {
-  color: #374151;
-  font-size: 13px;
-  font-weight: 700;
-}
-.account-table {
-  max-height: none;
-}
-table {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-th,
-td {
-  border: 1px solid #d0d7de;
-  padding: 7px 9px;
-  white-space: nowrap;
-}
-th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: #eef3f9;
-  text-align: left;
-}
-.buy td {
-  background: #eefaf1;
-}
-.sell td {
-  background: #fff0f0;
-}
-.hold td {
-  background: #f8fafc;
-}
-.terms {
-  color: #6b7280;
-  font-size: 12px;
-  margin: 8px 0 16px;
-  line-height: 1.6;
-}
-.terms h2 {
-  margin: 0;
-  font-size: 12px;
-  color: #4b5563;
-  font-weight: 600;
-}
-.terms p {
-  margin: 2px 0 0;
-}
-.term {
-  font-weight: 600;
-  color: #4b5563;
-}
-</style>
-"""
     headers = [
-        "交易动作",
-        "策略信号动作",
+        "动作",
+        "信号动作",
         "股票代码",
         "股票名称",
         "收盘价",
         "当前权重",
         "目标权重",
         "权重变化",
+        "持仓天数",
         "动量分数",
         "当日排名",
-        "持有天数",
+        "信号持有天数",
         "成交价口径",
         "最大成交参与率",
         "执行风险提示",
-        "连续模拟说明",
+        "账户说明",
         "观察理由",
     ]
     header_tips = {
-        "交易动作": "连续模拟账户口径：根据上一期模拟持仓与本期目标持仓计算今天的调仓行为。",
-        "策略信号动作": "本次模型信号口径：表示策略模型根据最新信号给出的目标状态变化，不等同于最终交易指令。",
+        "动作": "当前模拟账户口径：根据账户上一确认持仓与本期目标持仓计算今天的计划调仓行为。",
+        "信号动作": "策略研究信号口径：表示策略模型根据最新信号给出的目标状态变化，不等同于最终交易指令。",
+        "当前权重": "当前模拟账户口径：账户上一确认持仓对应权重；新账户未买入时为 0。",
+        "目标权重": "当前模拟账户口径：按本期策略目标生成的计划目标权重。",
+        "权重变化": "当前模拟账户口径：目标权重减当前权重。",
+        "持仓天数": "当前模拟账户真实持仓口径：按已确认账户持仓记录连续计数；新账户未买入时为 0。",
+        "信号持有天数": "策略研究信号口径：策略内部为低换手和最短持有期维护的目标组合持有天数，不等同于账户真实持仓天数。",
         "成交价口径": "执行假设使用的成交价格口径：执行日收盘价、执行日开盘价或执行日开盘保守价。",
         "最大成交参与率": "流动性约束：单只股票交易量最多参与市场成交量的比例。",
         "执行风险提示": "根据价格、成交量、成交额和涨跌停状态提示次日可能的成交障碍。",
-        "连续模拟说明": "解释本次动作如何从上一期模拟持仓滚动到本期目标持仓。",
+        "账户说明": "解释本次动作如何从上一期模拟账户持仓滚动到本期目标持仓。",
         "观察理由": "说明股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。",
     }
     rows = []
     for _, row in watchlist.iterrows():
-        action = str(row["交易动作"])
+        action = str(row["动作"])
         cls = ""
         if "买" in action or "加仓" in action:
             cls = ' class="buy"'
@@ -597,70 +688,39 @@ th {
             raw_value = row.get(header, "")
             display_value = _display_cell(header, raw_value)
             title = _cell_title(header, raw_value, display_value)
-            title_attr = f" title=\"{html.escape(title, quote=True)}\"" if title else ""
-            cells.append(f"<td{title_attr}>{html.escape(display_value)}</td>")
-        rows.append(f"<tr{cls}>" + "".join(cells) + "</tr>")
+            cell_class = _watchlist_cell_class(header)
+            cells.append({"class": cell_class, "title": title, "value": display_value})
+        rows.append({"class": cls.removeprefix(' class="').removesuffix('"') if cls else "", "cells": cells})
 
     summary_cards = [
-        ("当前策略", summary.get("strategy_display_name", "")),
-        ("信号日期", summary.get("signal_date", "")),
-        ("盘前检查时间", summary.get("check_time", "")),
-        ("观察股票数", summary.get("watchlist_rows", 0)),
-        ("当前总暴露", _format_pct(summary.get("current_exposure", 0.0))),
-        ("目标总暴露", _format_pct(summary.get("target_exposure", 0.0))),
-        ("买入/加仓", summary.get("buy_or_add_rows", 0)),
-        ("卖出/减仓", summary.get("sell_or_reduce_rows", 0)),
-        ("训练窗 Sharpe", _format_num(summary.get("train_sharpe", 0.0))),
+        {"label": label, "value": str(value), "accent": ""}
+        for label, value in [
+            ("当前策略", summary.get("strategy_display_name", "")),
+            ("信号日期", summary.get("signal_date", "")),
+            ("盘前检查时间", summary.get("check_time", "")),
+            ("观察股票数", summary.get("watchlist_rows", 0)),
+            *summary.get("account_summary_cards", []),
+            ("当前总暴露", _format_pct(summary.get("current_exposure", 0.0))),
+            ("目标总暴露", _format_pct(summary.get("target_exposure", 0.0))),
+            ("买入/加仓", summary.get("buy_or_add_rows", 0)),
+            ("卖出/减仓", summary.get("sell_or_reduce_rows", 0)),
+            ("训练窗 Sharpe", _format_num(summary.get("train_sharpe", 0.0))),
+        ]
     ]
-    account_snapshot_html = _format_account_snapshot_rows(
+    account_snapshot = _account_snapshot_context(
         summary.get("account_snapshot_rows", []),
         summary.get("account_snapshot_meta", {}),
     )
-    return (
-        "<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n<meta charset=\"utf-8\">\n"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n"
-        "<title>盘前观察池试用简报</title>\n"
-        + style
-        + "</head>\n<body>\n<div class=\"page\">\n"
-        "<div class=\"title-row\"><h1>Phase 0 盘前观察池</h1>"
-        f"<span class=\"generated-at\">生成时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}</span></div>\n"
-        "<p>阶段试用简报 · 策略信号观察版。"
-        f"{html.escape(str(summary.get('strategy_description', '')))}"
-        "本页基于最近一个已入库交易日收盘后的信号生成，供下一交易日 07:30 盘前检查持仓、候选和调仓关注项。"
-        "<a class=\"helper-link\" href=\"#terms\">术语说明</a> "
-        "<a class=\"helper-link\" href=\"#disclaimer\">免责声明</a></p>\n"
-        "<div class=\"summary\">"
-        + "".join(
-            f"<div><span>{html.escape(label)}</span><strong>{html.escape(str(value))}</strong></div>"
-            for label, value in summary_cards
-        )
-        + "</div>\n"
-        + account_snapshot_html
-        + "<div class=\"table-wrap\"><table><thead><tr>"
-        + "".join(
-            f"<th title=\"{html.escape(header_tips.get(header, ''), quote=True)}\">{html.escape(header)}</th>"
-            for header in headers
-        )
-        + "</tr></thead><tbody>"
-        + "\n".join(rows)
-        + "</tbody></table></div>\n"
-        "<section class=\"terms\" id=\"terms\"><h2>术语说明：</h2>"
-        "<p><span class=\"term\">交易动作</span> 是连续模拟账户口径，表示模拟账户从上一期持仓滚动到本期目标持仓时今天需要发生的调仓行为。</p>"
-        "<p><span class=\"term\">策略信号动作</span> 是本次模型信号口径，表示策略模型根据最新数据给出的目标状态变化，它是模型信号，不等同于最终交易指令。</p>"
-        "<p><span class=\"term\">成交价口径</span> 描述执行假设采用的价格。"
-        "“执行日收盘价”指观察池对应执行日 15:00 附近的收盘价；"
-        "“执行日开盘价”指观察池对应执行日 09:30 附近的开盘价；"
-        "“执行日开盘保守价”指在执行日开盘价基础上叠加保守缓冲后的估算价格。</p>"
-        "<p><span class=\"term\">最大成交参与率</span> 是流动性约束，限制单只股票交易量最多参与市场成交量的比例。</p>"
-        "<p><span class=\"term\">执行风险提示</span> 用于提示停牌、流动性、涨跌停等可能影响成交的因素。</p>"
-        "<p><span class=\"term\">连续模拟说明</span> 解释本次动作如何承接上一期模拟持仓。</p>"
-        "<p><span class=\"term\">观察理由</span> 概括该股票进入观察池或触发买入、卖出、持有、候选观察的主要信号原因。"
-        "表格中“强势达标”是“动量分数超过买入阈值”的简写，表示模型强度达到入选条件，不等同于技术分析里常说的“超买”。</p></section>\n"
-        "<div class=\"notice\" id=\"disclaimer\"><strong>风险提示与免责声明：</strong>"
-        "本页面仅基于项目内已入库历史数据、当前策略参数和连续模拟账户状态生成，用于研究复盘、盘前观察和策略验证；"
-        "相关信号、权重、观察理由和执行风险提示均不构成投资建议、收益承诺或自动交易指令。"
-        "实际交易需结合实时行情、账户约束、流动性、政策风险和个人风险承受能力独立判断。</div>\n"
-        "</div>\n</body>\n</html>\n"
+    template = _watchlist_template_env().get_template(WATCHLIST_TEMPLATE_NAME)
+    return template.render(
+        stylesheet_href=WATCHLIST_STYLESHEET_NAME,
+        generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        strategy_description=str(summary.get("strategy_description", "")),
+        summary_cards=summary_cards,
+        account_snapshot=account_snapshot,
+        headers=headers,
+        header_tips=header_tips,
+        rows=rows,
     )
 
 
@@ -676,6 +736,8 @@ def export_premarket_watchlist(
     top_candidates: int = 20,
     training_days: int | None = None,
     simulation_ledger: str | Path = DEFAULT_SIMULATION_LEDGER,
+    account_id: str | None = None,
+    as_of_date: str | None = None,
 ) -> dict[str, Any]:
     root = Path.cwd()
     config_path = _resolve_path(root, config_path)
@@ -692,6 +754,10 @@ def export_premarket_watchlist(
     wcfg = config["walk_forward"]
     execution_cfg = execution_settings(config)
     strategy_cfg = dict(wcfg.get("strategy_v2", {}))
+    accounts = load_simulated_accounts(config, root)
+    account = _select_simulated_account(accounts, account_id)
+    strategy_id = account.strategy_id if account else _default_strategy_id(config)
+    account_execution_cfg = _account_execution_cfg(account, execution_cfg)
     symbols = _parse_symbol_list(config, root)
     history_years = int(config["years"])
     cache_path = (
@@ -700,7 +766,8 @@ def export_premarket_watchlist(
         else report_config_path(root=root, config=config, value=panel_cache, default_category="runs")
     )
     db_path = _resolve_path(root, config.get("local_history", {}).get("path", ""))
-    panel_as_of_date = _latest_trade_date(db_path)
+    panel_as_of_date = str(as_of_date or _latest_trade_date(db_path))
+    use_strict_panel_asof = bool(as_of_date)
     panel = _load_or_build_panel(
         cache_path=cache_path,
         refresh_cache=bool(refresh_cache),
@@ -713,16 +780,20 @@ def export_premarket_watchlist(
             history_years=history_years,
             strategy_cfg=strategy_cfg,
             as_of_date=panel_as_of_date,
-            use_strict_asof=False,
+            use_strict_asof=use_strict_panel_asof,
             price_adjustment="qfq_current",
         ),
         symbols=symbols,
         history_years=history_years,
         strategy_cfg=strategy_cfg,
         as_of_date=panel_as_of_date,
-        use_strict_asof=False,
+        use_strict_asof=use_strict_panel_asof,
         price_adjustment="qfq_current",
     )
+    if as_of_date:
+        panel = panel.copy()
+        panel["date"] = pd.to_datetime(panel["date"])
+        panel = panel[panel["date"] <= pd.Timestamp(as_of_date)].copy()
     if panel.empty:
         raise ValueError("market panel is empty; cannot export premarket watchlist")
 
@@ -737,7 +808,6 @@ def export_premarket_watchlist(
 
     train_dates = set(dates.iloc[-train_len:])
     train = panel[panel["date"].isin(train_dates)].copy()
-    strategy_id = "legacy_momentum_low_turnover_v1"
     strategy = get_strategy(strategy_id)
     params = strategy.select_params(
         train,
@@ -770,7 +840,19 @@ def export_premarket_watchlist(
     check_time = f"{_next_trade_date(db_path, signal_date)} 07:30"
     brief_date = check_time[:10]
     ledger_path = _resolve_path(root, simulation_ledger)
-    previous_positions, previous_source = _load_previous_sim_positions(root, brief_date, ledger_path)
+    confirmed_positions, confirmed_source, has_confirmed_positions = _load_confirmed_account_positions(account, brief_date)
+    if has_confirmed_positions:
+        previous_positions, previous_source = confirmed_positions, confirmed_source
+    else:
+        previous_positions, previous_source = _load_previous_sim_positions(
+            root,
+            brief_date,
+            ledger_path,
+            simulation_start_date=account.simulation_start_date if account else "",
+            account_id=account.account_id if account else "",
+            strategy_id=strategy_id,
+        )
+    account_holding_days = _load_account_holding_days(account, brief_date) if account else {}
 
     missing_previous = sorted(set(previous_positions) - set(latest["symbol"].astype(str)))
     if missing_previous:
@@ -785,15 +867,17 @@ def export_premarket_watchlist(
     if previous_positions:
         latest["sim_current_weight"] = latest["symbol"].astype(str).map(previous_positions).fillna(0.0).astype(float)
     else:
-        latest["sim_current_weight"] = latest["current_weight"]
+        latest["sim_current_weight"] = 0.0 if account and account.simulation_start_date else latest["current_weight"]
     latest["sim_target_weight"] = latest["target_weight"]
     latest["sim_weight_change"] = latest["sim_target_weight"] - latest["sim_current_weight"]
     latest["sim_trade_action"] = latest.apply(
         lambda row: _weight_action(float(row["sim_current_weight"]), float(row["sim_target_weight"])),
         axis=1,
     )
+    latest["account_holding_days"] = latest["symbol"].astype(str).map(account_holding_days).fillna(0).astype(int)
+    latest["strategy_held_days"] = latest["held_days"]
     latest["trade_reason"] = latest.apply(lambda row: _trade_reason(row, params), axis=1)
-    latest["execution_risk_note"] = latest.apply(lambda row: _execution_risk_note(row, execution_cfg), axis=1)
+    latest["execution_risk_note"] = latest.apply(lambda row: _execution_risk_note(row, account_execution_cfg), axis=1)
     latest["simulation_note"] = latest.apply(lambda row: _simulation_note(row, previous_source), axis=1)
 
     candidates = latest[
@@ -808,37 +892,43 @@ def export_premarket_watchlist(
 
     watchlist = pd.DataFrame(
         {
+            "账户ID": account.account_id if account else "",
+            "账户名称": account.name if account else "",
+            "策略ID": strategy_id,
             "信号日期": candidates["date"].dt.date.astype(str),
             "盘前检查时间": check_time,
-            "交易动作": candidates["sim_trade_action"],
-            "策略信号动作": candidates["trade_action"],
+            "动作": candidates["sim_trade_action"],
+            "信号动作": candidates["trade_action"],
             "股票代码": candidates["symbol"].astype(str),
             "股票名称": candidates["symbol"].astype(str).map(names).fillna(""),
             "收盘价": candidates["close"].map(_format_price) if "close" in candidates.columns else "",
             "当前权重": candidates["sim_current_weight"].map(_format_pct),
             "目标权重": candidates["sim_target_weight"].map(_format_pct),
             "权重变化": candidates["sim_weight_change"].map(_format_pct),
+            "持仓天数": candidates["account_holding_days"].map(lambda value: str(int(value))),
             "动量分数": candidates["score"].map(lambda value: _format_num(value, 4)),
             "当日排名": candidates["rank"].map(lambda value: "" if pd.isna(value) else str(int(value))),
-            "持有天数": candidates["held_days"].map(lambda value: "" if pd.isna(value) else str(int(value))),
-            "成交价口径": str(execution_cfg.get("price_mode", "next_open")),
-            "最大成交参与率": _format_pct(float(execution_cfg.get("max_participation_rate", 0.0)), 2),
+            "信号持有天数": candidates["strategy_held_days"].map(lambda value: "" if pd.isna(value) else str(int(value))),
+            "成交价口径": str(account_execution_cfg.get("price_mode", "next_open")),
+            "最大成交参与率": _format_pct(float(account_execution_cfg.get("max_participation_rate", 0.0)), 2),
             "执行风险提示": candidates["execution_risk_note"],
-            "连续模拟说明": candidates["simulation_note"],
+            "账户说明": candidates["simulation_note"],
             "观察理由": candidates["trade_reason"],
             "策略参数": strategy.format_params(params),
         }
     )
 
     summary = {
+        "account_id": account.account_id if account else "",
+        "account_name": account.name if account else "",
         "signal_date": signal_date.date().isoformat(),
         "check_time": check_time,
         "brief_date": check_time[:10],
         "watchlist_rows": len(watchlist),
         "current_exposure": float(latest["sim_current_weight"].sum()),
         "target_exposure": float(latest["sim_target_weight"].sum()),
-        "buy_or_add_rows": int(watchlist["交易动作"].astype(str).str.contains("买|加仓", regex=True).sum()),
-        "sell_or_reduce_rows": int(watchlist["交易动作"].astype(str).str.contains("卖|减仓", regex=True).sum()),
+        "buy_or_add_rows": int(watchlist["动作"].astype(str).str.contains("买|加仓", regex=True).sum()),
+        "sell_or_reduce_rows": int(watchlist["动作"].astype(str).str.contains("卖|减仓", regex=True).sum()),
         "previous_position_source": previous_source,
         "train_sharpe": float(metric["sharpe"]),
         "strategy_id": strategy_id,
@@ -861,27 +951,26 @@ def export_premarket_watchlist(
         default_category="phase0",
         explicit=explicit_report_output,
     )
-    accounts = load_simulated_accounts(config, root)
-    account_ledger_path = accounts[0].ledger_path if accounts else Path("")
+    account_ledger_path = account.ledger_path if account else Path("")
     account_bill_path = Path("")
     _, rebuilt_account_snapshot = (
         build_account_ledger(
             root=root,
             current_watchlist=watchlist,
             current_brief_date=str(summary["brief_date"]),
-            account=accounts[0],
+            account=account,
             local_history_cfg=config.get("local_history", {}),
         )
-        if accounts
+        if account
         else (pd.DataFrame(), {})
     )
-    account_snapshot = rebuilt_account_snapshot if rebuilt_account_snapshot else (load_latest_account_snapshot(accounts[0]) if accounts else {})
-    if accounts and account_snapshot:
-        bill_date = str(account_snapshot.get("brief_date", summary["brief_date"]))
+    account_snapshot = rebuilt_account_snapshot if rebuilt_account_snapshot else (load_latest_account_snapshot(account) if account else {})
+    if account:
+        bill_date = str(summary["brief_date"])
         account_bill_path = report_path.with_name("account_bill__report.html")
         account_bill_path.parent.mkdir(parents=True, exist_ok=True)
         export_account_bill_html(
-            account=accounts[0],
+            account=account,
             brief_date=bill_date,
             output_path=account_bill_path,
         )
@@ -889,24 +978,32 @@ def export_premarket_watchlist(
         summary=summary,
         account_snapshot=account_snapshot,
     )
+    summary["account_summary_cards"] = _account_summary_cards(
+        account_snapshot,
+        initial_cash=account.initial_cash if account else None,
+    )
     summary["account_snapshot_meta"] = {
         "start_date": account_snapshot.get("start_date", ""),
-        "initial_cash": accounts[0].initial_cash if accounts else np.nan,
+        "initial_cash": account.initial_cash if account else np.nan,
     }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     report_path.parent.mkdir(parents=True, exist_ok=True)
     watchlist.to_csv(output_path, index=False, encoding="utf-8-sig")
     report_path.write_text(_format_html(watchlist, summary), encoding="utf-8")
+    _copy_watchlist_assets(report_path)
     latest_report_path = Path("")
     if latest_report_output is not None:
         latest_report_path = _resolve_output_template(root, latest_report_output, summary)
         latest_report_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(report_path, latest_report_path)
+        _copy_watchlist_assets(latest_report_path)
     _write_simulation_ledger(
         path=ledger_path,
         brief_date=brief_date,
         signal_date=signal_date.date().isoformat(),
         watchlist=watchlist,
+        account_id=account.account_id if account else "",
+        strategy_id=strategy_id,
     )
     return {
         "watchlist": output_path,
@@ -915,6 +1012,7 @@ def export_premarket_watchlist(
         "ledger": ledger_path,
         "account_ledger": account_ledger_path,
         "account_bill": account_bill_path,
+        "account_id": account.account_id if account else "",
         "rows": len(watchlist),
         **summary,
     }
@@ -926,6 +1024,8 @@ def main() -> int:
     parser.add_argument("--output", default=None)
     parser.add_argument("--report-output", default=None)
     parser.add_argument("--panel-cache", default=None)
+    parser.add_argument("--account-id", default=None)
+    parser.add_argument("--as-of-date", default=None)
     parser.add_argument("--refresh-cache", action="store_true")
     parser.add_argument("--no-panel-cache", action="store_true")
     parser.add_argument("--top-candidates", type=int, default=20)
@@ -936,6 +1036,8 @@ def main() -> int:
         output=args.output,
         report_output=args.report_output,
         panel_cache=args.panel_cache,
+        account_id=args.account_id,
+        as_of_date=args.as_of_date,
         refresh_cache=bool(args.refresh_cache),
         no_panel_cache=bool(args.no_panel_cache),
         top_candidates=int(args.top_candidates),

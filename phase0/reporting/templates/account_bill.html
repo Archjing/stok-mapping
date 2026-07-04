@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <link rel="stylesheet" href="{{ stylesheet_href }}">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23426a79'/><text x='50' y='70' font-size='60' text-anchor='middle' fill='%23d5ccba'>B</text></svg>">
+</head>
+<body>
+<div class="theme-bar">
+  <button class="theme-btn" id="themeToggle" title="切换配色">
+    <span class="icon" id="themeIcon">☀️</span>
+    <span class="label-light">Belafonte Day</span>
+    <span class="label-dark">Belafonte Night</span>
+  </button>
+</div>
+<div class="page account-bill-page">
+  <div class="title-row">
+    <h1>模拟交易账单</h1>
+    <span class="generated-at">生成时间：{{ generated_at }}</span>
+  </div>
+  <p class="bill-meta">账户：{{ account_name }} ｜ 日期：{{ brief_date }}</p>
+
+  {% if status_message %}
+  <section class="bill-section">
+    <h2>账单状态</h2>
+    <p class="empty">{{ status_message }}</p>
+  </section>
+  {% endif %}
+
+  {% for table in tables %}
+  <section class="bill-section">
+    <h2>{{ table.title }}</h2>
+    {% if table.data.empty %}
+    <p class="empty">暂无记录</p>
+    {% else %}
+    <div class="table-wrap">
+      <table class="report-table account-bill-table">
+        <thead>
+          <tr>
+            {% for header in table.data.headers %}
+            <th>{{ header }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in table.data.rows %}
+          <tr>
+            {% for cell in row.cells %}
+            <td{% if cell.class %} class="{{ cell.class }}"{% endif %}>{{ cell.value }}</td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  <div class="notice" id="disclaimer">
+    <strong>风险提示与免责声明：</strong>
+    本账单为模拟账户估算记录，不代表实盘成交；交易股数已按每手股数向下取整。实际交易需结合实时行情、账户约束、流动性、政策风险和个人风险承受能力独立判断。
+  </div>
+</div>
+<button class="back-to-top" id="backToTop" title="top" aria-label="top">^</button>
+<script>
+(function() {
+  var STORAGE_KEY = 'belafonte-theme';
+  var html = document.documentElement;
+  var btn = document.getElementById('themeToggle');
+  var icon = document.getElementById('themeIcon');
+  var saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === 'dark') {
+    html.setAttribute('data-theme', 'dark');
+    if (icon) icon.textContent = '🌙';
+  } else {
+    html.setAttribute('data-theme', 'light');
+    if (icon) icon.textContent = '☀️';
+  }
+  if (btn) {
+    btn.addEventListener('click', function() {
+      var next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem(STORAGE_KEY, next);
+      if (icon) icon.textContent = next === 'dark' ? '🌙' : '☀️';
+    });
+  }
+  var topBtn = document.getElementById('backToTop');
+  if (topBtn) {
+    window.addEventListener('scroll', function() {
+      topBtn.classList.toggle('visible', window.scrollY > 400);
+    });
+    topBtn.addEventListener('click', function() {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+})();
+</script>
+</body>
+</html>

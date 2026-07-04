@@ -283,6 +283,37 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
     assert calls[0]["latest_report_output"] == tmp_path / "reports" / "runs" / "latest" / "watchlist" / "index.html"
 
 
+def test_premarket_account_id_uses_account_scope_and_latest(monkeypatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_export_premarket_watchlist(**kwargs):
+        calls.append(kwargs)
+        return {"watchlist": kwargs["output"], "report": kwargs["report_output"], "account_id": kwargs["account_id"]}
+
+    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+
+    result = report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml", account_id="quality")
+
+    assert result["account_id"] == "quality"
+    _assert_standard_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="quality")
+    assert calls[0]["account_id"] == "quality"
+    assert calls[0]["latest_report_output"] == tmp_path / "reports" / "runs" / "latest" / "accounts" / "quality" / "watchlist" / "index.html"
+
+
+def test_premarket_forwards_as_of_date(monkeypatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_export_premarket_watchlist(**kwargs):
+        calls.append(kwargs)
+        return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
+
+    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+
+    report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml", as_of_date="2026-06-30")
+
+    assert calls[0]["as_of_date"] == "2026-06-30"
+
+
 def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     _write_config(config_path)
@@ -349,6 +380,58 @@ def test_account_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) 
     assert calls
     _assert_standard_run(Path(result["account_bill"]), root=tmp_path, command="brief_account_bill", scope="demo")
     assert Path(result["account_bill"]).name == "account_bill__report.html"
+
+
+def test_account_bill_can_select_account_id(monkeypatch, tmp_path: Path) -> None:
+    class Account:
+        def __init__(self, account_id: str) -> None:
+            self.account_id = account_id
+            self.name = account_id
+            self.database_path = tmp_path / f"{account_id}.sqlite"
+
+    accounts = [Account("default"), Account("quality")]
+    calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(report_exports, "load_config", lambda path: {"phase0": {}})
+    monkeypatch.setattr(report_exports, "load_simulated_accounts", lambda cfg, root: accounts)
+
+    def fake_export_account_bill_html(**kwargs):
+        calls.append(kwargs)
+
+    monkeypatch.setattr(report_exports, "export_account_bill_html", fake_export_account_bill_html)
+
+    result = report_exports.export_brief_account_bill(
+        config_path=tmp_path / "config.yaml",
+        account_id="quality",
+        brief_date="2026-06-25",
+    )
+
+    assert calls[0]["account"].account_id == "quality"
+    assert result["account"] == "quality"
+    _assert_standard_run(Path(result["account_bill"]), root=tmp_path, command="brief_account_bill", scope="quality")
+
+
+def test_account_bill_without_daily_rows_exports_placeholder(monkeypatch, tmp_path: Path) -> None:
+    class Account:
+        account_id = "demo"
+        name = "演示账户"
+        database_path = tmp_path / "account.sqlite"
+
+    account = Account()
+
+    monkeypatch.setattr(report_exports, "load_config", lambda path: {"reporting": {}})
+    monkeypatch.setattr(report_exports, "load_simulated_accounts", lambda cfg, root: [account])
+
+    result = report_exports.export_brief_account_bill(config_path=tmp_path / "config.yaml")
+    output = Path(result["account_bill"])
+    html = output.read_text(encoding="utf-8")
+
+    assert result["status"] == "empty"
+    assert result["brief_date"] == ""
+    _assert_standard_run(output, root=tmp_path, command="brief_account_bill", scope="demo")
+    assert "暂无确认账单" in html
+    assert '<link rel="stylesheet" href="style.css">' in html
+    assert (output.parent / "style.css").exists()
 
 
 def test_cli_report_export_helper_names_remain_compatible() -> None:
