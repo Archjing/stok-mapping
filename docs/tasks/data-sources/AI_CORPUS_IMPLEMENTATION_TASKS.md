@@ -9,7 +9,8 @@
 
 - `T1.7.1-T1.7.3` 已完成第一版工程实现：`phase0/ai_corpus/` 提供 `ai_corpus_documents` schema、provider registry、gov.cn 政策库 fixture / parser、raw archive、SQLite upsert / query 和 `ai-corpus` CLI。
 - `T1.7.4` 已完成主题映射 MVP：`ptype=科技` 可稳定映射为 `subchildtype=2220`。完整 `bmzcfwjg.json` / 主题树缓存仍作为 live provider 增强项。
-- `CCTV` 与 `CNInfo` 目前只在 provider registry 中标记为 planned / fixture-only，不宣称生产可用，不进入策略、日报或交易信号链路。
+- `T1.7.5` 已完成 CCTV `20260703` fixture MVP：可解析新闻联播日期页、完整节目页和分段页，并通过 `ai-corpus fetch --provider cctv-news --fixture-dir ...` 入库；当前不宣称生产 live provider 可用。
+- `CNInfo` 目前只在 provider registry 中标记为 planned，不宣称生产可用，不进入策略、日报或交易信号链路。
 
 ## 1. 目标
 
@@ -293,7 +294,7 @@ phase0/ai_corpus/
 | `T1.7.2` | P1 | 实现 gov.cn 政策库 source probe、列表 provider、分页、字段清洗 | 1 天 | 可按 `org/start_date/end_date/ptype/keyword` 返回列表字段 |
 | `T1.7.3` | P2 | 实现 gov.cn 正文 parser、元数据表抽取、`content_html` 保存 | 1-2 天 | `content_html` 非空，列表字段和正文 metadata 可交叉校验 |
 | `T1.7.4` | P3 | 实现政策主题 / 机构字典缓存和 `npr` 兼容别名 | 0.5-1 天 | `ptype=科技` 稳定映射到 `subchildtype=2220` |
-| `T1.7.5` | P4 | 实现 CCTV provider、日期页 parser、分段正文 parser、`tushare_compat` 输出 | 1-2 天 | `20260703` fixture 可稳定解析标题、URL、content_id 和正文 |
+| `T1.7.5` | P4 | 实现 CCTV fixture provider、日期页 parser、分段正文 parser、`tushare_compat` 输出预留 | 1-2 天 | `20260703` fixture 可稳定解析标题、URL、content_id 和正文；生产 live fetch 后续单独增强 |
 | `T1.7.6` | P5 | 实现 CNInfo / AkShare 公告 provider 与异常波动 / 风险提示专项事件 | 1-2 天 | 能复现最近 3 天清洗口径，按公告 ID 去重 |
 | `T1.7.7` | P6 | 接入本地存储、CLI 查询、导出和 `market_text_events` 桥接 | 1-2 天 | 同一日期重复运行不重复入库，可按日期 / 类型 / 关键词查询 |
 | `T1.7.8` | P7 | 扩展 PBOC 报告、研报元数据和监管规则 provider | 3-5 天 | 每类 provider 至少 1 个公开样本、字段审计和授权说明 |
@@ -398,6 +399,6 @@ fetch_cctv_news(date="20260703", include_segments=True)
 
 1. 先实现 `T1.7.1`：schema、provider registry、fixture 目录和 raw archive 规则。
 2. 再实现 `T1.7.2-T1.7.4`：gov.cn 政策库列表、正文 parser、字典缓存和 `npr` 兼容 API。
-3. 完成 gov.cn provider 后，再接 `T1.7.5` CCTV 新闻联播 provider。
+3. `T1.7.5` CCTV 新闻联播 fixture provider 已完成；下一步如需扩大覆盖，再补生产 live fetch、更多日期 fixture 和结构漂移审计。
 4. 第三条 provider 选择 CNInfo / AkShare 公告，以异常波动和交易风险提示公告为专项验收。
 5. 最后扩展 PBOC 报告、研报元数据和 RAG-ready 索引。

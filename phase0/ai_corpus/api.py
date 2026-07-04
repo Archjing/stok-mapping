@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from phase0.ai_corpus.providers.cctv_news import fetch_cctv_news
 from phase0.ai_corpus.providers.gov_policy import fetch_national_policy_repository, npr
 from phase0.ai_corpus.registry import canonical_provider_name, get_provider_spec
 from phase0.ai_corpus.storage import query_ai_corpus_documents
@@ -25,13 +26,15 @@ def fetch_ai_corpus(
     limit: int = 500,
     root: Path | None = None,
     fixture_dir: str | Path | None = None,
-    raw_archive_dir: str | Path = "data/raw_data/ai_corpus/gov_policy",
+    raw_archive_dir: str | Path | None = None,
     database_path: str | Path | None = None,
 ) -> pd.DataFrame:
     canonical = canonical_provider_name(provider)
     spec = get_provider_spec(canonical)
-    if spec.status != "implemented_mvp":
+    if spec.status not in {"implemented_mvp", "fixture_mvp"}:
         raise NotImplementedError(f"ai corpus provider is not implemented for production fetch yet: {canonical}")
+    if spec.status == "fixture_mvp" and not fixture_dir:
+        raise NotImplementedError(f"ai corpus provider requires fixture_dir for validation: {canonical}")
     if symbols:
         raise NotImplementedError("symbol filtering is reserved for later market_text_events bridging")
     if topics and not ptype:
@@ -49,7 +52,20 @@ def fetch_ai_corpus(
             limit=limit,
             include_content=include_content,
             fixture_dir=fixture_dir,
-            raw_archive_dir=raw_archive_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+        )
+    if canonical == "cctv":
+        date_value = end_date or start_date
+        if not date_value:
+            raise ValueError("cctv provider requires start_date or end_date")
+        return fetch_cctv_news(
+            root=root,
+            date=date_value,
+            include_segments=True,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
         )
     if database_path:
         rows = query_ai_corpus_documents(

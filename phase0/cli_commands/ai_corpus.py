@@ -31,8 +31,8 @@ def _default_db_path(root: Path, cfg: dict[str, Any], override: str | None = Non
     return path if path.is_absolute() else root / path
 
 
-def _default_archive_dir(cfg: dict[str, Any], override: str | None = None) -> str:
-    return override or _ai_corpus_config(cfg).get("raw_archive_dir", "data/raw_data/ai_corpus/gov_policy")
+def _default_archive_dir(cfg: dict[str, Any], *, provider_default: str, override: str | None = None) -> str:
+    return override or _ai_corpus_config(cfg).get("raw_archive_dir") or provider_default
 
 
 def _parse_fields(raw: str | None) -> list[str] | None:
@@ -64,7 +64,7 @@ def register_ai_corpus_commands(subparsers: argparse._SubParsersAction) -> None:
 
     fetch_parser = ai_sub.add_parser("fetch", help="Fetch provider rows and upsert them into the local AI corpus database")
     fetch_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    fetch_parser.add_argument("--provider", default="gov-policy", help="Provider name, currently gov-policy/gov_policy/npr")
+    fetch_parser.add_argument("--provider", default="gov-policy", help="Provider name, for example gov-policy/npr/cctv-news")
     fetch_parser.add_argument("--org", default=None, help="Publishing organization, for example 国务院 or 工业和信息化部")
     fetch_parser.add_argument("--ptype", default=None, help="Policy topic, for example 科技")
     fetch_parser.add_argument("--keyword", default=None, help="Keyword query")
@@ -117,8 +117,11 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
     if args.ai_corpus_cmd == "fetch":
         provider = canonical_provider_name(args.provider)
         spec = get_provider_spec(provider)
-        if spec.status != "implemented_mvp":
+        if spec.status not in {"implemented_mvp", "fixture_mvp"}:
             ai_console.print(f"[yellow]Provider {provider} is {spec.status}; no production fetch is implemented.[/yellow]")
+            return 2
+        if spec.status == "fixture_mvp" and not args.fixture_dir:
+            ai_console.print(f"[yellow]Provider {provider} is fixture-only; pass --fixture-dir for validation.[/yellow]")
             return 2
         db_path = _default_db_path(root, cfg, args.database_path)
         frame = fetch_ai_corpus(
@@ -133,7 +136,7 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
             fields=None,
             limit=args.limit,
             fixture_dir=args.fixture_dir,
-            raw_archive_dir=_default_archive_dir(cfg, args.raw_archive_dir),
+            raw_archive_dir=_default_archive_dir(cfg, provider_default=spec.raw_archive_dir, override=args.raw_archive_dir),
         )
         changed = upsert_ai_corpus_documents(db_path, frame.to_dict(orient="records"))
         output_fields = _parse_fields(args.fields)

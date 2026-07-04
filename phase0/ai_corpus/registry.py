@@ -3,6 +3,7 @@ from __future__ import annotations
 from phase0.ai_corpus.schema import AiCorpusProviderSpec
 
 GOV_POLICY_PARSER_VERSION = "gov_policy_v1"
+CCTV_NEWS_PARSER_VERSION = "cctv_news_v1"
 
 PROVIDER_ALIASES = {
     "gov-policy": "gov_policy",
@@ -35,11 +36,11 @@ PROVIDER_REGISTRY = {
         corpus_types=("cctv_news",),
         source="央视网新闻联播",
         base_url="https://tv.cctv.com/lm/xwlb/day/",
-        parser_version="planned",
+        parser_version=CCTV_NEWS_PARSER_VERSION,
         raw_archive_dir="data/raw_data/ai_corpus/cctv",
         supported_parameters=("date", "start_date", "end_date", "include_segments"),
-        status="planned_fixture_only",
-        notes="W2.31 only reserves the provider plan; production fetch is not implemented yet.",
+        status="fixture_mvp",
+        notes="Parses fixture date/program/segment pages; production live fetch is not implemented yet.",
     ),
     "cninfo": AiCorpusProviderSpec(
         name="cninfo",

@@ -1,4 +1,9 @@
 from phase0.ai_corpus.api import fetch_ai_corpus
+from phase0.ai_corpus.providers.cctv_news import (
+    fetch_cctv_news,
+    parse_cctv_content_page,
+    parse_cctv_day_page,
+)
 from phase0.ai_corpus.providers.gov_policy import (
     build_gov_policy_params,
     fetch_national_policy_repository,
@@ -32,9 +37,12 @@ __all__ = [
     "canonical_provider_name",
     "ensure_ai_corpus_tables",
     "fetch_ai_corpus",
+    "fetch_cctv_news",
     "fetch_national_policy_repository",
     "get_provider_spec",
     "npr",
+    "parse_cctv_content_page",
+    "parse_cctv_day_page",
     "parse_gov_policy_content",
     "parse_gov_policy_list_response",
     "provider_registry_rows",

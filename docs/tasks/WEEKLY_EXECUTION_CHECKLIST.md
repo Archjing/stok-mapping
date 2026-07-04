@@ -1625,7 +1625,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] `T1.7.2` 实现 gov.cn `/search-gov/data` 参数映射：`org`、`ptype`、`keyword`、`start_date`、`end_date`、`limit`
 - [x] `T1.7.3` 实现 gov.cn 正文 parser，抽取元数据表、`#UCAP-CONTENT`、正文 hash 和 parse status
 - [x] `T1.7.4` 实现主题映射 MVP，支持 `ptype=科技` 到 `subchildtype=2220` 的映射；完整 `bmzcfwjg.json` / 主题树缓存后续随 live provider 增强
-- [ ] `T1.7.5` 准备 CCTV `20260703` fixture，解析日期页、完整节目页和分段页
+- [x] `T1.7.5` 准备 CCTV `20260703` fixture，解析日期页、完整节目页和分段页；当前为 fixture MVP，不声明生产 live provider 可用
 - [x] `T1.7.6` 保留 CNInfo 异常波动 / 风险提示公告专项 provider 计划，不在 gov.cn MVP 未完成前扩散实现面
 
 ## W2.31.4 第一版验收标准
