@@ -575,6 +575,7 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>量化每日简报</title>
+  <link rel="stylesheet" href="../assets/style.css">
   <link rel="stylesheet" href="/quant/assets/style.css">
 </head>
 <body>
@@ -632,10 +633,14 @@ def _write_legacy_brief_alias(site_root: Path) -> None:
         legacy_brief.unlink()
     elif legacy_brief.exists():
         shutil.rmtree(legacy_brief)
-    try:
-        legacy_brief.symlink_to(Path("quant") / "brief", target_is_directory=True)
-    except OSError:
-        shutil.copytree(site_root / "brief", legacy_brief)
+    legacy_brief.mkdir(parents=True, exist_ok=True)
+    source_html = (site_root / "brief" / "index.html").read_text(encoding="utf-8")
+    alias_html = source_html.replace(
+        '  <link rel="stylesheet" href="../assets/style.css">\n  <link rel="stylesheet" href="/quant/assets/style.css">',
+        '  <link rel="stylesheet" href="../quant/assets/style.css">',
+    )
+    alias_html = alias_html.replace('href="/quant/', 'href="../quant/')
+    (legacy_brief / "index.html").write_text(alias_html, encoding="utf-8")
 
 
 def _write_csvs(account_dir: Path, frames: dict[str, pd.DataFrame]) -> None:
