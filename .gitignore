@@ -12,6 +12,7 @@ worktrees/
 data/raw_data/
 data/features/
 data/cache/walk_forward/
+data/ai_corpus/
 data/manual_history.lnk
 data/manual_history/*
 !data/manual_history/.gitkeep
@@ -34,6 +35,14 @@ node_modules/
 # not add routine reports/logs/databases to Git. Only curated governance
 # archives are versioned so research decisions can be audited from main.
 logs/
+!logs/
+logs/*
+!logs/README.md
+memory/
+!memory/
+!memory/**/
+!memory/**/*.md
+!memory/**/*.txt
 reports/*
 !reports/README.md
 

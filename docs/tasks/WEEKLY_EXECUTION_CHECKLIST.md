@@ -7,6 +7,38 @@
 
 ---
 
+# W3｜当前阶段：策略池完善、文档同步与架构收口
+
+## W3.0 当前目标
+
+当前主线不是继续扩大候选数量，而是在 `qfq_asof`、PIT 股票池、成本后、过拟合、行业集中、因子诊断和 `strategy-admission` 口径下，把策略池治理成可复查、可解释、可迭代的研究资产。
+
+优先目标：
+
+- [ ] 按 `baseline_admission_all_v1` 当前 13 个候选重跑全量 admission，并落盘日期、背景、命令、数据口径、候选结论和治理动作明确的报告
+- [ ] 完成 13 个默认候选的策略角色卡和治理状态枚举：`active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 或 `admission_pass_candidate`
+- [ ] 继续推进低波、低换手、质量和 sleeve 降 churn 主线，重点解释相对沪深300跑输、参数不稳定、行业集中、换手成本和正超额折比例不足
+- [ ] 把 T5.2 情报库和 T2.13 因子传导框架用于失败归因、特征注册和策略选择方法论，不直接改写策略权重
+- [x] 同步 `docs/DEVELOPMENT_PLAN.md`、`README.md` 和 `docs/PROJECT_ARCHITECTURE_OVERVIEW.md` 到当前代码与目录状态
+
+## W3.1 工程边界
+
+- [x] 主分支只承载全局代码、配置、目录规则和解释这些规则的文档
+- [x] 常规 `reports/`、`logs/` 和 SQLite 数据库作为本地运行资产维护，不随远端 Git 同步
+- [x] `reports/` 根目录白名单为：`archive/`、`runs/`、`database_health/`、`strategy_admission/`、`phase0/`、`strategy_governance/` 和 `README.md`
+- [x] Python 模块分层已完成一轮 main 集成：`data_access`、`data_governance`、`research`、`reporting`、`execution`、`intelligence`、`strategies`
+- [ ] 后续 Python 精简应以“合并重复逻辑、删除过期兼容、减少行数”为目标，不再只做机械拆分
+
+## W3.2 验收标准
+
+- [ ] 全候选 admission 报告覆盖 13 个默认候选，报告能区分 reject / retest / research_only / eligible_for_paper_review
+- [ ] 每个候选都有角色、适用市场环境、失败模式、相对基准表现和下一步动作
+- [ ] 新产生的报告默认写入 `reports/runs/...` 或白名单分类目录，不新增根目录杂项
+- [ ] 文档中候选数量、CLI 入口、报告目录、数据源角色和架构边界与实际代码一致
+- [ ] 重要 Harness / 策略治理迭代结束后，有简明中文报告或 briefing，避免只在会话窗口留下抽象结论
+
+---
+
 # W1｜本土主策略候选验证（已完成并归档）
 
 ## W1.0.1 本周目标
@@ -588,10 +620,12 @@
 - [x] 统一调度器 `scripts/run_project_scheduler.sh` 已作为项目内唯一 cron 入口。
 - [x] `07:20` 调度任务已从旧 `daily-brief` 兼容入口切换为 `brief watchlist`。
 - [x] 阶段试用观察池已固定生成 `reports/watchlist_today/index.html`。
-- [x] 阶段试用观察池已在程序内执行 ECS 同步，远端目录默认为 `BRIEF_SYNC_REMOTE_DIR=/brief/`。
+- [x] 阶段试用观察池已在程序内执行远端同步，远端目录优先读取 `BRIEF_SYNC_REMOTE_DIR`，未设置时 fallback 到代码默认静态站点目录。
+- [x] 模拟账户确认账单已接入 latest 镜像与远端同步，存在账单 HTML 时输出 `reports/account_bill_today/index.html` 并同步到 `ACCOUNT_BILL_SYNC_REMOTE_DIR`。
 - [x] 当前 `brief` 命令路由已整理为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`。
 - [x] 模拟账户 SQLite 主账本已接入 watchlist pipeline，当前能维护账户配置、日资产、成交流水和持仓快照。
 - [x] watchlist 与正式模拟账单边界已明确：watchlist 是计划层，正式账单只记录本地 OHLCV 已确认的执行日。
+- [x] 会话归档目录边界已调整：人工会话记忆统一进入 `memory/session_archive/`，机器运行日志保留在 `logs/`，程序报告保留在 `reports/`。
 
 ### W2.12.1 交易日判断
 
@@ -1158,7 +1192,7 @@ python -m phase0.cli backfill-tushare-financials \
 ## W2.28.2 本周目标
 
 - [x] 草拟 T6.4 模块开发计划，明确 Python 报表登记层与 Astro 静态渲染层边界
-- [x] 实现 P0 manifest MVP：扫描 Markdown / HTML / CSV 并生成 `reports/report_dashboard/manifest.json`
+- [x] 实现 P0 manifest MVP：扫描 Markdown / HTML / CSV 并生成 `reports/runs/report_dashboard/manifest.json`
 - [x] 新增 `dashboard scan` CLI
 - [x] 用现有 `reports/strategy_admission/`、`reports/2026-06-23/`、`reports/database_health/` 做扫描验收
 
@@ -1182,6 +1216,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 迁移 `db-health` 默认输出，并保留显式 `--output-dir` 兼容
 - [x] 迁移 `factor-effectiveness` 默认输出，并保留显式输出目录兼容
 - [x] watchlist latest 新增 `reports/latest/watchlist/index.html`，旧 `reports/watchlist_today/index.html` 继续作为兼容镜像
+- [x] account-bill latest 新增 `reports/runs/latest/account_bill/index.html` 与 `reports/account_bill_today/index.html`
 - [x] `dashboard scan` 识别 `standard_run`、legacy module/date/experiment/latest/scratch/root-flat 分类
 
 ## W2.29.2 验收标准
@@ -1208,7 +1243,7 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 实现 `maintain stop`，中断一个长任务 run 的全部 shard
 - [x] 实现 `maintain resume`，只重启未完成、失败或中断的 shard
 - [x] 当前优先 1：补持续 supervisor，使后台 shard 可基于 pid、日志和 audit 报告保守归类为成功、失败或 unknown
-- [x] 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md` 输出能力
+- [x] 当前优先 2：新增 `reports/database_health/maintenance/maintenance_status_YYYY-MM-DD.md` 输出能力
 - [x] 当前优先 3：接入交易日历和更细的运行窗口口径
 - [x] 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 - [x] 当前优先 5：新增 `phase0.cli system status` 只读入口，汇总 maintenance state DB、任务状态分布、决策分布和 running shard 数
@@ -1556,3 +1591,55 @@ python -m phase0.cli backfill-tushare-financials \
 - [x] 不在没有数据覆盖率和 as-of 审计前启动外部因子回测
 - [x] 不把新闻、政策或情绪材料直接当作已验证交易信号
 - [x] 不因为策略 admission 过严就降低门槛；优先补齐缺失解释变量、市场环境诊断和反方证据
+
+# W2.31｜AI 语料库开发计划（T1.7）
+
+任务文档：[`docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md)
+
+## W2.31.1 背景结论
+
+原 `T1.3A｜自建中文文本事件 API` 和 `T1.3B｜自建国家政策法规库 API` 已合并为 `T1.7｜AI 语料库`。该任务不依赖 Tushare 网站或高权限接口，首期基于国家公开网站和公开新闻 / 公告入口自建 provider。
+
+核心结论：
+
+- [x] gov.cn 政策文件库已有可验证官方入口、列表接口、部门字典、字段映射和正文页样例
+- [x] CCTV 新闻联播公开页面可作为 `cctv_news` 风格 MVP 的首个新闻文本 provider
+- [x] CNInfo / AkShare 可作为异常波动公告、交易风险提示公告的低成本 fallback
+- [x] 央行报告和券商研报库先作为扩展 provider；研报首期只做元数据和授权摘要
+- [x] 文本语料只进入研究情报和解释层，不直接进入主 ranker 或替代 admission
+
+## W2.31.2 本周目标
+
+- [x] 将自建中文文本事件 API 和国家政策法规库 API 合并为统一 `T1.7｜AI 语料库` 任务文档
+- [x] 在 `docs/DEVELOPMENT_PLAN.md` 中分配 `T1.7` 开发任务序号
+- [x] 在 `docs/tasks/README.md` 中把 `T1.7` 纳入子任务索引
+- [x] 定义 `ai_corpus_documents` schema、provider registry、raw archive 路径和 fixture 规则
+- [x] 固化 gov.cn 政策库 fixtures：列表 JSON、国务院文件正文 HTML、国务院部门文件正文 HTML
+- [x] 实现 gov.cn 政策库 provider P0/P1：列表查询、分页、字段清洗、错误记录
+- [x] 设计 `npr` 兼容 API 的字段选择、limit、多页循环和正文懒加载策略
+
+## W2.31.3 开发任务拆解
+
+- [x] `T1.7.1` 新增 AI 语料库 schema 草案，明确 `published_at / issued_at / ingested_at / as_of_time` 边界
+- [x] `T1.7.1` 新增 provider registry 草案，定义 provider 名称、源站、支持参数、parser 版本和 raw archive 目录
+- [x] `T1.7.2` 实现 gov.cn `/search-gov/data` 参数映射：`org`、`ptype`、`keyword`、`start_date`、`end_date`、`limit`
+- [x] `T1.7.3` 实现 gov.cn 正文 parser，抽取元数据表、`#UCAP-CONTENT`、正文 hash 和 parse status
+- [x] `T1.7.4` 实现主题映射 MVP，支持 `ptype=科技` 到 `subchildtype=2220` 的映射；完整 `bmzcfwjg.json` / 主题树缓存后续随 live provider 增强
+- [ ] `T1.7.5` 准备 CCTV `20260703` fixture，解析日期页、完整节目页和分段页
+- [x] `T1.7.6` 保留 CNInfo 异常波动 / 风险提示公告专项 provider 计划，不在 gov.cn MVP 未完成前扩散实现面
+
+## W2.31.4 第一版验收标准
+
+- [x] `npr(org="国务院", ptype="科技", end_date="2025-08-26 17:00:00")` 能返回 `国务院关于深入实施“人工智能+”行动的意见` 和 `国发〔2025〕11号`
+- [x] gov.cn 正文 parser 能从样例页抽取非空 `content_html`，并保留原始 URL、raw path、content hash 和 parser version
+- [x] `published_at`、`issued_at`、`ingested_at`、`as_of_time` 不混用，回测可见时间以本系统抓取成功时间为准
+- [x] 同一政策文件重复抓取不会重复入库，去重键至少覆盖 `source_id / url / pcode + title + puborg + pubtime / content_hash`
+- [x] CCTV 和 CNInfo provider 仅完成 fixture / 计划准备时，不声称已经生产可用
+
+## W2.31.5 不做
+
+- [x] 不依赖 Tushare 网站或 Tushare 高权限接口作为首期主源
+- [x] 不抓取、保存或再分发无授权券商研报全文
+- [x] 不在 MVP 阶段建设 HTTP 服务或多租户权限系统
+- [x] 不把政策、公告、新闻或 LLM 摘要直接接入主 ranker
+- [x] 不降低策略 admission 门槛，不把语料覆盖当作策略有效性的替代证据

@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-24（同步策略研发双北极星目标：当前市场突破策略，以及覆盖不同市场环境 / 风格的策略池与策略选择方法论）
+> 最后修订：2026-06-30（补充多模拟账户静态控制台与账户级交付链路）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof / admission 口径下当前无可用于 paper review 或实盘模拟的合格策略，当前目标转为找到至少一个适合当前市场环境、可指导个人实盘操作决策且具备较可观盈利潜力的合格量化策略，并逐步形成覆盖不同市场环境 / 风格的量化策略池与策略选择方法论**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -28,23 +28,29 @@
 - 成本敏感性测试已从 `phase0 run` 中拆出，必须通过单独 CLI 显式指定场景再运行
 - 连续 OOS 资金曲线与沪深300基准对比报表已生成，已纠正 walk-forward 分折重置带来的阅读偏差
 - 账单导出已接入正式 CLI / report 链路，`phase0 run` 会同步生成账单、日资产表和 HTML 预览
-- 账户级账单已补齐 A 股 `100` 股整手成交、现金约束、卖出回款和交易成本字段
-- 账户级仿真 v2 已补齐 `execution.price_mode`、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留
+- 账户级账单已补齐 A 股 `100` 股整手成交、现金约束、卖出回款、最低佣金、过户费、最小成交金额、T+1 可卖库存和交易成本字段
+- 账户级仿真 v2 已补齐 `execution.price_mode`、ST / 新股特殊涨跌停、普通涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留
 - `execution-gate` 与 `oos-report` 已支持 `research` / `live` profile，标准参数组合统一由 `config.yaml` 管理，脚本不再内置 profile 默认数值；profile 控制执行假设，股票池时点边界由 `universe.point_in_time_for_backtest` 单独控制
 - 行情分段验证已生成 HTML / CSV 报告，用于区分顺风行情、震荡和回撤阶段表现
 - 财务因子 PTI 校验已生成独立报告，当前结论为 `PASS`
 - `T2.4` 策略过拟合诊断工具只读 MVP 已落地，当前可基于现有 walk-forward 产物输出 CSV / Markdown 过拟合风险报告
 - `T2.1` Phase 0 候选策略池已从“候选扩张/晋级清单”修订为“策略池治理清单”：以 `baseline_admission_all_v1` 统一管理 13 个候选，当前无 `admission_pass_candidate`，候选按 `active_research`、`baseline`、`failure_sample`、`research_only`、`deferred` 等状态治理
-- `T2.8` strategy-admission 已成为策略池治理主入口：配置层 `baseline_admission_all_v1` 已包含当前 13 个候选；main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，当前 sleeve 证据来自 scoped admission 与后续低 churn 诊断实验。准入口径统一要求 `qfq_asof`、窗口 preset、过拟合、行业集中和因子诊断；账户执行目前输出诊断状态，正式 execution gate / brief 集成仍待完成
+- `T2.8` strategy-admission 已成为策略池治理主入口：配置层 `baseline_admission_all_v1` 已包含当前 13 个候选；main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，当前 sleeve 证据来自 scoped admission 与后续低 churn 诊断实验。准入口径统一要求 `qfq_asof`、窗口 preset、过拟合、行业集中和因子诊断；账户执行诊断已默认接入 compare/admission 矩阵，execution gate / brief 仍作为独立执行复核入口
 - `T2.10.1` 规则型 `sleeve_composite_v1` 已完成 scoped admission 与治理报告，结论为 `reject`；该策略保留为 research-only 诊断候选，不进入 paper review、模拟账户、日报或 watchlist
 - 行业集中度 100% universe 专项实验已在分支 `codex/industry-weight-100-universe-experiment` 完成并落盘；main 尚未合入该实验产物。实验结论为 research-only，取消 universe 行业上限未产生可准入策略，主线默认仍保留 universe 层行业分散约束
 - `INT-KMS-001` A 股个股行情影响因子全景图已通过情报采集器入库，并与 marklogseq HTML 结构化知识整合为项目可用知识资产；其中“因子传导逻辑图（从定价公式到六域关系矩阵）”被采纳为 `T2.13` 因子本体、特征注册与市场环境归因的理论框架，定位为只读元数据和诊断层，不直接作为 alpha 公式或因果证明
 - `T1.5` Tushare 财务因子逐股票历史补齐已完成并验收：2016Q1-2018Q1 目标季度末无 pending/failed，`financial-pti` 复核为 PASS，`factor-effectiveness` 已重跑
 - `T6.2` 数据库健康检查只读 MVP 已落地，新增 `phase0.cli db-health`，可输出 CSV / Markdown 报告并按 `--fail-on` 作为调度或 CI 门禁
 - `T6.3` 数据治理与维护编排器专项已完成关键收口项：`maintain supervise`、交易日历判断、维护状态 Markdown 报告、backfill 报告索引和只读 `system status` 汇总入口已落地，继续作为统一本地控制平面演进
+- Python 架构整理已完成一轮 main 集成：数据源 provider 统一归入 `phase0/data_access/providers/`，数据更新、回填、审计归入 `phase0/data_governance/`，策略研究归入 `phase0/research/`，CLI 只保留路由和参数解析；旧根路径兼容 wrapper 已清理或降级为兼容入口，新代码不得继续依赖旧入口
+- 报告目录治理已明确：`reports/` 根目录只保留 `archive/`、`runs/`、`database_health/`、`strategy_admission/`、`phase0/`、`strategy_governance/` 和 `README.md`；常规运行产物、日志和 SQLite 数据库作为本地资产维护，不随远端 Git 同步
 - `brief daily` / `brief watchlist` 已成为当前日报与阶段试用观察池主入口，旧 `daily-brief` / `premarket` 入口仅保留兼容
-- `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到 ECS `/brief/`
+- `07:20` 统一调度器已接入 `brief watchlist`，生成 `reports/watchlist_today/index.html` 并同步到远端 `/brief/`；模拟账户确认账单生成后会镜像到 `reports/account_bill_today/index.html` 并同步到远端 `/account-bill/`
+- 多模拟账户静态控制台已新增 `/quant/` 发布链路：`site build/sync/publish` 从所有 enabled 模拟账户读取账户级 latest watchlist、account-bill 和 SQLite 账本，生成 `reports/static_site/quant/`，远端同步只允许落到 `/var/www/spidermanread/quant/`
+- Watchlist HTML 产物已从 Python 字符串拼接迁移为 Jinja2 模板渲染，样式拆到独立 `watchlist.css`，视觉与交互按 `/brief/ui-test/` 参考样例对齐；`reports/runs/latest/watchlist/`、`reports/watchlist_today/` 和远端 `/brief/` 均按 HTML + CSS bundle 同步
 - 模拟账户已接入 SQLite 主账本 `data/simulated_trading/simulated_accounts.sqlite`，当前按已确认 OHLCV 交易日写入资产、成交和持仓记录
+- 正式 `daily brief` 仍需从阶段试用 watchlist 兼容产物中独立出来；已新增 `T6.6` 作为内容模型、页面结构、数据契约和生成代码拆分的专项任务
+- 目录治理已明确：`reports/` 存程序产物，`logs/` 存机器运行日志和调度状态，`memory/` 存人工会话归档、关键决策和历史计划快照
 - `07:30` 盘前观察池已接入 CLI，按最近交易日信号输出持仓、候选、权重、观察理由、模拟账户快照和风险提示
 - HTML 报表体验已统一：标题右侧显示生成时间，宽表按 `96vw` 横向滚动，长表按 `70vh` 纵向滚动，表头固定
 - 当前主阻塞点是**在 qfq_asof / PIT 股票池 / 成本后 / admission 口径下，把策略研发收敛到双北极星目标：先找到至少一个适合当前市场环境、可指导个人实盘操作决策且具备较可观盈利潜力的合格策略；同时把候选池沉淀为覆盖不同市场环境 / 市场风格的量化策略池，并形成策略选择方法论**。短期优先路线是复核低波低换手质量主线、拆解行业集中、参数不稳定与相对基准跑输原因、降低组合换手和 churn，而不是继续堆叠高换手价格行为策略
@@ -336,11 +342,12 @@ A股日线/财务  → 本土主因子引擎           ├→ 可交易信号 / 
 - `core_selection_quality_momentum_v1`
 - `theme_exposure_momentum_v1`
 - `sleeve_composite_v1`
+- `sleeve_composite_low_churn_v1`
 
 当前重点：
 
 - 以上 13 个策略已进入 `config.yaml` 的 `compare_strategies` 与 `baseline_admission_all_v1` 配置集合。
-- main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1`，当前没有通过严格准入的 selected candidate。
+- main 上仍需按当前 13 个候选集合重跑全量 admission，并把治理报告落盘到标准报告目录；当前没有通过严格准入的 selected candidate。
 - `legacy_momentum` / `legacy_momentum_low_turnover_v1` 仅作为 baseline 或研究样本保留，新候选不能仅凭少量 fold 的高分晋级。
 
 ### 引擎 #3：港股领先指标
@@ -493,7 +500,7 @@ T2.13 第一版需要统一以下字段口径：
 - `Alpha Vantage` 作为第一轮低成本新闻源 probe provider，验证 `tickers`、`topics`、`time_from/time_to`、`sort/limit` 和字段结构。
 - `Benzinga` 作为后续付费 / 生产级新闻源候选，重点评估 ticker、channel/topic、date range、实时性、成本和授权边界。
 - `Finnhub` 仅作为单票 company news 备选，不作为首批主新闻源。
-- `Tushare` 中文文本源作为后续重点评估方向：`research_report` 和 `anns_d` 优先服务公司级事件，`major_news` 服务结构化主新闻流，`npr` 服务政策文本，`cctv_news` 服务新闻联播类宏观事件。
+- `AI 语料库（T1.7）` 作为中文文本主线：先以 gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo 公告、PBOC 报告和授权研报元数据建设自建 provider，不依赖 Tushare 权限；Tushare `research_report` / `anns_d` / `major_news` / `npr` / `cctv_news` 只作为接口形态和可替换 provider 参考。
 - 新浪财经、财联社、华尔街见闻、中证网等公开上游只作为替代源候选，接入前必须评估抓取稳定性、授权边界和维护成本。
 
 组合新闻拉取原则：
@@ -657,7 +664,7 @@ LLM 不直接生成评分与交易信号。
 - **生产级候选**：Benzinga Newsfeed
 - **单票备选**：Finnhub company news
 - **不再扩展**：Tiingo News API
-- **中文文本事件候选**：Tushare `research_report` / `anns_d` / `major_news` / `npr` / `cctv_news`
+- **中文 AI 语料库候选**：gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo / AkShare 公告、PBOC 货币政策报告、授权券商研报元数据；Tushare 同名接口仅作为兼容形态和可替换 provider 参考
 
 当前状态：
 
@@ -665,8 +672,9 @@ LLM 不直接生成评分与交易信号。
 - Alpha Vantage 只作为低成本可用性验证源，不直接承诺为长期主源。
 - Alpha Vantage 多 ticker / 多 topic 过滤不按项目组合 OR 语义假设；组合观察池必须逐 ticker 拉取后聚合去重。
 - 后续中文财经新闻看板调查已沉淀到 `refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md`，用于 provider 选择和公开上游风险评估。
+- 自建中文文本事件 API 与国家政策法规库 API 计划已合并为 `T1.7｜AI 语料库`，首期不依赖 Tushare，优先实现 gov.cn 政策库 provider，再接 CCTV 新闻联播和 CNInfo 公告。
 - 新闻源只服务盘前解释、风险提示、关注个股分析、PEAD 研究和后续文本摘要因子，不进入首批交易建议主线。
-- 接入任务单见：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`
+- 接入任务单见：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md` 和 `docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`
 
 ### 5.7 当前意义
 
@@ -930,26 +938,29 @@ LLM 禁止：
 
 ```text
 stok-mapping/
-├── CLAUDE.md
-├── DEVELOPMENT_PLAN.md
+├── AGENTS.md
 ├── README.md
 ├── config.yaml
 ├── pyproject.toml
+├── runit
 ├── phase0/
 │   ├── cli.py
 │   ├── data_access/
 │   │   ├── connectivity.py
+│   │   ├── local_history.py
 │   │   └── providers/
-│   ├── data_sources.py  # 兼容旧入口
-│   ├── local_history.py
-│   ├── update_history.py
+│   ├── data_governance/
+│   │   └── backfills/
+│   ├── research/
+│   │   ├── admission/
+│   │   ├── attribution/
+│   │   └── diagnostics/
+│   ├── reporting/
+│   ├── execution/
+│   ├── intelligence/
 │   ├── universe.py
 │   ├── walk_forward.py
 │   └── strategies/
-├── reports/
-├── refdocs/
-│   ├── papers/
-│   └── OUTLOOK/
 ├── docs/
 │   ├── tasks/
 │   │   ├── data-sources/
@@ -959,6 +970,19 @@ stok-mapping/
 │   │   ├── research/
 │   │   └── ops/
 ├── data/
+├── knowledge/
+│   └── intelligence/
+├── refdocs/
+│   ├── papers/
+│   └── OUTLOOK/
+├── reports/
+│   ├── archive/
+│   ├── runs/
+│   ├── database_health/
+│   ├── strategy_admission/
+│   ├── phase0/
+│   ├── strategy_governance/
+│   └── README.md
 ├── scripts/
 ├── .codex/
 └── logs/
@@ -974,14 +998,17 @@ stok-mapping/
 
 - 开发/研究阶段：WSL / 本机运行
 - 统一命令入口：`phase0.cli`
+- 项目短命令：`./runit`，解析为 `./.venv/bin/python -m phase0.cli`
 - Python 环境：项目内 `.venv`
-- 调度：本地 cron + shell script
+- 调度：本地 cron 单入口 + `phase0.cli maintain tick`
 - 后续如需部署：Docker Compose 统一打包
 
 ### 当前已落地调度
 
-- 交易日 `16:30`：`scripts/update_manual_history_daily.sh`
-- 每周一 `03:30`：`scripts/update_financial_factors_weekly.sh`
+- 系统 cron 只保留一个项目入口：`scripts/run_project_scheduler.sh`
+- wrapper 加载 `.env` 后调用 `phase0.cli maintain tick`
+- 任务 registry 当前包含：每周一 `03:30` 财务因子更新，交易日 `07:20` 观察池简报，交易日 `16:20` 港股历史更新，交易日 `16:30` A 股历史更新，交易日 `17:10` US market 历史更新
+- 维护编排器负责交易日历、运行窗口、重试、状态记录和健康门禁；后续新增定时任务优先扩展 Python registry，不再新增多个 cron 入口
 
 ---
 
@@ -1051,8 +1078,11 @@ stok-mapping/
 - 已新增 `phase0.cli` 当前使用说明：`refdocs/PHASE0_CLI_USER_GUIDE.md`。
 - 已同步 `README.md`、`docs/PROJECT_ARCHITECTURE_OVERVIEW.md`、`reports/phase0_strategy_change_log.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md` 中的数据源与目录边界说明。
 - 已整理当前 `phase0.cli` 命令路由：推荐主入口收敛为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`，旧 `daily-brief` / `premarket` 保留兼容。
-- 已将 `07:20` 调度任务切换为 `brief watchlist`，阶段试用观察池固定输出到 `reports/watchlist_today/index.html`，并由程序内置 rsync 同步到 ECS `/brief/`。
-- 已接入模拟账户 SQLite 主账本：自动创建 `simulated_accounts`、`account_daily_assets`、`account_trades`、`account_positions`，并在 watchlist 页面展示最近已确认账单日账户快照。
+- 已将 `07:20` 调度任务切换为 `brief watchlist`，阶段试用观察池固定输出到 `reports/watchlist_today/index.html`，并由程序内置 rsync 同步到远端 `/brief/`。
+- 已将 watchlist 静态页面拆为 `phase0/reporting/templates/watchlist.html` 和 `phase0/reporting/static/watchlist.css`：Python 只准备结构化渲染上下文，CSS 按 `/brief/ui-test/` 参考样例管理 Belafonte Day / Night 主题、大屏断点和表格视觉，主题切换与回到顶部脚本按参考样例内联在 HTML 尾部；生成、latest 镜像和远端同步均复制 HTML + CSS bundle。
+- 已固化 watchlist 表格展示口径：`收盘价` 右对齐，其余数值列居中对齐；为压缩宽表，页面表头显示为 `动作`、`当前权重`、`目标权重`、`权重变化`、`持仓天数`，这些列使用当前模拟账户口径，`信号动作`、`信号持有天数` 使用策略研究信号口径；底部术语说明解释短表头的真实含义；顶部账户摘要固定为总资产、可用资金、持仓市值、当前仓位、当前收益率 5 项，无已确认账单时按初始资金和 `暂无` 收益率展示。
+- 已为模拟账户账单增加 latest 镜像与远端静态页面：账单 HTML 存在时复制到 `reports/runs/latest/account_bill/index.html` 和 `reports/account_bill_today/index.html`，并同步到远端 `/account-bill/`；无确认账单时安全跳过。
+- 已接入模拟账户 SQLite 主账本：自动创建 `simulated_accounts`、`account_daily_assets`、`account_trades`、`account_positions`，并在 watchlist 页面展示最近已确认账单日账户快照；账户配置新增 `simulation_start_date`，用于定义模拟账户生命周期起点，账本重建不会继承更早 watchlist。
 - 已修正 watchlist 与正式模拟账单边界：watchlist 为计划层；模拟账单只记录本地日线库已有对应执行日 OHLCV 的已确认交易日。
 - 已新增账户设计与账单查询备忘：`refdocs/SIMULATED_ACCOUNT_NOTES.md`，并约定后续“查看账单”默认展开 SQLite 对应表内容。
 - 已完成 `sleeve_composite_v1` scoped admission 与治理报告：结论为 `reject`，保留为 research-only 诊断候选。
@@ -1139,6 +1169,7 @@ stok-mapping/
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
 | `T1.5` | Tushare 财务因子逐股票历史补齐 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W216tushare-财务因子逐股票历史补齐t15) | **已完成：2016Q1-2018Q1 目标季度末已补齐并完成 PTI / factor-effectiveness 复核** |
 | `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`docs/tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) | **已完成：主库定义、维护分工与口径边界已同步到文档** |
+| `T1.7` | AI 语料库（政策法规 / CCTV / 公告 / 央行报告 / 研报元数据） | [`docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md) | **gov.cn 政策库 MVP 已落地：schema、provider registry、fixture / parser、raw archive、SQLite upsert / query 和 `ai-corpus` CLI 已完成；CCTV / CNInfo 仍为计划项** |
 | `T2.1` | Phase 0 候选策略池治理清单 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | **已修订为治理清单：`baseline_admission_all_v1` 统一管理 13 个候选；当前无 admission pass，短期聚焦全候选 admission、低波低换手质量主线失败归因和 sleeve 降换手重构** |
 | `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
 | `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，已进入 strategy-admission 诊断链路，待 gate / brief 集成** |
@@ -1152,15 +1183,20 @@ stok-mapping/
 | `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3/P4 关键收口已完成：真实 tick、wrapper 接管、最小重试、3 shard run/stop/resume、supervise、交易日历、Markdown 报告和 backfill 报告索引已落地** |
 | `T6.4` | Report Dashboard Astro 静态报表门户 | [`docs/tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md) | **P0 manifest 已落地：`dashboard scan` 可统一扫描 Markdown / HTML / CSV；Astro 页面仍待实现** |
 | `T6.5` | Report Output Path Standardization | [`docs/superpowers/plans/2026-06-23-report-output-path-standardization.md`](superpowers/plans/2026-06-23-report-output-path-standardization.md) | **标准 run 路径层已落地，并已迁移 strategy-admission、db-health、factor-effectiveness 默认输出；历史产物保持兼容扫描** |
+| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) | **计划新增：先固化日报内容模型、页面信息架构和数据契约，再从 watchlist 兼容实现中拆出正式生成代码** |
+| `T6.7` | 多模拟账户静态控制台 | [`docs/tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md`](tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md) | **第一阶段已实施：`site build/sync/publish` 生成 `/quant/`，每个 enabled 模拟账户有独立观察池、账单和台账入口；逐笔未成交事件表待补** |
 
 ### 当前最高优先级
 
 - [x] `T6.3` 当前优先 1：补持续 supervisor，使后台 shard 可基于 pid、日志和 audit 报告保守归类为成功、失败或 unknown
-- [x] `T6.3` 当前优先 2：新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`，汇总每日维护状态、失败原因、跳过原因、shard 状态和报告路径
+- [x] `T6.3` 当前优先 2：新增 `reports/database_health/maintenance/maintenance_status_YYYY-MM-DD.md`，汇总每日维护状态、失败原因、跳过原因、shard 状态和报告路径
 - [x] `T6.3` 当前优先 3：接入交易日历和更细的运行窗口，降低节假日和非交易日误触发
 - [x] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
-- [x] `T6.4` 当前优先：完成只读 manifest MVP 和 `dashboard scan`，生成 `reports/report_dashboard/manifest.json`
+- [x] `T6.4` 当前优先：完成只读 manifest MVP 和 `dashboard scan`，生成 `reports/runs/report_dashboard/manifest.json`
 - [x] `T6.5` 当前优先：建立 `reports/runs/YYYY-MM-DD/YYYYMMDD_HHMMSS__<command>__<scope>/` 规则并迁移核心默认输出
+- [ ] `T6.6` 当前优先：定义正式 daily brief 独立内容模型、页面分区、数据新鲜度口径、账户摘要口径和 watchlist / account-bill / db-health / maintenance artifact 关联方式
+- [x] `T6.7` 当前优先：建立多模拟账户静态控制台 `/quant/`，从账户级 latest 产物和模拟账户 SQLite 账本生成控制台、账户页、账单页和台账页
+- [x] `T1.7` 当前优先：完成 AI 语料库 schema、provider registry、gov.cn 政策库 fixture / parser MVP，并保持只服务研究情报和解释层，不直接接入主 ranker
 
 - [x] `T1.2` Tiingo 最小接入：在 `phase0/data_access/connectivity.py` 提供 `fetch_tiingo_daily()`，并在 connectivity 中覆盖 `NVDA/AAPL/TSLA/KWEB`
 - [x] 完成 Tiingo 与 `yfinance` fallback 的职责边界落地，不做一次性硬切
@@ -1218,7 +1254,7 @@ stok-mapping/
 - [ ] 完成 `T6.1` 调度器增强：交易日历判断、运行窗口、失败重试次数与状态文件
 - [x] 启动 `T6.3` 数据治理与维护编排器：Python control plane 已统一管理内置 task registry、状态机、门禁、重试、审计和长 backfill 分片监督；后续转向 System Orchestrator / TUI 汇总入口
 - [ ] 启动 `T6.4` Report Dashboard Astro 静态报表门户：先实现报表 manifest P0，再接入 Astro 本地 Dashboard，默认 `127.0.0.1:4321`
-- [ ] 将 full daily brief 从当前 watchlist 兼容产物中独立出来，形成正式日报产物生成代码
+- [ ] 完成 `T6.6` Daily Brief 独立内容模型与页面设计，并据此将 full daily brief 从当前 watchlist 兼容产物中拆出正式生成代码
 - [x] 已完成里程碑见：`T0`（周执行清单归档段）、`T1.1`（FRED 最小实现与连通性验收）、`T2.x`（策略主线收口）
 
 ### T1.5｜Tushare 财务因子逐股票历史补齐
@@ -1347,6 +1383,35 @@ announce_date_coverage
 
 后续增强（2026-06-06）：`backfill-tushare-financials` 已支持字段缺失补录模式。该模式不全量覆盖已有行，而是扫描 `market_financial_factors` 中指定字段为空的既有记录，创建 `period + symbol` 级补录任务，并根据缺失字段只调用必要接口：例如 `roe / revenue_growth / profit_growth` 只需 `fina_indicator`，`operating_cash_flow_to_net_profit` 需要 `income + cashflow`，`debt_to_asset` 需要 `balancesheet + fina_indicator`。
 
+### T1.7｜AI 语料库
+
+**目标**：把政策法规、CCTV 新闻联播文字稿、公告风险提示、央行报告和授权研报元数据统一纳入可追溯的中文 AI 语料库，服务研究情报、事件解释、关注个股时间线和后续 RAG-ready 检索，不直接生成交易信号。
+
+任务文档：[`docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md)
+
+开发顺序：
+
+1. `T1.7.1` 定义 `ai_corpus_documents` schema、provider registry、raw archive 路径和 fixture 规则。
+2. `T1.7.2-T1.7.4` 先实现 gov.cn 政策文件库：`/search-gov/data` 列表 provider、正文 parser、机构 / 主题字典缓存和 `npr` 兼容 API。
+3. `T1.7.5` 实现 CCTV 新闻联播 provider，覆盖日期页、完整节目页和分段正文。
+4. `T1.7.6` 实现 CNInfo / AkShare 公告 provider，先聚焦异常波动公告和交易风险提示公告。
+5. `T1.7.7-T1.7.9` 接入本地存储、CLI 查询、`market_text_events` 桥接、PBOC 报告、研报元数据和 RAG-ready 索引。
+
+边界：
+
+- 不依赖 Tushare 网站或 Tushare 高权限接口作为首期主源。
+- 不抓取、保存或再分发无授权券商研报全文。
+- 不用正文发布时间替代本系统 `as_of_time`。
+- 不把政策、公告、新闻或 LLM 摘要直接接入主 ranker。
+
+第一版验收：
+
+- `npr(org="国务院", ptype="科技", end_date="2025-08-26 17:00:00")` 能基于 fixture 返回 `国务院关于深入实施“人工智能+”行动的意见`、`国发〔2025〕11号` 和非空 `content_html`。
+- gov.cn 正文 parser 能抽取元数据表、`#UCAP-CONTENT`、正文 hash、raw path 和 parser version。
+- `published_at`、`issued_at`、`ingested_at`、`as_of_time` 不混用；回测可见时间以本系统抓取成功时间为准。
+- 同一政策文件重复 upsert 不重复入库；去重键覆盖 `source_id / url / pcode + title + puborg + pubtime / content_hash`。
+- CCTV / CNInfo provider 当前只保留计划状态，不声称生产可用。
+
 ### T6.2｜数据库健康检查与数据质量门禁
 
 **目标**：把分散的数据质量检查统一为可调度、可审计、可作为门禁的只读健康检查入口，避免脏数据、缺失数据、future leakage 和调度失败静默进入回测或日报链路。
@@ -1428,7 +1493,7 @@ announce_date_coverage
 
 推荐架构模式：
 
-- `Report Registry`：Python 侧统一登记 run 与 artifact，输出 `reports/report_dashboard/manifest.json`。
+- `Report Registry`：Python 侧统一登记 run 与 artifact，当前输出 `reports/runs/report_dashboard/manifest.json`。
 - `Static Dashboard`：Astro 只消费 manifest，不直接耦合各业务命令。
 - `Explicit Register + Scan Fallback`：新流程显式登记，历史产物用扫描兜底。
 - `Local-only Preview`：默认绑定 `127.0.0.1:4321`，不作为远程服务暴露。
@@ -1453,9 +1518,33 @@ announce_date_coverage
 - [x] 新增 `phase0/report_paths.py`，提供标准 run、latest、scratch 路径 helper。
 - [x] `strategy-admission` 默认输出迁移到 `reports/runs/...`，显式 `--output-dir` 保持旧兼容。
 - [x] `db-health` 和 `factor-effectiveness` 默认输出迁移到 `reports/runs/...`，显式输出目录保持旧兼容。
-- [x] watchlist latest 新增 `reports/latest/watchlist/index.html`，旧 `reports/watchlist_today/index.html` 暂保留为兼容镜像。
+- [x] watchlist latest 新增 `reports/runs/latest/watchlist/index.html` 与 `watchlist.css`，旧 `reports/watchlist_today/index.html` / `watchlist.css` 暂保留为兼容镜像。
+- [x] watchlist HTML 生成从 Python 内联字符串迁移到 Jinja2 模板；样式迁移到独立 CSS，Belafonte Day / Night 主题、大屏断点、表格视觉、主题切换脚本和回到顶部按钮按 `/brief/ui-test/` 参考样例对齐，远端同步复制完整 HTML + CSS bundle。
+- [x] watchlist 表格区分模拟账户实盘模拟口径和策略研究信号口径：短表头 `持仓天数` 来自 `account_positions` 已确认持仓快照，`信号持有天数` 保留策略内部 `held_days`。
+- [x] account-bill latest 新增 `reports/runs/latest/account_bill/index.html` 与 `reports/account_bill_today/index.html`，存在确认账单 HTML 时自动同步远端 `/account-bill/`。
 - [x] `dashboard scan` 已识别 `standard_run` 和 legacy categories。
 - [ ] 仍未批量迁移历史文件，后续只通过 scanner 兼容读取。
+
+### T6.6｜Daily Brief 独立内容模型与页面设计
+
+**目标**：把正式 daily brief 从当前 `brief watchlist` 兼容页面中拆出，形成独立内容模型、页面信息架构、数据契约和生成代码。Daily brief 是每日盘前决策驾驶舱，watchlist 是其中的观察池组件；两者不能继续等同。
+
+专项任务单：
+
+- [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md)
+
+边界：
+
+- daily brief 不绕过 `strategy-admission`、execution gate、数据健康门禁或账户约束生成交易信号。
+- 当前无合格 candidate 时，日报必须明确显示“兼容基线 / 研究样本 / 无正式准入策略”的状态，不能把 watchlist 解释为正式推荐。
+- 模拟账户收益、持仓和账单只使用已确认 OHLCV 交易日；未生成确认账单时，账户摘要按初始资金和暂无收益率口径展示。
+
+阶段交付：
+
+- [ ] P0 内容模型与页面结构：定义 metadata、data freshness、account summary、market context、strategy status、portfolio plan、watchlist digest、risk checks、artifacts。
+- [ ] P1 独立 HTML 页面：新增 `daily_brief` renderer 和 latest 镜像，`brief daily` 输出正式日报，`brief watchlist` 保持观察池页面。
+- [ ] P2 数据契约与测试：为缺数据、非交易日、无账单、无合格 candidate、健康门禁异常等场景补测试。
+- [ ] P3 Dashboard / 远端同步：将 daily brief artifact 注册到 report manifest，并明确 `/brief/` 指向正式日报还是阶段 watchlist 的迁移窗口。
 
 ### 条件满足后再推进
 
@@ -1469,7 +1558,7 @@ announce_date_coverage
 - [x] 再引入 Tiingo 作为美股个股 / ETF 主源（最小实现与连通性验收已完成）
 - [x] 保留 `yfinance` 作为 fallback，不做一次性全替换
 - [x] 强化 `07:30` 阶段试用观察池自动生成链路，并形成每日可复盘归档的最小闭环
-- [ ] 将正式 daily brief 从当前 watchlist 兼容实现中拆出
+- [ ] 按 `T6.6` 内容模型将正式 daily brief 从当前 watchlist 兼容实现中拆出
 - [ ] 精修映射标的池与行业层分析
 - [ ] 补全港股映射 A 股候选策略代码，前置条件是港股历史数据源质量验证通过
 - [ ] 在规则型 / 因子型信号链路稳定后，再引入 sklearn 基线模型作为研究对照，不进入首批交易建议主线

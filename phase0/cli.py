@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 
+from phase0.cli_commands.ai_corpus import AI_CORPUS_COMMANDS, handle_ai_corpus_command, register_ai_corpus_commands
 from phase0.cli_commands.data_governance import (
     DATA_GOVERNANCE_COMMANDS,
     handle_data_governance_command,
@@ -90,6 +91,7 @@ def main() -> int:
         ],
         "Governance & Research": [
             "adjustment-audit",
+            "ai-corpus",
             "cost-sensitivity",
             "db-health",
             "execution-gate",
@@ -133,6 +135,7 @@ def main() -> int:
             "Nested command groups:\n"
             "  brief: account-bill, daily, daily-brief, premarket, watchlist\n"
             "  dashboard: scan\n"
+            "  ai-corpus: export, fetch, query, registry\n"
             "  intelligence: collect, import-local, review-candidates, validate\n"
             "  maintain: resume, run, status, stop, supervise, tick\n"
             "  site: build, publish, sync\n"
@@ -146,6 +149,7 @@ def main() -> int:
     register_strategy_research_commands(sub)
     register_research_commands(sub)
     register_dashboard_commands(sub)
+    register_ai_corpus_commands(sub)
     register_intelligence_commands(sub)
     register_maintenance_commands(sub)
     register_system_commands(sub)
@@ -164,6 +168,8 @@ def main() -> int:
         return handle_research_command(args, parser=parser)
     if args.cmd == "dashboard":
         return handle_dashboard_command(args, parser=parser)
+    if args.cmd in AI_CORPUS_COMMANDS:
+        return handle_ai_corpus_command(args, parser=parser)
     if args.cmd == "intelligence":
         return handle_intelligence_command(args, parser=parser)
     if args.cmd == "maintain":

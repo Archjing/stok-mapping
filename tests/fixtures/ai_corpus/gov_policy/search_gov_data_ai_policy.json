@@ -1,0 +1,33 @@
+{
+  "searchVO": {
+    "total": 2,
+    "list": [
+      {
+        "title": "国务院关于深入实施“人工智能+”行动的意见",
+        "url": "https://www.gov.cn/zhengce/zhengceku/202508/content_7037862.htm",
+        "pcode": "国发〔2025〕11号",
+        "puborg": "国务院",
+        "childtype": "科技、教育\\科技",
+        "ptype": "科技、教育\\科技",
+        "pubtime": "2025-08-26",
+        "pubtimeStr": "2025-08-26",
+        "index": "1",
+        "summary": "人工智能+行动政策文件最小测试摘要",
+        "id": "content_7037862"
+      },
+      {
+        "title": "工业和信息化部关于人工智能产业创新发展的通知",
+        "url": "https://www.gov.cn/zhengce/zhengceku/202605/content_7068153.htm",
+        "pcode": "工信部科〔2026〕42号",
+        "puborg": "工业和信息化部",
+        "childtype": "科技、教育\\科技",
+        "ptype": "科技、教育\\科技",
+        "pubtime": "2026-05-13",
+        "pubtimeStr": "2026-05-13",
+        "index": "2",
+        "summary": "部门人工智能政策文件最小测试摘要",
+        "id": "content_7068153"
+      }
+    ]
+  }
+}

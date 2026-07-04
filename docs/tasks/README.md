@@ -34,6 +34,7 @@
 | `T1.3` | 新闻源独立模块 | [`data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md`](./data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md) |
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](./data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) |
 | `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](./data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) |
+| `T1.7` | AI 语料库（政策法规 / CCTV / 公告 / 央行报告 / 研报元数据） | [`data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](./data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md) |
 | `T2.1` | Phase 0 候选策略池 | [`strategy/PHASE0_CANDIDATE_STRATEGIES.md`](./strategy/PHASE0_CANDIDATE_STRATEGIES.md) |
 | `T2.3` | 策略积木工程化计划 | [`strategy/STRATEGY_BLOCKS_PLAN.md`](./strategy/STRATEGY_BLOCKS_PLAN.md) |
 | `T2.4` | 策略过拟合诊断工具 | [`strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](./strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) |
@@ -48,6 +49,8 @@
 | `T6.3` | 数据治理与维护编排器 | [`ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](./ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) |
 | `T6.4` | Report Dashboard Astro 静态报表门户 | [`ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](./ops/REPORT_DASHBOARD_ASTRO_TASKS.md) |
 | `T6.5` | Report Output Path Standardization | [`../superpowers/plans/2026-06-23-report-output-path-standardization.md`](../superpowers/plans/2026-06-23-report-output-path-standardization.md) |
+| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](./ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) |
+| `T6.7` | 多模拟账户静态控制台 | [`ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md`](./ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md) |
 
 ## T0.4 维护规则
 
