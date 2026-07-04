@@ -561,9 +561,9 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
             f"<td>{html.escape(item.get('latest_bill_date') or '暂无')}</td>"
             f"<td>{html.escape(item.get('total_asset') or '暂无')}</td>"
             f"<td>{html.escape(item.get('target_exposure') or '暂无')}</td>"
-            f"<td><a href=\"../{html.escape(item['watchlist_path'])}\">观察池</a> ｜ "
-            f"<a href=\"../{html.escape(item['account_bill_path'])}\">账单</a> ｜ "
-            f"<a href=\"../{html.escape(item['ledger_path'])}\">台账</a></td>"
+            f"<td><a href=\"/quant/{html.escape(item['watchlist_path'])}\">观察池</a> ｜ "
+            f"<a href=\"/quant/{html.escape(item['account_bill_path'])}\">账单</a> ｜ "
+            f"<a href=\"/quant/{html.escape(item['ledger_path'])}\">台账</a></td>"
             "</tr>"
         )
     rows_html = "".join(rows) if rows else '<tr><td colspan="6">暂无启用的模拟账户</td></tr>'
@@ -575,10 +575,10 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>量化每日简报</title>
-  <link rel="stylesheet" href="../assets/style.css">
+  <link rel="stylesheet" href="/quant/assets/style.css">
 </head>
 <body>
-{_theme_bar_html(back_href="../index.html")}<div class="page account-bill-page brief-page">
+{_theme_bar_html(back_href="/quant/index.html")}<div class="page account-bill-page brief-page">
   <div class="title-row"><h1>量化每日简报</h1><span class="generated-at">生成时间：{html.escape(generated_at)}</span></div>
   <section class="brief-hero">
     <div>
@@ -609,7 +609,7 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
     </article>
     <article class="brief-card">
       <h2>下钻入口</h2>
-      <p><a class="helper-link" href="../index.html">控制台首页</a><a class="helper-link" href="../wiki/index.html">A股影响因子全景图</a></p>
+      <p><a class="helper-link" href="/quant/index.html">控制台首页</a><a class="helper-link" href="/quant/wiki/index.html">A股影响因子全景图</a></p>
     </article>
   </section>
   <section class="bill-section"><div class="section-title-frame"><h2>账户简报</h2></div>
@@ -624,6 +624,18 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
 </body>
 </html>
 """
+
+
+def _write_legacy_brief_alias(site_root: Path) -> None:
+    legacy_brief = site_root.parent / "brief"
+    if legacy_brief.is_symlink() or legacy_brief.is_file():
+        legacy_brief.unlink()
+    elif legacy_brief.exists():
+        shutil.rmtree(legacy_brief)
+    try:
+        legacy_brief.symlink_to(Path("quant") / "brief", target_is_directory=True)
+    except OSError:
+        shutil.copytree(site_root / "brief", legacy_brief)
 
 
 def _write_csvs(account_dir: Path, frames: dict[str, pd.DataFrame]) -> None:
@@ -735,6 +747,7 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
     (site_root / "index.html").write_text(_site_index_html(accounts_meta=accounts_meta, generated_at=generated_at), encoding="utf-8")
     (site_root / "brief").mkdir(parents=True, exist_ok=True)
     (site_root / "brief" / "index.html").write_text(_brief_index_html(accounts_meta=accounts_meta, generated_at=generated_at), encoding="utf-8")
+    _write_legacy_brief_alias(site_root)
     return {"site_root": site_root, "manifest": manifest, "accounts": len(accounts_meta)}
 
 

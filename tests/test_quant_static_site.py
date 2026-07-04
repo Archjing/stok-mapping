@@ -183,10 +183,14 @@ def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_
     brief_html = (site_root / "brief" / "index.html").read_text(encoding="utf-8")
     assert "量化每日简报" in brief_html
     assert 'class="page account-bill-page brief-page"' in brief_html
-    assert 'href="../assets/style.css"' in brief_html
-    assert 'href="../accounts/default/latest/watchlist/index.html"' in brief_html
-    assert 'href="../accounts/default/latest/account-bill/index.html"' in brief_html
-    assert 'href="../accounts/default/ledger/index.html"' in brief_html
+    assert 'href="/quant/assets/style.css"' in brief_html
+    assert 'href="/quant/index.html"' in brief_html
+    assert 'href="/quant/accounts/default/latest/watchlist/index.html"' in brief_html
+    assert 'href="/quant/accounts/default/latest/account-bill/index.html"' in brief_html
+    assert 'href="/quant/accounts/default/ledger/index.html"' in brief_html
+    legacy_brief = site_root.parent / "brief"
+    assert legacy_brief.exists()
+    assert (legacy_brief / "index.html").read_text(encoding="utf-8") == brief_html
     assert "部分账户暂无确认账单，简报只展示可用证据" in brief_html
     assert "页面不直接生成交易信号" in brief_html
     assert "不生成新的买卖建议" in brief_html
