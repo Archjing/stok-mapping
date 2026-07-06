@@ -1,8 +1,0 @@
-walk_forward_preset,fold,valid_start,valid_end,universe_as_of_date,constituent_status,weight_status,coverage_status,note
-baseline_2y_1y_5fold,1,2021-04-01,2022-03-31,2021-03-31,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-baseline_2y_1y_5fold,2,2022-04-01,2023-03-31,2022-03-31,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-baseline_2y_1y_5fold,3,2023-04-03,2024-03-29,2023-03-31,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-baseline_2y_1y_5fold,4,2024-04-01,2025-03-31,2024-03-29,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-baseline_2y_1y_5fold,5,2025-04-01,2026-03-31,2025-03-31,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-quality_4y_1y,1,2024-04-01,2025-03-31,2024-03-29,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates
-quality_4y_1y,2,2025-04-01,2026-03-31,2025-03-31,available,available,covered_by_schema,fold can be audited once constituent and weight rows cover validation dates

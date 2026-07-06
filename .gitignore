@@ -32,8 +32,7 @@ node_modules/
 
 # Local runtime outputs and audit artifacts.
 # `reports/` has a fixed root layout. Keep generated outputs on disk, but do
-# not add routine reports/logs/databases to Git. Only curated governance
-# archives are versioned so research decisions can be audited from main.
+# not add routine reports/logs/databases to the origin repository.
 logs/
 !logs/
 logs/*
@@ -65,18 +64,12 @@ reports/runs/*
 reports/strategy_admission/*
 !reports/strategy_admission/.gitkeep
 
-# Strategy governance is the only reports subtree intended for versioned
-# research records. Keep human-readable summaries and briefings; leave bulk
-# machine outputs local unless force-added intentionally.
+# Strategy governance reports are local runtime/research artifacts in this
+# origin repository. Other repository copies may force-add their own report
+# records if they intentionally maintain a separate tracking policy.
 !reports/strategy_governance/
-!reports/strategy_governance/**/
-reports/strategy_governance/**/*.csv
-reports/strategy_governance/**/*.json
-reports/strategy_governance/**/*.parquet
-reports/strategy_governance/**/*.png
-reports/strategy_governance/**/*.svg
-!reports/strategy_governance/**/*.md
-!reports/strategy_governance/**/*.html
+reports/strategy_governance/*
+!reports/strategy_governance/.gitkeep
 *.sqlite
 *.sqlite-*
 *.db

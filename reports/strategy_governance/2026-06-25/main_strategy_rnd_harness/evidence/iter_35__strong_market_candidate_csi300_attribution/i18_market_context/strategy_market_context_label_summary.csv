@@ -1,5 +1,0 @@
-primary_fold_failure,fold_count,avg_excess_ann,avg_index_ann_return,avg_pct_days_above_trend,avg_pct_days_high_vol,avg_pct_days_risk_off_context,dominant_market_context,interpretation
-absolute_failure_market_weak_but_outperform,2,0.09774686310610076,-0.08713132246500571,0.25395727677885355,0.27676177791438283,0.7792377439680345,absolute_loss_but_benchmark_weak_context,Negative absolute fold still outperformed the benchmark; dominant context=absolute_loss_but_benchmark_weak_context.
-clean_positive_fold,1,0.1908538203751032,-0.16908490344092175,0.1111111111111111,0.16872427983539096,0.897119341563786,risk_context_pressure,Control folds with positive absolute and excess returns; dominant context=risk_context_pressure.
-execution_pressure,1,-0.0907109859640478,0.15117668279900998,0.7933884297520661,0.2024793388429752,0.29338842975206614,mixed_or_unresolved_context,Mixed diagnostic context; dominant context=mixed_or_unresolved_context.
-strategy_specific_underperformance,1,-0.0849701220645706,0.10363256323962489,0.7344398340248963,0.3236514522821577,0.5726141078838174,mixed_or_unresolved_context,Mixed diagnostic context; dominant context=mixed_or_unresolved_context.

@@ -1,6 +1,0 @@
-artifact,status,table,rows,benchmark_rows,min_trade_date,max_trade_date,coverage_ratio,missing_open_days,latest_lag_days,close_non_null_ratio,volume_non_null_ratio,amount_non_null_ratio,required_columns_present,missing_required_columns,asof_columns_present,asof_status,note
-benchmark_index_metadata,available,market_indices,997,1,2005-04-08,2005-04-08,,,,,,,True,,,not_applicable,index metadata identifies the benchmark but does not provide constituents
-benchmark_index_price,available,market_index_bars,1876918,2445,2016-05-03,2026-05-28,,,28,1.000000,1.000000,1.000000,True,,,not_applicable,"index prices support benchmark return context, not constituent/weight attribution"
-benchmark_open_day_coverage,available,trading_calendar,13162,2445,2016-05-03,2026-05-28,1.000000,0,,,,,True,,,not_applicable,open trading day coverage for benchmark price rows; this is not constituent coverage
-benchmark_constituents,available,cn_index_constituents_asof,600,600,2024-01-02,2024-01-31,,,,,,,True,,"effective_date,ingested_at,source",available,available for audit
-benchmark_weights,available,cn_index_weights_asof,600,600,2024-01-02,2024-01-31,,,,,,,True,,"asof_time,effective_date,ingested_at,source",available,available for audit

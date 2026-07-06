@@ -1,5 +1,0 @@
-fold,recovery_days,repair_days,non_repair_days,repair_benchmark_return_sum,non_repair_benchmark_return_sum,repair_benchmark_return_mean,non_repair_benchmark_return_mean
-2,56,43,13,-0.039348,-0.002201,-0.000915,-0.000169
-3,22,16,6,0.00256,0.012162,0.00016,0.002027
-4,49,26,23,-0.003872,-0.018184,-0.000149,-0.000791
-5,46,46,0,0.143221,0.0,0.003113,0.0
