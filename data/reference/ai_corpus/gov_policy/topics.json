@@ -1,0 +1,990 @@
+{
+  "fetched_at": "2026-07-08T13:58:39+08:00",
+  "source_url": "https://sousuo.www.gov.cn/search-gov/data",
+  "topic_params": {
+    "人事工作": {
+      "ptype_label": "劳动、人事、监察\\人事工作",
+      "subchildtype": "2240"
+    },
+    "人口与计划生育": {
+      "ptype_label": "人口与计划生育、妇女儿童工作\\人口与计划生育",
+      "subchildtype": "2233"
+    },
+    "人口与计划生育、妇女儿童工作": {
+      "childtype": "1091",
+      "ptype_label": "人口与计划生育、妇女儿童工作"
+    },
+    "人口与计划生育、妇女儿童工作\\人口与计划生育": {
+      "ptype_label": "人口与计划生育、妇女儿童工作\\人口与计划生育",
+      "subchildtype": "2233"
+    },
+    "人口与计划生育、妇女儿童工作\\其他": {
+      "ptype_label": "人口与计划生育、妇女儿童工作\\其他",
+      "subchildtype": "2235"
+    },
+    "人口与计划生育、妇女儿童工作\\妇女儿童": {
+      "ptype_label": "人口与计划生育、妇女儿童工作\\妇女儿童",
+      "subchildtype": "2234"
+    },
+    "优抚安置": {
+      "ptype_label": "民政、扶贫、救灾\\优抚安置",
+      "subchildtype": "2250"
+    },
+    "体育": {
+      "ptype_label": "卫生、体育\\体育",
+      "subchildtype": "2231"
+    },
+    "侨务工作": {
+      "ptype_label": "港澳台侨工作\\侨务工作",
+      "subchildtype": "2267"
+    },
+    "保密工作": {
+      "ptype_label": "综合政务\\保密工作",
+      "subchildtype": "2157"
+    },
+    "保险": {
+      "ptype_label": "财政、金融、审计\\保险",
+      "subchildtype": "2173"
+    },
+    "信息产业（含电信）": {
+      "ptype_label": "工业、交通\\信息产业（含电信）",
+      "subchildtype": "2194"
+    },
+    "信访": {
+      "ptype_label": "综合政务\\信访",
+      "subchildtype": "2158"
+    },
+    "公安": {
+      "ptype_label": "公安、安全、司法\\公安",
+      "subchildtype": "2245"
+    },
+    "公安、安全、司法": {
+      "childtype": "1093",
+      "ptype_label": "公安、安全、司法"
+    },
+    "公安、安全、司法\\公安": {
+      "ptype_label": "公安、安全、司法\\公安",
+      "subchildtype": "2245"
+    },
+    "公安、安全、司法\\其他": {
+      "ptype_label": "公安、安全、司法\\其他",
+      "subchildtype": "2248"
+    },
+    "公安、安全、司法\\司法": {
+      "ptype_label": "公安、安全、司法\\司法",
+      "subchildtype": "2247"
+    },
+    "公安、安全、司法\\国家安全": {
+      "ptype_label": "公安、安全、司法\\国家安全",
+      "subchildtype": "2246"
+    },
+    "公路": {
+      "ptype_label": "工业、交通\\公路",
+      "subchildtype": "2195"
+    },
+    "其他": {
+      "childtype": "1099",
+      "ptype_label": "其他"
+    },
+    "军转安置": {
+      "ptype_label": "劳动、人事、监察\\军转安置",
+      "subchildtype": "2241"
+    },
+    "农业、林业、水利": {
+      "childtype": "1083",
+      "ptype_label": "农业、林业、水利"
+    },
+    "农业、林业、水利\\其他": {
+      "ptype_label": "农业、林业、水利\\其他",
+      "subchildtype": "2188"
+    },
+    "农业、林业、水利\\农业、畜牧业、渔业": {
+      "ptype_label": "农业、林业、水利\\农业、畜牧业、渔业",
+      "subchildtype": "2185"
+    },
+    "农业、林业、水利\\林业": {
+      "ptype_label": "农业、林业、水利\\林业",
+      "subchildtype": "2186"
+    },
+    "农业、林业、水利\\水利": {
+      "ptype_label": "农业、林业、水利\\水利",
+      "subchildtype": "2187"
+    },
+    "农业、畜牧业、渔业": {
+      "ptype_label": "农业、林业、水利\\农业、畜牧业、渔业",
+      "subchildtype": "2185"
+    },
+    "减灾救灾": {
+      "ptype_label": "民政、扶贫、救灾\\减灾救灾",
+      "subchildtype": "2249"
+    },
+    "劳动、人事、监察": {
+      "childtype": "1092",
+      "ptype_label": "劳动、人事、监察"
+    },
+    "劳动、人事、监察\\人事工作": {
+      "ptype_label": "劳动、人事、监察\\人事工作",
+      "subchildtype": "2240"
+    },
+    "劳动、人事、监察\\其他": {
+      "ptype_label": "劳动、人事、监察\\其他",
+      "subchildtype": "2244"
+    },
+    "劳动、人事、监察\\军转安置": {
+      "ptype_label": "劳动、人事、监察\\军转安置",
+      "subchildtype": "2241"
+    },
+    "劳动、人事、监察\\劳动就业": {
+      "ptype_label": "劳动、人事、监察\\劳动就业",
+      "subchildtype": "2236"
+    },
+    "劳动、人事、监察\\监察": {
+      "ptype_label": "劳动、人事、监察\\监察",
+      "subchildtype": "2242"
+    },
+    "劳动、人事、监察\\社会保障": {
+      "ptype_label": "劳动、人事、监察\\社会保障",
+      "subchildtype": "2238"
+    },
+    "劳动、人事、监察\\纠正行业不正之风": {
+      "ptype_label": "劳动、人事、监察\\纠正行业不正之风",
+      "subchildtype": "2243"
+    },
+    "劳动就业": {
+      "ptype_label": "劳动、人事、监察\\劳动就业",
+      "subchildtype": "2236"
+    },
+    "化工": {
+      "ptype_label": "工业、交通\\化工",
+      "subchildtype": "2191"
+    },
+    "医药管理": {
+      "ptype_label": "卫生、体育\\医药管理",
+      "subchildtype": "2230"
+    },
+    "卫生": {
+      "ptype_label": "卫生、体育\\卫生",
+      "subchildtype": "2229"
+    },
+    "卫生、体育": {
+      "childtype": "1090",
+      "ptype_label": "卫生、体育"
+    },
+    "卫生、体育\\体育": {
+      "ptype_label": "卫生、体育\\体育",
+      "subchildtype": "2231"
+    },
+    "卫生、体育\\其他": {
+      "ptype_label": "卫生、体育\\其他",
+      "subchildtype": "2232"
+    },
+    "卫生、体育\\医药管理": {
+      "ptype_label": "卫生、体育\\医药管理",
+      "subchildtype": "2230"
+    },
+    "卫生、体育\\卫生": {
+      "ptype_label": "卫生、体育\\卫生",
+      "subchildtype": "2229"
+    },
+    "参事、文史": {
+      "ptype_label": "综合政务\\参事、文史",
+      "subchildtype": "2159"
+    },
+    "司法": {
+      "ptype_label": "公安、安全、司法\\司法",
+      "subchildtype": "2247"
+    },
+    "商贸、海关、旅游": {
+      "childtype": "1085",
+      "ptype_label": "商贸、海关、旅游"
+    },
+    "商贸、海关、旅游\\其他": {
+      "ptype_label": "商贸、海关、旅游\\其他",
+      "subchildtype": "2206"
+    },
+    "商贸、海关、旅游\\国内贸易（含供销）": {
+      "ptype_label": "商贸、海关、旅游\\国内贸易（含供销）",
+      "subchildtype": "2202"
+    },
+    "商贸、海关、旅游\\对外经贸合作": {
+      "ptype_label": "商贸、海关、旅游\\对外经贸合作",
+      "subchildtype": "2201"
+    },
+    "商贸、海关、旅游\\旅游": {
+      "ptype_label": "商贸、海关、旅游\\旅游",
+      "subchildtype": "2205"
+    },
+    "商贸、海关、旅游\\检验、检疫": {
+      "ptype_label": "商贸、海关、旅游\\检验、检疫",
+      "subchildtype": "2204"
+    },
+    "商贸、海关、旅游\\海关": {
+      "ptype_label": "商贸、海关、旅游\\海关",
+      "subchildtype": "2203"
+    },
+    "国内贸易（含供销）": {
+      "ptype_label": "商贸、海关、旅游\\国内贸易（含供销）",
+      "subchildtype": "2202"
+    },
+    "国务院": {
+      "ptype_label": "国务院组织机构\\国务院",
+      "subchildtype": "1165"
+    },
+    "国务院办事机构": {
+      "ptype_label": "国务院组织机构\\国务院办事机构",
+      "subchildtype": "1170"
+    },
+    "国务院办公厅": {
+      "ptype_label": "国务院组织机构\\国务院办公厅",
+      "subchildtype": "1166"
+    },
+    "国务院直属事业单位": {
+      "ptype_label": "国务院组织机构\\国务院直属事业单位",
+      "subchildtype": "1171"
+    },
+    "国务院直属机构": {
+      "ptype_label": "国务院组织机构\\国务院直属机构",
+      "subchildtype": "1169"
+    },
+    "国务院直属特设机构": {
+      "ptype_label": "国务院组织机构\\国务院直属特设机构",
+      "subchildtype": "1168"
+    },
+    "国务院组成部门": {
+      "ptype_label": "国务院组织机构\\国务院组成部门",
+      "subchildtype": "1167"
+    },
+    "国务院组织机构": {
+      "childtype": "1078",
+      "ptype_label": "国务院组织机构"
+    },
+    "国务院组织机构\\其他": {
+      "ptype_label": "国务院组织机构\\其他",
+      "subchildtype": "1174"
+    },
+    "国务院组织机构\\国务院": {
+      "ptype_label": "国务院组织机构\\国务院",
+      "subchildtype": "1165"
+    },
+    "国务院组织机构\\国务院办事机构": {
+      "ptype_label": "国务院组织机构\\国务院办事机构",
+      "subchildtype": "1170"
+    },
+    "国务院组织机构\\国务院办公厅": {
+      "ptype_label": "国务院组织机构\\国务院办公厅",
+      "subchildtype": "1166"
+    },
+    "国务院组织机构\\国务院直属事业单位": {
+      "ptype_label": "国务院组织机构\\国务院直属事业单位",
+      "subchildtype": "1171"
+    },
+    "国务院组织机构\\国务院直属机构": {
+      "ptype_label": "国务院组织机构\\国务院直属机构",
+      "subchildtype": "1169"
+    },
+    "国务院组织机构\\国务院直属特设机构": {
+      "ptype_label": "国务院组织机构\\国务院直属特设机构",
+      "subchildtype": "1168"
+    },
+    "国务院组织机构\\国务院组成部门": {
+      "ptype_label": "国务院组织机构\\国务院组成部门",
+      "subchildtype": "1167"
+    },
+    "国务院组织机构\\国务院议事协调机构": {
+      "ptype_label": "国务院组织机构\\国务院议事协调机构",
+      "subchildtype": "1173"
+    },
+    "国务院组织机构\\国务院部委管理的国家局": {
+      "ptype_label": "国务院组织机构\\国务院部委管理的国家局",
+      "subchildtype": "1172"
+    },
+    "国务院议事协调机构": {
+      "ptype_label": "国务院组织机构\\国务院议事协调机构",
+      "subchildtype": "1173"
+    },
+    "国务院部委管理的国家局": {
+      "ptype_label": "国务院组织机构\\国务院部委管理的国家局",
+      "subchildtype": "1172"
+    },
+    "国土资源、能源": {
+      "childtype": "1082",
+      "ptype_label": "国土资源、能源"
+    },
+    "国土资源、能源\\其他": {
+      "ptype_label": "国土资源、能源\\其他",
+      "subchildtype": "2184"
+    },
+    "国土资源、能源\\土地": {
+      "ptype_label": "国土资源、能源\\土地",
+      "subchildtype": "2177"
+    },
+    "国土资源、能源\\水资源": {
+      "ptype_label": "国土资源、能源\\水资源",
+      "subchildtype": "2179"
+    },
+    "国土资源、能源\\海洋": {
+      "ptype_label": "国土资源、能源\\海洋",
+      "subchildtype": "2180"
+    },
+    "国土资源、能源\\煤炭": {
+      "ptype_label": "国土资源、能源\\煤炭",
+      "subchildtype": "2181"
+    },
+    "国土资源、能源\\电力": {
+      "ptype_label": "国土资源、能源\\电力",
+      "subchildtype": "2183"
+    },
+    "国土资源、能源\\石油与天然气": {
+      "ptype_label": "国土资源、能源\\石油与天然气",
+      "subchildtype": "2182"
+    },
+    "国土资源、能源\\矿产": {
+      "ptype_label": "国土资源、能源\\矿产",
+      "subchildtype": "2178"
+    },
+    "国家安全": {
+      "ptype_label": "公安、安全、司法\\国家安全",
+      "subchildtype": "2246"
+    },
+    "国有资产监管": {
+      "ptype_label": "国民经济管理、国有资产监管\\国有资产监管",
+      "subchildtype": "2165"
+    },
+    "国民经济管理、国有资产监管": {
+      "childtype": "1080",
+      "ptype_label": "国民经济管理、国有资产监管"
+    },
+    "国民经济管理、国有资产监管\\其他": {
+      "ptype_label": "国民经济管理、国有资产监管\\其他",
+      "subchildtype": "2167"
+    },
+    "国民经济管理、国有资产监管\\国有资产监管": {
+      "ptype_label": "国民经济管理、国有资产监管\\国有资产监管",
+      "subchildtype": "2165"
+    },
+    "国民经济管理、国有资产监管\\宏观经济": {
+      "ptype_label": "国民经济管理、国有资产监管\\宏观经济",
+      "subchildtype": "2161"
+    },
+    "国民经济管理、国有资产监管\\物价": {
+      "ptype_label": "国民经济管理、国有资产监管\\物价",
+      "subchildtype": "2164"
+    },
+    "国民经济管理、国有资产监管\\经济体制改革": {
+      "ptype_label": "国民经济管理、国有资产监管\\经济体制改革",
+      "subchildtype": "2162"
+    },
+    "国民经济管理、国有资产监管\\统计": {
+      "ptype_label": "国民经济管理、国有资产监管\\统计",
+      "subchildtype": "2163"
+    },
+    "国民经济管理、国有资产监管\\重大建设项目": {
+      "ptype_label": "国民经济管理、国有资产监管\\重大建设项目",
+      "subchildtype": "2166"
+    },
+    "国防": {
+      "childtype": "1098",
+      "ptype_label": "国防"
+    },
+    "国防\\国防动员": {
+      "ptype_label": "国防\\国防动员",
+      "subchildtype": "2270"
+    },
+    "国防\\国防建设": {
+      "ptype_label": "国防\\国防建设",
+      "subchildtype": "2268"
+    },
+    "国防动员": {
+      "ptype_label": "国防\\国防动员",
+      "subchildtype": "2270"
+    },
+    "国防工业": {
+      "ptype_label": "工业、交通\\国防工业",
+      "subchildtype": "2192"
+    },
+    "国防建设": {
+      "ptype_label": "国防\\国防建设",
+      "subchildtype": "2268"
+    },
+    "国际条约、国际组织": {
+      "ptype_label": "对外事务\\国际条约、国际组织",
+      "subchildtype": "2263"
+    },
+    "土地": {
+      "ptype_label": "国土资源、能源\\土地",
+      "subchildtype": "2177"
+    },
+    "城乡建设、环境保护": {
+      "childtype": "1087",
+      "ptype_label": "城乡建设、环境保护"
+    },
+    "城乡建设、环境保护\\其他": {
+      "ptype_label": "城乡建设、环境保护\\其他",
+      "subchildtype": "2219"
+    },
+    "城乡建设、环境保护\\城乡建设（含住房）": {
+      "ptype_label": "城乡建设、环境保护\\城乡建设（含住房）",
+      "subchildtype": "2214"
+    },
+    "城乡建设、环境保护\\城市规划": {
+      "ptype_label": "城乡建设、环境保护\\城市规划",
+      "subchildtype": "2213"
+    },
+    "城乡建设、环境保护\\气象、水文、测绘、地震": {
+      "ptype_label": "城乡建设、环境保护\\气象、水文、测绘、地震",
+      "subchildtype": "2218"
+    },
+    "城乡建设、环境保护\\环境监测、保护与治理": {
+      "ptype_label": "城乡建设、环境保护\\环境监测、保护与治理",
+      "subchildtype": "2216"
+    },
+    "城乡建设、环境保护\\节能与资源综合利用": {
+      "ptype_label": "城乡建设、环境保护\\节能与资源综合利用",
+      "subchildtype": "2217"
+    },
+    "城乡建设（含住房）": {
+      "ptype_label": "城乡建设、环境保护\\城乡建设（含住房）",
+      "subchildtype": "2214"
+    },
+    "城市规划": {
+      "ptype_label": "城乡建设、环境保护\\城市规划",
+      "subchildtype": "2213"
+    },
+    "外交、外事": {
+      "ptype_label": "对外事务\\外交、外事",
+      "subchildtype": "2262"
+    },
+    "妇女儿童": {
+      "ptype_label": "人口与计划生育、妇女儿童工作\\妇女儿童",
+      "subchildtype": "2234"
+    },
+    "安全生产监管": {
+      "ptype_label": "市场监管、安全生产监管\\安全生产监管",
+      "subchildtype": "2211"
+    },
+    "宏观经济": {
+      "ptype_label": "国民经济管理、国有资产监管\\宏观经济",
+      "subchildtype": "2161"
+    },
+    "宗教事务": {
+      "ptype_label": "民族、宗教\\宗教事务",
+      "subchildtype": "2921"
+    },
+    "审计": {
+      "ptype_label": "财政、金融、审计\\审计",
+      "subchildtype": "2175"
+    },
+    "对台工作": {
+      "ptype_label": "港澳台侨工作\\对台工作",
+      "subchildtype": "2266"
+    },
+    "对外事务": {
+      "childtype": "1096",
+      "ptype_label": "对外事务"
+    },
+    "对外事务\\其他": {
+      "ptype_label": "对外事务\\其他",
+      "subchildtype": "2264"
+    },
+    "对外事务\\国际条约、国际组织": {
+      "ptype_label": "对外事务\\国际条约、国际组织",
+      "subchildtype": "2263"
+    },
+    "对外事务\\外交、外事": {
+      "ptype_label": "对外事务\\外交、外事",
+      "subchildtype": "2262"
+    },
+    "对外经贸合作": {
+      "ptype_label": "商贸、海关、旅游\\对外经贸合作",
+      "subchildtype": "2201"
+    },
+    "工业、交通": {
+      "childtype": "1084",
+      "ptype_label": "工业、交通"
+    },
+    "工业、交通\\信息产业（含电信）": {
+      "ptype_label": "工业、交通\\信息产业（含电信）",
+      "subchildtype": "2194"
+    },
+    "工业、交通\\公路": {
+      "ptype_label": "工业、交通\\公路",
+      "subchildtype": "2195"
+    },
+    "工业、交通\\其他": {
+      "ptype_label": "工业、交通\\其他",
+      "subchildtype": "2200"
+    },
+    "工业、交通\\化工": {
+      "ptype_label": "工业、交通\\化工",
+      "subchildtype": "2191"
+    },
+    "工业、交通\\国防工业": {
+      "ptype_label": "工业、交通\\国防工业",
+      "subchildtype": "2192"
+    },
+    "工业、交通\\机械制造与重工业": {
+      "ptype_label": "工业、交通\\机械制造与重工业",
+      "subchildtype": "2189"
+    },
+    "工业、交通\\民航": {
+      "ptype_label": "工业、交通\\民航",
+      "subchildtype": "2198"
+    },
+    "工业、交通\\水运": {
+      "ptype_label": "工业、交通\\水运",
+      "subchildtype": "2196"
+    },
+    "工业、交通\\航天、航空": {
+      "ptype_label": "工业、交通\\航天、航空",
+      "subchildtype": "2193"
+    },
+    "工业、交通\\轻工纺织": {
+      "ptype_label": "工业、交通\\轻工纺织",
+      "subchildtype": "2190"
+    },
+    "工业、交通\\邮政": {
+      "ptype_label": "工业、交通\\邮政",
+      "subchildtype": "2199"
+    },
+    "工业、交通\\铁路": {
+      "ptype_label": "工业、交通\\铁路",
+      "subchildtype": "2197"
+    },
+    "工商": {
+      "ptype_label": "市场监管、安全生产监管\\工商",
+      "subchildtype": "2207"
+    },
+    "市场监管、安全生产监管": {
+      "childtype": "1086",
+      "ptype_label": "市场监管、安全生产监管"
+    },
+    "市场监管、安全生产监管\\其他": {
+      "ptype_label": "市场监管、安全生产监管\\其他",
+      "subchildtype": "2212"
+    },
+    "市场监管、安全生产监管\\安全生产监管": {
+      "ptype_label": "市场监管、安全生产监管\\安全生产监管",
+      "subchildtype": "2211"
+    },
+    "市场监管、安全生产监管\\工商": {
+      "ptype_label": "市场监管、安全生产监管\\工商",
+      "subchildtype": "2207"
+    },
+    "市场监管、安全生产监管\\标准": {
+      "ptype_label": "市场监管、安全生产监管\\标准",
+      "subchildtype": "2209"
+    },
+    "市场监管、安全生产监管\\质量监督": {
+      "ptype_label": "市场监管、安全生产监管\\质量监督",
+      "subchildtype": "2208"
+    },
+    "市场监管、安全生产监管\\食品药品监管": {
+      "ptype_label": "市场监管、安全生产监管\\食品药品监管",
+      "subchildtype": "2210"
+    },
+    "广播、电影、电视": {
+      "ptype_label": "文化、广电、新闻出版\\广播、电影、电视",
+      "subchildtype": "2227"
+    },
+    "应急管理": {
+      "ptype_label": "综合政务\\应急管理",
+      "subchildtype": "2154"
+    },
+    "扶贫": {
+      "ptype_label": "民政、扶贫、救灾\\扶贫",
+      "subchildtype": "2254"
+    },
+    "政务公开": {
+      "ptype_label": "综合政务\\政务公开",
+      "subchildtype": "2152"
+    },
+    "政务督查": {
+      "ptype_label": "综合政务\\政务督查",
+      "subchildtype": "2153"
+    },
+    "教育": {
+      "ptype_label": "科技、教育\\教育",
+      "subchildtype": "2221"
+    },
+    "文化": {
+      "ptype_label": "文化、广电、新闻出版\\文化",
+      "subchildtype": "2224"
+    },
+    "文化、广电、新闻出版": {
+      "childtype": "1089",
+      "ptype_label": "文化、广电、新闻出版"
+    },
+    "文化、广电、新闻出版\\其他": {
+      "ptype_label": "文化、广电、新闻出版\\其他",
+      "subchildtype": "2228"
+    },
+    "文化、广电、新闻出版\\广播、电影、电视": {
+      "ptype_label": "文化、广电、新闻出版\\广播、电影、电视",
+      "subchildtype": "2227"
+    },
+    "文化、广电、新闻出版\\文化": {
+      "ptype_label": "文化、广电、新闻出版\\文化",
+      "subchildtype": "2224"
+    },
+    "文化、广电、新闻出版\\文物": {
+      "ptype_label": "文化、广电、新闻出版\\文物",
+      "subchildtype": "2225"
+    },
+    "文化、广电、新闻出版\\新闻出版": {
+      "ptype_label": "文化、广电、新闻出版\\新闻出版",
+      "subchildtype": "2226"
+    },
+    "文物": {
+      "ptype_label": "文化、广电、新闻出版\\文物",
+      "subchildtype": "2225"
+    },
+    "文秘工作": {
+      "ptype_label": "综合政务\\文秘工作",
+      "subchildtype": "2156"
+    },
+    "新闻出版": {
+      "ptype_label": "文化、广电、新闻出版\\新闻出版",
+      "subchildtype": "2226"
+    },
+    "旅游": {
+      "ptype_label": "商贸、海关、旅游\\旅游",
+      "subchildtype": "2205"
+    },
+    "机械制造与重工业": {
+      "ptype_label": "工业、交通\\机械制造与重工业",
+      "subchildtype": "2189"
+    },
+    "林业": {
+      "ptype_label": "农业、林业、水利\\林业",
+      "subchildtype": "2186"
+    },
+    "标准": {
+      "ptype_label": "市场监管、安全生产监管\\标准",
+      "subchildtype": "2209"
+    },
+    "检验、检疫": {
+      "ptype_label": "商贸、海关、旅游\\检验、检疫",
+      "subchildtype": "2204"
+    },
+    "民政、扶贫、救灾": {
+      "childtype": "1094",
+      "ptype_label": "民政、扶贫、救灾"
+    },
+    "民政、扶贫、救灾\\优抚安置": {
+      "ptype_label": "民政、扶贫、救灾\\优抚安置",
+      "subchildtype": "2250"
+    },
+    "民政、扶贫、救灾\\其他": {
+      "ptype_label": "民政、扶贫、救灾\\其他",
+      "subchildtype": "2255"
+    },
+    "民政、扶贫、救灾\\减灾救灾": {
+      "ptype_label": "民政、扶贫、救灾\\减灾救灾",
+      "subchildtype": "2249"
+    },
+    "民政、扶贫、救灾\\扶贫": {
+      "ptype_label": "民政、扶贫、救灾\\扶贫",
+      "subchildtype": "2254"
+    },
+    "民政、扶贫、救灾\\社会福利": {
+      "ptype_label": "民政、扶贫、救灾\\社会福利",
+      "subchildtype": "2251"
+    },
+    "民政、扶贫、救灾\\社团管理": {
+      "ptype_label": "民政、扶贫、救灾\\社团管理",
+      "subchildtype": "2253"
+    },
+    "民政、扶贫、救灾\\行政区划与地名": {
+      "ptype_label": "民政、扶贫、救灾\\行政区划与地名",
+      "subchildtype": "2252"
+    },
+    "民族、宗教": {
+      "childtype": "2919",
+      "ptype_label": "民族、宗教"
+    },
+    "民族、宗教\\宗教事务": {
+      "ptype_label": "民族、宗教\\宗教事务",
+      "subchildtype": "2921"
+    },
+    "民族、宗教\\民族事务": {
+      "ptype_label": "民族、宗教\\民族事务",
+      "subchildtype": "2920"
+    },
+    "民族事务": {
+      "ptype_label": "民族、宗教\\民族事务",
+      "subchildtype": "2920"
+    },
+    "民航": {
+      "ptype_label": "工业、交通\\民航",
+      "subchildtype": "2198"
+    },
+    "气象、水文、测绘、地震": {
+      "ptype_label": "城乡建设、环境保护\\气象、水文、测绘、地震",
+      "subchildtype": "2218"
+    },
+    "水利": {
+      "ptype_label": "农业、林业、水利\\水利",
+      "subchildtype": "2187"
+    },
+    "水资源": {
+      "ptype_label": "国土资源、能源\\水资源",
+      "subchildtype": "2179"
+    },
+    "水运": {
+      "ptype_label": "工业、交通\\水运",
+      "subchildtype": "2196"
+    },
+    "海关": {
+      "ptype_label": "商贸、海关、旅游\\海关",
+      "subchildtype": "2203"
+    },
+    "海洋": {
+      "ptype_label": "国土资源、能源\\海洋",
+      "subchildtype": "2180"
+    },
+    "港澳台侨工作": {
+      "childtype": "1097",
+      "ptype_label": "港澳台侨工作"
+    },
+    "港澳台侨工作\\侨务工作": {
+      "ptype_label": "港澳台侨工作\\侨务工作",
+      "subchildtype": "2267"
+    },
+    "港澳台侨工作\\对台工作": {
+      "ptype_label": "港澳台侨工作\\对台工作",
+      "subchildtype": "2266"
+    },
+    "港澳台侨工作\\港澳工作": {
+      "ptype_label": "港澳台侨工作\\港澳工作",
+      "subchildtype": "2265"
+    },
+    "港澳工作": {
+      "ptype_label": "港澳台侨工作\\港澳工作",
+      "subchildtype": "2265"
+    },
+    "煤炭": {
+      "ptype_label": "国土资源、能源\\煤炭",
+      "subchildtype": "2181"
+    },
+    "物价": {
+      "ptype_label": "国民经济管理、国有资产监管\\物价",
+      "subchildtype": "2164"
+    },
+    "环境监测、保护与治理": {
+      "ptype_label": "城乡建设、环境保护\\环境监测、保护与治理",
+      "subchildtype": "2216"
+    },
+    "电力": {
+      "ptype_label": "国土资源、能源\\电力",
+      "subchildtype": "2183"
+    },
+    "电子政务": {
+      "ptype_label": "综合政务\\电子政务",
+      "subchildtype": "2155"
+    },
+    "监察": {
+      "ptype_label": "劳动、人事、监察\\监察",
+      "subchildtype": "2242"
+    },
+    "知识产权": {
+      "ptype_label": "科技、教育\\知识产权",
+      "subchildtype": "2222"
+    },
+    "石油与天然气": {
+      "ptype_label": "国土资源、能源\\石油与天然气",
+      "subchildtype": "2182"
+    },
+    "矿产": {
+      "ptype_label": "国土资源、能源\\矿产",
+      "subchildtype": "2178"
+    },
+    "社会保障": {
+      "ptype_label": "劳动、人事、监察\\社会保障",
+      "subchildtype": "2238"
+    },
+    "社会信用体系建设": {
+      "ptype_label": "财政、金融、审计\\社会信用体系建设",
+      "subchildtype": "2174"
+    },
+    "社会福利": {
+      "ptype_label": "民政、扶贫、救灾\\社会福利",
+      "subchildtype": "2251"
+    },
+    "社团管理": {
+      "ptype_label": "民政、扶贫、救灾\\社团管理",
+      "subchildtype": "2253"
+    },
+    "科技": {
+      "ptype_label": "科技、教育\\科技",
+      "subchildtype": "2220"
+    },
+    "科技、教育": {
+      "childtype": "1088",
+      "ptype_label": "科技、教育"
+    },
+    "科技、教育\\其他": {
+      "ptype_label": "科技、教育\\其他",
+      "subchildtype": "2223"
+    },
+    "科技、教育\\教育": {
+      "ptype_label": "科技、教育\\教育",
+      "subchildtype": "2221"
+    },
+    "科技、教育\\知识产权": {
+      "ptype_label": "科技、教育\\知识产权",
+      "subchildtype": "2222"
+    },
+    "科技、教育\\科技": {
+      "ptype_label": "科技、教育\\科技",
+      "subchildtype": "2220"
+    },
+    "税务": {
+      "ptype_label": "财政、金融、审计\\税务",
+      "subchildtype": "2169"
+    },
+    "纠正行业不正之风": {
+      "ptype_label": "劳动、人事、监察\\纠正行业不正之风",
+      "subchildtype": "2243"
+    },
+    "经济体制改革": {
+      "ptype_label": "国民经济管理、国有资产监管\\经济体制改革",
+      "subchildtype": "2162"
+    },
+    "统计": {
+      "ptype_label": "国民经济管理、国有资产监管\\统计",
+      "subchildtype": "2163"
+    },
+    "综合政务": {
+      "childtype": "1079",
+      "ptype_label": "综合政务"
+    },
+    "综合政务\\保密工作": {
+      "ptype_label": "综合政务\\保密工作",
+      "subchildtype": "2157"
+    },
+    "综合政务\\信访": {
+      "ptype_label": "综合政务\\信访",
+      "subchildtype": "2158"
+    },
+    "综合政务\\其他": {
+      "ptype_label": "综合政务\\其他",
+      "subchildtype": "2160"
+    },
+    "综合政务\\参事、文史": {
+      "ptype_label": "综合政务\\参事、文史",
+      "subchildtype": "2159"
+    },
+    "综合政务\\应急管理": {
+      "ptype_label": "综合政务\\应急管理",
+      "subchildtype": "2154"
+    },
+    "综合政务\\政务公开": {
+      "ptype_label": "综合政务\\政务公开",
+      "subchildtype": "2152"
+    },
+    "综合政务\\政务督查": {
+      "ptype_label": "综合政务\\政务督查",
+      "subchildtype": "2153"
+    },
+    "综合政务\\文秘工作": {
+      "ptype_label": "综合政务\\文秘工作",
+      "subchildtype": "2156"
+    },
+    "综合政务\\电子政务": {
+      "ptype_label": "综合政务\\电子政务",
+      "subchildtype": "2155"
+    },
+    "航天、航空": {
+      "ptype_label": "工业、交通\\航天、航空",
+      "subchildtype": "2193"
+    },
+    "节能与资源综合利用": {
+      "ptype_label": "城乡建设、环境保护\\节能与资源综合利用",
+      "subchildtype": "2217"
+    },
+    "行政区划与地名": {
+      "ptype_label": "民政、扶贫、救灾\\行政区划与地名",
+      "subchildtype": "2252"
+    },
+    "证券": {
+      "ptype_label": "财政、金融、审计\\证券",
+      "subchildtype": "2172"
+    },
+    "财政": {
+      "ptype_label": "财政、金融、审计\\财政",
+      "subchildtype": "2168"
+    },
+    "财政、金融、审计": {
+      "childtype": "1081",
+      "ptype_label": "财政、金融、审计"
+    },
+    "财政、金融、审计\\保险": {
+      "ptype_label": "财政、金融、审计\\保险",
+      "subchildtype": "2173"
+    },
+    "财政、金融、审计\\其他": {
+      "ptype_label": "财政、金融、审计\\其他",
+      "subchildtype": "2176"
+    },
+    "财政、金融、审计\\审计": {
+      "ptype_label": "财政、金融、审计\\审计",
+      "subchildtype": "2175"
+    },
+    "财政、金融、审计\\社会信用体系建设": {
+      "ptype_label": "财政、金融、审计\\社会信用体系建设",
+      "subchildtype": "2174"
+    },
+    "财政、金融、审计\\税务": {
+      "ptype_label": "财政、金融、审计\\税务",
+      "subchildtype": "2169"
+    },
+    "财政、金融、审计\\证券": {
+      "ptype_label": "财政、金融、审计\\证券",
+      "subchildtype": "2172"
+    },
+    "财政、金融、审计\\财政": {
+      "ptype_label": "财政、金融、审计\\财政",
+      "subchildtype": "2168"
+    },
+    "财政、金融、审计\\货币（含外汇）": {
+      "ptype_label": "财政、金融、审计\\货币（含外汇）",
+      "subchildtype": "2171"
+    },
+    "财政、金融、审计\\银行": {
+      "ptype_label": "财政、金融、审计\\银行",
+      "subchildtype": "2170"
+    },
+    "货币（含外汇）": {
+      "ptype_label": "财政、金融、审计\\货币（含外汇）",
+      "subchildtype": "2171"
+    },
+    "质量监督": {
+      "ptype_label": "市场监管、安全生产监管\\质量监督",
+      "subchildtype": "2208"
+    },
+    "轻工纺织": {
+      "ptype_label": "工业、交通\\轻工纺织",
+      "subchildtype": "2190"
+    },
+    "邮政": {
+      "ptype_label": "工业、交通\\邮政",
+      "subchildtype": "2199"
+    },
+    "重大建设项目": {
+      "ptype_label": "国民经济管理、国有资产监管\\重大建设项目",
+      "subchildtype": "2166"
+    },
+    "铁路": {
+      "ptype_label": "工业、交通\\铁路",
+      "subchildtype": "2197"
+    },
+    "银行": {
+      "ptype_label": "财政、金融、审计\\银行",
+      "subchildtype": "2170"
+    },
+    "食品药品监管": {
+      "ptype_label": "市场监管、安全生产监管\\食品药品监管",
+      "subchildtype": "2210"
+    }
+  }
+}

@@ -150,7 +150,7 @@ bγ, bλ
 n
 n−1
 ¯r − 1nγ − λ dCov (rt, ht)
-
+
 2
 + τ1n−1∥λ∥1
 o
@@ -179,15 +179,15 @@ bξj, dχj,i
 ξj ,χj,i
 n
 n−1
-
+
 
 dCov (rt, gt,j) − 1nξj − dCov (rt, ht) χ⊤
 j,i
-
+
 2
 + τ2jn−1χ⊤
 j,i
-
+
 1
 o
 , (6)
@@ -208,7 +208,7 @@ bγ0, cλh, cλg
 = arg min
 γ0,λh,λg
 n¯r − 1nγ0 − λh dCov (rt, ht) − λg dCov (rt, gt,j)
-
+
 2
 , λh,i = 0, ∀i /∈ I1
 [
