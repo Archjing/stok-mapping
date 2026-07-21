@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from decimal import Decimal
 import subprocess
 import sys
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from phase0.reporting.daily_brief import (
@@ -86,6 +88,15 @@ def test_confirmed_snapshot_rejects_incomplete_asset_fields(field: str, value: o
 
 
 @pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
+def test_confirmed_snapshot_rejects_pandas_missing_asset_fields(field: str) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot[field] = pd.NA
+
+    with pytest.raises(ValueError, match=field):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+@pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
 def test_confirmed_snapshot_rejects_missing_required_asset_fields(field: str) -> None:
     snapshot = _valid_confirmed_snapshot()
     snapshot.pop(field)
@@ -116,9 +127,22 @@ def test_confirmed_snapshot_rejects_non_finite_or_negative_asset_fields(field: s
 
 def test_confirmed_snapshot_rejects_inconsistent_asset_fields() -> None:
     snapshot = _valid_confirmed_snapshot()
-    snapshot["cash_asset"] = 249_999.98
+    snapshot.update(total_asset=10.00, cash_asset=4.00, stock_asset=5.00)
 
-    with pytest.raises(ValueError, match="inconsistent"):
+    with pytest.raises(ValueError, match="inconsistent") as exc_info:
+        build_account_summary(snapshot, bill_confirmed=True)
+
+    message = str(exc_info.value)
+    for text in ("total_asset=10.0", "cash_asset=4.0", "stock_asset=5.0", "difference=1.0"):
+        assert text in message
+
+
+@pytest.mark.parametrize("value", [Decimal("1e1000000"), "1e1000000"])
+def test_confirmed_snapshot_rejects_extreme_total_asset_with_diagnostic_value_error(value: object) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot.update(total_asset=value, cash_asset=0.0, stock_asset=0.0)
+
+    with pytest.raises(ValueError, match="total_asset"):
         build_account_summary(snapshot, bill_confirmed=True)
 
 

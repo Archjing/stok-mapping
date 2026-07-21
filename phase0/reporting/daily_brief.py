@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, DecimalException
 from datetime import date, datetime
 import math
 from typing import Any, Mapping
@@ -32,11 +32,11 @@ NO_ADMISSION_PASS_MESSAGE = (
 
 
 def _optional_decimal(value: Any) -> Decimal | None:
-    if value is None or value == "":
+    if value is None or (isinstance(value, str) and value == ""):
         return None
     try:
         return Decimal(str(value))
-    except (InvalidOperation, TypeError, ValueError):
+    except (DecimalException, OverflowError, TypeError, ValueError):
         return None
 
 
@@ -47,26 +47,38 @@ def _validated_confirmed_asset_fields(snapshot: Mapping[str, Any]) -> tuple[floa
         parsed_value = _optional_decimal(raw_value)
         if isinstance(raw_value, bool) or parsed_value is None:
             raise ValueError(f"Confirmed bill snapshot has incomplete or non-numeric {field_name}.")
-        if not parsed_value.is_finite():
-            raise ValueError(f"Confirmed bill snapshot has non-finite {field_name}.")
-        if parsed_value < 0:
-            raise ValueError(f"Confirmed bill snapshot has negative {field_name}.")
+        try:
+            if not parsed_value.is_finite():
+                raise ValueError(f"Confirmed bill snapshot has non-finite {field_name}.")
+            if parsed_value < 0:
+                raise ValueError(f"Confirmed bill snapshot has negative {field_name}.")
+        except (DecimalException, OverflowError, TypeError, ValueError) as exc:
+            if isinstance(exc, ValueError):
+                raise
+            raise ValueError(f"Confirmed bill snapshot has invalid {field_name}.") from exc
         asset_values[field_name] = parsed_value
 
     total_asset = asset_values["total_asset"]
     cash_asset = asset_values["cash_asset"]
     stock_asset = asset_values["stock_asset"]
-    if abs(total_asset - cash_asset - stock_asset) > Decimal("0.01"):
-        raise ValueError(
-            "Confirmed bill snapshot asset fields are inconsistent: "
-            "total_asset must equal cash_asset + stock_asset within 0.01."
-        )
     try:
+        difference = total_asset - cash_asset - stock_asset
+        if abs(difference) > Decimal("0.01"):
+            raise ValueError(
+                "Confirmed bill snapshot asset fields are inconsistent: "
+                f"total_asset={total_asset}, cash_asset={cash_asset}, stock_asset={stock_asset}, "
+                f"difference={difference}; total_asset must equal cash_asset + stock_asset within 0.01."
+            )
         effective_total, effective_cash, effective_stock = map(float, (total_asset, cash_asset, stock_asset))
-    except OverflowError as exc:
-        raise ValueError("Confirmed bill snapshot has non-finite asset fields.") from exc
-    if not all(math.isfinite(value) for value in (effective_total, effective_cash, effective_stock)):
-        raise ValueError("Confirmed bill snapshot has non-finite asset fields.")
+        if not all(math.isfinite(value) for value in (effective_total, effective_cash, effective_stock)):
+            raise ValueError("Confirmed bill snapshot has non-finite asset fields.")
+    except (DecimalException, OverflowError, TypeError, ValueError) as exc:
+        if isinstance(exc, ValueError):
+            raise
+        raise ValueError(
+            "Confirmed bill snapshot has values outside the supported range: "
+            f"total_asset={total_asset}, cash_asset={cash_asset}, stock_asset={stock_asset}."
+        ) from exc
     return effective_total, effective_cash, effective_stock
 
 
