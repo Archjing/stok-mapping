@@ -86,6 +86,15 @@ def test_confirmed_snapshot_rejects_incomplete_asset_fields(field: str, value: o
 
 
 @pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
+def test_confirmed_snapshot_rejects_missing_required_asset_fields(field: str) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot.pop(field)
+
+    with pytest.raises(ValueError, match=field):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+@pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
 @pytest.mark.parametrize("value", ["not-a-number", True])
 def test_confirmed_snapshot_rejects_non_numeric_asset_fields(field: str, value: object) -> None:
     snapshot = _valid_confirmed_snapshot()
