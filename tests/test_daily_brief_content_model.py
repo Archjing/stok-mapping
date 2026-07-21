@@ -4,6 +4,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from phase0.reporting.daily_brief import (
     DAILY_BRIEF_SECTION_ORDER,
     NO_ADMISSION_PASS_MESSAGE,
@@ -14,9 +16,19 @@ from phase0.reporting.daily_brief import (
 )
 
 
-def test_account_summary_uses_initial_cash_when_bill_is_missing() -> None:
+def _valid_confirmed_snapshot() -> dict[str, object]:
+    return {
+        "account_id": "default",
+        "brief_date": "2026-07-02",
+        "total_asset": 1_050_000.0,
+        "cash_asset": 250_000.0,
+        "stock_asset": 800_000.0,
+    }
+
+
+def test_unconfirmed_snapshot_ignores_invalid_asset_fields_and_uses_initial_cash() -> None:
     summary = build_account_summary(
-        {},
+        {"total_asset": float("nan"), "cash_asset": -1.0, "stock_asset": "not-a-number"},
         account_id="default",
         account_name="模拟账户",
         initial_cash=500_000.0,
@@ -58,10 +70,66 @@ def test_account_summary_uses_confirmed_bill_snapshot() -> None:
     assert summary.cash_asset == 250_000.0
     assert summary.stock_asset == 800_000.0
     assert round(summary.exposure, 6) == round(800_000.0 / 1_050_000.0, 6)
-    assert summary.current_return == 0.05
+    assert summary.current_return == pytest.approx(0.05)
     assert summary.current_return_display == "5.00%"
     assert summary.bill_status == "confirmed"
     assert summary.bill_date == "2026-07-02"
+
+
+@pytest.mark.parametrize("field,value", [("total_asset", None), ("cash_asset", None), ("stock_asset", None)])
+def test_confirmed_snapshot_rejects_incomplete_asset_fields(field: str, value: object) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+@pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
+@pytest.mark.parametrize("value", ["not-a-number", True])
+def test_confirmed_snapshot_rejects_non_numeric_asset_fields(field: str, value: object) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+@pytest.mark.parametrize("field", ["total_asset", "cash_asset", "stock_asset"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf"), -1.0])
+def test_confirmed_snapshot_rejects_non_finite_or_negative_asset_fields(field: str, value: float) -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot[field] = value
+
+    with pytest.raises(ValueError, match=field):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+def test_confirmed_snapshot_rejects_inconsistent_asset_fields() -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot["cash_asset"] = 249_999.98
+
+    with pytest.raises(ValueError, match="inconsistent"):
+        build_account_summary(snapshot, bill_confirmed=True)
+
+
+def test_confirmed_snapshot_accepts_asset_fields_consistent_within_one_cent() -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot.update(total_asset=1.01, cash_asset=0.5, stock_asset=0.5)
+
+    summary = build_account_summary(snapshot, bill_confirmed=True)
+
+    assert summary.total_asset == pytest.approx(1.01)
+
+
+def test_confirmed_snapshot_with_zero_initial_cash_has_no_current_return() -> None:
+    summary = build_account_summary(
+        {"total_asset": 0.0, "cash_asset": 0.0, "stock_asset": 0.0},
+        initial_cash=0.0,
+        bill_confirmed=True,
+    )
+
+    assert summary.current_return is None
 
 
 def test_empty_daily_brief_document_has_required_sections_and_boundaries() -> None:

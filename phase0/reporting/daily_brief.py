@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from decimal import Decimal, InvalidOperation
 from datetime import date, datetime
+import math
 from typing import Any, Mapping
 
 
@@ -29,13 +31,43 @@ NO_ADMISSION_PASS_MESSAGE = (
 )
 
 
-def _optional_float(value: Any) -> float | None:
+def _optional_decimal(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
-        return float(value)
-    except (TypeError, ValueError):
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError, ValueError):
         return None
+
+
+def _validated_confirmed_asset_fields(snapshot: Mapping[str, Any]) -> tuple[float, float, float]:
+    asset_values: dict[str, Decimal] = {}
+    for field_name in ("total_asset", "cash_asset", "stock_asset"):
+        raw_value = snapshot.get(field_name)
+        parsed_value = _optional_decimal(raw_value)
+        if isinstance(raw_value, bool) or parsed_value is None:
+            raise ValueError(f"Confirmed bill snapshot has incomplete or non-numeric {field_name}.")
+        if not parsed_value.is_finite():
+            raise ValueError(f"Confirmed bill snapshot has non-finite {field_name}.")
+        if parsed_value < 0:
+            raise ValueError(f"Confirmed bill snapshot has negative {field_name}.")
+        asset_values[field_name] = parsed_value
+
+    total_asset = asset_values["total_asset"]
+    cash_asset = asset_values["cash_asset"]
+    stock_asset = asset_values["stock_asset"]
+    if abs(total_asset - cash_asset - stock_asset) > Decimal("0.01"):
+        raise ValueError(
+            "Confirmed bill snapshot asset fields are inconsistent: "
+            "total_asset must equal cash_asset + stock_asset within 0.01."
+        )
+    try:
+        effective_total, effective_cash, effective_stock = map(float, (total_asset, cash_asset, stock_asset))
+    except OverflowError as exc:
+        raise ValueError("Confirmed bill snapshot has non-finite asset fields.") from exc
+    if not all(math.isfinite(value) for value in (effective_total, effective_cash, effective_stock)):
+        raise ValueError("Confirmed bill snapshot has non-finite asset fields.")
+    return effective_total, effective_cash, effective_stock
 
 
 def _date_text(value: Any) -> str:
@@ -255,12 +287,12 @@ def build_account_summary(
     bill_date: str = "",
 ) -> AccountSummary:
     snapshot = snapshot or {}
-    total_asset = _optional_float(snapshot.get("total_asset"))
-    cash_asset = _optional_float(snapshot.get("cash_asset"))
-    stock_asset = _optional_float(snapshot.get("stock_asset"))
-    effective_total = total_asset if bill_confirmed and total_asset is not None else float(initial_cash)
-    effective_cash = cash_asset if bill_confirmed and cash_asset is not None else float(initial_cash)
-    effective_stock = stock_asset if bill_confirmed and stock_asset is not None else 0.0
+    if bill_confirmed:
+        effective_total, effective_cash, effective_stock = _validated_confirmed_asset_fields(snapshot)
+    else:
+        effective_total = float(initial_cash)
+        effective_cash = float(initial_cash)
+        effective_stock = 0.0
     exposure = effective_stock / effective_total if effective_total else 0.0
     current_return = (effective_total - float(initial_cash)) / float(initial_cash) if bill_confirmed and initial_cash else None
     return AccountSummary(
