@@ -58,8 +58,8 @@ def test_account_summary_uses_confirmed_bill_snapshot() -> None:
     assert summary.cash_asset == 250_000.0
     assert summary.stock_asset == 800_000.0
     assert round(summary.exposure, 6) == round(800_000.0 / 1_050_000.0, 6)
-    assert summary.current_return == 0.0123
-    assert summary.current_return_display == "1.23%"
+    assert summary.current_return == 0.05
+    assert summary.current_return_display == "5.00%"
     assert summary.bill_status == "confirmed"
     assert summary.bill_date == "2026-07-02"
 

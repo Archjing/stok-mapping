@@ -258,11 +258,11 @@ def build_account_summary(
     total_asset = _optional_float(snapshot.get("total_asset"))
     cash_asset = _optional_float(snapshot.get("cash_asset"))
     stock_asset = _optional_float(snapshot.get("stock_asset"))
-    daily_return = _optional_float(snapshot.get("daily_return"))
     effective_total = total_asset if bill_confirmed and total_asset is not None else float(initial_cash)
     effective_cash = cash_asset if bill_confirmed and cash_asset is not None else float(initial_cash)
     effective_stock = stock_asset if bill_confirmed and stock_asset is not None else 0.0
     exposure = effective_stock / effective_total if effective_total else 0.0
+    current_return = (effective_total - float(initial_cash)) / float(initial_cash) if bill_confirmed and initial_cash else None
     return AccountSummary(
         account_id=str(snapshot.get("account_id") or account_id),
         account_name=str(account_name or snapshot.get("name") or ""),
@@ -270,7 +270,7 @@ def build_account_summary(
         cash_asset=float(effective_cash),
         stock_asset=float(effective_stock),
         exposure=float(exposure),
-        current_return=daily_return if bill_confirmed else None,
+        current_return=current_return,
         bill_date=str(snapshot.get("brief_date") or bill_date or ""),
         bill_status="confirmed" if bill_confirmed else "unconfirmed_or_missing",
     )
