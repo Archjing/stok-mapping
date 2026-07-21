@@ -223,6 +223,15 @@ def test_custom_sections_keep_contract_order() -> None:
     assert [section.key for section in document.ordered_sections()] == DAILY_BRIEF_SECTION_ORDER
 
 
+def test_missing_account_summary_section_is_not_available() -> None:
+    document = DailyBriefDocument(metadata=DailyBriefMetadata(brief_date="2026-07-03"))
+
+    account_summary = next(section for section in document.ordered_sections() if section.key == "account_summary")
+
+    assert account_summary.status == "not_available"
+    assert account_summary.payload == {}
+
+
 def test_reporting_package_import_does_not_require_jinja2() -> None:
     result = subprocess.run(
         [

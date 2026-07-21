@@ -346,7 +346,12 @@ def default_daily_brief_sections(document: DailyBriefDocument) -> list[DailyBrie
             "available" if document.data_freshness else "not_available",
             payload={"items": [item.to_dict() for item in document.data_freshness]},
         ),
-        DailyBriefSection("account_summary", "账户与风险摘要", "available", payload=account_payload),
+        DailyBriefSection(
+            "account_summary",
+            "账户与风险摘要",
+            "available" if document.account_summary is not None else "not_available",
+            payload=account_payload,
+        ),
         DailyBriefSection(
             "market_context",
             "市场环境",
