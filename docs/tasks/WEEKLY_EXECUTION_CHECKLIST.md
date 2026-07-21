@@ -645,8 +645,8 @@
 
 ### W2.12.3 正式日报产物后续拆分
 
-- [ ] 当前 `brief daily` 仍复用 `brief watchlist` 阶段试用观察池代码。
-- [ ] 后续需要独立重写正式 daily brief 产物生成代码。
+- [x] P0 已完成：`DailyBriefDocument` / `DailyBriefSection` 内容模型、缺失边界和账户摘要口径已固化并有单元测试。
+- [ ] 当前 `brief daily` 仍复用 `brief watchlist` 阶段试用观察池代码；需独立接入 daily brief HTML renderer 与 CLI。
 - [ ] 正式 daily brief 应在观察池之外增加市场状态、账户变动、风险解释、候选变化和外部事件摘要。
 
 ---

@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-30（补充多模拟账户静态控制台与账户级交付链路）
+> 最后修订：2026-07-21（补充多模拟账户静态控制台与账户级交付链路；Daily Brief P0 内容模型完成，P1 renderer 待独立接入）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof / admission 口径下当前无可用于 paper review 或实盘模拟的合格策略，当前目标转为找到至少一个适合当前市场环境、可指导个人实盘操作决策且具备较可观盈利潜力的合格量化策略，并逐步形成覆盖不同市场环境 / 风格的量化策略池与策略选择方法论**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -1183,7 +1183,7 @@ stok-mapping/
 | `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3/P4 关键收口已完成：真实 tick、wrapper 接管、最小重试、3 shard run/stop/resume、supervise、交易日历、Markdown 报告和 backfill 报告索引已落地** |
 | `T6.4` | Report Dashboard Astro 静态报表门户 | [`docs/tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md) | **P0 manifest 已落地：`dashboard scan` 可统一扫描 Markdown / HTML / CSV；Astro 页面仍待实现** |
 | `T6.5` | Report Output Path Standardization | [`docs/superpowers/plans/2026-06-23-report-output-path-standardization.md`](superpowers/plans/2026-06-23-report-output-path-standardization.md) | **标准 run 路径层已落地，并已迁移 strategy-admission、db-health、factor-effectiveness 默认输出；历史产物保持兼容扫描** |
-| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) | **计划新增：先固化日报内容模型、页面信息架构和数据契约，再从 watchlist 兼容实现中拆出正式生成代码** |
+| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) | **P0 已完成：DailyBriefDocument / DailyBriefSection、缺失边界与账户摘要口径已固化；P1 独立 HTML renderer 与 CLI 接入待完成** |
 | `T6.7` | 多模拟账户静态控制台 | [`docs/tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md`](tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md) | **第一阶段已实施：`site build/sync/publish` 生成 `/quant/`，每个 enabled 模拟账户有独立观察池、账单和台账入口；逐笔未成交事件表待补** |
 
 ### 当前最高优先级
@@ -1194,7 +1194,7 @@ stok-mapping/
 - [x] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 - [x] `T6.4` 当前优先：完成只读 manifest MVP 和 `dashboard scan`，生成 `reports/runs/report_dashboard/manifest.json`
 - [x] `T6.5` 当前优先：建立 `reports/runs/YYYY-MM-DD/YYYYMMDD_HHMMSS__<command>__<scope>/` 规则并迁移核心默认输出
-- [ ] `T6.6` 当前优先：定义正式 daily brief 独立内容模型、页面分区、数据新鲜度口径、账户摘要口径和 watchlist / account-bill / db-health / maintenance artifact 关联方式
+- [ ] `T6.6` 当前优先：完成 P1 独立 daily brief HTML renderer 与 `brief daily` CLI 接入，保持 `brief watchlist` 观察池页面独立。
 - [x] `T6.7` 当前优先：建立多模拟账户静态控制台 `/quant/`，从账户级 latest 产物和模拟账户 SQLite 账本生成控制台、账户页、账单页和台账页
 - [x] `T1.7` 当前优先：完成 AI 语料库 schema、provider registry、gov.cn 政策库 fixture / parser MVP，并保持只服务研究情报和解释层，不直接接入主 ranker
 
@@ -1542,7 +1542,7 @@ announce_date_coverage
 
 阶段交付：
 
-- [ ] P0 内容模型与页面结构：定义 metadata、data freshness、account summary、market context、strategy status、portfolio plan、watchlist digest、risk checks、artifacts。
+- [x] P0 内容模型与页面结构：已定义 metadata、data freshness、account summary、market context、strategy status、portfolio plan、watchlist digest、risk checks、artifacts。
 - [ ] P1 独立 HTML 页面：新增 `daily_brief` renderer 和 latest 镜像，`brief daily` 输出正式日报，`brief watchlist` 保持观察池页面。
 - [ ] P2 数据契约与测试：为缺数据、非交易日、无账单、无合格 candidate、健康门禁异常等场景补测试。
 - [ ] P3 Dashboard / 远端同步：将 daily brief artifact 注册到 report manifest，并明确 `/brief/` 指向正式日报还是阶段 watchlist 的迁移窗口。
