@@ -2,7 +2,7 @@
 
 > 项目名称：stok-mapping  
 > 创建日期：2026-05-28  
-> 最后修订：2026-06-30（补充多模拟账户静态控制台与账户级交付链路）
+> 最后修订：2026-07-21（补充多模拟账户静态控制台与账户级交付链路；Daily Brief P0 内容模型完成，P1 renderer 待独立接入）
 > 状态：**Phase 0 工程链路可用；严格 qfq_asof / admission 口径下当前无可用于 paper review 或实盘模拟的合格策略，当前目标转为找到至少一个适合当前市场环境、可指导个人实盘操作决策且具备较可观盈利潜力的合格量化策略，并逐步形成覆盖不同市场环境 / 风格的量化策略池与策略选择方法论**
 > 法律声明：本工具定位为**个人自用的量化研究、风险提示与交易计划辅助工具**。系统可以基于策略引擎、风控约束和账户仿真生成可交易信号、调仓建议单和模拟订单，但不提供对外投资建议、荐股服务或自动下单指令。使用者应独立判断并承担全部交易风险。  
 > **边界声明：本系统仅供个人研究和自用决策辅助，不对外提供投资建议或商业服务。**
@@ -1183,7 +1183,7 @@ stok-mapping/
 | `T6.3` | 数据治理与维护编排器 | [`docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`](tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md) | **P3/P4 关键收口已完成：真实 tick、wrapper 接管、最小重试、3 shard run/stop/resume、supervise、交易日历、Markdown 报告和 backfill 报告索引已落地** |
 | `T6.4` | Report Dashboard Astro 静态报表门户 | [`docs/tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md`](tasks/ops/REPORT_DASHBOARD_ASTRO_TASKS.md) | **P0 manifest 已落地：`dashboard scan` 可统一扫描 Markdown / HTML / CSV；Astro 页面仍待实现** |
 | `T6.5` | Report Output Path Standardization | [`docs/superpowers/plans/2026-06-23-report-output-path-standardization.md`](superpowers/plans/2026-06-23-report-output-path-standardization.md) | **标准 run 路径层已落地，并已迁移 strategy-admission、db-health、factor-effectiveness 默认输出；历史产物保持兼容扫描** |
-| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) | **计划新增：先固化日报内容模型、页面信息架构和数据契约，再从 watchlist 兼容实现中拆出正式生成代码** |
+| `T6.6` | Daily Brief 独立内容模型与页面设计 | [`docs/tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md`](tasks/ops/DAILY_BRIEF_CONTENT_MODEL_TASKS.md) | **P0 已完成：DailyBriefDocument / DailyBriefSection、缺失边界与账户摘要口径已固化；P1 独立 HTML renderer 与 CLI 接入待完成** |
 | `T6.7` | 多模拟账户静态控制台 | [`docs/tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md`](tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md) | **第一阶段已实施：`site build/sync/publish` 生成 `/quant/`，每个 enabled 模拟账户有独立观察池、账单和台账入口；逐笔未成交事件表待补** |
 
 ### 当前最高优先级
