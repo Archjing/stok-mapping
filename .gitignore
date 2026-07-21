@@ -13,6 +13,9 @@ data/raw_data/
 data/features/
 data/cache/walk_forward/
 data/ai_corpus/
+data/reference/
+data/simulated_trading/
+data/universe/
 data/manual_history.lnk
 data/manual_history/*
 !data/manual_history/.gitkeep
@@ -38,10 +41,6 @@ logs/
 logs/*
 !logs/README.md
 memory/
-!memory/
-!memory/**/
-!memory/**/*.md
-!memory/**/*.txt
 reports/*
 !reports/README.md
 
@@ -74,3 +73,4 @@ reports/strategy_governance/*
 *.sqlite-*
 *.db
 *.db-*
+.DS_Store
