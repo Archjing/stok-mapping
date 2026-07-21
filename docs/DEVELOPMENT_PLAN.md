@@ -1194,7 +1194,7 @@ stok-mapping/
 - [x] `T6.3` 当前优先 4：从 backfill audit 中提取报告路径和关键结论，登记到维护状态
 - [x] `T6.4` 当前优先：完成只读 manifest MVP 和 `dashboard scan`，生成 `reports/runs/report_dashboard/manifest.json`
 - [x] `T6.5` 当前优先：建立 `reports/runs/YYYY-MM-DD/YYYYMMDD_HHMMSS__<command>__<scope>/` 规则并迁移核心默认输出
-- [ ] `T6.6` 当前优先：定义正式 daily brief 独立内容模型、页面分区、数据新鲜度口径、账户摘要口径和 watchlist / account-bill / db-health / maintenance artifact 关联方式
+- [ ] `T6.6` 当前优先：完成 P1 独立 daily brief HTML renderer 与 `brief daily` CLI 接入，保持 `brief watchlist` 观察池页面独立。
 - [x] `T6.7` 当前优先：建立多模拟账户静态控制台 `/quant/`，从账户级 latest 产物和模拟账户 SQLite 账本生成控制台、账户页、账单页和台账页
 - [x] `T1.7` 当前优先：完成 AI 语料库 schema、provider registry、gov.cn 政策库 fixture / parser MVP，并保持只服务研究情报和解释层，不直接接入主 ranker
 
@@ -1542,7 +1542,7 @@ announce_date_coverage
 
 阶段交付：
 
-- [ ] P0 内容模型与页面结构：定义 metadata、data freshness、account summary、market context、strategy status、portfolio plan、watchlist digest、risk checks、artifacts。
+- [x] P0 内容模型与页面结构：已定义 metadata、data freshness、account summary、market context、strategy status、portfolio plan、watchlist digest、risk checks、artifacts。
 - [ ] P1 独立 HTML 页面：新增 `daily_brief` renderer 和 latest 镜像，`brief daily` 输出正式日报，`brief watchlist` 保持观察池页面。
 - [ ] P2 数据契约与测试：为缺数据、非交易日、无账单、无合格 candidate、健康门禁异常等场景补测试。
 - [ ] P3 Dashboard / 远端同步：将 daily brief artifact 注册到 report manifest，并明确 `/brief/` 指向正式日报还是阶段 watchlist 的迁移窗口。
