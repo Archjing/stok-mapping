@@ -4,8 +4,6 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
 from typing import Any, Mapping
 
-from phase0.reporting.account_bill import format_money, format_pct
-
 
 DAILY_BRIEF_SECTION_ORDER = [
     "metadata",
@@ -50,6 +48,14 @@ def _date_text(value: Any) -> str:
     return str(value)
 
 
+def _format_money(value: float) -> str:
+    return f"{value:,.2f}"
+
+
+def _format_pct(value: float) -> str:
+    return f"{value * 100:.2f}%"
+
+
 @dataclass(frozen=True)
 class DailyBriefMetadata:
     brief_date: str
@@ -89,23 +95,23 @@ class AccountSummary:
 
     @property
     def total_asset_display(self) -> str:
-        return format_money(self.total_asset)
+        return _format_money(self.total_asset)
 
     @property
     def cash_asset_display(self) -> str:
-        return format_money(self.cash_asset)
+        return _format_money(self.cash_asset)
 
     @property
     def stock_asset_display(self) -> str:
-        return format_money(self.stock_asset)
+        return _format_money(self.stock_asset)
 
     @property
     def exposure_display(self) -> str:
-        return format_pct(self.exposure)
+        return _format_pct(self.exposure)
 
     @property
     def current_return_display(self) -> str:
-        return "暂无" if self.current_return is None else format_pct(self.current_return)
+        return "暂无" if self.current_return is None else _format_pct(self.current_return)
 
     def span_items(self) -> list[dict[str, str]]:
         return [

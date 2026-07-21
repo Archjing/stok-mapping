@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import subprocess
+import sys
+from pathlib import Path
+
 from phase0.reporting.daily_brief import (
     DAILY_BRIEF_SECTION_ORDER,
     NO_ADMISSION_PASS_MESSAGE,
@@ -88,3 +92,25 @@ def test_custom_sections_keep_contract_order() -> None:
     )
 
     assert [section.key for section in document.ordered_sections()] == DAILY_BRIEF_SECTION_ORDER
+
+
+def test_reporting_package_import_does_not_require_jinja2() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "\n".join(
+                [
+                    "import sys",
+                    "sys.modules['jinja2'] = None",
+                    "import phase0.reporting as reporting",
+                    "assert reporting.DailyBriefDocument.__name__ == 'DailyBriefDocument'",
+                ]
+            ),
+        ],
+        cwd=Path(__file__).resolve().parent.parent,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
