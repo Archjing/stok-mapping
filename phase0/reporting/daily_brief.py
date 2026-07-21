@@ -69,9 +69,6 @@ def _validated_confirmed_asset_fields(snapshot: Mapping[str, Any]) -> tuple[floa
                 f"total_asset={total_asset}, cash_asset={cash_asset}, stock_asset={stock_asset}, "
                 f"difference={difference}; total_asset must equal cash_asset + stock_asset within 0.01."
             )
-        effective_total, effective_cash, effective_stock = map(float, (total_asset, cash_asset, stock_asset))
-        if not all(math.isfinite(value) for value in (effective_total, effective_cash, effective_stock)):
-            raise ValueError("Confirmed bill snapshot has non-finite asset fields.")
     except (DecimalException, OverflowError, TypeError, ValueError) as exc:
         if isinstance(exc, ValueError):
             raise
@@ -79,7 +76,26 @@ def _validated_confirmed_asset_fields(snapshot: Mapping[str, Any]) -> tuple[floa
             "Confirmed bill snapshot has values outside the supported range: "
             f"total_asset={total_asset}, cash_asset={cash_asset}, stock_asset={stock_asset}."
         ) from exc
-    return effective_total, effective_cash, effective_stock
+
+    effective_assets: dict[str, float] = {}
+    for field_name, decimal_value in asset_values.items():
+        try:
+            float_value = float(decimal_value)
+            if not math.isfinite(float_value):
+                raise ValueError
+            if decimal_value != 0 and float_value == 0.0:
+                raise ValueError
+        except (DecimalException, OverflowError, TypeError, ValueError) as exc:
+            raise ValueError(
+                "Confirmed bill snapshot has a non-finite or unrepresentable "
+                f"{field_name}={decimal_value}."
+            ) from exc
+        effective_assets[field_name] = float_value
+    return (
+        effective_assets["total_asset"],
+        effective_assets["cash_asset"],
+        effective_assets["stock_asset"],
+    )
 
 
 def _date_text(value: Any) -> str:

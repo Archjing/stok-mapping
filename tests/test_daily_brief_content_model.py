@@ -146,6 +146,34 @@ def test_confirmed_snapshot_rejects_extreme_total_asset_with_diagnostic_value_er
         build_account_summary(snapshot, bill_confirmed=True)
 
 
+def test_confirmed_snapshot_rejects_nonzero_decimal_assets_that_underflow_to_float_zero() -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot.update(
+        total_asset=Decimal("2e-4000"),
+        cash_asset=Decimal("1e-4000"),
+        stock_asset=Decimal("1e-4000"),
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        build_account_summary(snapshot, bill_confirmed=True)
+
+    assert "total_asset=2E-4000" in str(exc_info.value)
+
+
+def test_confirmed_snapshot_rejects_decimal_assets_that_overflow_float_conversion() -> None:
+    snapshot = _valid_confirmed_snapshot()
+    snapshot.update(
+        total_asset=Decimal("2e4000"),
+        cash_asset=Decimal("1e4000"),
+        stock_asset=Decimal("1e4000"),
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        build_account_summary(snapshot, bill_confirmed=True)
+
+    assert "total_asset=2E+4000" in str(exc_info.value)
+
+
 def test_confirmed_snapshot_accepts_asset_fields_consistent_within_one_cent() -> None:
     snapshot = _valid_confirmed_snapshot()
     snapshot.update(total_asset=1.01, cash_asset=0.5, stock_asset=0.5)
