@@ -229,12 +229,13 @@ Reviewer 最后做审查：
 
 上下文压缩前还必须做一次会话增量归档。归档不是逐字堆聊天记录，而是保留项目后续复盘真正需要的内容：
 
-- 路径：`reports/strategy_governance/YYYY-MM-DD/<initiative>/session_archive/`
-- 文件名建议：`session_incremental_archive_YYYYMMDD_HHMM.md`
+- 路径：`memory/session_archive/<topic>/`
+- 文件名建议：`YYYY-MM-DD__session_incremental_archive_<topic_or_iter>.md`
 - 归档内容：用户新增标准、关键决策、执行命令、变更文件、生成报告、测试结果、未完成事项和下一步。
 - 如果出现策略解释、方案研判、数据源评估、架构边界或开发标准，应保留原意和关键表述。
 - 噪音内容、重复状态更新和大段工具输出只做摘要，不原样归档。
 - 若上下文窗口余量紧张，优先写归档，再继续长任务或等待子 Agent。
+- `reports/` 只存程序报告和 curated governance report；`logs/` 只存机器运行日志和调度状态，不再放人工会话归档。
 
 简报必须包含：
 

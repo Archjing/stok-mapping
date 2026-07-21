@@ -500,7 +500,7 @@ T2.13 第一版需要统一以下字段口径：
 - `Alpha Vantage` 作为第一轮低成本新闻源 probe provider，验证 `tickers`、`topics`、`time_from/time_to`、`sort/limit` 和字段结构。
 - `Benzinga` 作为后续付费 / 生产级新闻源候选，重点评估 ticker、channel/topic、date range、实时性、成本和授权边界。
 - `Finnhub` 仅作为单票 company news 备选，不作为首批主新闻源。
-- `AI 语料库（T1.7）` 作为中文文本主线：先以 gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo 公告、PBOC 报告和授权研报元数据建设自建 provider，不依赖 Tushare 权限；Tushare `research_report` / `anns_d` / `major_news` / `npr` / `cctv_news` 只作为接口形态和可替换 provider 参考。
+- `AI 语料库（T1.7）` 作为中文文本主线：先以 gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo 公告、PBOC 报告和授权研报元数据建设自建 provider，不依赖 Tushare 权限；Tushare `research_report` / `anns_d` / `major_news` / `npr` / `cctv_news` 只作为接口形态和可替换 provider 参考。当前 gov.cn、CCTV 和 CNInfo 公告列表已具备 MVP 生产入口。
 - 新浪财经、财联社、华尔街见闻、中证网等公开上游只作为替代源候选，接入前必须评估抓取稳定性、授权边界和维护成本。
 
 组合新闻拉取原则：
@@ -664,7 +664,7 @@ LLM 不直接生成评分与交易信号。
 - **生产级候选**：Benzinga Newsfeed
 - **单票备选**：Finnhub company news
 - **不再扩展**：Tiingo News API
-- **中文 AI 语料库候选**：gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo / AkShare 公告、PBOC 货币政策报告、授权券商研报元数据；Tushare 同名接口仅作为兼容形态和可替换 provider 参考
+- **中文 AI 语料库候选**：gov.cn 政策文件库、CCTV 新闻联播公开文字稿、CNInfo / AkShare 公告、PBOC 货币政策报告、授权券商研报元数据；Tushare 同名接口仅作为兼容形态和可替换 provider 参考。当前前三类已落地 MVP，PBOC / 研报元数据 / 监管规则仍待扩展。
 
 当前状态：
 
@@ -672,7 +672,7 @@ LLM 不直接生成评分与交易信号。
 - Alpha Vantage 只作为低成本可用性验证源，不直接承诺为长期主源。
 - Alpha Vantage 多 ticker / 多 topic 过滤不按项目组合 OR 语义假设；组合观察池必须逐 ticker 拉取后聚合去重。
 - 后续中文财经新闻看板调查已沉淀到 `refdocs/tushare_news_dashboard_upstream_mapping_note_2026-06-06.md`，用于 provider 选择和公开上游风险评估。
-- 自建中文文本事件 API 与国家政策法规库 API 计划已合并为 `T1.7｜AI 语料库`，首期不依赖 Tushare，优先实现 gov.cn 政策库 provider，再接 CCTV 新闻联播和 CNInfo 公告。
+- 自建中文文本事件 API 与国家政策法规库 API 计划已合并为 `T1.7｜AI 语料库`，首期不依赖 Tushare。当前已实现 gov.cn 政策库、CCTV 新闻联播和 CNInfo / AkShare 公告列表 provider。
 - 新闻源只服务盘前解释、风险提示、关注个股分析、PEAD 研究和后续文本摘要因子，不进入首批交易建议主线。
 - 接入任务单见：`docs/tasks/data-sources/NEWS_SOURCE_IMPLEMENTATION_TASKS.md` 和 `docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`
 
@@ -1169,7 +1169,7 @@ stok-mapping/
 | `T1.4` | A 股历史 as-of 前复权与复权因子治理 | [`docs/tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md`](tasks/data-sources/ASOF_PRICE_ADJUSTMENT_GOVERNANCE_TASKS.md) | **因子表已补齐，待差异报告与对照回测** |
 | `T1.5` | Tushare 财务因子逐股票历史补齐 | [`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`](tasks/WEEKLY_EXECUTION_CHECKLIST.md#W216tushare-财务因子逐股票历史补齐t15) | **已完成：2016Q1-2018Q1 目标季度末已补齐并完成 PTI / factor-effectiveness 复核** |
 | `T1.6` | `a_share_history.sqlite` 主库定义与 README 重整 | [`docs/tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md`](tasks/data-sources/MANUAL_HISTORY_README_REALIGNMENT_TASKS.md) | **已完成：主库定义、维护分工与口径边界已同步到文档** |
-| `T1.7` | AI 语料库（政策法规 / CCTV / 公告 / 央行报告 / 研报元数据） | [`docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md) | **gov.cn 政策库 MVP 与 CCTV fixture MVP 已落地：schema、provider registry、fixture / parser、raw archive、SQLite upsert / query 和 `ai-corpus` CLI 已完成；CCTV live fetch 与 CNInfo 仍为后续项** |
+| `T1.7` | AI 语料库（政策法规 / CCTV / 公告 / 央行报告 / 研报元数据） | [`docs/tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md`](tasks/data-sources/AI_CORPUS_IMPLEMENTATION_TASKS.md) | **gov.cn 政策库、CCTV live 和 CNInfo / AkShare 公告列表 MVP 已落地：schema、provider registry、fixture / parser、raw archive、SQLite upsert / query、`ai-corpus` CLI、gov.cn / CCTV / CNInfo 默认调度基础已完成；PBOC / 研报元数据 / 监管规则仍为后续项** |
 | `T2.1` | Phase 0 候选策略池治理清单 | [`docs/tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md`](tasks/strategy/PHASE0_CANDIDATE_STRATEGIES.md) | **已修订为治理清单：`baseline_admission_all_v1` 统一管理 13 个候选；当前无 admission pass，短期聚焦全候选 admission、低波低换手质量主线失败归因和 sleeve 降换手重构** |
 | `T2.3` | 策略积木工程化计划 | [`docs/tasks/strategy/STRATEGY_BLOCKS_PLAN.md`](tasks/strategy/STRATEGY_BLOCKS_PLAN.md) | 主目标已完成，后续按策略扩展维护 |
 | `T2.4` | 策略过拟合诊断工具 | [`docs/tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md`](tasks/strategy/STRATEGY_OVERFITTING_DIAGNOSTIC_TOOL.md) | **只读 MVP 已完成，已进入 strategy-admission 诊断链路，待 gate / brief 集成** |
@@ -1393,9 +1393,9 @@ announce_date_coverage
 
 1. `T1.7.1` 定义 `ai_corpus_documents` schema、provider registry、raw archive 路径和 fixture 规则。
 2. `T1.7.2-T1.7.4` 先实现 gov.cn 政策文件库：`/search-gov/data` 列表 provider、正文 parser、机构 / 主题字典缓存和 `npr` 兼容 API。
-3. `T1.7.5` 实现 CCTV 新闻联播 fixture provider，覆盖日期页、完整节目页和分段正文；生产 live fetch 后续单独增强。
-4. `T1.7.6` 实现 CNInfo / AkShare 公告 provider，先聚焦异常波动公告和交易风险提示公告。
-5. `T1.7.7-T1.7.9` 接入本地存储、CLI 查询、`market_text_events` 桥接、PBOC 报告、研报元数据和 RAG-ready 索引。
+3. `T1.7.5` 实现 CCTV 新闻联播 live provider，覆盖日期页、完整节目页和分段正文；fixture 保留为 parser 回归测试。
+4. `T1.7.6` 实现 CNInfo / AkShare 公告 provider，先聚焦异常波动公告和交易风险提示公告；当前已完成公告列表 MVP，公告详情页正文 / PDF parser 后续增强。
+5. `T1.7.7-T1.7.9` 接入本地存储、CLI 查询、`market_text_events` 桥接、PBOC 报告、研报元数据、监管规则和 RAG-ready 索引。
 
 边界：
 
@@ -1407,11 +1407,11 @@ announce_date_coverage
 第一版验收：
 
 - `npr(org="国务院", ptype="科技", end_date="2025-08-26 17:00:00")` 能基于 fixture 返回 `国务院关于深入实施“人工智能+”行动的意见`、`国发〔2025〕11号` 和非空 `content_html`。
-- `fetch_cctv_news(date="20260703", include_segments=True)` 能基于 fixture 返回新闻联播完整节目和分段节目，并抽取标题、URL、`content_id`、正文 HTML、raw path 和 parser version。
+- `fetch_cctv_news(date="20260703", include_segments=True)` 能抓取央视网公开页面或基于 fixture 返回新闻联播完整节目和分段节目，并抽取标题、URL、`content_id`、正文 HTML、raw path 和 parser version。
 - gov.cn 正文 parser 能抽取元数据表、`#UCAP-CONTENT`、正文 hash、raw path 和 parser version。
 - `published_at`、`issued_at`、`ingested_at`、`as_of_time` 不混用；回测可见时间以本系统抓取成功时间为准。
 - 同一政策文件重复 upsert 不重复入库；去重键覆盖 `source_id / url / pcode + title + puborg + pubtime / content_hash`。
-- CCTV 当前为 fixture MVP，不声称生产 live provider 可用；CNInfo provider 当前只保留计划状态，不声称生产可用。
+- CCTV 当前为 live MVP；每日编排器默认自然日 `20:45` 抓当天文稿，空结果通过 `--min-rows 1` 触发失败重试。CNInfo 当前为公告列表 MVP；每日编排器默认 `20:20` 抓 `risk_events` 市场风险公告，落库后按标题细分事件类型，但暂不承诺公告详情页全文 / PDF 解析。
 
 ### T6.2｜数据库健康检查与数据质量门禁
 

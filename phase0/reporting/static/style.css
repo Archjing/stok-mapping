@@ -12,7 +12,7 @@
   --font-cn:   "LXGW WenKai Mono", "Noto Sans Mono SC", "ZCOOL QingKe HuangYou", "Sarasa Gothic SC", var(--font-mono);
 
   /* Belafonte Day */
-  --bg:         #d5ccba;
+  --bg:         #fffaed;
   --bg-card:    #ded8c8;
   --border:     #b8b0a4;
   --text:       #45373c;
@@ -187,6 +187,30 @@ a:hover { color: var(--accent-text); text-decoration: underline; }
   border-radius: 6px;
   background: var(--bg-card);
   box-shadow: var(--shadow);
+}
+
+.asset-history-wrap {
+  max-height: calc(34px + 5 * 34px + 2px);
+  overflow-y: auto;
+}
+
+.trade-history-wrap {
+  max-height: calc(34px + 9 * 34px + 2px);
+  overflow-y: auto;
+}
+
+.position-history-wrap {
+  max-height: calc(34px + 9 * 34px + 2px);
+  overflow-y: auto;
+}
+
+.asset-history-wrap th,
+.asset-history-wrap td,
+.position-history-wrap th,
+.position-history-wrap td,
+.trade-history-wrap th,
+.trade-history-wrap td {
+  height: 34px;
 }
 
 table {

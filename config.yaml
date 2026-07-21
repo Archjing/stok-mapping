@@ -82,7 +82,7 @@ phase0:
       strategy_governance: "strategy_governance"
   manual_history_update:
     enabled: true
-    adjust_types: ["qfq"]
+    adjust_types: ["qfq", "bfq"]
     markets: ["SH", "SZ"]
     max_staleness_days: 1
     min_latest_coverage: 0.80
@@ -447,6 +447,7 @@ phase0:
         enabled: true
         initial_cash: 1000000
         execution_price_mode: "next_open"
+        price_tick: 0.01
         lot_size: 100
         max_participation_rate: 0.05
         min_commission: 5.0
@@ -638,6 +639,7 @@ phase0:
         name: "默认模拟账户"
         enabled: true
         initial_cash: 1000000
+        strategy_id: "legacy_momentum_low_turnover_v1"
         simulation_start_date: "2026-06-30"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
@@ -647,6 +649,7 @@ phase0:
   execution:
     price_mode: "next_open"
     conservative_price_buffer: 0.001
+    price_tick: 0.01
     lot_size: 100
     max_participation_rate: 0.05
     min_commission: 5.0
@@ -723,6 +726,7 @@ phase0:
         execution:
           price_mode: "close"
           conservative_price_buffer: 0.001
+          price_tick: 0.01
           lot_size: 100
           max_participation_rate: 0.0
           min_commission: 0.0
@@ -746,6 +750,7 @@ phase0:
         execution:
           price_mode: "next_open"
           conservative_price_buffer: 0.001
+          price_tick: 0.01
           lot_size: 100
           max_participation_rate: 0.05
           min_commission: 5.0

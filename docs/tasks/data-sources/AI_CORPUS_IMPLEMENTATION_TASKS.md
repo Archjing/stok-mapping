@@ -5,12 +5,13 @@
 任务索引：[`docs/tasks/README.md`](../README.md)
 计划日期：2026-07-04
 
-当前实施状态（2026-07-04）：
+当前实施状态（2026-07-10）：
 
 - `T1.7.1-T1.7.3` 已完成第一版工程实现：`phase0/ai_corpus/` 提供 `ai_corpus_documents` schema、provider registry、gov.cn 政策库 fixture / parser、raw archive、SQLite upsert / query 和 `ai-corpus` CLI。
-- `T1.7.4` 已完成主题映射 MVP：`ptype=科技` 可稳定映射为 `subchildtype=2220`。完整 `bmzcfwjg.json` / 主题树缓存仍作为 live provider 增强项。
-- `T1.7.5` 已完成 CCTV `20260703` fixture MVP：可解析新闻联播日期页、完整节目页和分段页，并通过 `ai-corpus fetch --provider cctv-news --fixture-dir ...` 入库；当前不宣称生产 live provider 可用。
-- `CNInfo` 目前只在 provider registry 中标记为 planned，不宣称生产可用，不进入策略、日报或交易信号链路。
+- `T1.7.2-T1.7.4` 已完成 gov.cn live source probe 和机构 / 主题 reference cache：`ai-corpus probe` 可刷新 `bmzcfwjg.json` 与 `/search-gov/data` 的 `ztflTree`，输出搜索、正文 parser、reference cache 的机器可读健康报告；动态主题映射的 `ptype_label` 会进入落库字段，离线回归仍保留 `ptype=科技` 内置兜底。
+- gov.cn 生产调度门禁和结构漂移审计已接入：`ai-corpus fetch --probe-before-fetch` 会先写 probe JSON，`audit.ok=false`、`ok=false` 或 `row_count=0` 时返回失败并阻断 fetch；默认 scheduler 任务 `gov_policy_fetch` 每天 06:50 运行，可通过 `GOV_POLICY_*` 环境变量覆盖查询、SQLite、raw archive、reference cache、报告路径和 audit 阈值。
+- `T1.7.5` 已完成 CCTV live MVP：不传 `--fixture-dir` 时可抓取央视网新闻联播日期页、完整节目页和分段页，保留 raw archive、SQLite upsert 和 `--min-rows` 调度门禁；`20260703` fixture 继续作为 parser 回归测试。
+- `T1.7.6` 已完成 CNInfo / AkShare 公告列表 MVP：支持 `risk_events` 聚合口径以及异常波动、交易风险提示、严重异常波动、业绩预告等事件过滤，保留 raw archive、SQLite upsert、fixture 回归和晚间调度任务；当前只承诺公告列表事件线索，不抓取或再分发公告 PDF / 全文。
 
 ## 1. 目标
 
@@ -85,7 +86,7 @@
 
 ### 3.2 第二优先级：CCTV 新闻联播文字稿
 
-首个新闻文本 MVP 仿照 `cctv_news` 调用体验，但实现不依赖 Tushare。
+首个新闻文本 MVP 仿照 `cctv_news` 调用体验，但实现不依赖 Tushare。当前生产入口直接访问央视网公开页面；fixture 只用于离线回归测试。
 
 已确认的现代日期页格式：
 
@@ -100,6 +101,7 @@ https://tv.cctv.com/lm/xwlb/day/YYYYMMDD.shtml
 - 日期页中的完整节目链接和分段视频链接
 - 分段页 `title`、`contentid`、`keywords`、`description`、`.video_brief`、`#content_area`
 - 完整节目页 `.video_brief` 当日节目概要
+- 每日编排器默认在自然日 `20:45` 抓当天节目，若返回行数低于 `--min-rows 1` 则失败并在晚间窗口内重试。
 
 ### 3.3 第三优先级：公告数据库
 
@@ -120,6 +122,8 @@ https://tv.cctv.com/lm/xwlb/day/YYYYMMDD.shtml
 - `shareholder_change`
 
 验收重点：按 `announcementId` 去重；标题含 `风险提示` 时必须做语义过滤，避免混入可转债适当性、退市、摊薄等无关公告。
+
+当前 MVP 已落地为 `cninfo` provider：通过 AkShare 的巨潮信息披露公告入口抓取列表，标准化为 `ai_corpus_documents`。生产调度默认使用 `risk_events` 聚合口径抓取风险提示分类公告，再按标题细分为异常波动、交易风险提示、严重异常波动等事件；正文全文、PDF 归档和公告详情页 parser 仍属于后续增强。
 
 ### 3.4 后续扩展：央行报告、研报元数据、监管规则
 
@@ -228,11 +232,11 @@ npr(
 
 ```python
 fetch_cctv_news(
-    date: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
+    date: str,
     include_segments: bool = True,
-    mode: str = "standard",
+    fixture_dir: str | pathlib.Path | None = None,
+    raw_archive_dir: str | pathlib.Path = "data/raw_data/ai_corpus/cctv",
+    limit: int = 100,
 ) -> pandas.DataFrame
 ```
 
@@ -248,8 +252,12 @@ fetch_cctv_news(
 首期不引入 HTTP 服务，先提供本地 CLI 和 Python API：
 
 ```bash
-./runit ai-corpus fetch --provider gov-policy --org 国务院 --ptype 科技 --end-date '2025-08-26 17:00:00'
-./runit ai-corpus fetch --provider cctv --start-date 20260703 --end-date 20260703
+./runit ai-corpus probe --provider gov-policy --org 国务院 --ptype 科技 --keyword 人工智能 --refresh-reference --output-json reports/phase0/ai_corpus/gov_policy_probe.json
+./runit ai-corpus fetch --provider gov-policy --org 国务院 --ptype 科技 --keyword 人工智能 --probe-before-fetch --refresh-reference --probe-output-json 'reports/phase0/ai_corpus/probes/gov_policy_probe_%Y%m%dT%H%M%S.json'
+./runit ai-corpus fetch --provider cctv-news --date 20260703 --min-rows 1
+./runit ai-corpus fetch --provider cctv-news --start-date 2026-07-03 --end-date 2026-07-07 --min-rows 1
+./runit ai-corpus fetch --provider cninfo --event-type risk_events --start-date 2026-07-02 --end-date 2026-07-03 --min-rows 0
+./runit ai-corpus fetch --provider cninfo --event-type abnormal_trading --start-date 2026-07-02 --end-date 2026-07-03 --min-rows 1
 ./runit ai-corpus query --corpus-type policy --keyword 人工智能 --format markdown
 ./runit ai-corpus export --provider cninfo --event-type abnormal_trading --start-date 20260630 --end-date 20260702
 ```
@@ -291,11 +299,11 @@ phase0/ai_corpus/
 | 任务号 | 阶段 | 工作内容 | 预计工作量 | 验收标准 |
 | --- | --- | --- | ---: | --- |
 | `T1.7.1` | P0 | 定义 schema、provider registry、原始数据路径、fixtures 规则 | 0.5-1 天 | schema 字段稳定，fixture 路径和 raw_path 规则明确 |
-| `T1.7.2` | P1 | 实现 gov.cn 政策库 source probe、列表 provider、分页、字段清洗 | 1 天 | 可按 `org/start_date/end_date/ptype/keyword` 返回列表字段 |
+| `T1.7.2` | P1 | 实现 gov.cn 政策库 source probe、列表 provider、分页、字段清洗 | 1 天 | 可按 `org/start_date/end_date/ptype/keyword` 返回列表字段；`ai-corpus probe` 可输出搜索行数、字段键、样本标题、正文解析、错误原因和 `audit.checks[]`；`--probe-before-fetch` 可作为生产抓取门禁 |
 | `T1.7.3` | P2 | 实现 gov.cn 正文 parser、元数据表抽取、`content_html` 保存 | 1-2 天 | `content_html` 非空，列表字段和正文 metadata 可交叉校验 |
 | `T1.7.4` | P3 | 实现政策主题 / 机构字典缓存和 `npr` 兼容别名 | 0.5-1 天 | `ptype=科技` 稳定映射到 `subchildtype=2220` |
-| `T1.7.5` | P4 | 实现 CCTV fixture provider、日期页 parser、分段正文 parser、`tushare_compat` 输出预留 | 1-2 天 | `20260703` fixture 可稳定解析标题、URL、content_id 和正文；生产 live fetch 后续单独增强 |
-| `T1.7.6` | P5 | 实现 CNInfo / AkShare 公告 provider 与异常波动 / 风险提示专项事件 | 1-2 天 | 能复现最近 3 天清洗口径，按公告 ID 去重 |
+| `T1.7.5` | P4 | 实现 CCTV live provider、日期页 parser、分段正文 parser、fixture 回归测试和每日调度门禁 | 1-2 天 | `cctv-news` 不传 fixture 可抓指定日期或当天新闻联播；`20260703` fixture 可稳定解析标题、URL、content_id 和正文 |
+| `T1.7.6` | P5 | 实现 CNInfo / AkShare 公告 provider 与异常波动 / 风险提示专项事件 | 1-2 天 | 已完成列表 MVP：可抓取/fixture 解析公告列表，按公告 ID 去重，支持 `risk_events`、异常波动和风险提示过滤，并接入每日调度 |
 | `T1.7.7` | P6 | 接入本地存储、CLI 查询、导出和 `market_text_events` 桥接 | 1-2 天 | 同一日期重复运行不重复入库，可按日期 / 类型 / 关键词查询 |
 | `T1.7.8` | P7 | 扩展 PBOC 报告、研报元数据和监管规则 provider | 3-5 天 | 每类 provider 至少 1 个公开样本、字段审计和授权说明 |
 | `T1.7.9` | P8 | 建立 RAG-ready 索引、关注个股事件时间线和日报解释层接口 | 2-4 天 | 能为单股生成可追溯文本事件时间线 |
@@ -359,7 +367,7 @@ fetch_cctv_news(date="20260703", include_segments=True)
 ./runit ai-corpus export --provider cninfo --event-type abnormal_trading --start-date 20260630 --end-date 20260702
 ```
 
-应能复现前期清洗口径：从近 3 天 A 股公告中筛选异常波动公告、交易风险提示公告，并记录 raw rows、清洗后 rows、日期范围、过滤规则和抽样审计结果。
+应能复现前期清洗口径：从近 3 天 A 股公告中筛选异常波动公告、交易风险提示公告，并记录 raw rows、清洗后 rows、日期范围、过滤规则和抽样审计结果。当前 MVP 已支持列表级事件线索，公告详情页正文 / PDF 归档后续再补。
 
 ## 9. 测试与审计要求
 
@@ -367,9 +375,17 @@ fetch_cctv_news(date="20260703", include_segments=True)
 - Schema 测试：必填字段存在，日期格式统一，`published_at`、`issued_at`、`ingested_at`、`as_of_time` 不混用。
 - 去重测试：同一 URL、同一 `source_id`、同一标题发布时间、同一正文哈希不会重复入库。
 - 字典测试：机构名和主题分类映射失败时必须返回可定位错误，不静默降级为全量查询。
-- 集成测试：联网 probe 默认可跳过，手动运行时记录 URL、行数、字段、HTTP 状态和失败原因。
+- 集成测试：联网 probe 默认可跳过，手动运行时记录 URL、行数、字段、HTTP 状态、失败原因和 audit check 状态；gov.cn 生产 smoke 推荐使用临时库和临时 raw 目录验证 fetch/upsert/归档闭环。
 - 数据治理：每次抓取记录 provider 版本、parser 版本、抓取时间、原始路径和清洗报告。
 - LLM 约束：任何 LLM 摘要都必须作为派生字段或派生文档，不能替代原始正文和原文链接。
+
+当前 gov.cn live smoke 参考命令：
+
+```bash
+./runit ai-corpus probe --config config.yaml --provider gov-policy --org 国务院 --ptype 科技 --keyword 人工智能 --end-date '2025-08-26 17:00:00' --reference-dir /tmp/stok_gov_policy_probe_refs --refresh-reference --timeout 20 --output-json /tmp/stok_gov_policy_probe.json
+
+./runit ai-corpus fetch --config config.yaml --provider gov-policy --org 国务院 --ptype 科技 --keyword 人工智能 --end-date '2025-08-26 17:00:00' --limit 1 --min-rows 1 --timeout 20 --reference-dir /tmp/stok_gov_policy_audit_fetch_refs --refresh-reference --probe-before-fetch --probe-output-json /tmp/stok_gov_policy_audit_prefetch_probe.json --database-path /tmp/stok_gov_policy_audit_fetch.sqlite --raw-archive-dir /tmp/stok_gov_policy_audit_fetch_raw --output-csv /tmp/stok_gov_policy_audit_fetch.csv --fields published_at,title,org,pcode,ptype,url,parse_status,raw_path
+```
 
 ## 10. 风险与控制
 
@@ -397,8 +413,8 @@ fetch_cctv_news(date="20260703", include_segments=True)
 
 ## 12. 推荐下一步
 
-1. 先实现 `T1.7.1`：schema、provider registry、fixture 目录和 raw archive 规则。
-2. 再实现 `T1.7.2-T1.7.4`：gov.cn 政策库列表、正文 parser、字典缓存和 `npr` 兼容 API。
-3. `T1.7.5` CCTV 新闻联播 fixture provider 已完成；下一步如需扩大覆盖，再补生产 live fetch、更多日期 fixture 和结构漂移审计。
-4. 第三条 provider 选择 CNInfo / AkShare 公告，以异常波动和交易风险提示公告为专项验收。
-5. 最后扩展 PBOC 报告、研报元数据和 RAG-ready 索引。
+1. 根据实际研究需求扩展 `GOV_POLICY_ORG` / `GOV_POLICY_PTYPE` / `GOV_POLICY_KEYWORD` 的生产查询组合，避免长期只抓“国务院 + 科技 + 人工智能”这一条窄样本。
+2. 周期性复核 `audit.checks[]`、字段键、正文长度和 reference 数量；当 audit 失败时保留失败 JSON，补 fixture 后再调整 parser。
+3. `T1.7.5` CCTV 新闻联播 live MVP 已完成；下一步如需扩大覆盖，补更多日期 fixture、结构漂移审计和文稿发布时间延迟统计。
+4. 第三条 provider CNInfo / AkShare 公告列表 MVP 已完成；下一步补公告详情页正文 / PDF parser、字段漂移 probe 和更多公告类型 fixture。
+5. 最后扩展 PBOC 报告、研报元数据、监管规则 provider 和 RAG-ready 索引。

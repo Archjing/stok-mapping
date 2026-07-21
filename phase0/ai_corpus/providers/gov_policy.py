@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,10 +25,22 @@ from phase0.ai_corpus.schema import (
 )
 
 GOV_SEARCH_URL = "https://sousuo.www.gov.cn/search-gov/data"
+GOV_DEPARTMENT_URL = "https://www.gov.cn/zhengce/bmzcfwjg.json"
 GOV_POLICY_SOURCE = "中国政府网"
 DEFAULT_RAW_ARCHIVE_DIR = "data/raw_data/ai_corpus/gov_policy"
+DEFAULT_REFERENCE_DIR = "data/reference/ai_corpus/gov_policy"
 DEFAULT_USER_AGENT = "stok-mapping-ai-corpus/1.0"
+DEFAULT_HTTP_ATTEMPTS = 3
+DEFAULT_RETRY_BACKOFF_SECONDS = 0.5
+RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
+GOV_POLICY_REQUIRED_SEARCH_FIELDS = {"title", "url"}
+GOV_POLICY_DATE_SEARCH_FIELDS = {"pubtime", "pubtimeStr"}
+DEFAULT_PROBE_MIN_ROWS = 1
+DEFAULT_PROBE_MIN_TOPIC_COUNT = 1
+DEFAULT_PROBE_MIN_DEPARTMENT_COUNT = 0
+DEFAULT_PROBE_MIN_CONTENT_RAW_TEXT_LENGTH = 200
 
+STATE_COUNCIL_ORGS = {"国务院", "国务院办公厅"}
 TOPIC_NAME_TO_PARAMS = {
     "科技": {"subchildtype": "2220", "ptype_label": "科技、教育\\科技"},
     "科技、教育": {"childtype": "1088", "ptype_label": "科技、教育"},
@@ -38,7 +51,7 @@ def _date_only(value: str | None) -> str:
     text = safe_text(value)
     if not text:
         return ""
-    normalized = text.replace("/", "-").replace("T", " ")
+    normalized = text.replace("/", "-").replace(".", "-").replace("T", " ")
     chinese = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", normalized)
     if chinese:
         return f"{int(chinese.group(1)):04d}-{int(chinese.group(2)):02d}-{int(chinese.group(3)):02d}"
@@ -56,6 +69,13 @@ def _safe_stem(value: str) -> str:
     return text[:120] or "raw"
 
 
+def _clean_html_text(value: Any) -> str:
+    text = safe_text(value)
+    if "<" in text and ">" in text:
+        text = BeautifulSoup(text, "html.parser").get_text("", strip=True)
+    return safe_text(text)
+
+
 def _archive_path(*, archive_root: Path, kind: str, ingested_at: str, stem: str, suffix: str) -> Path:
     day = _date_only(ingested_at) or datetime.now().date().isoformat()
     year, month, date_part = day.split("-")
@@ -71,6 +91,14 @@ def _write_raw_text(*, archive_root: Path, kind: str, ingested_at: str, stem: st
 
 def _load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
 
 
 def _load_fixture_search(fixture_dir: Path) -> tuple[Path, str]:
@@ -98,6 +126,161 @@ def _content_fixture_path(fixture_dir: Path, row: dict[str, Any]) -> Path:
     raise FileNotFoundError(f"gov policy content fixture not found for {source_id or url}")
 
 
+def parse_gov_policy_department_reference(text: str) -> list[str]:
+    payload = json.loads(text)
+    raw_items = payload.get("data", []) if isinstance(payload, dict) else payload
+    if not isinstance(raw_items, list):
+        raise ValueError("gov.cn department reference JSON must contain a list under data")
+    names = sorted(
+        {
+            safe_text(item.get("name"))
+            for item in raw_items
+            if isinstance(item, dict) and safe_text(item.get("name"))
+        }
+    )
+    if not names:
+        raise ValueError("gov.cn department reference JSON did not contain any department names")
+    return names
+
+
+def _find_topic_tree(obj: Any) -> list[dict[str, Any]]:
+    if isinstance(obj, dict):
+        tree = obj.get("ztflTree")
+        if isinstance(tree, list):
+            return [item for item in tree if isinstance(item, dict)]
+        for value in obj.values():
+            nested = _find_topic_tree(value)
+            if nested:
+                return nested
+    if isinstance(obj, list):
+        for value in obj:
+            nested = _find_topic_tree(value)
+            if nested:
+                return nested
+    return []
+
+
+def _topic_label(parent_name: str, child_name: str) -> str:
+    return f"{parent_name}\\{child_name}"
+
+
+def parse_gov_policy_topic_reference(text: str) -> dict[str, dict[str, str]]:
+    payload = json.loads(text)
+    topic_tree = _find_topic_tree(payload)
+    if not topic_tree:
+        raise ValueError("gov.cn search response did not contain searchVO.ztflTree")
+
+    mapping: dict[str, dict[str, str]] = {}
+    child_entries: list[tuple[str, str, str]] = []
+    child_name_counts: dict[str, int] = {}
+
+    for parent in topic_tree:
+        parent_name = safe_text(parent.get("name"))
+        parent_id = safe_text(parent.get("id"))
+        if not parent_name or not parent_id:
+            continue
+        mapping[parent_name] = {"childtype": parent_id, "ptype_label": parent_name}
+        for child in parent.get("children") or []:
+            if not isinstance(child, dict):
+                continue
+            child_name = safe_text(child.get("name"))
+            child_id = safe_text(child.get("id"))
+            if not child_name or not child_id:
+                continue
+            label = _topic_label(parent_name, child_name)
+            mapping[label] = {"subchildtype": child_id, "ptype_label": label}
+            child_entries.append((child_name, child_id, label))
+            child_name_counts[child_name] = child_name_counts.get(child_name, 0) + 1
+
+    for child_name, child_id, label in child_entries:
+        if child_name_counts.get(child_name) == 1:
+            mapping[child_name] = {"subchildtype": child_id, "ptype_label": label}
+
+    if not mapping:
+        raise ValueError("gov.cn topic reference did not contain usable topic ids")
+    return mapping
+
+
+def _read_cached_department_names(reference_root: Path) -> set[str] | None:
+    path = reference_root / "departments.json"
+    if not path.exists():
+        return None
+    payload = _load_json(path)
+    names = payload.get("department_names", []) if isinstance(payload, dict) else []
+    normalized = {safe_text(name) for name in names if safe_text(name)}
+    return normalized or None
+
+
+def _read_cached_topic_params(reference_root: Path) -> dict[str, dict[str, str]] | None:
+    path = reference_root / "topics.json"
+    if not path.exists():
+        return None
+    payload = _load_json(path)
+    topics = payload.get("topic_params", {}) if isinstance(payload, dict) else {}
+    if not isinstance(topics, dict):
+        return None
+    normalized = {
+        safe_text(name): {safe_text(key): safe_text(value) for key, value in params.items()}
+        for name, params in topics.items()
+        if safe_text(name) and isinstance(params, dict)
+    }
+    return normalized or None
+
+
+def load_gov_policy_references(
+    *,
+    root: Path | None = None,
+    reference_dir: str | Path = DEFAULT_REFERENCE_DIR,
+    refresh: bool = False,
+    timeout: int = 20,
+    ingested_at: str | None = None,
+) -> tuple[set[str] | None, dict[str, dict[str, str]]]:
+    project_root = root or Path.cwd()
+    reference_root = resolve_path(project_root, reference_dir)
+    fetched_at = ingested_at or now_iso()
+
+    department_names = None if refresh else _read_cached_department_names(reference_root)
+    if department_names is None:
+        try:
+            department_text = _request_gov_policy_text(GOV_DEPARTMENT_URL, timeout=timeout)
+            department_names = set(parse_gov_policy_department_reference(department_text))
+            _write_json(
+                reference_root / "departments.json",
+                {
+                    "fetched_at": fetched_at,
+                    "source_url": GOV_DEPARTMENT_URL,
+                    "department_names": sorted(department_names),
+                },
+            )
+        except Exception:
+            if refresh:
+                raise
+            department_names = None
+
+    topic_params = None if refresh else _read_cached_topic_params(reference_root)
+    if topic_params is None:
+        try:
+            topic_text = _fetch_live_search(
+                params=build_gov_policy_params(keyword="", collection="all", page=0, page_size=1),
+                timeout=timeout,
+            )
+            topic_params = parse_gov_policy_topic_reference(topic_text)
+            _write_json(
+                reference_root / "topics.json",
+                {
+                    "fetched_at": fetched_at,
+                    "source_url": GOV_SEARCH_URL,
+                    "topic_params": topic_params,
+                },
+            )
+        except Exception:
+            if refresh:
+                raise
+            topic_params = dict(TOPIC_NAME_TO_PARAMS)
+
+    return department_names, topic_params
+
+
 def build_gov_policy_params(
     *,
     org: str | None = None,
@@ -108,6 +291,8 @@ def build_gov_policy_params(
     collection: str = "all",
     page: int = 0,
     page_size: int = 20,
+    department_names: set[str] | None = None,
+    topic_params: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, str]:
     params = {
         "q": safe_text(keyword),
@@ -125,23 +310,31 @@ def build_gov_policy_params(
     params["t"] = collection_map.get(collection, collection)
     org_text = safe_text(org)
     if org_text:
-        if org_text in {"国务院", "国务院办公厅"}:
+        if org_text in STATE_COUNCIL_ORGS:
             params["t"] = "zhengcelibrary_gw"
             params["puborg"] = org_text
         else:
+            if department_names is not None and org_text not in department_names:
+                sample = "、".join(sorted(department_names)[:12])
+                raise ValueError(f"unsupported gov.cn department org: {org_text}; known examples: {sample}")
             params["t"] = "zhengcelibrary_bm"
             params["bmfl"] = org_text
     topic_text = safe_text(ptype)
     if topic_text:
-        topic_params = TOPIC_NAME_TO_PARAMS.get(topic_text)
-        if not topic_params:
-            raise ValueError(f"unsupported gov.cn policy topic mapping: {ptype}")
+        topic_reference = topic_params or TOPIC_NAME_TO_PARAMS
+        topic_match = topic_reference.get(topic_text)
+        if not topic_match:
+            sample = "、".join(sorted(topic_reference)[:12])
+            suffix = f"; known examples: {sample}" if sample else ""
+            raise ValueError(f"unsupported gov.cn policy topic mapping: {ptype}{suffix}")
         for key in ("childtype", "subchildtype"):
-            if key in topic_params:
-                params[key] = topic_params[key]
+            if key in topic_match:
+                params[key] = topic_match[key]
     start = _date_only(start_date)
     end = _date_only(end_date)
     if start or end:
+        if start and end and start > end:
+            raise ValueError(f"gov.cn policy start_date must be <= end_date: {start} > {end}")
         params["timetype"] = "timezd"
         if start:
             params["mintime"] = start
@@ -243,8 +436,8 @@ def _filter_fixture_rows(
     end = _date_only(end_date)
     filtered = []
     for row in rows:
-        title = safe_text(row.get("title"))
-        summary = safe_text(row.get("summary"))
+        title = _clean_html_text(row.get("title"))
+        summary = _clean_html_text(row.get("summary"))
         row_org = safe_text(row.get("puborg"))
         row_ptype = safe_text(row.get("ptype") or row.get("childtype"))
         pubtime = _date_only(row.get("pubtime") or row.get("pubtimeStr"))
@@ -269,15 +462,18 @@ def _document_from_policy_row(
     ingested_at: str,
     raw_path: Path,
     ptype: str | None = None,
+    ptype_label: str | None = None,
 ) -> dict[str, str]:
     url = safe_text(row.get("url") or content.get("url"))
     source_id = safe_text(row.get("id") or row.get("source_id") or content.get("content_id") or Path(urlparse(url).path).stem)
-    title = safe_text(row.get("title") or content.get("title"))
+    title = _clean_html_text(row.get("title")) or safe_text(content.get("title"))
     puborg = safe_text(row.get("puborg") or content.get("puborg"))
     published_at = _date_only(row.get("pubtimeStr") or row.get("pubtime") or content.get("published_at"))
     pcode = safe_text(row.get("pcode") or content.get("pcode"))
     topic = safe_text(content.get("ptype") or row.get("ptype") or row.get("childtype"))
-    if ptype and ptype in TOPIC_NAME_TO_PARAMS and TOPIC_NAME_TO_PARAMS[ptype].get("ptype_label"):
+    if ptype_label:
+        topic = ptype_label
+    elif ptype and ptype in TOPIC_NAME_TO_PARAMS and TOPIC_NAME_TO_PARAMS[ptype].get("ptype_label"):
         topic = TOPIC_NAME_TO_PARAMS[ptype]["ptype_label"]
     content_html = content.get("content_html", "")
     raw_text = content.get("raw_text", "")
@@ -295,7 +491,7 @@ def _document_from_policy_row(
         "ingested_at": ingested_at,
         "as_of_time": ingested_at,
         "title": title,
-        "summary": safe_text(row.get("summary")),
+        "summary": _clean_html_text(row.get("summary")),
         "content_html": content_html,
         "raw_text": raw_text,
         "url": url,
@@ -315,18 +511,397 @@ def _document_from_policy_row(
     }
 
 
+def _gov_policy_headers() -> dict[str, str]:
+    return {
+        "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.6",
+        "Referer": "https://sousuo.www.gov.cn/zcwjk/policyDocumentLibrary",
+        "User-Agent": DEFAULT_USER_AGENT,
+    }
+
+
+def _charset_from_content_type(value: str | None) -> str:
+    match = re.search(r"charset=([0-9A-Za-z_.-]+)", safe_text(value), flags=re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def _charset_from_html_meta(content: bytes) -> str:
+    head = content[:4096].decode("ascii", errors="ignore")
+    match = re.search(r"charset=[\"']?\s*([0-9A-Za-z_.-]+)", head, flags=re.IGNORECASE)
+    return match.group(1) if match else ""
+
+
+def _decode_gov_policy_response(response: requests.Response) -> str:
+    content = getattr(response, "content", b"") or b""
+    if not content:
+        return response.text
+    header_encoding = _charset_from_content_type(response.headers.get("content-type") if response.headers else "")
+    candidates = [
+        _charset_from_html_meta(content),
+        header_encoding,
+        safe_text(getattr(response, "apparent_encoding", "")),
+        safe_text(getattr(response, "encoding", "")),
+        "utf-8",
+    ]
+    seen: set[str] = set()
+    for encoding in candidates:
+        normalized = safe_text(encoding)
+        if not normalized or normalized.lower() in seen:
+            continue
+        seen.add(normalized.lower())
+        try:
+            return content.decode(normalized)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return content.decode("utf-8", errors="replace")
+
+
+def _request_gov_policy_text(
+    url: str,
+    *,
+    params: dict[str, str] | None = None,
+    timeout: int,
+) -> str:
+    last_error: Exception | None = None
+    for attempt in range(1, DEFAULT_HTTP_ATTEMPTS + 1):
+        try:
+            response = requests.get(
+                url,
+                params=params,
+                timeout=timeout,
+                headers=_gov_policy_headers(),
+            )
+            if response.status_code in RETRYABLE_STATUS_CODES and attempt < DEFAULT_HTTP_ATTEMPTS:
+                last_error = requests.HTTPError(f"gov.cn HTTP {response.status_code}: {response.url}")
+            else:
+                response.raise_for_status()
+                return _decode_gov_policy_response(response)
+        except requests.RequestException as exc:
+            last_error = exc
+            if attempt >= DEFAULT_HTTP_ATTEMPTS:
+                break
+        time.sleep(DEFAULT_RETRY_BACKOFF_SECONDS * attempt)
+    raise RuntimeError(f"gov.cn request failed after {DEFAULT_HTTP_ATTEMPTS} attempts: {url}") from last_error
+
+
 def _fetch_live_search(*, params: dict[str, str], timeout: int) -> str:
-    response = requests.get(GOV_SEARCH_URL, params=params, timeout=timeout, headers={"User-Agent": DEFAULT_USER_AGENT})
-    response.raise_for_status()
-    response.encoding = response.encoding or "utf-8"
-    return response.text
+    return _request_gov_policy_text(GOV_SEARCH_URL, params=params, timeout=timeout)
 
 
 def _fetch_live_content(url: str, *, timeout: int) -> str:
-    response = requests.get(url, timeout=timeout, headers={"User-Agent": DEFAULT_USER_AGENT})
-    response.raise_for_status()
-    response.encoding = response.encoding or "utf-8"
-    return response.text
+    return _request_gov_policy_text(url, timeout=timeout)
+
+
+def _reference_cache_status(reference_root: Path) -> dict[str, Any]:
+    status: dict[str, Any] = {
+        "reference_dir": str(reference_root),
+        "departments_path": str(reference_root / "departments.json"),
+        "topics_path": str(reference_root / "topics.json"),
+        "departments_cached": (reference_root / "departments.json").exists(),
+        "topics_cached": (reference_root / "topics.json").exists(),
+        "department_count": 0,
+        "topic_count": 0,
+    }
+    department_names = _read_cached_department_names(reference_root)
+    topic_params = _read_cached_topic_params(reference_root)
+    if department_names:
+        status["department_count"] = len(department_names)
+    if topic_params:
+        status["topic_count"] = len(topic_params)
+    return status
+
+
+def _add_audit_check(
+    checks: list[dict[str, Any]],
+    *,
+    name: str,
+    ok: bool,
+    severity: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> None:
+    checks.append(
+        {
+            "name": name,
+            "status": "ok" if ok else severity,
+            "severity": severity,
+            "message": message,
+            "details": details or {},
+        }
+    )
+
+
+def audit_gov_policy_probe_report(
+    report: dict[str, Any],
+    *,
+    min_rows: int = DEFAULT_PROBE_MIN_ROWS,
+    require_topic_tree: bool = True,
+    min_topic_count: int = DEFAULT_PROBE_MIN_TOPIC_COUNT,
+    min_department_count: int = DEFAULT_PROBE_MIN_DEPARTMENT_COUNT,
+    require_content: bool = True,
+    require_content_html: bool = True,
+    min_content_raw_text_length: int = DEFAULT_PROBE_MIN_CONTENT_RAW_TEXT_LENGTH,
+) -> dict[str, Any]:
+    checks: list[dict[str, Any]] = []
+    reference = report.get("reference", {}) if isinstance(report.get("reference"), dict) else {}
+    search = report.get("search", {}) if isinstance(report.get("search"), dict) else {}
+    content = report.get("content", {}) if isinstance(report.get("content"), dict) else {}
+    query = report.get("query", {}) if isinstance(report.get("query"), dict) else {}
+
+    effective_topic_count = int(reference.get("effective_topic_count") or 0)
+    _add_audit_check(
+        checks,
+        name="reference_topic_count",
+        ok=effective_topic_count >= min_topic_count,
+        severity="error",
+        message=f"effective topic count must be >= {min_topic_count}",
+        details={"observed": effective_topic_count, "minimum": min_topic_count},
+    )
+    effective_department_count = int(reference.get("effective_department_count") or 0)
+    _add_audit_check(
+        checks,
+        name="reference_department_count",
+        ok=effective_department_count >= min_department_count,
+        severity="error",
+        message=f"effective department count must be >= {min_department_count}",
+        details={"observed": effective_department_count, "minimum": min_department_count},
+    )
+    if safe_text(query.get("ptype")):
+        _add_audit_check(
+            checks,
+            name="reference_matched_topic",
+            ok=bool(reference.get("matched_topic")),
+            severity="error",
+            message="requested ptype must resolve to an official topic id",
+            details={"ptype": safe_text(query.get("ptype")), "matched_topic": reference.get("matched_topic") or {}},
+        )
+
+    search_ok = bool(search.get("ok"))
+    _add_audit_check(
+        checks,
+        name="search_response_ok",
+        ok=search_ok,
+        severity="error",
+        message="gov.cn search response must parse successfully",
+        details={"response_keys": search.get("response_keys", [])},
+    )
+    row_count = int(search.get("row_count") or 0)
+    _add_audit_check(
+        checks,
+        name="search_min_rows",
+        ok=row_count >= min_rows,
+        severity="error",
+        message=f"search row count must be >= {min_rows}",
+        details={"observed": row_count, "minimum": min_rows},
+    )
+    field_keys = set(search.get("field_keys") or [])
+    missing_required = sorted(GOV_POLICY_REQUIRED_SEARCH_FIELDS - field_keys)
+    _add_audit_check(
+        checks,
+        name="search_required_fields",
+        ok=not missing_required,
+        severity="error",
+        message="search rows must expose title and url",
+        details={"missing": missing_required, "field_keys": sorted(field_keys)},
+    )
+    has_date_field = bool(GOV_POLICY_DATE_SEARCH_FIELDS & field_keys)
+    _add_audit_check(
+        checks,
+        name="search_date_field",
+        ok=has_date_field,
+        severity="error",
+        message="search rows must expose pubtime or pubtimeStr for as-of auditing",
+        details={"accepted": sorted(GOV_POLICY_DATE_SEARCH_FIELDS), "field_keys": sorted(field_keys)},
+    )
+    if require_topic_tree:
+        _add_audit_check(
+            checks,
+            name="search_topic_tree",
+            ok=bool(search.get("has_topic_tree")),
+            severity="error",
+            message="search response must include ztflTree for topic drift auditing",
+            details={"topic_tree_count": int(search.get("topic_tree_count") or 0)},
+        )
+
+    if require_content:
+        _add_audit_check(
+            checks,
+            name="content_response_ok",
+            ok=bool(content.get("ok")),
+            severity="error",
+            message="sample content page must parse successfully",
+            details={"url": safe_text(content.get("url")), "error": safe_text(content.get("error"))},
+        )
+        if require_content_html:
+            _add_audit_check(
+                checks,
+                name="content_html_present",
+                ok=bool(content.get("content_html_present")),
+                severity="error",
+                message="sample content page must expose content_html",
+                details={"url": safe_text(content.get("url"))},
+            )
+        raw_text_length = int(content.get("raw_text_length") or 0)
+        _add_audit_check(
+            checks,
+            name="content_raw_text_length",
+            ok=raw_text_length >= min_content_raw_text_length,
+            severity="error",
+            message=f"sample content raw_text length must be >= {min_content_raw_text_length}",
+            details={"observed": raw_text_length, "minimum": min_content_raw_text_length},
+        )
+    else:
+        _add_audit_check(
+            checks,
+            name="content_probe",
+            ok=True,
+            severity="warning",
+            message="content probe skipped by caller",
+            details={},
+        )
+
+    errors = [check for check in checks if check["status"] == "error"]
+    warnings = [check for check in checks if check["status"] == "warning"]
+    return {
+        "ok": not errors,
+        "error_count": len(errors),
+        "warning_count": len(warnings),
+        "checks": checks,
+    }
+
+
+def probe_gov_policy_source(
+    *,
+    root: Path | None = None,
+    org: str | None = "国务院",
+    ptype: str | None = "科技",
+    keyword: str | None = "人工智能",
+    start_date: str | None = None,
+    end_date: str | None = None,
+    collection: str = "all",
+    reference_dir: str | Path = DEFAULT_REFERENCE_DIR,
+    refresh_reference: bool = False,
+    timeout: int = 20,
+    content_probe: bool = True,
+    min_rows: int = DEFAULT_PROBE_MIN_ROWS,
+    require_topic_tree: bool = True,
+    min_topic_count: int = DEFAULT_PROBE_MIN_TOPIC_COUNT,
+    min_department_count: int = DEFAULT_PROBE_MIN_DEPARTMENT_COUNT,
+    require_content_html: bool = True,
+    min_content_raw_text_length: int = DEFAULT_PROBE_MIN_CONTENT_RAW_TEXT_LENGTH,
+) -> dict[str, Any]:
+    project_root = root or Path.cwd()
+    reference_root = resolve_path(project_root, reference_dir)
+    report: dict[str, Any] = {
+        "provider": "gov_policy",
+        "parser_version": GOV_POLICY_PARSER_VERSION,
+        "probed_at": now_iso(),
+        "ok": False,
+        "query": {
+            "org": safe_text(org),
+            "ptype": safe_text(ptype),
+            "keyword": safe_text(keyword),
+            "start_date": _date_only(start_date),
+            "end_date": _date_only(end_date),
+            "collection": collection,
+        },
+        "reference": {},
+        "search": {},
+        "content": {},
+        "errors": [],
+    }
+
+    try:
+        department_names, topic_params = load_gov_policy_references(
+            root=project_root,
+            reference_dir=reference_dir,
+            refresh=refresh_reference,
+            timeout=timeout,
+            ingested_at=report["probed_at"],
+        )
+        report["reference"] = _reference_cache_status(reference_root)
+        report["reference"]["department_validation"] = department_names is not None
+        report["reference"]["effective_department_count"] = len(department_names or [])
+        report["reference"]["effective_topic_count"] = len(topic_params)
+        report["reference"]["topic_keys_sample"] = sorted(topic_params)[:12]
+        if safe_text(ptype) and safe_text(ptype) in topic_params:
+            report["reference"]["matched_topic"] = topic_params[safe_text(ptype)]
+        params = build_gov_policy_params(
+            org=org,
+            ptype=ptype,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            collection=collection,
+            page=0,
+            page_size=5,
+            department_names=department_names,
+            topic_params=topic_params,
+        )
+        report["search"]["params"] = params
+        search_text = _fetch_live_search(params=params, timeout=timeout)
+        rows = parse_gov_policy_list_response(search_text)
+        payload = json.loads(search_text)
+        topic_tree = _find_topic_tree(payload)
+        report["search"].update(
+            {
+                "ok": True,
+                "row_count": len(rows),
+                "has_topic_tree": bool(topic_tree),
+                "topic_tree_count": len(topic_tree),
+                "sample_titles": [_clean_html_text(row.get("title")) for row in rows[:3]],
+                "sample_urls": [safe_text(row.get("url")) for row in rows[:3]],
+                "response_keys": sorted(payload.keys()) if isinstance(payload, dict) else [],
+                "field_keys": sorted({key for row in rows[:10] for key in row.keys()}),
+            }
+        )
+
+        if content_probe and rows:
+            sample = rows[0]
+            url = safe_text(sample.get("url"))
+            try:
+                content_text = _fetch_live_content(url, timeout=timeout)
+                content = parse_gov_policy_content(content_text, url=url)
+                report["content"] = {
+                    "ok": bool(content.get("content_html") or content.get("raw_text")),
+                    "url": url,
+                    "title": _clean_html_text(sample.get("title")) or safe_text(content.get("title")),
+                    "published_at": _date_only(sample.get("pubtimeStr") or sample.get("pubtime") or content.get("published_at")),
+                    "org": safe_text(sample.get("puborg") or content.get("puborg")),
+                    "pcode": safe_text(sample.get("pcode") or content.get("pcode")),
+                    "content_html_present": bool(content.get("content_html")),
+                    "raw_text_length": len(content.get("raw_text", "")),
+                }
+            except Exception as exc:
+                report["content"] = {
+                    "ok": False,
+                    "url": url,
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+                report["errors"].append(report["content"]["error"])
+        elif content_probe:
+            report["content"] = {"ok": False, "error": "no search rows available for content probe"}
+            report["errors"].append(report["content"]["error"])
+        else:
+            report["content"] = {"ok": None, "skipped": True}
+
+        report["ok"] = bool(report["search"].get("ok")) and len(rows) > 0
+        if content_probe:
+            report["ok"] = report["ok"] and bool(report["content"].get("ok"))
+    except Exception as exc:
+        report["errors"].append(f"{type(exc).__name__}: {exc}")
+    report["audit"] = audit_gov_policy_probe_report(
+        report,
+        min_rows=min_rows,
+        require_topic_tree=require_topic_tree,
+        min_topic_count=min_topic_count,
+        min_department_count=min_department_count,
+        require_content=content_probe,
+        require_content_html=require_content_html,
+        min_content_raw_text_length=min_content_raw_text_length,
+    )
+    report["ok"] = bool(report.get("ok")) and bool(report["audit"].get("ok"))
+    return report
 
 
 def fetch_national_policy_repository(
@@ -343,6 +918,8 @@ def fetch_national_policy_repository(
     include_content: bool = True,
     fixture_dir: str | Path | None = None,
     raw_archive_dir: str | Path = DEFAULT_RAW_ARCHIVE_DIR,
+    reference_dir: str | Path = DEFAULT_REFERENCE_DIR,
+    refresh_reference: bool = False,
     timeout: int = 20,
     ingested_at: str | None = None,
 ) -> pd.DataFrame:
@@ -350,6 +927,7 @@ def fetch_national_policy_repository(
     archive_root = resolve_path(project_root, raw_archive_dir)
     fetched_at = ingested_at or now_iso()
     page_size = min(max(limit, 1), 50)
+    topic_params: dict[str, dict[str, str]] | None = None
 
     if fixture_dir:
         fixture_root = resolve_path(project_root, fixture_dir)
@@ -371,6 +949,18 @@ def fetch_national_policy_repository(
             end_date=end_date,
         )
     else:
+        department_names: set[str] | None = None
+        needs_reference = bool(safe_text(ptype)) or (
+            bool(safe_text(org)) and safe_text(org) not in STATE_COUNCIL_ORGS
+        )
+        if needs_reference:
+            department_names, topic_params = load_gov_policy_references(
+                root=project_root,
+                reference_dir=reference_dir,
+                refresh=refresh_reference,
+                timeout=timeout,
+                ingested_at=fetched_at,
+            )
         search_raw_path = archive_root / "search"
         rows = []
         page = 0
@@ -384,6 +974,8 @@ def fetch_national_policy_repository(
                 collection=collection,
                 page=page,
                 page_size=page_size,
+                department_names=department_names,
+                topic_params=topic_params,
             )
             search_text = _fetch_live_search(params=params, timeout=timeout)
             search_raw_path = _write_raw_text(
@@ -401,6 +993,13 @@ def fetch_national_policy_repository(
             if len(page_rows) < page_size:
                 break
             page += 1
+
+    ptype_text = safe_text(ptype)
+    ptype_label = ""
+    if ptype_text and topic_params and ptype_text in topic_params:
+        ptype_label = safe_text(topic_params[ptype_text].get("ptype_label"))
+    elif ptype_text and ptype_text in TOPIC_NAME_TO_PARAMS:
+        ptype_label = safe_text(TOPIC_NAME_TO_PARAMS[ptype_text].get("ptype_label"))
 
     documents: list[dict[str, str]] = []
     for row in rows[:limit]:
@@ -437,7 +1036,16 @@ def fetch_national_policy_repository(
                     "raw_text": f"content fetch/parse failed: {type(exc).__name__}: {exc}",
                     "parse_status": "failed",
                 }
-        documents.append(_document_from_policy_row(row, content=content, ingested_at=fetched_at, raw_path=content_raw_path, ptype=ptype))
+        documents.append(
+            _document_from_policy_row(
+                row,
+                content=content,
+                ingested_at=fetched_at,
+                raw_path=content_raw_path,
+                ptype=ptype,
+                ptype_label=ptype_label,
+            )
+        )
 
     output_rows = select_fields(documents, fields)
     return pd.DataFrame(output_rows, columns=fields or AI_CORPUS_DOCUMENT_COLUMNS)
@@ -456,6 +1064,9 @@ def npr(
     root: Path | None = None,
     fixture_dir: str | Path | None = None,
     raw_archive_dir: str | Path = DEFAULT_RAW_ARCHIVE_DIR,
+    reference_dir: str | Path = DEFAULT_REFERENCE_DIR,
+    refresh_reference: bool = False,
+    timeout: int = 20,
 ) -> pd.DataFrame:
     field_list = [field.strip() for field in fields.split(",") if field.strip()] if fields else None
     return fetch_national_policy_repository(
@@ -470,4 +1081,7 @@ def npr(
         include_content=include_content,
         fixture_dir=fixture_dir,
         raw_archive_dir=raw_archive_dir,
+        reference_dir=reference_dir,
+        refresh_reference=refresh_reference,
+        timeout=timeout,
     )

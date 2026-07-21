@@ -7,6 +7,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
 
 from phase0.ai_corpus.registry import CCTV_NEWS_PARSER_VERSION
@@ -22,7 +23,9 @@ from phase0.ai_corpus.schema import (
 )
 
 CCTV_SOURCE = "央视网新闻联播"
+CCTV_DAY_URL_TEMPLATE = "https://tv.cctv.com/lm/xwlb/day/{date}.shtml"
 DEFAULT_RAW_ARCHIVE_DIR = "data/raw_data/ai_corpus/cctv"
+DEFAULT_USER_AGENT = "stok-mapping-ai-corpus/1.0"
 
 
 def _date_only(value: str | None) -> str:
@@ -83,6 +86,16 @@ def _content_fixture_path(fixture_dir: Path, item: dict[str, str]) -> Path:
     raise FileNotFoundError(f"cctv content fixture not found for {safe_text(item.get('source_id')) or safe_text(item.get('url'))}")
 
 
+def _fetch_live_text(url: str, *, timeout: int) -> str:
+    response = requests.get(url, timeout=timeout, headers={"User-Agent": DEFAULT_USER_AGENT})
+    response.raise_for_status()
+    encoding = response.encoding or ""
+    if not encoding or encoding.lower() in {"iso-8859-1", "latin-1"}:
+        encoding = response.apparent_encoding or "utf-8"
+    response.encoding = encoding
+    return response.text
+
+
 def _meta_tags(soup: BeautifulSoup) -> dict[str, str]:
     tags: dict[str, str] = {}
     for meta in soup.find_all("meta"):
@@ -125,7 +138,11 @@ def parse_cctv_content_page(html_text: str, *, url: str = "") -> dict[str, str]:
     meta = _meta_tags(soup)
     title = safe_text(meta.get("og:title") or (soup.title.get_text(" ", strip=True) if soup.title else ""))
     description = safe_text(meta.get("description") or meta.get("og:description"))
-    content_node = soup.find(id="content_area") or soup.find(class_="video_brief")
+    content_candidates = [soup.find(id="content_area"), soup.find(class_="video_brief")]
+    content_node = next(
+        (node for node in content_candidates if node and safe_text(node.get_text(" ", strip=True))),
+        None,
+    )
     if content_node:
         content_html = str(content_node).strip()
         raw_text = content_node.get_text("\n", strip=True)
@@ -190,7 +207,7 @@ def _document_from_cctv_item(
         "dedupe_key": dedupe_key,
         "content_hash": content_hash,
         "raw_path": str(raw_path),
-        "parse_status": "ok" if content_html else "partial",
+        "parse_status": safe_text(content.get("parse_status")) or ("ok" if content_html else "partial"),
         "source_confidence": "official_public_source",
         "parser_version": CCTV_NEWS_PARSER_VERSION,
     }
@@ -205,42 +222,78 @@ def fetch_cctv_news(
     root: Path | None = None,
     fixture_dir: str | Path | None = None,
     raw_archive_dir: str | Path = DEFAULT_RAW_ARCHIVE_DIR,
+    timeout: int = 20,
     ingested_at: str | None = None,
 ) -> pd.DataFrame:
-    if not fixture_dir:
-        raise NotImplementedError("cctv news production fetch is not implemented; provide fixture_dir for parser validation")
     project_root = root or Path.cwd()
-    fixture_root = resolve_path(project_root, fixture_dir)
     archive_root = resolve_path(project_root, raw_archive_dir)
     fetched_at = ingested_at or now_iso()
+    compact = _compact_date(date)
+    if not compact:
+        raise ValueError("cctv news date is required, for example 20260703")
 
-    day_path = _fixture_day_path(fixture_root, date)
-    day_text = day_path.read_text(encoding="utf-8")
-    _write_raw_text(
-        archive_root=archive_root,
-        kind="day",
-        ingested_at=fetched_at,
-        stem=day_path.stem,
-        suffix="html",
-        text=day_text,
-    )
+    if fixture_dir:
+        fixture_root = resolve_path(project_root, fixture_dir)
+        day_path = _fixture_day_path(fixture_root, compact)
+        day_text = day_path.read_text(encoding="utf-8")
+        day_raw_path = _write_raw_text(
+            archive_root=archive_root,
+            kind="day",
+            ingested_at=fetched_at,
+            stem=day_path.stem,
+            suffix="html",
+            text=day_text,
+        )
+    else:
+        day_url = CCTV_DAY_URL_TEMPLATE.format(date=compact)
+        day_text = _fetch_live_text(day_url, timeout=timeout)
+        day_raw_path = _write_raw_text(
+            archive_root=archive_root,
+            kind="day",
+            ingested_at=fetched_at,
+            stem=f"day_{compact}",
+            suffix="html",
+            text=day_text,
+        )
     items = parse_cctv_day_page(day_text, date=date)
     if not include_segments:
         items = [item for item in items if item.get("item_type") == "full_program"]
 
     documents: list[dict[str, str]] = []
     for item in items[:limit]:
-        content_path = _content_fixture_path(fixture_root, item)
-        content_text = content_path.read_text(encoding="utf-8")
-        raw_path = _write_raw_text(
-            archive_root=archive_root,
-            kind="content",
-            ingested_at=fetched_at,
-            stem=content_path.stem,
-            suffix="html",
-            text=content_text,
-        )
-        content = parse_cctv_content_page(content_text, url=safe_text(item.get("url")))
+        raw_path = day_raw_path
+        try:
+            if fixture_dir:
+                fixture_root = resolve_path(project_root, fixture_dir)
+                content_path = _content_fixture_path(fixture_root, item)
+                content_text = content_path.read_text(encoding="utf-8")
+                raw_path = _write_raw_text(
+                    archive_root=archive_root,
+                    kind="content",
+                    ingested_at=fetched_at,
+                    stem=content_path.stem,
+                    suffix="html",
+                    text=content_text,
+                )
+            else:
+                content_text = _fetch_live_text(safe_text(item.get("url")), timeout=timeout)
+                raw_path = _write_raw_text(
+                    archive_root=archive_root,
+                    kind="content",
+                    ingested_at=fetched_at,
+                    stem=safe_text(item.get("source_id")) or Path(urlparse(safe_text(item.get("url"))).path).stem,
+                    suffix="html",
+                    text=content_text,
+                )
+            content = parse_cctv_content_page(content_text, url=safe_text(item.get("url")))
+        except Exception as exc:
+            content = {
+                "source_id": safe_text(item.get("source_id")),
+                "title": safe_text(item.get("title")),
+                "url": safe_text(item.get("url")),
+                "raw_text": f"content fetch/parse failed: {type(exc).__name__}: {exc}",
+                "parse_status": "failed",
+            }
         documents.append(_document_from_cctv_item(item, content=content, ingested_at=fetched_at, raw_path=raw_path))
 
     output_rows = select_fields(documents, fields)

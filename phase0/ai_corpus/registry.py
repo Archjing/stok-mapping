@@ -4,6 +4,7 @@ from phase0.ai_corpus.schema import AiCorpusProviderSpec
 
 GOV_POLICY_PARSER_VERSION = "gov_policy_v1"
 CCTV_NEWS_PARSER_VERSION = "cctv_news_v1"
+CNINFO_PARSER_VERSION = "cninfo_announcement_v1"
 
 PROVIDER_ALIASES = {
     "gov-policy": "gov_policy",
@@ -15,6 +16,8 @@ PROVIDER_ALIASES = {
     "cctv_news": "cctv",
     "cn-info": "cninfo",
     "cn_info": "cninfo",
+    "announcement": "cninfo",
+    "announcements": "cninfo",
 }
 
 PROVIDER_REGISTRY = {
@@ -26,9 +29,20 @@ PROVIDER_REGISTRY = {
         base_url="https://sousuo.www.gov.cn/search-gov/data",
         parser_version=GOV_POLICY_PARSER_VERSION,
         raw_archive_dir="data/raw_data/ai_corpus/gov_policy",
-        supported_parameters=("org", "ptype", "keyword", "start_date", "end_date", "limit", "collection"),
+        supported_parameters=(
+            "org",
+            "ptype",
+            "keyword",
+            "start_date",
+            "end_date",
+            "limit",
+            "collection",
+            "reference_dir",
+            "refresh_reference",
+            "probe_before_fetch",
+        ),
         status="implemented_mvp",
-        notes="Supports fixture-first tests and live gov.cn list/content fetch when network is available.",
+        notes="Supports fixture tests, live gov.cn list/content fetch, reference cache, source probe, and pre-fetch audit gate.",
     ),
     "cctv": AiCorpusProviderSpec(
         name="cctv",
@@ -38,9 +52,9 @@ PROVIDER_REGISTRY = {
         base_url="https://tv.cctv.com/lm/xwlb/day/",
         parser_version=CCTV_NEWS_PARSER_VERSION,
         raw_archive_dir="data/raw_data/ai_corpus/cctv",
-        supported_parameters=("date", "start_date", "end_date", "include_segments"),
-        status="fixture_mvp",
-        notes="Parses fixture date/program/segment pages; production live fetch is not implemented yet.",
+        supported_parameters=("date", "start_date", "end_date", "include_segments", "limit"),
+        status="implemented_mvp",
+        notes="Supports live CCTV day/program/segment fetch and fixture-based parser regression tests.",
     ),
     "cninfo": AiCorpusProviderSpec(
         name="cninfo",
@@ -48,11 +62,11 @@ PROVIDER_REGISTRY = {
         corpus_types=("announcement",),
         source="巨潮资讯 / AkShare 公告入口",
         base_url="https://www.cninfo.com.cn/",
-        parser_version="planned",
+        parser_version=CNINFO_PARSER_VERSION,
         raw_archive_dir="data/raw_data/ai_corpus/cninfo",
-        supported_parameters=("event_type", "start_date", "end_date", "keyword"),
-        status="planned_only",
-        notes="W2.31 keeps abnormal-trading/risk-warning announcement work scoped as a later provider.",
+        supported_parameters=("event_type", "start_date", "end_date", "keyword", "symbols", "limit"),
+        status="implemented_mvp",
+        notes="Supports AkShare/CNInfo announcement list fetch, risk_events filters, fixture regression, raw archive, and SQLite upsert.",
     ),
 }
 

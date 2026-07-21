@@ -18,8 +18,7 @@ from phase0.reporting.paths import latest_dir, report_root, slug
 
 DEFAULT_QUANT_SITE_DIR = "static_site/quant"
 DEFAULT_QUANT_REMOTE = "linuxuser@108.61.182.91"
-DEFAULT_QUANT_REMOTE_DIR = "/var/www/spidermanread/quant/"
-DEFAULT_WIKI_INDEX_SOURCE = Path("/home/zj/workspace/brainstorm/modules/marklogseq/html-site/index.html")
+DEFAULT_QUANT_REMOTE_DIR = "/var/www/share/quant/"
 STATIC_ASSETS = ("style.css",)
 
 
@@ -31,13 +30,16 @@ def _source_css_path() -> Path:
     return Path(__file__).with_name("static") / "style.css"
 
 
-def _wiki_index_source(config: dict[str, Any]) -> Path:
+def _wiki_index_source(config: dict[str, Any]) -> Path | None:
     reporting_cfg = config.get("reporting", {}) if isinstance(config, dict) else {}
-    return Path(reporting_cfg.get("wiki_index_source") or DEFAULT_WIKI_INDEX_SOURCE)
+    raw_source = reporting_cfg.get("wiki_index_source")
+    return Path(str(raw_source)) if raw_source else None
 
 
 def _copy_wiki_index(*, site_root: Path, config: dict[str, Any]) -> str:
     source = _wiki_index_source(config)
+    if source is None:
+        return ""
     if not source.is_file():
         raise FileNotFoundError(f"wiki index source not found: {source}")
     wiki_dir = site_root / "wiki"
@@ -290,17 +292,17 @@ def _read_account_frames(account: Any) -> dict[str, pd.DataFrame]:
             ensure_account_tables(conn)
             frames = {
                 "assets": pd.read_sql_query(
-                    "SELECT * FROM account_daily_assets WHERE account_id = ? ORDER BY brief_date",
+                    "SELECT * FROM account_daily_assets WHERE account_id = ? ORDER BY brief_date DESC",
                     conn,
                     params=(account.account_id,),
                 ),
                 "trades": pd.read_sql_query(
-                    "SELECT * FROM account_trades WHERE account_id = ? ORDER BY brief_date, side, symbol",
+                    "SELECT * FROM account_trades WHERE account_id = ? ORDER BY brief_date DESC, side, symbol",
                     conn,
                     params=(account.account_id,),
                 ),
                 "positions": pd.read_sql_query(
-                    "SELECT * FROM account_positions WHERE account_id = ? ORDER BY brief_date, symbol",
+                    "SELECT * FROM account_positions WHERE account_id = ? ORDER BY brief_date DESC, symbol",
                     conn,
                     params=(account.account_id,),
                 ),
@@ -310,7 +312,7 @@ def _read_account_frames(account: Any) -> dict[str, pd.DataFrame]:
             ).fetchone()
             frames["order_events"] = (
                 pd.read_sql_query(
-                    "SELECT * FROM account_order_events WHERE account_id = ? ORDER BY brief_date, symbol",
+                    "SELECT * FROM account_order_events WHERE account_id = ? ORDER BY brief_date DESC, symbol",
                     conn,
                     params=(account.account_id,),
                 )
@@ -325,7 +327,7 @@ def _read_account_frames(account: Any) -> dict[str, pd.DataFrame]:
 def _latest_value(df: pd.DataFrame, column: str) -> str:
     if df.empty or column not in df.columns:
         return ""
-    value = df.iloc[-1].get(column, "")
+    value = df.iloc[0].get(column, "")
     return "" if pd.isna(value) else str(value)
 
 
@@ -347,7 +349,22 @@ def _fmt_cell(column: str, value: Any) -> str:
     return str(value)
 
 
-def _table_html(df: pd.DataFrame, columns: list[tuple[str, str]], empty_text: str) -> str:
+def _recent_bill_dates(*frames: pd.DataFrame, limit: int) -> set[str]:
+    dates: set[str] = set()
+    for frame in frames:
+        if frame.empty or "brief_date" not in frame.columns:
+            continue
+        dates.update(str(value) for value in frame["brief_date"].dropna().astype(str) if str(value))
+    return set(sorted(dates)[-limit:])
+
+
+def _filter_bill_dates(df: pd.DataFrame, dates: set[str]) -> pd.DataFrame:
+    if df.empty or "brief_date" not in df.columns or not dates:
+        return df.iloc[0:0].copy()
+    return df[df["brief_date"].astype(str).isin(dates)].copy()
+
+
+def _table_html(df: pd.DataFrame, columns: list[tuple[str, str]], empty_text: str, *, wrap_class: str = "table-wrap") -> str:
     if df.empty:
         return f'<p class="empty">{html.escape(empty_text)}</p>'
     header = "".join(f"<th>{html.escape(label)}</th>" for _col, label in columns)
@@ -355,7 +372,7 @@ def _table_html(df: pd.DataFrame, columns: list[tuple[str, str]], empty_text: st
     for _, row in df.iterrows():
         cells = "".join(f"<td>{html.escape(_fmt_cell(col, row.get(col, '')))}</td>" for col, _label in columns)
         rows.append(f"<tr>{cells}</tr>")
-    return f'<div class="table-wrap"><table class="report-table account-bill-table"><thead><tr>{header}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
+    return f'<div class="{html.escape(wrap_class)}"><table class="report-table account-bill-table"><thead><tr>{header}</tr></thead><tbody>{"".join(rows)}</tbody></table></div>'
 
 
 def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at: str) -> str:
@@ -363,10 +380,13 @@ def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at:
     trades = frames["trades"].copy()
     positions = frames["positions"].copy()
     order_events = frames["order_events"].copy()
+    recent_dates = _recent_bill_dates(assets, positions, order_events, limit=3)
+    recent_positions = _filter_bill_dates(positions, recent_dates)
+    recent_order_events = _filter_bill_dates(order_events, recent_dates)
     title = f"{account.name} 完整交易台账"
     sections = [
         (
-            "每日资产",
+            "每日资产（全部账单日）",
             _table_html(
                 assets,
                 [
@@ -382,10 +402,11 @@ def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at:
                     ("block_reason_counts", "拦截原因"),
                 ],
                 "暂无资产记录",
+                wrap_class="table-wrap asset-history-wrap",
             ),
         ),
         (
-            "成交明细",
+            "成交明细（全部历史成交）",
             _table_html(
                 trades,
                 [
@@ -402,12 +423,13 @@ def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at:
                     ("block_reasons", "说明"),
                 ],
                 "暂无成交记录",
+                wrap_class="table-wrap trade-history-wrap",
             ),
         ),
         (
-            "持仓快照",
+            "持仓快照（最近3个账单日）",
             _table_html(
-                positions,
+                recent_positions,
                 [
                     ("brief_date", "账单日"),
                     ("symbol", "股票代码"),
@@ -419,12 +441,13 @@ def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at:
                     ("lots", "手数"),
                 ],
                 "暂无持仓记录",
+                wrap_class="table-wrap position-history-wrap",
             ),
         ),
         (
-            "执行事件",
+            "执行事件（最近3个账单日）",
             _table_html(
-                order_events,
+                recent_order_events,
                 [
                     ("brief_date", "账单日"),
                     ("symbol", "股票代码"),
@@ -500,7 +523,7 @@ def _account_index_html(*, account: Any, meta: dict[str, str], generated_at: str
 """
 
 
-def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str) -> str:
+def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, wiki_path: str) -> str:
     rows = []
     for item in accounts_meta:
         rows.append(
@@ -515,6 +538,7 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str) 
             "</tr>"
         )
     rows_html = "".join(rows) if rows else '<tr><td colspan="7">暂无启用的模拟账户</td></tr>'
+    wiki_link = '<a class="quick-card" href="wiki/index.html"><span>WIKI</span><strong>A股影响因子全景图</strong></a>' if wiki_path else ""
     return f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -526,11 +550,11 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str) 
 <body>
 {_theme_bar_html(back_href="index.html")}<div class="page account-bill-page">
   <div class="title-row"><h1>量化模拟账户控制台</h1><span class="generated-at">生成时间：{html.escape(generated_at)}</span></div>
-  <p class="bill-meta">入口：/quant/ ｜ 旧页面 /brief/ 与 /account-bill/ 保持兼容。</p>
+  <p class="bill-meta">入口：/quant/ ｜ 每日简报入口：/quant/brief/。</p>
   <section class="bill-section quick-section"><h2>核心入口</h2>
     <div class="quick-links">
       <a class="quick-card" href="brief/index.html"><span>BRIEF</span><strong>每日简报</strong></a>
-      <a class="quick-card" href="wiki/index.html"><span>WIKI</span><strong>A股影响因子全景图</strong></a>
+      {wiki_link}
     </div>
   </section>
   <section class="bill-section"><div class="section-title-frame"><h2>账户总览</h2></div>
@@ -547,7 +571,7 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str) 
 """
 
 
-def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str) -> str:
+def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, wiki_path: str) -> str:
     latest_bill_dates = sorted(item.get("latest_bill_date", "") for item in accounts_meta if item.get("latest_bill_date"))
     latest_bill_date = latest_bill_dates[-1] if latest_bill_dates else "暂无"
     account_count = len(accounts_meta)
@@ -569,6 +593,7 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
     rows_html = "".join(rows) if rows else '<tr><td colspan="6">暂无启用的模拟账户</td></tr>'
     readiness = "ready" if account_count and ready_accounts == account_count else "warning"
     readiness_text = "全部启用账户已有确认账单" if readiness == "ready" else "部分账户暂无确认账单，简报只展示可用证据"
+    wiki_link = '<a class="helper-link" href="/quant/wiki/index.html">A股影响因子全景图</a>' if wiki_path else ""
     return f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -610,7 +635,7 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
     </article>
     <article class="brief-card">
       <h2>下钻入口</h2>
-      <p><a class="helper-link" href="/quant/index.html">控制台首页</a><a class="helper-link" href="/quant/wiki/index.html">A股影响因子全景图</a></p>
+      <p><a class="helper-link" href="/quant/index.html">控制台首页</a>{wiki_link}</p>
     </article>
   </section>
   <section class="bill-section"><div class="section-title-frame"><h2>账户简报</h2></div>
@@ -625,22 +650,6 @@ def _brief_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str)
 </body>
 </html>
 """
-
-
-def _write_legacy_brief_alias(site_root: Path) -> None:
-    legacy_brief = site_root.parent / "brief"
-    if legacy_brief.is_symlink() or legacy_brief.is_file():
-        legacy_brief.unlink()
-    elif legacy_brief.exists():
-        shutil.rmtree(legacy_brief)
-    legacy_brief.mkdir(parents=True, exist_ok=True)
-    source_html = (site_root / "brief" / "index.html").read_text(encoding="utf-8")
-    alias_html = source_html.replace(
-        '  <link rel="stylesheet" href="../assets/style.css">\n  <link rel="stylesheet" href="/quant/assets/style.css">',
-        '  <link rel="stylesheet" href="../quant/assets/style.css">',
-    )
-    alias_html = alias_html.replace('href="/quant/', 'href="../quant/')
-    (legacy_brief / "index.html").write_text(alias_html, encoding="utf-8")
 
 
 def _write_csvs(account_dir: Path, frames: dict[str, pd.DataFrame]) -> None:
@@ -660,14 +669,9 @@ def _write_csvs(account_dir: Path, frames: dict[str, pd.DataFrame]) -> None:
 
 def _meta_for_account(account: Any, frames: dict[str, pd.DataFrame]) -> dict[str, str]:
     assets = frames["assets"]
-    positions = frames["positions"]
-    latest = assets.iloc[-1] if not assets.empty else {}
+    latest = assets.iloc[0] if not assets.empty else {}
     latest_bill_date = "" if assets.empty else str(latest.get("brief_date", ""))
-    position_start_date = ""
-    if not positions.empty and {"brief_date", "shares"}.issubset(positions.columns):
-        held = positions[pd.to_numeric(positions["shares"], errors="coerce").fillna(0) > 0].copy()
-        if not held.empty:
-            position_start_date = str(held["brief_date"].astype(str).min())
+    position_start_date = str(getattr(account, "simulation_start_date", "") or "")
     total_asset = "" if assets.empty else format_money(latest.get("total_asset"))
     target_exposure = "" if assets.empty else format_pct(latest.get("target_exposure"))
     return {
@@ -740,19 +744,23 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
         (account_dir / "ledger" / "index.html").write_text(_ledger_html(account=account, frames=frames, generated_at=generated_at), encoding="utf-8")
         _write_csvs(account_dir, frames)
 
+    wiki_path = _copy_wiki_index(site_root=site_root, config=config)
     manifest = {
         "generated_at": generated_at,
         "entry": "/quant/",
         "brief_path": "brief/index.html",
         "accounts": accounts_meta,
-        "wiki_path": _copy_wiki_index(site_root=site_root, config=config),
+        "wiki_path": wiki_path,
     }
     (site_root / "data").mkdir(parents=True, exist_ok=True)
     (site_root / "data" / "site_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
-    (site_root / "index.html").write_text(_site_index_html(accounts_meta=accounts_meta, generated_at=generated_at), encoding="utf-8")
+    (site_root / "index.html").write_text(
+        _site_index_html(accounts_meta=accounts_meta, generated_at=generated_at, wiki_path=wiki_path), encoding="utf-8"
+    )
     (site_root / "brief").mkdir(parents=True, exist_ok=True)
-    (site_root / "brief" / "index.html").write_text(_brief_index_html(accounts_meta=accounts_meta, generated_at=generated_at), encoding="utf-8")
-    _write_legacy_brief_alias(site_root)
+    (site_root / "brief" / "index.html").write_text(
+        _brief_index_html(accounts_meta=accounts_meta, generated_at=generated_at, wiki_path=wiki_path), encoding="utf-8"
+    )
     return {"site_root": site_root, "manifest": manifest, "accounts": len(accounts_meta)}
 
 

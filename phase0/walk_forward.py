@@ -2245,6 +2245,7 @@ def _build_account_execution_config(
         database_path=Path(""),
         enabled=True,
         execution_price_mode=str(cfg.get("execution_price_mode", execution_cfg.get("price_mode", "next_open"))),
+        price_tick=float(cfg.get("price_tick", execution_cfg.get("price_tick", 0.01))),
         max_participation_rate=float(cfg.get("max_participation_rate", execution_cfg.get("max_participation_rate", 0.05))),
         lot_size=int(cfg.get("lot_size", execution_cfg.get("lot_size", 100))),
         commission=float(cfg.get("commission", wcfg.get("commission", 0.0))),

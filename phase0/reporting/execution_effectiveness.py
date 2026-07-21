@@ -186,12 +186,17 @@ def _summary_from_folds(
     strategy_id: str,
     bill: pd.DataFrame | None = None,
     daily: pd.DataFrame | None = None,
+    gate_source: str = "account_daily_assets",
 ) -> dict[str, Any]:
     fold_count = int(len(folds))
     min_portfolio_fold_count = int(governance_cfg.get("min_portfolio_fold_count", 4))
     selected_candidate_eligible = fold_count >= min_portfolio_fold_count
     summary: dict[str, Any] = {
         "status": "ok" if fold_count else "failed",
+        "metric_source": str(gate_source),
+        "performance_metric_source": "account_execution" if str(gate_source) == "account_daily_assets" else str(gate_source),
+        "research_annualized_return_mean": None,
+        "research_sharpe_mean": None,
         "selected_candidate": f"{strategy_id}_account_execution_v2",
         "selected_candidate_eligible": selected_candidate_eligible,
         "selected_candidate_governance_reason": "eligible" if selected_candidate_eligible else f"portfolio_fold_count<{min_portfolio_fold_count}",
@@ -208,6 +213,15 @@ def _summary_from_folds(
         "min_fold_annualized_return": float(folds["annualized_return"].min()) if fold_count else 0.0,
         "min_fold_sharpe": float(folds["sharpe"].min()) if fold_count else 0.0,
     }
+    if str(gate_source) == "account_daily_assets":
+        summary.update(
+            {
+                "account_annualized_return_mean": summary["annualized_return_mean"],
+                "account_sharpe_mean": summary["sharpe_mean"],
+                "account_max_drawdown_mean": summary["max_drawdown_mean"],
+                "account_win_rate_mean": summary["win_rate_mean"],
+            }
+        )
     if fold_count:
         cutoff = max(1, int(fold_count * 0.2))
         ordered = folds.sort_values("valid_end")
@@ -233,6 +247,15 @@ def _summary_from_folds(
         summary["oos_positive_fold_ratio"] = 0.0
         summary["oos_min_fold_annualized_return"] = 0.0
         summary["oos_return_decay_ratio"] = 0.0
+    if str(gate_source) == "account_daily_assets":
+        summary.update(
+            {
+                "account_oos_annualized_return_mean": summary["oos_annualized_return_mean"],
+                "account_oos_sharpe_mean": summary["oos_sharpe_mean"],
+                "account_min_fold_annualized_return": summary["min_fold_annualized_return"],
+                "account_oos_min_fold_annualized_return": summary["oos_min_fold_annualized_return"],
+            }
+        )
     bill = bill if bill is not None else pd.DataFrame()
     daily = daily if daily is not None else pd.DataFrame()
     executable_order_count = int(len(bill)) if not bill.empty else 0
@@ -259,6 +282,12 @@ def _summary_from_folds(
     return summary
 
 
+def _gate_metric_name(summary: dict[str, Any], key: str) -> str:
+    if str(summary.get("metric_source", "")) == "account_daily_assets":
+        return f"account_{key}"
+    return key
+
+
 def _gate_groups(summary: dict[str, Any], gate_cfg: dict[str, Any] | None = None) -> dict[str, list[tuple[str, bool]]]:
     gate_cfg = gate_cfg or {}
     annualized_return_min = float(gate_cfg.get("annualized_return_min", 0.0))
@@ -279,19 +308,19 @@ def _gate_groups(summary: dict[str, Any], gate_cfg: dict[str, Any] | None = None
     return {
         "base": [
             ("selected_candidate_eligible == True", bool(summary.get("selected_candidate_eligible", True))),
-            (f"annualized_return_mean > {annualized_return_min:.2f}", float(summary.get("annualized_return_mean", 0.0)) > annualized_return_min),
-            (f"sharpe_mean > {sharpe_min:.2f}", float(summary.get("sharpe_mean", 0.0)) > sharpe_min),
-            (f"max_drawdown_mean > {max_drawdown_min:.2f}", float(summary.get("max_drawdown_mean", 0.0)) > max_drawdown_min),
-            (f"win_rate_mean > {win_rate_min:.2f}", float(summary.get("win_rate_mean", 0.0)) > win_rate_min),
+            (f"{_gate_metric_name(summary, 'annualized_return_mean')} > {annualized_return_min:.2f}", float(summary.get("annualized_return_mean", 0.0)) > annualized_return_min),
+            (f"{_gate_metric_name(summary, 'sharpe_mean')} > {sharpe_min:.2f}", float(summary.get("sharpe_mean", 0.0)) > sharpe_min),
+            (f"{_gate_metric_name(summary, 'max_drawdown_mean')} > {max_drawdown_min:.2f}", float(summary.get("max_drawdown_mean", 0.0)) > max_drawdown_min),
+            (f"{_gate_metric_name(summary, 'win_rate_mean')} > {win_rate_min:.2f}", float(summary.get("win_rate_mean", 0.0)) > win_rate_min),
             (f"oos_return_decay_ratio < {oos_return_decay_ratio_max:.2f}", float(summary.get("oos_return_decay_ratio", 0.0)) < oos_return_decay_ratio_max),
         ],
         "robustness": [
             (f"oos_fold_count >= {min_oos_fold_count}", int(summary.get("oos_fold_count", 0)) >= min_oos_fold_count),
-            (f"oos_annualized_return_mean > {oos_annualized_return_min:.2f}", float(summary.get("oos_annualized_return_mean", 0.0)) > oos_annualized_return_min),
-            (f"oos_sharpe_mean > {oos_sharpe_min:.2f}", float(summary.get("oos_sharpe_mean", 0.0)) > oos_sharpe_min),
+            (f"{_gate_metric_name(summary, 'oos_annualized_return_mean')} > {oos_annualized_return_min:.2f}", float(summary.get("oos_annualized_return_mean", 0.0)) > oos_annualized_return_min),
+            (f"{_gate_metric_name(summary, 'oos_sharpe_mean')} > {oos_sharpe_min:.2f}", float(summary.get("oos_sharpe_mean", 0.0)) > oos_sharpe_min),
             (f"positive_fold_ratio >= {min_positive_fold_ratio:.2f}", float(summary.get("positive_fold_ratio", 0.0)) >= min_positive_fold_ratio),
             (f"negative_fold_count <= {max_negative_fold_count}", int(summary.get("negative_fold_count", 0)) <= max_negative_fold_count),
-            (f"min_fold_annualized_return > {min_fold_annualized_return_min:.2f}", float(summary.get("min_fold_annualized_return", 0.0)) > min_fold_annualized_return_min),
+            (f"{_gate_metric_name(summary, 'min_fold_annualized_return')} > {min_fold_annualized_return_min:.2f}", float(summary.get("min_fold_annualized_return", 0.0)) > min_fold_annualized_return_min),
             (f"oos_positive_fold_ratio >= {min_oos_positive_fold_ratio:.2f}", float(summary.get("oos_positive_fold_ratio", 0.0)) >= min_oos_positive_fold_ratio),
         ],
         "execution_quality": [
@@ -353,6 +382,8 @@ def _write_report(
         f"Pipeline: {live_cfg.get('name', '实盘仿真回测')}",
         "",
         f"Gate source: {live_cfg.get('gate_source', 'account_daily_assets')}",
+        "",
+        "Metric boundary: 本报告的 Gate 使用账户级执行指标（account execution metrics），来源为 account_daily_assets；研究回测指标只用于研发诊断，不在本报告中被当作真实可成交收益。",
         "",
         f"Overall verdict: {'PASS' if passed else 'FAIL'}",
         "",
@@ -515,6 +546,7 @@ def export_execution_effectiveness_report(
         strategy_id=strategy_id,
         bill=bill,
         daily=daily,
+        gate_source=str(live_cfg.get("gate_source", "account_daily_assets")),
     )
     execution_cfg = execution_settings(effective_config)
     live_cfg["slippage"] = effective_config.get("walk_forward", {}).get("slippage", "")

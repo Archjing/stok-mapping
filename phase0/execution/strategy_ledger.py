@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import json
 from typing import Any, Callable
 
@@ -15,6 +16,7 @@ def execution_settings(config: dict[str, Any]) -> dict[str, Any]:
     return {
         "price_mode": str(cfg.get("price_mode", "next_open")),
         "conservative_price_buffer": float(cfg.get("conservative_price_buffer", 0.001)),
+        "price_tick": float(cfg.get("price_tick", 0.01)),
         "lot_size": int(cfg.get("lot_size", 100)),
         "max_participation_rate": float(cfg.get("max_participation_rate", 0.05)),
         "min_commission": float(cfg.get("min_commission", 0.0)),
@@ -40,12 +42,47 @@ def looks_like_st(name: Any) -> bool:
     return "ST" in text or "退" in text
 
 
+def truthy_market_flag(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        text = value.strip().lower()
+        return text in {"1", "true", "t", "yes", "y", "停牌", "暂停交易", "suspended", "limit_up", "limit_down"}
+    try:
+        if pd.isna(value):
+            return False
+    except (TypeError, ValueError):
+        pass
+    return bool(value)
+
+
+def round_price_to_tick(price: float, action: str, tick: float) -> float:
+    if not pd.notna(price) or float(price) <= 0 or float(tick) <= 0:
+        return float(price)
+    rounding = ROUND_CEILING if action == "买" else ROUND_FLOOR
+    units = (Decimal(str(float(price))) / Decimal(str(float(tick)))).to_integral_value(rounding=rounding)
+    return float(units * Decimal(str(float(tick))))
+
+
 def is_new_stock_no_limit(row: pd.Series, execution_cfg: dict[str, Any]) -> bool:
     if not bool(execution_cfg.get("enable_special_limit_rules", True)):
         return False
     limit_days = int(execution_cfg.get("new_stock_no_limit_days", 0) or 0)
     if limit_days <= 0:
         return False
+    for key in [
+        "listing_trading_days",
+        "trade_days_since_listing",
+        "trading_days_since_listing",
+        "listing_trade_day_index",
+        "listing_trade_day_number",
+    ]:
+        value = pd.to_numeric(row.get(key, np.nan), errors="coerce")
+        if pd.notna(value):
+            age = int(value)
+            if key == "listing_trade_day_number":
+                return 1 <= age <= limit_days
+            return 0 <= age < limit_days
     trade_date = pd.to_datetime(row.get("date", ""), errors="coerce")
     list_date = pd.to_datetime(row.get("list_date", ""), errors="coerce")
     if pd.isna(trade_date) or pd.isna(list_date):
@@ -147,7 +184,31 @@ def prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFram
 
     cols = [
         col
-        for col in ["date", "symbol", "open", "high", "low", "close", "volume", "amount", "execution_adjust_type", "name", "stock_name", "list_date"]
+        for col in [
+            "date",
+            "symbol",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "execution_adjust_type",
+            "name",
+            "stock_name",
+            "list_date",
+            "limit_up",
+            "limit_down",
+            "is_limit_up",
+            "is_limit_down",
+            "is_suspended",
+            "suspended",
+            "listing_trading_days",
+            "trade_days_since_listing",
+            "trading_days_since_listing",
+            "listing_trade_day_index",
+            "listing_trade_day_number",
+        ]
         if col in price_frame.columns and (col in {"date", "symbol"} or col not in sf.columns)
     ]
     prices = price_frame[cols].copy()
@@ -178,6 +239,9 @@ def prepare_execution_frame(signal_frame: pd.DataFrame, price_frame: pd.DataFram
         sf["execution_price_buy"] = sf["open"].where(sf["open"].notna() & (sf["open"] > 0), sf["close"])
         sf["execution_price_sell"] = sf["open"].where(sf["open"].notna() & (sf["open"] > 0), sf["close"])
         price_mode = "next_open"
+    tick = float(execution_cfg.get("price_tick", 0.01) or 0.0)
+    sf["execution_price_buy"] = sf["execution_price_buy"].map(lambda value: round_price_to_tick(value, "买", tick))
+    sf["execution_price_sell"] = sf["execution_price_sell"].map(lambda value: round_price_to_tick(value, "卖", tick))
 
     sf["valuation_price"] = sf["close"]
     sf = sf.sort_values(["symbol", "date"]).reset_index(drop=True)
@@ -225,6 +289,8 @@ def trade_block_reasons(row: pd.Series, action: str, execution_cfg: dict[str, An
     volume = float(row.get("volume", np.nan) or np.nan)
     amount = float(row.get("amount", np.nan) or np.nan)
     if bool(execution_cfg.get("enable_suspension_check", True)):
+        if truthy_market_flag(row.get("is_suspended")) or truthy_market_flag(row.get("suspended")):
+            reasons.append("停牌/显式状态")
         if pd.isna(open_price) or open_price <= 0 or pd.isna(close_price) or close_price <= 0:
             reasons.append("停牌/无有效价格")
         if pd.notna(volume) and volume <= 0:
@@ -235,19 +301,29 @@ def trade_block_reasons(row: pd.Series, action: str, execution_cfg: dict[str, An
     if (
         bool(execution_cfg.get("enable_limit_check", True))
         and not is_new_stock_no_limit(row, execution_cfg)
-        and pd.notna(previous_close)
-        and float(previous_close) > 0
         and pd.notna(open_price)
     ):
+        tolerance = 0.001
+        explicit_limit_up = pd.to_numeric(row.get("limit_up", np.nan), errors="coerce")
+        explicit_limit_down = pd.to_numeric(row.get("limit_down", np.nan), errors="coerce")
+        if action == "买" and truthy_market_flag(row.get("is_limit_up")):
+            reasons.append("涨停不可买")
+        if action == "卖" and truthy_market_flag(row.get("is_limit_down")):
+            reasons.append("跌停不可卖")
+        if action == "买" and pd.notna(explicit_limit_up) and open_price >= float(explicit_limit_up) * (1.0 - tolerance):
+            reasons.append("涨停不可买")
+        if action == "卖" and pd.notna(explicit_limit_down) and open_price <= float(explicit_limit_down) * (1.0 + tolerance):
+            reasons.append("跌停不可卖")
+        if not (pd.notna(previous_close) and float(previous_close) > 0):
+            return list(dict.fromkeys(reasons))
         limit = limit_pct(str(row.get("symbol", "")), execution_cfg, row)
         limit_up = float(previous_close) * (1.0 + limit)
         limit_down = float(previous_close) * (1.0 - limit)
-        tolerance = 0.001
         if action == "买" and open_price >= limit_up * (1.0 - tolerance):
             reasons.append("涨停不可买")
         if action == "卖" and open_price <= limit_down * (1.0 + tolerance):
             reasons.append("跌停不可卖")
-    return reasons
+    return list(dict.fromkeys(reasons))
 
 
 def append_order_record(

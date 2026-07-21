@@ -32,6 +32,7 @@ def test_strategy_ledger_execution_settings_include_deterministic_constraints() 
         {
             "execution": {
                 "price_mode": "next_open",
+                "price_tick": 0.01,
                 "min_commission": 5.0,
                 "transfer_fee_rate": 0.00001,
                 "min_trade_amount": 1000.0,
@@ -44,6 +45,7 @@ def test_strategy_ledger_execution_settings_include_deterministic_constraints() 
     )
 
     assert cfg["min_commission"] == 5.0
+    assert cfg["price_tick"] == 0.01
     assert cfg["transfer_fee_rate"] == 0.00001
     assert cfg["min_trade_amount"] == 1000.0
     assert cfg["enable_t_plus_one"] is True
@@ -109,4 +111,3 @@ def test_strategy_ledger_blocks_min_trade_amount() -> None:
     assert "低于最小成交金额" in str(bill.iloc[0]["未成交原因"])
     counts = json.loads(str(daily.iloc[0]["block_reason_counts"]))
     assert counts["低于最小成交金额"] == 1
-

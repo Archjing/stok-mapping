@@ -1,9 +1,9 @@
 # stok-mapping 项目架构说明
 
 > 面向对象：项目维护者、策略研究者、后续产品实现者  
-> 最后审视：2026-06-05  
+> 最后审视：2026-06-27
 > 审视角色：软件架构师  
-> 依据：当前 `phase0/` 代码、`config.yaml`、`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、最近一次开发日志与已实现 CLI。  
+> 依据：当前 `phase0/` 代码、`config.yaml`、`README.md`、`docs/DEVELOPMENT_PLAN.md`、`docs/tasks/WEEKLY_EXECUTION_CHECKLIST.md`、`reports/README.md`、当前 `phase0.cli --help` 输出与已实现 CLI。
 > 旧版归档：[`docs/archive/PROJECT_ARCHITECTURE_OVERVIEW_2026-06-05_pre_review.md`](archive/PROJECT_ARCHITECTURE_OVERVIEW_2026-06-05_pre_review.md)
 
 ---
@@ -19,6 +19,8 @@
 - A 股数据底座已以本地 SQLite 为核心，Tushare 是当前 A 股主源，US/HK 跨市场数据已独立落库。
 - 策略评估不再只看 effectiveness gate，还需要同时考虑 `qfq_asof`、PIT 股票池、财务公告日、过拟合诊断、数据健康检查和账户级执行约束。
 - 新增 `db-health` 后，数据质量已开始从分散脚本审计演进为可调度门禁。
+- Python 模块已完成一轮 main 集成整理：外部数据读取归入 `phase0/data_access/`，数据更新、回填和审计归入 `phase0/data_governance/`，策略准入、归因和诊断归入 `phase0/research/`，报告路径与 manifest 归入 `phase0/reporting/`。
+- `reports/` 根目录已收敛为白名单结构，常规运行产物、日志和 SQLite 数据库默认作为本地资产维护，不随远端 Git 同步。
 - 系统仍不是自动交易系统，不输出自动下单指令，也不允许 LLM 直接生成交易决策。
 
 一句话定位：
@@ -59,10 +61,10 @@
 
 当前最高优先级不是新增复杂策略，而是：
 
-1. 跑完 Tushare 财务因子 2016Q1-2018Q1 历史回填。
-2. 用 `db-health` 建立调度和研究任务的前置门禁。
-3. 继续推进因子有效性诊断，基于真实覆盖率重建低频低换手候选。
-4. 将过拟合诊断、因子诊断、`qfq_asof`、账户级执行约束合并为策略准入流程。
+1. 围绕 `baseline_admission_all_v1` 的 13 个默认候选重跑全量 admission，并落盘带日期、背景、命令口径和治理动作的报告。
+2. 继续推进低波、低换手、质量和 sleeve 降 churn 主线，重点解释相对基准跑输、参数不稳定、行业集中和换手成本。
+3. 保持 `db-health`、`qfq_asof`、PIT 股票池、财务 PIT、过拟合和执行约束为策略准入前置条件。
+4. 将 T5.2 情报层和 T2.13 因子传导框架用于失败归因、特征注册和策略选择方法论，不直接改写交易信号。
 
 ---
 
@@ -73,7 +75,7 @@
 ```text
 ┌──────────────────────────────────────────────────────────────┐
 │ 9. 交付与运维层                                               │
-│ reports / watchlist HTML / desktop UI / scheduler / logs / ECS│
+│ reports / watchlist HTML / account bill / scheduler / logs / memory / static site │
 ├──────────────────────────────────────────────────────────────┤
 │ 8. 策略治理层                                                 │
 │ walk-forward / gate / overfit / factor-effectiveness / admission│
@@ -172,7 +174,19 @@ brief watchlist / brief daily / premarket
     ↓
 reports/watchlist_today/index.html
     ↓
-可选 ECS 同步
+可选远端静态站点同步
+```
+
+多模拟账户静态控制台是交付流的独立汇总层：
+
+```text
+brief watchlist --all-accounts
+    ↓
+reports/runs/latest/accounts/<account_id>/
+    ↓
+site build / site publish
+    ↓
+reports/static_site/quant/ → 远端 /quant/
 ```
 
 当前限制：
@@ -181,6 +195,7 @@ reports/watchlist_today/index.html
 - watchlist 是观察池和计划层，不是自动交易信号。
 - 关注个股分析工具是独立的数据分析与可视化工具，不等同于每日 watchlist 输出；它面向用户手动关注股票生成交互式分析看板和单股评估报告。
 - 账户级账单基于已确认 OHLCV 交易日，不是盘中实时撮合。
+- `/quant/` 控制台只发布静态 HTML/CSS/JSON/CSV，不上传 SQLite；远端同步目标固定限制在 `/var/www/spidermanread/quant/`。
 
 ---
 
@@ -207,6 +222,7 @@ reports/watchlist_today/index.html
 | 策略研究 | `run`, `factor-effectiveness`, `overfit-diagnostic`, `cost-sensitivity` | 策略验证和诊断 |
 | 账户/执行 | `bill`, `execution-gate`, `oos-report` | 账户级仿真和执行假设验证 |
 | 交付 | `brief daily`, `brief watchlist`, `brief premarket`, `brief account-bill` | 日常观察池和报告输出 |
+| 静态控制台 | `site build`, `site sync`, `site publish` | 多模拟账户 `/quant/` 控制台构建和发布 |
 
 CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块或 `scripts/*` 的应用脚本中。
 
@@ -307,7 +323,7 @@ Tushare 财务历史回填当前状态：
 
 核心模块：
 
-- [phase0/db_health.py](../phase0/db_health.py)
+- [phase0/data_governance/db_health.py](../phase0/data_governance/db_health.py)
 - [phase0/data_governance/adjustment.py](../phase0/data_governance/adjustment.py)
 - [phase0/data_governance/financial_pti.py](../phase0/data_governance/financial_pti.py)
 - [phase0/data_governance/local_history_consistency.py](../phase0/data_governance/local_history_consistency.py)
@@ -398,9 +414,15 @@ Tushare 财务历史回填当前状态：
 - `residual_momentum_reversal_v1`
 - `residual_momentum_reversal_v2`
 - `quality_growth_price_v1`
+- `low_vol_low_turnover_quality_v1`
+- `quality_low_turnover_monthly_v1`
 - `multifactor_volume_price_filter_v1`
 - `theme_exposure_momentum_v1`
 - `core_selection_quality_momentum_v1`
+- `sleeve_composite_v1`
+- `sleeve_composite_low_churn_v1`
+
+这些 13 个候选构成当前 `baseline_admission_all_v1` 默认准入集合。其他强市场参与类策略已经在代码中预注册或研究实现，但默认不进入 `baseline_admission_all_v1`；它们属于专项实验或 research-only 备选，不能被误解为正式候选池扩张。
 
 架构风险：
 
@@ -435,7 +457,7 @@ Tushare 财务历史回填当前状态：
 
 ---
 
-### 5.7.1 关注个股分析工具（规划）
+### 5.9 关注个股分析工具（规划）
 
 当前状态：
 
@@ -527,15 +549,20 @@ updated_at
 
 ---
 
-### 5.8 策略治理层
+### 5.10 策略治理层
 
 核心模块：
 
 - [phase0/walk_forward.py](../phase0/walk_forward.py)
 - [phase0/research/diagnostics/overfit.py](../phase0/research/diagnostics/overfit.py)
 - [phase0/research/diagnostics/factor_effectiveness.py](../phase0/research/diagnostics/factor_effectiveness.py)
-- [phase0/strategy_admission.py](../phase0/strategy_admission.py)
-- [phase0/reporting.py](../phase0/reporting.py)
+- [phase0/research/admission/runner.py](../phase0/research/admission/runner.py)
+- [phase0/research/admission/gate.py](../phase0/research/admission/gate.py)
+- [phase0/research/admission/review.py](../phase0/research/admission/review.py)
+- [phase0/research/admission/reports.py](../phase0/research/admission/reports.py)
+- [phase0/research/admission/failure_attribution.py](../phase0/research/admission/failure_attribution.py)
+- [phase0/reporting/paths.py](../phase0/reporting/paths.py)
+- [phase0/reporting/registry.py](../phase0/reporting/registry.py)
 
 当前治理能力：
 
@@ -567,12 +594,12 @@ data health PASS / acceptable warning
 当前缺口：
 
 - `overfit-diagnostic` 还未接入 `execution-gate` 和 `brief`。
-- `strategy-admission` 已有 MVP，但尚未完整合并 `qfq_asof` 对照、factor diagnostic、financial PTI 和 execution gate。
+- `strategy-admission` 已有 MVP，已能输出账户执行诊断状态和执行指标；`qfq_asof` 对照、factor diagnostic、financial PTI 和独立 execution gate 的结论仍需继续向统一准入报告收敛。
 - 成本敏感性、参数邻域扰动、收益集中度仍需进一步量化并进入 admission 结论。
 
 ---
 
-### 5.9 账户与执行仿真层
+### 5.11 账户与执行仿真层
 
 核心模块：
 
@@ -615,7 +642,7 @@ data health PASS / acceptable warning
 
 ---
 
-### 5.10 交付与运维层
+### 5.12 交付与运维层
 
 核心入口：
 
@@ -636,7 +663,8 @@ data health PASS / acceptable warning
 | --- | --- |
 | `reports/` | 研究报告、审计报告、HTML 产物、CSV 导出 |
 | `reports/watchlist_today/` | 当前阶段试用观察池页面 |
-| `logs/` | 调度日志、开发日志、会话记录 |
+| `logs/` | 调度日志、运行日志、锁文件和状态戳 |
+| `memory/` | 人工会话归档、关键决策、长期项目记忆和历史计划快照 |
 | `data/` | 长期可复用数据资产，不进 Git |
 | `docs/` | 当前有效项目文档 |
 | `refdocs/` | 参考资料、论文、背景材料、非当前主线资料 |
@@ -674,7 +702,7 @@ System Orchestrator
 
 ---
 
-### 5.11 本地桌面交互 UI 预留
+### 5.13 本地桌面交互 UI 预留
 
 可行性结论：
 
@@ -814,7 +842,7 @@ SQLite / reports / logs / source audit
 
 - Tushare 财务历史回填未完成，质量/现金流类因子长期历史诊断仍不完整。
 - 调度仍由 shell 脚本承担主要状态判断，缺少统一维护编排器、运行账本和长任务监督。
-- 统一 `strategy-admission` 报告已有 MVP，但完整准入判断仍分散在 qfq、factor、financial PTI、execution gate 等报告中。
+- 统一 `strategy-admission` 报告已有 MVP，并已接入账户执行诊断；完整准入判断仍需继续收敛 qfq、factor、financial PTI 和独立 execution gate 等报告。
 
 ### P1
 

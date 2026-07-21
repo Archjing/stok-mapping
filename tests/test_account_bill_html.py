@@ -88,7 +88,7 @@ def test_account_bill_html_uses_belafonte_bundle(tmp_path: Path) -> None:
     assert 'class="report-table account-bill-table"' in html
     assert "账户总览" in html
     assert "<th>建仓日</th>" in html
-    assert '<td class="num-center">2026-06-29</td>' in html
+    assert '<td class="num-center">2026-06-27</td>' in html
     assert '<td class="num-right">1,001,234.50</td>' in html
     assert '<td class="num-center">000001.SZ</td>' in html
     assert "--amber:      #eaa549;" in css

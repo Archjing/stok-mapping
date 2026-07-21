@@ -319,7 +319,7 @@ flowchart TB
     SO[System Orchestrator<br/>统一入口 / 状态汇总 / 报告索引]
     SO --> MO[Maintenance Orchestrator<br/>数据更新 / backfill / 健康门禁]
     SO --> RO[Research Orchestrator<br/>因子诊断 / 策略验证 / admission]
-    SO --> DO[Delivery Orchestrator<br/>日报 / 观察池 / ECS 同步]
+    SO --> DO[Delivery Orchestrator<br/>日报 / 观察池 / 远端静态同步]
     SO --> AO[Account Orchestrator<br/>模拟账户 / 对账 / 执行约束]
     SO --> FO[Focus Orchestrator<br/>关注个股 / 单股报告 / 看板]
 ```

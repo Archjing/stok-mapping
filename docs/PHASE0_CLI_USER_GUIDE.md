@@ -52,6 +52,7 @@ uv sync
 - `financial-pti`
 - `factor-effectiveness`
 - `db-health`
+- `ai-corpus`
 - `daily-brief`
 - `premarket`
 - `execution-gate`
@@ -62,6 +63,7 @@ uv sync
 - `update-us-market-history`
 - `update-hk-market-history`
 - `update-financials`
+- `site`
 
 ---
 
@@ -119,7 +121,215 @@ Walk-forward runtime cache 默认只缓存安全边界：同一数据源签名�
 profile JSON 会记录 cache manifest，包括数据源 mtime/size、复权口径、cache 开关和命中统计。需要排查缓存影响时可加 `--no-wf-cache`；
 启用磁盘缓存后需要重建时可加 `--refresh-wf-cache`。
 
-### 3.2 导出类命令
+### 3.2 AI 语料库命令
+
+`ai-corpus`：抓取、入库、查询和导出本地 AI 语料库文档。当前用于政策法规、CCTV 新闻联播公开文稿、后续公告 / 央行报告 / 研报元数据等文本材料的可追溯归档；不直接生成交易信号，不直接接入主 ranker。
+
+当前 provider 状态：
+
+```bash
+./runit ai-corpus registry --config config.yaml
+```
+
+当前输出含义：
+
+- `gov_policy`：`implemented_mvp`，支持 gov.cn 政策库 fixture、live fetch、reference cache、source probe 和 pre-fetch audit gate。
+- `cctv`：`implemented_mvp`，支持央视网新闻联播日期页、完整节目页和分段页 live fetch；fixture 仅用于离线回归测试。
+- `cninfo`：`implemented_mvp`，支持 AkShare / 巨潮资讯公告列表抓取、fixture 回归、事件类型过滤、raw archive、SQLite upsert 和晚间调度任务；当前只承诺列表级事件线索，不抓公告 PDF / 全文。
+
+默认本地 SQLite 库路径：
+
+```text
+data/ai_corpus/ai_corpus.sqlite
+```
+
+默认表名：
+
+```text
+ai_corpus_documents
+```
+
+注意：默认库只有在第一次不带 `--database-path` 执行 `ai-corpus fetch` 后才会创建。验收或实验命令若使用 `/tmp/...sqlite` 覆盖路径，不会生成默认库。
+
+gov.cn 政策库示例：
+
+```bash
+# fixture-first 验收：创建默认 data/ai_corpus/ai_corpus.sqlite
+./runit ai-corpus fetch --config config.yaml \
+  --provider gov-policy \
+  --org 国务院 \
+  --ptype 科技 \
+  --end-date '2025-08-26 17:00:00' \
+  --fixture-dir tests/fixtures/ai_corpus/gov_policy \
+  --limit 20
+
+# live 抓取：不传 --fixture-dir 时访问 gov.cn；需要网络可用
+./runit ai-corpus fetch --config config.yaml \
+  --provider gov-policy \
+  --org 国务院 \
+  --ptype 科技 \
+  --start-date 2025-01-01 \
+  --end-date 2025-12-31 \
+  --limit 100
+
+# 生产门禁：先写 source probe JSON，probe 失败时不执行 fetch
+./runit ai-corpus fetch --config config.yaml \
+  --provider gov-policy \
+  --org 国务院 \
+  --ptype 科技 \
+  --keyword 人工智能 \
+  --limit 20 \
+  --min-rows 1 \
+  --timeout 20 \
+  --refresh-reference \
+  --probe-before-fetch \
+  --min-probe-content-chars 200 \
+  --probe-output-json 'reports/phase0/ai_corpus/probes/gov_policy_probe_%Y%m%dT%H%M%S.json'
+```
+
+日期区间口径：
+
+- `--start-date` / `--end-date` 是上游发布时间 `published_at` 过滤条件。
+- gov.cn provider 如果两个日期都不传，就是不加发布时间过滤，只受 `--limit` 和上游返回顺序影响；这不适合作为可复现的治理任务。
+- 只传 `--end-date` 时，表示抓取发布时间不晚于该日期的结果；只传 `--start-date` 时，表示抓取发布时间不早于该日期的结果。
+- 创建默认库本身不会自动决定日期区间；日期区间完全由本次 `fetch` 命令参数决定。
+- 每日调度器默认任务 `gov_policy_fetch` 会运行上述生产门禁路径：先执行 gov.cn source probe，报告写入 `reports/phase0/ai_corpus/probes/`，再抓取并 upsert 到默认 AI 语料库。
+- gov.cn probe 报告包含 `audit.checks[]`，默认检查 reference topic、匹配主题、搜索行数、列表必需字段、发布时间字段、`ztflTree`、正文 HTML 和正文长度；任一 error 会让 `--probe-before-fetch` 阻断生产抓取。
+- `gov_policy_fetch` 可通过环境变量覆盖：`GOV_POLICY_TIME`、`GOV_POLICY_ORG`、`GOV_POLICY_PTYPE`、`GOV_POLICY_KEYWORD`、`GOV_POLICY_LIMIT`、`GOV_POLICY_MIN_ROWS`、`GOV_POLICY_TIMEOUT`、`GOV_POLICY_DATABASE_PATH`、`GOV_POLICY_RAW_ARCHIVE_DIR`、`GOV_POLICY_REFERENCE_DIR`、`GOV_POLICY_PROBE_OUTPUT_JSON`、`GOV_POLICY_PROBE_MIN_ROWS`、`GOV_POLICY_PROBE_MIN_TOPICS`、`GOV_POLICY_PROBE_MIN_DEPARTMENTS`、`GOV_POLICY_PROBE_MIN_CONTENT_CHARS`。
+
+CCTV 新闻联播 live 抓取示例：
+
+```bash
+# 抓指定日期；不传 --fixture-dir 时访问央视网公开页面
+./runit ai-corpus fetch --config config.yaml \
+  --provider cctv-news \
+  --date 20260703 \
+  --limit 100 \
+  --min-rows 1
+
+# 不传 --date 时默认抓当天，适合每日调度器使用
+./runit ai-corpus fetch --config config.yaml \
+  --provider cctv-news \
+  --limit 100 \
+  --min-rows 1
+
+# 抓时间区间；按闭区间逐日访问 CCTV 日期页并合并入库
+./runit ai-corpus fetch --config config.yaml \
+  --provider cctv-news \
+  --start-date 2026-07-03 \
+  --end-date 2026-07-07 \
+  --limit 100 \
+  --min-rows 1
+
+# 只抓完整节目，不抓分段节目
+./runit ai-corpus fetch --config config.yaml \
+  --provider cctv-news \
+  --date 20260703 \
+  --full-program-only
+```
+
+CCTV fixture 回归测试示例：
+
+```bash
+./runit ai-corpus fetch --config config.yaml \
+  --provider cctv-news \
+  --date 20260703 \
+  --fixture-dir tests/fixtures/ai_corpus/cctv_news \
+  --limit 20
+```
+
+CNInfo / 巨潮资讯公告列表示例：
+
+```bash
+# 生产调度推荐口径：抓取市场风险类公告，再按标题细分为异常波动 / 交易风险提示 / 严重异常波动
+./runit ai-corpus fetch --config config.yaml \
+  --provider cninfo \
+  --event-type risk_events \
+  --start-date 2026-07-02 \
+  --end-date 2026-07-03 \
+  --min-rows 0
+
+# 单独抓取异常波动公告；不传 --fixture-dir 时通过 AkShare 访问巨潮资讯公告列表
+./runit ai-corpus fetch --config config.yaml \
+  --provider cninfo \
+  --event-type abnormal_trading \
+  --start-date 2026-07-02 \
+  --end-date 2026-07-03 \
+  --min-rows 1
+
+# 抓取交易风险提示公告，并过滤可转债适当性、退市风险警示等非目标公告
+./runit ai-corpus fetch --config config.yaml \
+  --provider cninfo \
+  --event-type trading_risk_warning \
+  --start-date 2026-07-02 \
+  --end-date 2026-07-03 \
+  --min-rows 1
+
+# 按股票代码限定范围；多个代码用逗号分隔
+./runit ai-corpus fetch --config config.yaml \
+  --provider cninfo \
+  --event-type earnings_forecast \
+  --symbols 300750,600519 \
+  --start-date 2026-07-01 \
+  --end-date 2026-07-10 \
+  --min-rows 1
+```
+
+查询本地库：
+
+```bash
+# 表格输出
+./runit ai-corpus query --config config.yaml --provider gov-policy --keyword 人工智能 --limit 20
+
+# Markdown 输出
+./runit ai-corpus query --config config.yaml --corpus-type cctv_news --format markdown --limit 20
+
+# CSV 输出
+./runit ai-corpus query --config config.yaml --provider gov-policy --keyword 人工智能 \
+  --format csv --output-csv reports/runs/latest/ai_corpus_policy_query.csv
+```
+
+导出本地库已有记录：
+
+```bash
+./runit ai-corpus export --config config.yaml \
+  --provider gov-policy \
+  --keyword 人工智能 \
+  --output-csv reports/runs/latest/ai_corpus_export.csv
+```
+
+常用参数：
+
+- `--provider`：`gov-policy` / `npr` / `cctv-news` 等别名会映射到内部 provider。
+- `--event-type`：事件型 provider 的事件过滤口径，当前主要用于 `cninfo`，如 `risk_events`、`abnormal_trading`、`trading_risk_warning`、`severe_abnormal_trading`、`earnings_forecast`。
+- `--org`：政策发文机关，如 `国务院`、`工业和信息化部`。
+- `--ptype`：政策主题，目前已支持 `科技`、`科技、教育` 的 MVP 映射。
+- `--keyword`：关键词过滤。
+- `--symbols`：股票代码过滤，当前主要用于 `cninfo`；多个代码用逗号分隔。
+- `--date`：日期型 provider 的单日日期，当前主要用于 `cctv-news`，格式 `YYYYMMDD` 或可解析日期。
+- `--min-rows`：抓取结果低于该行数时返回失败码；调度器用 `--min-rows 1` 避免“当天页面尚未发布但任务显示成功”。
+- `--fields`：抓取后 CSV 输出字段列表，如 `pubtime,title,pcode,puborg,ptype,url`。
+- `--fixture-dir`：离线 fixture 验证目录；不传时 `gov-policy` / `cctv-news` 会尝试访问公开 live 来源。
+- `--database-path`：覆盖 SQLite 路径，适合验收或实验，不会写默认库。
+- `--raw-archive-dir`：覆盖原始响应归档目录。
+- `--no-content`：gov.cn 只抓列表，不抓正文页。
+- `--full-program-only`：`cctv-news` 只抓新闻联播完整节目行，不抓分段节目。
+- `--min-probe-rows` / `--min-probe-topics` / `--min-probe-departments` / `--min-probe-content-chars`：gov.cn probe audit 阈值，生产调度器默认分别为 `1`、`1`、`0`、`200`。
+- `--no-require-topic-tree` / `--no-require-content-html`：降低 gov.cn probe audit 严格度；只建议临时排障使用，不建议放入默认调度。
+
+默认调度补充：
+
+- `cninfo_risk_events` 每天 `20:20` 运行，默认等同于 `ai-corpus fetch --provider cninfo --event-type risk_events --limit 200 --min-rows 0`。
+- `CNINFO_RISK_EVENTS_TIME`、`CNINFO_RISK_EVENTS_EVENT_TYPE`、`CNINFO_RISK_EVENTS_LIMIT`、`CNINFO_RISK_EVENTS_MIN_ROWS`、`CNINFO_RISK_EVENTS_DATABASE_PATH`、`CNINFO_RISK_EVENTS_RAW_ARCHIVE_DIR` 可覆盖默认调度参数。
+- `CNINFO_RISK_EVENTS_MIN_ROWS` 默认是 `0`，因为某天没有异常波动或交易风险提示公告是正常结果；网络、解析或入库异常仍会让任务失败。
+
+边界要求：
+
+- AI 语料库只作为研究情报、政策解释、公告风险提示和后续 RAG-ready 资料层。
+- 不允许把政策、新闻、公告或 LLM 摘要直接当作策略信号接入主 ranker。
+- 进入回测或策略解释前，必须先通过 `as_of_time`、来源、去重键、正文 hash 和 raw path 审计。
+
+### 3.3 导出类命令
 
 `daily-brief`：日常简报 pipeline。默认先执行 A 股历史库增量更新，再导出当前有效主策略的 07:30 盘前观察池；如果历史库插入了新行，会自动刷新低换手策略 panel cache。
 
@@ -149,7 +359,24 @@ reports/<brief_date>/phase0_premarket_report_<brief_date>.html
 data/simulated_trading/phase0_daily_brief_ledger.csv
 ```
 
-当前阶段，`daily-brief` 会把上一期模拟目标仓位作为本期模拟当前仓位，再把本期策略目标权重作为程序自动操作后的目标仓位。表格中的 `交易动作`、`当前权重`、`目标权重`、`权重变化` 是连续模拟口径，`策略信号动作` 是策略本次孤立信号口径。后续接入用户模拟交易确认后，连续模拟仓位应切到用户实际成交/持仓状态。
+当前阶段，`brief watchlist` 会用当前模拟账户的上一确认持仓与本期策略目标权重生成计划层观察池。为压缩宽表，表格显示短表头：`动作`、`当前权重`、`目标权重`、`权重变化`、`持仓天数` 是模拟账户口径；`信号动作`、`信号持有天数` 是策略研究信号口径。模拟账户可通过 `accounts.simulated[].simulation_start_date` 设置生命周期起点，避免新账户继承更早历史 watchlist。
+
+多模拟账户日常生成：
+
+```bash
+./runit brief watchlist --config config.yaml --all-accounts
+```
+
+该命令会为 `accounts.simulated` 中所有 `enabled: true` 的模拟账户生成各自的 watchlist、模拟账单和账户级 latest bundle。不同账户可以配置不同 `strategy_id`，控制台和后续发布链路按账户读取各自的产物，不复用默认账户页面。
+
+盘后确认当日模拟账户账单：
+
+```bash
+./runit brief confirm-account-bills --config config.yaml --all-accounts
+./runit brief confirm-account-bills --config config.yaml --all-accounts --date 2026-07-02
+```
+
+`brief confirm-account-bills` 不重新生成观察池；它读取当日已归档的 watchlist CSV，按每个 enabled 账户自己的策略、建仓日和执行价口径重算账户账本。若当天执行价 OHLCV 已入库，则刷新账户级 latest account-bill、默认账户旧版 `/account-bill/` 镜像，并发布 `/quant/` 静态控制台。`brief account-bill` 只负责从 SQLite 导出账单 HTML，不负责重算账本。
 
 `bill`：导出低换手账单与资产曲线文件。
 
@@ -175,6 +402,8 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
   --output-dir reports/live_execution_backtest/research_profile
 ```
 
+默认 `compare` / `strategy-admission` 会启用 `walk_forward.strategy_v2.account_execution` 诊断，并按 `phase0.execution` 中的确定性规则计算账户执行指标。当前规则覆盖 100 股整手、最低佣金、过户费、最小成交金额、T+1 可卖库存、ST 5% 涨跌停、新股上市初期不限价、普通涨跌停、停牌和最大成交参与率。该诊断用于准入复核；主收益曲线仍是策略研究收益口径。
+
 `premarket`：导出 07:30 盘前观察池。
 
 ```bash
@@ -187,13 +416,37 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 ./.venv/bin/python -m phase0.cli market-regime --config config.yaml
 ```
 
+### 3.4 静态站点命令
+
+`site`：构建和发布多模拟账户静态控制台。默认本地输出目录为 `reports/static_site/quant/`，远端入口为 `/quant/`。
+
+```bash
+# 本地构建，不同步远端
+./runit site build --config config.yaml
+
+# 同步已有本地控制台到远端 /quant/
+./runit site sync --config config.yaml
+
+# 先构建再同步
+./runit site publish --config config.yaml
+```
+
+远端同步默认读取：
+
+```bash
+QUANT_SITE_SYNC_REMOTE=linuxuser@108.61.182.91
+QUANT_SITE_SYNC_REMOTE_DIR=/var/www/spidermanread/quant/
+```
+
+安全边界：`site sync` 只允许远端目录以 `/quant/` 结尾，不会同步到 `/var/www/spidermanread/` 根目录；静态站点只包含 HTML/CSS/JSON/CSV，不上传 SQLite。
+
 `financial-pti`：财务因子 point-in-time 校验。
 
 ```bash
 ./.venv/bin/python -m phase0.cli financial-pti --config config.yaml
 ```
 
-### 3.3 数据库导入与更新
+### 3.5 数据库导入与更新
 
 `import-history`：从本地压缩包重建 A 股历史库（首次建库或重建）。
 
@@ -273,12 +526,14 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 - `reports/phase0_premarket_watchlist.csv`（单独 `premarket`）
 - `reports/phase0_premarket_report.html`（单独 `premarket`）
 - `data/simulated_trading/phase0_daily_brief_ledger.csv`
+- `data/ai_corpus/ai_corpus.sqlite`
 
 本地数据库：
 
 - `data/manual_history/a_share_history.sqlite`
 - `data/us_market_history.sqlite`
 - `data/hk_market_history.sqlite`
+- `data/ai_corpus/ai_corpus.sqlite`
 
 ---
 
@@ -331,11 +586,12 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 日常（开发/研究）：
 
 1. `daily-brief`
-2. `update-financials`（按周）
-3. `update-us-market-history`
-4. `update-hk-market-history`
-5. `run`（策略评估或验收时）
-6. `premarket`（仅在需要跳过数据更新、单独重生成观察池时使用）
+2. `brief confirm-account-bills`（盘后确认模拟账户账单）
+3. `update-financials`（按周）
+4. `update-us-market-history`
+5. `update-hk-market-history`
+6. `run`（策略评估或验收时）
+7. `premarket`（仅在需要跳过数据更新、单独重生成观察池时使用）
 
 验收（策略阶段）：
 

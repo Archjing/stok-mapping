@@ -13,14 +13,16 @@
 - [x] 接入港股历史库更新：`phase0.cli update-hk-market-history`
 - [x] 接入 US market 历史库更新：`phase0.cli update-us-market-history`
 - [x] 接入 A 股季度财务因子更新：`phase0.cli update-financials`
+- [x] 接入盘后账户账本确认与 `/quant/` 发布：`phase0.cli brief confirm-account-bills --all-accounts`
 - [x] 为每个任务提供独立日志文件
 - [x] 为每个任务提供简单锁目录，避免同一任务并发重复启动
 - [x] 成功后写入每日 stamp，避免同一任务同一天重复执行
 - [x] `07:20` 任务已切换到 `phase0.cli brief watchlist`
 - [x] 阶段试用观察池已固定生成 `reports/watchlist_today/index.html`
-- [x] 阶段试用观察池已内置 ECS rsync 同步，远端默认 `BRIEF_SYNC_REMOTE_DIR=/brief/`
+- [x] 阶段试用观察池已内置 rsync 同步，远端优先读取 `BRIEF_SYNC_REMOTE` / `BRIEF_SYNC_REMOTE_DIR`，未设置时 fallback 到代码默认静态站点目录
+- [x] 模拟账户确认账单已接入 rsync 同步，远端优先读取 `ACCOUNT_BILL_SYNC_REMOTE` / `ACCOUNT_BILL_SYNC_REMOTE_DIR`，未设置时 fallback 到代码默认静态站点目录；无确认账单 HTML 时安全跳过
 - [x] `scripts/run_daily_brief_pipeline.sh` 已改为兼容调用 `brief watchlist`
-- [x] 当前 `brief` 命令路由已整理为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`
+- [x] 当前 `brief` 命令路由已整理为 `brief daily`、`brief watchlist`、`brief premarket`、`brief account-bill`、`brief confirm-account-bills`
 
 ## T6.1.2 已知问题：交易日判断仍过于粗糙
 
@@ -76,4 +78,6 @@
 - [x] `T6.1.4.2` 增加状态查询入口；当前实现为 `phase0.cli maintain status`，展示最近运行、失败次数、最后日志路径。
 - [x] `T6.1.4.3` 增加手动触发入口；当前实现为 `phase0.cli maintain run --task tushare_financial_backfill`，短任务仍由 `maintain tick` 驱动。
 - [ ] `T6.1.4.4` 为 OpenClaw / Cloe 增加日报完成后的摘要通知入口。
-- [ ] `T6.1.4.5` 为未来新闻源、宏观源、策略重评估、模拟账户结算预留任务槽。
+- [x] `T6.1.4.5` 为模拟账户盘后结算增加任务槽；当前为交易日 `16:45` 的 `account_bill_confirm`。
+- [x] `T6.1.4.6` 为新闻源增加任务槽；当前 `cctv_news` 在自然日 `20:45` 抓取当天央视网新闻联播文稿，空结果按失败重试。
+- [ ] `T6.1.4.7` 为未来宏观源、策略重评估预留任务槽。

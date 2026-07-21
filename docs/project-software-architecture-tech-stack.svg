@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1120" viewBox="0 0 1680 1120" role="img" aria-labelledby="title desc">
+  <title id="title">stok-mapping software architecture tech stack diagram</title>
+  <desc id="desc">A FigJam-inspired tech stack diagram for the stok-mapping local-first quantitative research architecture.</desc>
+  <defs>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#e7e2f3" stroke-width="1"/>
+    </pattern>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#1f1b3a" flood-opacity="0.16"/>
+    </filter>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto" markerUnits="strokeWidth">
+      <path d="M2 2 L11 7 L2 12 Z" fill="#5146c6"/>
+    </marker>
+    <linearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6c5ce7"/>
+      <stop offset="1" stop-color="#00a8a8"/>
+    </linearGradient>
+    <style>
+      .bg { fill: #fbf8ff; }
+      .title { font-family: "Noto Sans CJK SC"; font-size: 42px; font-weight: 800; fill: #171321; }
+      .subtitle { font-family: "Noto Sans CJK SC"; font-size: 18px; fill: #5a526f; }
+      .label { font-family: "Noto Sans CJK SC"; font-size: 20px; font-weight: 750; fill: #151126; }
+      .small { font-family: "Noto Sans CJK SC"; font-size: 14px; fill: #4d465e; }
+      .micro { font-family: "Noto Sans CJK SC"; font-size: 12px; fill: #665f77; }
+      .mono { font-family: "Noto Sans CJK SC"; font-size: 13px; fill: #302a42; }
+      .noteTitle { font-family: "Noto Sans CJK SC"; font-size: 16px; font-weight: 800; fill: #151126; }
+      .noteText { font-family: "Noto Sans CJK SC"; font-size: 13px; fill: #3f3850; }
+      .laneTitle { font-family: "Noto Sans CJK SC"; font-size: 17px; font-weight: 800; fill: #171321; }
+      .white { fill: #ffffff; }
+      .stroke { stroke: #d6d0ea; stroke-width: 2; }
+      .connector { fill: none; stroke: #5146c6; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrow); }
+      .connectorLight { fill: none; stroke: #9d92ef; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 7 8; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1680" height="1120"/>
+  <rect width="1680" height="1120" fill="url(#grid)" opacity="0.72"/>
+
+  <rect x="64" y="48" width="1552" height="122" rx="28" fill="#ffffff" filter="url(#softShadow)"/>
+  <rect x="64" y="48" width="14" height="122" rx="7" fill="url(#headerGrad)"/>
+  <text x="104" y="102" class="title">stok-mapping 软件架构图</text>
+  <text x="106" y="136" class="subtitle">本地优先、可审计、可复现的 A 股量化研究与盘前研判系统</text>
+  <text x="1285" y="92" class="micro">样式参考：FigJam tech stack diagram</text>
+  <text x="1285" y="120" class="mono">Python 3.12 · SQLite · CLI · Reports</text>
+
+  <g id="stack" filter="url(#softShadow)">
+    <text x="686" y="222" class="label" text-anchor="middle">核心技术栈与数据流</text>
+    <text x="686" y="248" class="small" text-anchor="middle">外部源先落库，研究链路只消费可审计的本地资产</text>
+
+    <g transform="translate(430 276)">
+      <g>
+        <polygon points="0,34 256,0 512,34 256,68" fill="#ffd166"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#eaa93d"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#f6c04f"/>
+        <text x="256" y="42" class="label" text-anchor="middle">1 数据源适配</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">Tushare · AkShare · yfinance · FRED · Tiingo</text>
+      </g>
+
+      <g transform="translate(0 86)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#4dd4ac"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#2aaa88"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#39c79f"/>
+        <text x="256" y="42" class="label" text-anchor="middle">2 本地数据资产</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">a_share · us_market · hk_market · simulated_accounts</text>
+      </g>
+
+      <g transform="translate(0 172)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#7bdff2"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#38a8c6"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#59c4dc"/>
+        <text x="256" y="42" class="label" text-anchor="middle">3 数据质量与审计</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">db-health · financial-pti · universe-pti · adjustment-audit</text>
+      </g>
+
+      <g transform="translate(0 258)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#f78fb3"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#c95d84"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#e5779d"/>
+        <text x="256" y="42" class="label" text-anchor="middle">4 情报与研究语料</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">knowledge/intelligence · refdocs · ledger · review queue</text>
+      </g>
+
+      <g transform="translate(0 344)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#a29bfe"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#7469d8"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#8f86ee"/>
+        <text x="256" y="42" class="label" text-anchor="middle">5 股票池与特征</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">PIT universe · qfq_asof · factors · daily_basic</text>
+      </g>
+
+      <g transform="translate(0 430)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#ff9f7a"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#d76d45"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#f1875d"/>
+        <text x="256" y="42" class="label" text-anchor="middle">6 策略与信号</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">phase0/strategies registry · overlay · rebalance</text>
+      </g>
+
+      <g transform="translate(0 516)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#74b9ff"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#3986d6"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#5ba4ef"/>
+        <text x="256" y="42" class="label" text-anchor="middle">7 策略治理门禁</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">walk-forward · admission · overfit · factor effectiveness</text>
+      </g>
+
+      <g transform="translate(0 602)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#55efc4"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#21b69a"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#35d5b0"/>
+        <text x="256" y="42" class="label" text-anchor="middle">8 账户与执行仿真</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">execution profile · bill · constraints · reconciliation</text>
+      </g>
+
+      <g transform="translate(0 688)">
+        <polygon points="0,34 256,0 512,34 256,68" fill="#b8e986"/>
+        <polygon points="0,34 256,68 256,118 0,84" fill="#7eba4e"/>
+        <polygon points="512,34 256,68 256,118 512,84" fill="#9ddf69"/>
+        <text x="256" y="42" class="label" text-anchor="middle">9 交付与运维</text>
+        <text x="256" y="88" class="mono" text-anchor="middle">reports · watchlist HTML · scheduler · logs · dashboard</text>
+      </g>
+    </g>
+  </g>
+
+  <path class="connector" d="M344 372 C390 356 402 336 430 324"/>
+  <path class="connector" d="M950 344 C1012 342 1038 374 1086 402"/>
+  <path class="connector" d="M344 636 C396 642 404 676 430 704"/>
+  <path class="connector" d="M950 814 C1010 816 1038 852 1086 890"/>
+  <path class="connectorLight" d="M950 622 C1030 600 1048 560 1098 532"/>
+  <path class="connectorLight" d="M430 594 C382 584 356 556 318 526"/>
+
+  <g id="left-notes">
+    <rect x="84" y="264" width="274" height="152" rx="10" fill="#fff3a3" stroke="#d8bd39" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="110" y="302" class="noteTitle">外部输入</text>
+    <text x="110" y="332" class="noteText">A 股主源：Tushare</text>
+    <text x="110" y="358" class="noteText">国内 fallback：AkShare / local package</text>
+    <text x="110" y="384" class="noteText">跨市场：yfinance / Tiingo / FRED</text>
+
+    <rect x="112" y="456" width="246" height="142" rx="10" fill="#ffd6e7" stroke="#df7aa6" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="138" y="494" class="noteTitle">硬边界</text>
+    <text x="138" y="524" class="noteText">不自动下单</text>
+    <text x="138" y="550" class="noteText">不把 LLM 放进主信号路径</text>
+    <text x="138" y="576" class="noteText">不把旧 qfq_current 当严格回测</text>
+
+    <rect x="92" y="650" width="274" height="166" rx="10" fill="#cdf5ff" stroke="#62b7c9" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="118" y="688" class="noteTitle">正确性门禁</text>
+    <text x="118" y="718" class="noteText">qfq_asof 价格安全</text>
+    <text x="118" y="744" class="noteText">point-in-time 股票池</text>
+    <text x="118" y="770" class="noteText">财务公告日可见性</text>
+    <text x="118" y="796" class="noteText">过拟合 / 换手 / 参数稳定性</text>
+
+    <rect x="112" y="858" width="246" height="116" rx="10" fill="#dcffd6" stroke="#78c86c" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="138" y="896" class="noteTitle">运行入口</text>
+    <text x="138" y="926" class="mono">./runit</text>
+    <text x="138" y="952" class="mono">python -m phase0.cli</text>
+  </g>
+
+  <g id="right-cards">
+    <rect x="1090" y="244" width="500" height="150" rx="18" fill="#ffffff" stroke="#d6d0ea" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="1124" y="286" class="laneTitle">CLI 控制层</text>
+    <text x="1124" y="320" class="mono">phase0/cli.py · phase0/cli_commands/*</text>
+    <text x="1124" y="350" class="small">解析命令、调度应用服务、输出报告路径与退出码。</text>
+
+    <rect x="1090" y="424" width="500" height="176" rx="18" fill="#ffffff" stroke="#d6d0ea" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="1124" y="466" class="laneTitle">关键代码模块</text>
+    <text x="1124" y="500" class="mono">data_access/ · data_governance/ · universe.py</text>
+    <text x="1124" y="528" class="mono">walk_forward.py · strategies/ · research/admission/</text>
+    <text x="1124" y="556" class="mono">execution/ · reporting/ · intelligence/</text>
+
+    <rect x="1090" y="630" width="500" height="166" rx="18" fill="#ffffff" stroke="#d6d0ea" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="1124" y="672" class="laneTitle">本地数据与审计产物</text>
+    <text x="1124" y="706" class="mono">data/manual_history/a_share_history.sqlite</text>
+    <text x="1124" y="734" class="mono">data/us_market_history.sqlite · data/hk_market_history.sqlite</text>
+    <text x="1124" y="762" class="mono">source audit tables · logs/scheduler/*.last</text>
+
+    <rect x="1090" y="826" width="500" height="168" rx="18" fill="#ffffff" stroke="#d6d0ea" stroke-width="2" filter="url(#softShadow)"/>
+    <text x="1124" y="868" class="laneTitle">输出与使用者</text>
+    <text x="1124" y="902" class="small">策略研究者：admission / overfit / factor diagnostics</text>
+    <text x="1124" y="930" class="small">日常研判：watchlist HTML / premarket / account bill</text>
+    <text x="1124" y="958" class="small">运维治理：db-health / scheduler / maintenance status</text>
+  </g>
+
+  <g id="bottom-flow">
+    <rect x="78" y="1030" width="1524" height="52" rx="26" fill="#171321"/>
+    <text x="126" y="1063" font-family="Noto Sans CJK SC" font-size="18" font-weight="700" fill="#ffffff">端到端主链路</text>
+    <text x="294" y="1063" font-family="Noto Sans CJK SC" font-size="15" fill="#f5ecff">数据源同步 -> 本地历史库 -> 股票池/特征 -> 候选策略 -> walk-forward/gate/admission -> 账户仿真 -> 报告/观察池</text>
+  </g>
+</svg>

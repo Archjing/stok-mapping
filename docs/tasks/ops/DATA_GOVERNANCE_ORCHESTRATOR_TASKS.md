@@ -54,7 +54,7 @@ System Orchestrator（总体编排器）
 | --- | --- | --- |
 | `Maintenance` | 数据更新、backfill、`db-health`、source audit、调度 | `maintain tick/status/run/stop/resume` |
 | `Research` | 因子诊断、回测、策略准入、过拟合诊断 | `research run/status/compare/admission` |
-| `Delivery` | daily brief、watchlist、报告归档、ECS 同步 | `deliver daily/watchlist/status` |
+| `Delivery` | daily brief、watchlist、报告归档、远端静态站点同步 | `deliver daily/watchlist/status` |
 | `Account` | 模拟账单、持仓、成交、真实账户 CSV 对账 | `account sync/report/reconcile` |
 | `Focus` | 关注个股分析、单股报告、单股可视化看板 | `focus add/refresh/report/dashboard/tui` |
 
@@ -103,6 +103,8 @@ System Orchestrator（总体编排器）
   - [x] `hk_market_history`
   - [x] `us_market_history`
   - [x] `financial_factors`
+  - [x] `account_bill_confirm`
+  - [x] `cctv_news`
 
 ### T6.3.2.3 State Machine
 
@@ -129,7 +131,7 @@ cancelled -> pending
 - [x] 运行前统一执行交易日历、锁、状态、失败次数和 `db-health` 检查。
 - [ ] 后续补显式依赖检查。
 - [x] 运行后统一记录 exit code、log path 和 error summary；长 backfill shard 已登记报告路径和关键结论。
-- [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`；`daily_brief` 例外收窄为 `cn`，避免 HK/US freshness 误伤 A 股盘前简报。
+- [x] 调度任务默认使用 `db-health --scope scheduler --fail-on warning`；`daily_brief` / `account_bill_confirm` 例外收窄为 `cn`，避免 HK/US freshness 误伤 A 股盘前和盘后账户任务。
 - [ ] A 股研究与数据任务默认使用 `db-health --scope cn --fail-on error` 或 `financial/error`。
 
 ### T6.3.2.5 Supervisor
@@ -294,7 +296,7 @@ maintenance_orchestrator:
 
 验收标准：
 
-- [x] `daily_brief`、`a_share_history`、`hk_market_history`、`us_market_history`、`financial_factors` 能由编排器驱动。
+- [x] `daily_brief`、`a_share_history`、`hk_market_history`、`us_market_history`、`financial_factors`、`account_bill_confirm`、`cctv_news` 能由编排器驱动。
 - [x] 失败任务在时间窗口内重试。
 - [x] 同一任务不会重复并发启动。
 - [x] `db-health` 阻断时状态为 `blocked`，不是 `failed`。
@@ -319,7 +321,7 @@ maintenance_orchestrator:
 
 - [x] 新增 `reports/maintenance/maintenance_status_YYYY-MM-DD.md`。
 - [x] 输出当日任务状态、失败原因、跳过原因、健康门禁结果、报告路径。
-- [ ] 后续可接入 ECS 同步或通知，但第一版不默认启用。
+- [ ] 后续可接入远端静态站点同步或通知，但第一版不默认启用。
 
 验收标准：
 

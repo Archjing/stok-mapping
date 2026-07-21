@@ -50,7 +50,7 @@ phase0:
     monkeypatch.setattr(module, "execution_settings", lambda config: {})
     monkeypatch.setattr(module, "export_strategy_bill", fake_export_strategy_bill)
     monkeypatch.setattr(module, "_fold_metrics", lambda daily, bill, strategy_id: pd.DataFrame({"fold": [1], "daily_return": [0.01]}))
-    monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily: {})
+    monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily, **kwargs: {})
     monkeypatch.setattr(module, "_gate_rows", lambda summary, gate_cfg: [("ok", True)])
     monkeypatch.setattr(module, "_write_report", lambda path, **kwargs: Path(path).write_text("report", encoding="utf-8"))
 
@@ -118,7 +118,7 @@ phase0:
     monkeypatch.setattr(module, "execution_settings", lambda config: {})
     monkeypatch.setattr(module, "export_strategy_bill", fake_export_strategy_bill)
     monkeypatch.setattr(module, "_fold_metrics", lambda daily, bill, strategy_id: pd.DataFrame({"fold": [1], "daily_return": [0.01]}))
-    monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily: {})
+    monkeypatch.setattr(module, "_summary_from_folds", lambda folds, governance, strategy_id, bill, daily, **kwargs: {})
     monkeypatch.setattr(module, "_gate_rows", lambda summary, gate_cfg: [("ok", True)])
     monkeypatch.setattr(module, "_write_report", lambda path, **kwargs: Path(path).write_text("report", encoding="utf-8"))
 
@@ -128,3 +128,106 @@ phase0:
     assert Path(calls[0]["daily_output"]) == tmp_path / "local_reports" / "phase_zero" / "live" / "daily.csv"
     assert result["folds"] == tmp_path / "local_reports" / "phase_zero" / "live" / "folds.csv"
     assert result["report"] == tmp_path / "local_reports" / "phase_zero" / "live" / "report.md"
+
+
+def test_summary_marks_account_execution_metrics_as_gate_source() -> None:
+    folds = pd.DataFrame(
+        [
+            {
+                "fold": 1,
+                "valid_start": "2024-01-01",
+                "valid_end": "2024-01-31",
+                "annualized_return": 0.12,
+                "sharpe": 1.1,
+                "max_drawdown": -0.08,
+                "win_rate": 0.55,
+                "turnover_annual": 1.0,
+            }
+        ]
+    )
+
+    summary = module._summary_from_folds(
+        folds,
+        {"min_portfolio_fold_count": 1},
+        strategy_id="demo",
+        gate_source="account_daily_assets",
+    )
+
+    assert summary["metric_source"] == "account_daily_assets"
+    assert summary["performance_metric_source"] == "account_execution"
+    assert summary["account_annualized_return_mean"] == summary["annualized_return_mean"]
+    assert summary["account_sharpe_mean"] == summary["sharpe_mean"]
+    assert summary["research_annualized_return_mean"] is None
+
+
+def test_gate_labels_use_account_metric_names_when_source_is_account_execution() -> None:
+    groups = module._gate_groups(
+        {
+            "selected_candidate_eligible": True,
+            "metric_source": "account_daily_assets",
+            "annualized_return_mean": 0.12,
+            "sharpe_mean": 1.1,
+            "max_drawdown_mean": -0.08,
+            "win_rate_mean": 0.55,
+            "oos_return_decay_ratio": 0.1,
+            "oos_fold_count": 1,
+            "oos_annualized_return_mean": 0.10,
+            "oos_sharpe_mean": 1.0,
+            "positive_fold_ratio": 1.0,
+            "negative_fold_count": 0,
+            "min_fold_annualized_return": 0.12,
+            "oos_positive_fold_ratio": 1.0,
+        },
+        {"annualized_return_min": 0.0, "sharpe_min": 0.5, "max_drawdown_min": -0.25, "win_rate_min": 0.45},
+    )
+
+    labels = [name for name, _ok in groups["base"]]
+
+    assert any(label.startswith("account_annualized_return_mean >") for label in labels)
+    assert any(label.startswith("account_sharpe_mean >") for label in labels)
+    assert not any(label.startswith("annualized_return_mean >") for label in labels)
+
+
+def test_report_documents_account_vs_research_metric_boundary(tmp_path: Path) -> None:
+    report = tmp_path / "report.md"
+
+    module._write_report(
+        report,
+        summary={
+            "status": "ok",
+            "selected_candidate_eligible": True,
+            "metric_source": "account_daily_assets",
+            "performance_metric_source": "account_execution",
+            "annualized_return_mean": 0.12,
+            "sharpe_mean": 1.1,
+            "max_drawdown_mean": -0.08,
+            "win_rate_mean": 0.55,
+            "oos_return_decay_ratio": 0.1,
+        },
+        folds=pd.DataFrame(
+            [
+                {
+                    "fold": 1,
+                    "valid_start": "2024-01-01",
+                    "valid_end": "2024-01-31",
+                    "annualized_return": 0.12,
+                    "sharpe": 1.1,
+                    "max_drawdown": -0.08,
+                    "win_rate": 0.55,
+                    "trades": 1,
+                    "final_account_assets": 101000.0,
+                    "unfilled_orders": 0,
+                }
+            ]
+        ),
+        bill=pd.DataFrame(),
+        daily=pd.DataFrame(),
+        execution_cfg={"price_mode": "next_open"},
+        live_cfg={"profile": "live", "gate_source": "account_daily_assets"},
+        gate_cfg={"annualized_return_min": 0.0, "sharpe_min": 0.5, "max_drawdown_min": -0.25, "win_rate_min": 0.45},
+    )
+
+    text = report.read_text(encoding="utf-8")
+    assert "账户级执行指标" in text
+    assert "研究回测指标" in text
+    assert "account_daily_assets" in text

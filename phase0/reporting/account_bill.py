@@ -244,7 +244,12 @@ def export_account_bill_html(*, account: Any, brief_date: str, output_path: Path
 
     if not account_rows.empty:
         account_rows = account_rows.copy()
-        position_start_date = str(position_start_row[0] or trade_start_row[0] or "暂无")
+        configured_start_date = ""
+        if "simulation_start_date" in account_rows.columns:
+            configured_start_date = str(account_rows["simulation_start_date"].iloc[0] or "")
+        if not configured_start_date:
+            configured_start_date = str(getattr(account, "simulation_start_date", "") or "")
+        position_start_date = str(configured_start_date or position_start_row[0] or trade_start_row[0] or "暂无")
         account_rows["position_start_date"] = position_start_date
         account_rows["initial_cash"] = account_rows["initial_cash"].map(format_money)
         account_rows["max_participation_rate"] = account_rows["max_participation_rate"].map(format_pct)

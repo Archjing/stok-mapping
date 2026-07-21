@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>stok-mapping 软件架构图</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Noto Sans SC", "Microsoft YaHei", Arial, sans-serif;
+      background: #fbf8ff;
+      color: #171321;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      padding: 18px 28px;
+      background: #ffffff;
+      border-bottom: 1px solid #e5def4;
+      box-shadow: 0 8px 24px rgba(31, 27, 58, 0.08);
+    }
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    p {
+      margin: 4px 0 0;
+      color: #5a526f;
+      font-size: 13px;
+    }
+    a {
+      color: #5146c6;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    main {
+      overflow: auto;
+      padding: 24px;
+    }
+    .canvas {
+      min-width: 1120px;
+      max-width: 1680px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e5def4;
+      border-radius: 24px;
+      box-shadow: 0 20px 60px rgba(31, 27, 58, 0.14);
+      overflow: hidden;
+    }
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>stok-mapping 软件架构图</h1>
+      <p>FigJam tech stack diagram 风格；SVG 可直接导入 Figma/FigJam。</p>
+    </div>
+    <a href="./project-software-architecture-tech-stack.svg">打开 SVG</a>
+  </header>
+  <main>
+    <div class="canvas">
+      <img src="./project-software-architecture-tech-stack.svg" alt="stok-mapping 软件架构图">
+    </div>
+  </main>
+</body>
+</html>

@@ -56,6 +56,7 @@ def register_report_export_commands(subparsers: argparse._SubParsersAction) -> N
 
     premarket_parser = subparsers.add_parser("premarket", help="Export phase0 07:30 premarket watchlist")
     premarket_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    premarket_parser.add_argument("--account-id", default=None, help="Simulated account ID; defaults to the first enabled account")
     premarket_parser.add_argument("--refresh-cache", action="store_true", help="Rebuild cached market panel before exporting")
     premarket_parser.add_argument("--no-panel-cache", action="store_true", help="Disable market panel cache for this export")
 
@@ -146,6 +147,7 @@ def handle_report_export_command(args: argparse.Namespace, *, parser: argparse.A
         report_console.print("[bold]Phase 0 premarket watchlist started[/bold]")
         result = export_phase0_premarket(
             config_path=config_path,
+            account_id=args.account_id,
             refresh_cache=bool(args.refresh_cache),
             no_panel_cache=bool(args.no_panel_cache),
         )

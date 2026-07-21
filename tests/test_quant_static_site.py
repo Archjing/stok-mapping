@@ -18,6 +18,7 @@ def _account(account_id: str, name: str, db_path: Path) -> SimpleNamespace:
         name=name,
         database_path=db_path,
         initial_cash=1_000_000.0,
+        simulation_start_date="2026-06-30",
     )
 
 
@@ -139,7 +140,7 @@ def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_
     assert [account["account_id"] for account in manifest["accounts"]] == ["default", "test2"]
     assert manifest["accounts"][0]["latest_bill_date"] == "2026-06-30"
     assert manifest["accounts"][0]["position_start_date"] == "2026-06-30"
-    assert manifest["accounts"][1]["position_start_date"] == ""
+    assert manifest["accounts"][1]["position_start_date"] == "2026-06-30"
     assert manifest["accounts"][0]["account_path"] == "accounts/default/index.html"
     assert manifest["accounts"][0]["watchlist_path"] == "accounts/default/latest/watchlist/index.html"
     assert manifest["accounts"][0]["account_bill_path"] == "accounts/default/latest/account-bill/index.html"
@@ -189,24 +190,18 @@ def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_
     assert 'href="/quant/accounts/default/latest/watchlist/index.html"' in brief_html
     assert 'href="/quant/accounts/default/latest/account-bill/index.html"' in brief_html
     assert 'href="/quant/accounts/default/ledger/index.html"' in brief_html
-    legacy_brief = site_root.parent / "brief"
-    assert legacy_brief.exists()
-    assert not legacy_brief.is_symlink()
-    legacy_brief_html = (legacy_brief / "index.html").read_text(encoding="utf-8")
-    assert legacy_brief_html != brief_html
-    assert 'href="../quant/assets/style.css"' in legacy_brief_html
-    assert 'href="../quant/index.html"' in legacy_brief_html
-    assert 'href="../quant/wiki/index.html"' in legacy_brief_html
-    assert 'href="../quant/accounts/default/latest/watchlist/index.html"' in legacy_brief_html
-    assert 'href="../quant/accounts/default/latest/account-bill/index.html"' in legacy_brief_html
-    assert 'href="../quant/accounts/default/ledger/index.html"' in legacy_brief_html
-    assert 'href="/quant/' not in legacy_brief_html
+    assert not (site_root.parent / "brief").exists()
     assert "部分账户暂无确认账单，简报只展示可用证据" in brief_html
     assert "页面不直接生成交易信号" in brief_html
     assert "不生成新的买卖建议" in brief_html
     asset_css = (site_root / "assets" / "style.css").read_text(encoding="utf-8")
     assert ".brief-page .brief-hero" in asset_css
     assert ".brief-grid" in asset_css
+    assert ".asset-history-wrap" in asset_css
+    assert ".trade-history-wrap" in asset_css
+    assert ".position-history-wrap" in asset_css
+    assert "5 * 34px" in asset_css
+    assert "9 * 34px" in asset_css
     assert (site_root / "accounts" / "default" / "index.html").is_file()
     account_index_html = (site_root / "accounts" / "default" / "index.html").read_text(encoding="utf-8")
     assert 'id="themeToggle"' in account_index_html
@@ -223,6 +218,9 @@ def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_
     assert "T+1可卖库存不足" in ledger_html
     assert "计划股数" in ledger_html
     assert "成交股数" in ledger_html
+    assert 'class="table-wrap asset-history-wrap"' in ledger_html
+    assert 'class="table-wrap trade-history-wrap"' in ledger_html
+    assert 'class="table-wrap position-history-wrap"' in ledger_html
     assert "<td>buy</td>" not in ledger_html
     assert "<td>sell</td>" not in ledger_html
     assert 'id="themeToggle"' in ledger_html
@@ -279,6 +277,173 @@ def test_build_quant_static_site_handles_empty_ledger_and_missing_order_events(t
     assert "暂无最新模拟交易账单" in account_bill_html
 
 
+def test_build_quant_static_site_omits_wiki_when_no_source_is_configured(tmp_path: Path) -> None:
+    db_path = tmp_path / "data" / "empty.sqlite"
+    _write_account_db(db_path, account_id="empty", name="空账户", with_trade=False)
+
+    result = build_quant_static_site(
+        root=tmp_path,
+        config={"reporting": {}},
+        accounts=[_account("empty", "空账户", db_path)],
+    )
+
+    site_root = tmp_path / "reports" / "static_site" / "quant"
+    assert result["manifest"]["wiki_path"] == ""
+    assert not (site_root / "wiki" / "index.html").exists()
+    assert 'href="wiki/index.html"' not in (site_root / "index.html").read_text(encoding="utf-8")
+    assert 'href="/quant/wiki/index.html"' not in (site_root / "brief" / "index.html").read_text(encoding="utf-8")
+
+
+def test_ledger_page_keeps_full_assets_and_trades_but_limits_snapshots(tmp_path: Path) -> None:
+    db_path = tmp_path / "data" / "default.sqlite"
+    _write_account_db(db_path, account_id="default", name="默认模拟账户")
+    with sqlite3.connect(db_path) as conn:
+        for offset, date_value in enumerate(["2026-07-01", "2026-07-02", "2026-07-03", "2026-07-04"], start=1):
+            conn.execute(
+                """
+                INSERT INTO account_daily_assets
+                (account_id, brief_date, start_date, total_asset, stock_asset, cash_asset, daily_pnl, daily_return,
+                 target_exposure, estimated_trade_amount, estimated_volume, execution_price_mode, max_participation_rate,
+                 unfilled_orders, partial_fill_orders, block_reason_counts)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "default",
+                    date_value,
+                    "2026-06-30",
+                    1_000_000.0 + offset,
+                    50_000.0 + offset,
+                    950_000.0,
+                    float(offset),
+                    0.0001,
+                    0.05,
+                    10_000.0,
+                    100.0,
+                    "next_open",
+                    0.05,
+                    0,
+                    0,
+                    "{}",
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO account_trades
+                (account_id, brief_date, signal_date, symbol, name, side, trade_time, price_mode, price, amount, cost,
+                 shares, lots, lot_size, raw_shares, rounding_rule, trade_status, block_reasons, weight_before, weight_after,
+                 weight_change, is_estimated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "default",
+                    date_value,
+                    date_value,
+                    f"SZ.00000{offset}",
+                    "旧成交应保留" if date_value == "2026-07-01" else f"成交{offset}",
+                    "buy",
+                    f"{date_value} 09:30",
+                    "next_open",
+                    10.0,
+                    1_000.0,
+                    1.0,
+                    100.0,
+                    1.0,
+                    100,
+                    100.0,
+                    "floor_to_lot_size",
+                    "全部成交",
+                    "",
+                    0.0,
+                    0.01,
+                    0.01,
+                    1,
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO account_positions
+                (account_id, brief_date, symbol, name, close, target_weight, market_value, shares, lots, lot_size)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "default",
+                    date_value,
+                    f"SZ.10000{offset}",
+                    "旧持仓不应显示" if date_value == "2026-07-01" else f"近期持仓{offset}",
+                    10.0,
+                    0.01,
+                    1_000.0,
+                    100.0,
+                    1.0,
+                    100,
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO account_order_events
+                (account_id, brief_date, signal_date, symbol, name, side, trade_time, price_mode, price, target_weight,
+                 weight_before, weight_change, requested_shares, filled_shares, shares, lots, amount, trade_status,
+                 block_reasons, event_type, is_estimated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "default",
+                    date_value,
+                    date_value,
+                    f"SZ.20000{offset}",
+                    f"事件{offset}",
+                    "buy",
+                    f"{date_value} 09:30",
+                    "next_open",
+                    10.0,
+                    0.01,
+                    0.0,
+                    0.01,
+                    100.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    "未成交",
+                    "旧事件不应显示" if date_value == "2026-07-01" else "近期事件应显示",
+                    "unfilled",
+                    1,
+                ),
+            )
+
+    build_quant_static_site(
+        root=tmp_path,
+        config={"reporting": {}},
+        accounts=[_account("default", "默认模拟账户", db_path)],
+    )
+
+    html = (tmp_path / "reports" / "static_site" / "quant" / "accounts" / "default" / "ledger" / "index.html").read_text(
+        encoding="utf-8"
+    )
+    manifest = json.loads(
+        (tmp_path / "reports" / "static_site" / "quant" / "data" / "site_manifest.json").read_text(encoding="utf-8")
+    )
+    site_index_html = (tmp_path / "reports" / "static_site" / "quant" / "index.html").read_text(encoding="utf-8")
+    assert "每日资产（全部账单日）" in html
+    assert "成交明细（全部历史成交）" in html
+    assert "持仓快照（最近3个账单日）" in html
+    assert "执行事件（最近3个账单日）" in html
+    assert 'class="table-wrap asset-history-wrap"' in html
+    assert 'class="table-wrap trade-history-wrap"' in html
+    assert 'class="table-wrap position-history-wrap"' in html
+    assert manifest["accounts"][0]["latest_bill_date"] == "2026-07-04"
+    assert "<td>2026-07-04</td><td>2026-06-30</td>" in site_index_html
+    assert "最近账单日：2026-07-04" in html
+    assert "2026-06-30" in html
+    assert "旧成交应保留" in html
+    assert "旧持仓不应显示" not in html
+    assert "旧事件不应显示" not in html
+    assert "近期持仓2" in html
+    assert "近期持仓4" in html
+    assert "近期事件应显示" in html
+    assert html.index("2026-07-04") < html.index("2026-07-03") < html.index("2026-07-02") < html.index("2026-07-01")
+
+
 def test_sync_quant_static_site_targets_only_quant_directory(monkeypatch, tmp_path: Path) -> None:
     site_root = tmp_path / "reports" / "static_site" / "quant"
     site_root.mkdir(parents=True)
@@ -290,11 +455,12 @@ def test_sync_quant_static_site_targets_only_quant_directory(monkeypatch, tmp_pa
 
     monkeypatch.setattr("phase0.reporting.quant_static_site.subprocess.run", fake_run)
 
-    sync_quant_static_site(root=tmp_path, site_root=site_root, remote="deploy@example", remote_dir="/var/www/spidermanread/quant/")
+    result = sync_quant_static_site(root=tmp_path, site_root=site_root, remote="deploy@example", remote_dir="/var/www/share/quant/")
 
     assert calls
-    assert calls[0][-1] == "deploy@example:/var/www/spidermanread/quant/"
-    assert "deploy@example:/var/www/spidermanread/" not in calls[0]
+    assert calls[0][-1] == "deploy@example:/var/www/share/quant/"
+    assert len(calls) == 1
+    assert "deploy@example:/var/www/share/" not in calls[0]
 
 
 def test_sync_quant_static_site_rejects_spidermanread_root(tmp_path: Path) -> None:

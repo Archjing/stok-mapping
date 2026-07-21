@@ -37,12 +37,11 @@ def _sync_target(remote_env: str, remote_dir_env: str, *, default_remote: str, d
 def _sync_watchlist_to_remote(console: Console, local_dir: Path) -> None:
     # Watchlist remote mirror. This intentionally lives in the watchlist
     # program instead of a separate script so cron/manual reruns share one path.
-    remote, remote_dir = _sync_target(
-        "BRIEF_SYNC_REMOTE",
-        "BRIEF_SYNC_REMOTE_DIR",
-        default_remote="linuxuser@108.61.182.91",
-        default_remote_dir="/var/www/spidermanread/brief/",
-    )
+    remote = os.environ.get("BRIEF_SYNC_REMOTE")
+    remote_dir = os.environ.get("BRIEF_SYNC_REMOTE_DIR")
+    if not remote or not remote_dir:
+        console.print("[yellow]Warning:[/yellow] skip watchlist sync; BRIEF_SYNC_REMOTE/_DIR is not configured")
+        return
     if not local_dir.exists() or not (local_dir / "index.html").exists():
         console.print(f"[yellow]Warning:[/yellow] skip watchlist sync; missing {local_dir / 'index.html'}")
         return

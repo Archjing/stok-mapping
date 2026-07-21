@@ -95,6 +95,8 @@ def test_watchlist_sync_excludes_remote_preview_dir(monkeypatch, tmp_path: Path)
         calls.append(cmd)
 
     monkeypatch.setattr(delivery_cli.subprocess, "run", fake_run)
+    monkeypatch.setenv("BRIEF_SYNC_REMOTE", "deploy@example")
+    monkeypatch.setenv("BRIEF_SYNC_REMOTE_DIR", "/srv/brief/")
 
     delivery_cli._sync_watchlist_to_remote(_silent_console(), local_dir)
 

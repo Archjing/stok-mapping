@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import json
 from pathlib import Path
 import re
@@ -20,6 +21,7 @@ from phase0.reporting.account_bill import (
 
 
 DEFAULT_ACCOUNT_LEDGER = "data/simulated_trading/phase0_daily_account_ledger.csv"
+DEFAULT_BRIEF_LEDGER = "data/simulated_trading/phase0_daily_brief_ledger.csv"
 
 
 @dataclass(frozen=True)
@@ -29,9 +31,11 @@ class SimulatedAccountConfig:
     initial_cash: float
     ledger_path: Path
     database_path: Path
+    strategy_id: str = "legacy_momentum_low_turnover_v1"
     simulation_start_date: str = ""
     enabled: bool = True
     execution_price_mode: str = "next_open"
+    price_tick: float = 0.01
     max_participation_rate: float = 0.05
     lot_size: int = 100
     commission: float = 0.0
@@ -62,6 +66,8 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
     walk_forward = config.get("walk_forward", {})
     execution = config.get("execution", {})
     limit_cfg = execution.get("limit_up_down_pct", {})
+    strategy_reports = config.get("strategy_reports", {}) or {}
+    default_strategy_id = str(strategy_reports.get("default_strategy_id") or "legacy_momentum_low_turnover_v1")
     raw_accounts = config.get("accounts", {}).get("simulated", [])
     if not raw_accounts:
         raw_accounts = [
@@ -91,9 +97,11 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
                 initial_cash=float(raw.get("initial_cash", walk_forward.get("initial_cash", 1_000_000))),
                 ledger_path=ledger_path,
                 database_path=database_path,
+                strategy_id=str(raw.get("strategy_id", default_strategy_id) or default_strategy_id),
                 simulation_start_date=str(raw.get("simulation_start_date", raw.get("start_date", "")) or ""),
                 enabled=True,
                 execution_price_mode=str(raw.get("execution_price_mode", execution.get("price_mode", "next_open"))),
+                price_tick=float(raw.get("price_tick", execution.get("price_tick", 0.01))),
                 max_participation_rate=float(raw.get("max_participation_rate", execution.get("max_participation_rate", 0.05))),
                 lot_size=int(raw.get("lot_size", execution.get("lot_size", 100))),
                 commission=float(raw.get("commission", walk_forward.get("commission", 0.0))),
@@ -173,14 +181,42 @@ def _looks_like_st(name: Any) -> bool:
     return "ST" in text or "退" in text
 
 
+def _truthy_market_flag(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        text = value.strip().lower()
+        return text in {"1", "true", "t", "yes", "y", "停牌", "暂停交易", "suspended", "limit_up", "limit_down"}
+    try:
+        if pd.isna(value):
+            return False
+    except (TypeError, ValueError):
+        pass
+    return bool(value)
+
+
 def _is_new_stock_no_limit(price_row: dict[str, Any], account: SimulatedAccountConfig) -> bool:
     if not account.enable_special_limit_rules or account.new_stock_no_limit_days <= 0:
         return False
+    limit_days = int(account.new_stock_no_limit_days)
+    for key in [
+        "listing_trading_days",
+        "trade_days_since_listing",
+        "trading_days_since_listing",
+        "listing_trade_day_index",
+        "listing_trade_day_number",
+    ]:
+        value = pd.to_numeric(price_row.get(key, np.nan), errors="coerce")
+        if pd.notna(value):
+            age = int(value)
+            if key == "listing_trade_day_number":
+                return 1 <= age <= limit_days
+            return 0 <= age < limit_days
     trade_date = pd.to_datetime(price_row.get("date", ""), errors="coerce")
     list_date = pd.to_datetime(price_row.get("list_date", ""), errors="coerce")
     if pd.isna(trade_date) or pd.isna(list_date):
         return False
-    return 0 <= int((trade_date.normalize() - list_date.normalize()).days) < int(account.new_stock_no_limit_days)
+    return 0 <= int((trade_date.normalize() - list_date.normalize()).days) < limit_days
 
 
 def _limit_pct(symbol: str, account: SimulatedAccountConfig, price_row: dict[str, Any] | None = None) -> float:
@@ -222,6 +258,15 @@ def _affordable_buy_shares(*, cash_asset: float, price: float, requested_shares:
     return 0.0
 
 
+def _round_price_to_tick(price: float, side: str, tick: float) -> float:
+    if not pd.notna(price) or float(price) <= 0 or float(tick) <= 0:
+        return float(price)
+    rounding = ROUND_CEILING if side == "buy" else ROUND_FLOOR
+    units = (Decimal(str(float(price))) / Decimal(str(float(tick)))).to_integral_value(rounding=rounding)
+    rounded = units * Decimal(str(float(tick)))
+    return float(rounded)
+
+
 def _load_execution_prices(
     *,
     root: Path,
@@ -241,6 +286,7 @@ def _load_execution_prices(
     meta_table = _safe_identifier(str(cfg.get("meta_table", "market_stocks")))
     try:
         with sqlite3.connect(db_path) as conn:
+            daily_cols = {str(row[1]) for row in conn.execute(f"PRAGMA table_info({daily_table})").fetchall()}
             meta_cols = {str(row[1]) for row in conn.execute(f"PRAGMA table_info({meta_table})").fetchall()}
             can_join_meta = {"market", "symbol"}.issubset(meta_cols)
             meta_join = (
@@ -254,6 +300,19 @@ def _load_execution_prices(
             )
             name_expr = "s.name" if can_join_meta and "name" in meta_cols else "''"
             list_date_expr = "s.list_date" if can_join_meta and "list_date" in meta_cols else "''"
+            optional_cols = [
+                "limit_up",
+                "limit_down",
+                "is_limit_up",
+                "is_limit_down",
+                "is_suspended",
+                "listing_trading_days",
+                "trade_days_since_listing",
+            ]
+            optional_select = ",\n               " + ",\n               ".join(
+                f"b.{col} AS {col}" if col in daily_cols else f"NULL AS {col}"
+                for col in optional_cols
+            )
             placeholders = ",".join("?" for _ in symbols)
             query = f"""
         SELECT b.symbol, b.open, b.high, b.low, b.close, b.volume, b.amount,
@@ -269,6 +328,7 @@ def _load_execution_prices(
                ) AS previous_close,
                {name_expr} AS name,
                {list_date_expr} AS list_date
+               {optional_select}
         FROM {daily_table} b
         {meta_join}
         WHERE b.market = ?
@@ -280,8 +340,9 @@ def _load_execution_prices(
     except (sqlite3.Error, ValueError):
         return {}
     out: dict[str, dict[str, Any]] = {}
-    for symbol, open_, high, low, close, volume, amount, previous_close, name, list_date in rows:
-        out[str(symbol)] = {
+    for row in rows:
+        symbol, open_, high, low, close, volume, amount, previous_close, name, list_date, *optional_values = row
+        item: dict[str, Any] = {
             "symbol": str(symbol),
             "date": str(execution_date),
             "open": float(open_) if open_ is not None else np.nan,
@@ -294,21 +355,24 @@ def _load_execution_prices(
             "name": str(name or ""),
             "list_date": str(list_date or ""),
         }
+        for key, value in zip(optional_cols, optional_values):
+            item[key] = value
+        out[str(symbol)] = item
     return out
 
 
 def _execution_price(price_row: dict[str, float], side: str, account: SimulatedAccountConfig) -> float:
     mode = account.execution_price_mode
     if mode == "close":
-        return float(price_row.get("close", np.nan))
+        return _round_price_to_tick(float(price_row.get("close", np.nan)), side, account.price_tick)
     base = float(price_row.get("open", np.nan))
     if not pd.notna(base) or base <= 0:
         base = float(price_row.get("close", np.nan))
     if mode == "conservative":
         if side == "buy":
-            return base * (1.0 + account.conservative_price_buffer)
-        return base * (1.0 - account.conservative_price_buffer)
-    return base
+            return _round_price_to_tick(base * (1.0 + account.conservative_price_buffer), side, account.price_tick)
+        return _round_price_to_tick(base * (1.0 - account.conservative_price_buffer), side, account.price_tick)
+    return _round_price_to_tick(base, side, account.price_tick)
 
 
 def _trade_block_reasons(price_row: dict[str, float], side: str, account: SimulatedAccountConfig) -> list[str]:
@@ -318,6 +382,8 @@ def _trade_block_reasons(price_row: dict[str, float], side: str, account: Simula
     volume = float(price_row.get("volume", np.nan))
     amount = float(price_row.get("amount", np.nan))
     if account.enable_suspension_check:
+        if _truthy_market_flag(price_row.get("is_suspended")) or _truthy_market_flag(price_row.get("suspended")):
+            reasons.append("停牌/显式状态")
         if not pd.notna(open_price) or open_price <= 0 or not pd.notna(close_price) or close_price <= 0:
             reasons.append("停牌/无有效价格")
         if pd.notna(volume) and volume <= 0:
@@ -329,19 +395,29 @@ def _trade_block_reasons(price_row: dict[str, float], side: str, account: Simula
     if (
         account.enable_limit_check
         and not _is_new_stock_no_limit(price_row, account)
-        and pd.notna(previous_close)
-        and previous_close > 0
         and pd.notna(check_price)
     ):
+        tolerance = 0.001
+        explicit_limit_up = pd.to_numeric(price_row.get("limit_up", np.nan), errors="coerce")
+        explicit_limit_down = pd.to_numeric(price_row.get("limit_down", np.nan), errors="coerce")
+        if side == "buy" and _truthy_market_flag(price_row.get("is_limit_up")):
+            reasons.append("涨停不可买")
+        if side == "sell" and _truthy_market_flag(price_row.get("is_limit_down")):
+            reasons.append("跌停不可卖")
+        if side == "buy" and pd.notna(explicit_limit_up) and check_price >= float(explicit_limit_up) * (1.0 - tolerance):
+            reasons.append("涨停不可买")
+        if side == "sell" and pd.notna(explicit_limit_down) and check_price <= float(explicit_limit_down) * (1.0 + tolerance):
+            reasons.append("跌停不可卖")
+        if not (pd.notna(previous_close) and previous_close > 0):
+            return list(dict.fromkeys(reasons))
         limit_pct = _limit_pct(str(price_row.get("symbol", "")), account, price_row)
         limit_up = previous_close * (1.0 + limit_pct)
         limit_down = previous_close * (1.0 - limit_pct)
-        tolerance = 0.001
         if side == "buy" and check_price >= limit_up * (1.0 - tolerance):
             reasons.append("涨停不可买")
         if side == "sell" and check_price <= limit_down * (1.0 + tolerance):
             reasons.append("跌停不可卖")
-    return reasons
+    return list(dict.fromkeys(reasons))
 
 
 def _order_block_reason_counts(reasons: list[str]) -> str:
@@ -350,6 +426,51 @@ def _order_block_reason_counts(reasons: list[str]) -> str:
         key = str(reason or "unknown")
         counts[key] = counts.get(key, 0) + 1
     return json.dumps(counts, ensure_ascii=False, sort_keys=True)
+
+
+def _order_event_row(
+    *,
+    account: SimulatedAccountConfig,
+    brief_date: str,
+    signal_date: str,
+    symbol: str,
+    name: str,
+    side: str,
+    trade_time: str,
+    price: float,
+    target_weight: float,
+    weight_before: float,
+    weight_change: float,
+    requested_shares: float,
+    filled_shares: float,
+    amount: float,
+    reasons: list[str],
+    event_type: str,
+    trade_status: str,
+) -> dict[str, Any]:
+    return {
+        "account_id": account.account_id,
+        "brief_date": brief_date,
+        "signal_date": signal_date,
+        "symbol": symbol,
+        "name": name,
+        "side": side,
+        "trade_time": trade_time,
+        "price_mode": account.execution_price_mode,
+        "price": float(price) if pd.notna(price) else np.nan,
+        "target_weight": float(target_weight),
+        "weight_before": float(weight_before),
+        "weight_change": float(weight_change),
+        "requested_shares": float(requested_shares),
+        "filled_shares": float(filled_shares),
+        "shares": float(filled_shares),
+        "lots": float(filled_shares) / float(account.lot_size) if account.lot_size else np.nan,
+        "amount": float(amount),
+        "trade_status": trade_status,
+        "block_reasons": "；".join(str(reason) for reason in reasons if str(reason).strip()),
+        "event_type": event_type,
+        "is_estimated": 1,
+    }
 
 
 def watchlist_to_account_frame(watchlist: pd.DataFrame, brief_date: str) -> pd.DataFrame:
@@ -383,25 +504,138 @@ def _has_account_weight_columns(df: pd.DataFrame) -> bool:
     return {"股票代码", "股票名称", "收盘价", target_col, change_col}.issubset(df.columns)
 
 
+def _brief_date_from_watchlist(df: pd.DataFrame, fallback: str) -> str:
+    if "盘前检查时间" not in df.columns or df.empty:
+        return fallback
+    values = df["盘前检查时间"].dropna().astype(str)
+    for value in values:
+        if re.match(r"^\d{4}-\d{2}-\d{2}", value):
+            return value[:10]
+    return fallback
+
+
+def _is_blank_scope_value(value: Any) -> bool:
+    text = str(value or "").strip()
+    return not text or text.lower() == "nan"
+
+
+def _brief_ledger_to_account_frame(frame: pd.DataFrame) -> pd.DataFrame:
+    required = {"brief_date", "symbol", "name", "target_weight", "weight_change"}
+    if frame.empty or not required.issubset(frame.columns):
+        return pd.DataFrame(columns=["brief_date", "signal_date", "symbol", "name", "signal_close", "target_weight", "weight_change"])
+    signal_dates = frame["signal_date"].astype(str) if "signal_date" in frame.columns else frame["brief_date"].astype(str)
+    return pd.DataFrame(
+        {
+            "brief_date": frame["brief_date"].astype(str),
+            "signal_date": signal_dates,
+            "symbol": frame["symbol"].astype(str),
+            "name": frame["name"].astype(str),
+            "signal_close": pd.Series([np.nan] * len(frame), index=frame.index),
+            "target_weight": pd.to_numeric(frame["target_weight"], errors="coerce").fillna(0.0),
+            "weight_change": pd.to_numeric(frame["weight_change"], errors="coerce").fillna(0.0),
+        }
+    )
+
+
+def _load_brief_ledger_frames(
+    *,
+    root: Path,
+    current_brief_date: str,
+    simulation_start_date: str,
+    account_id: str,
+    strategy_id: str,
+) -> dict[str, pd.DataFrame]:
+    path = root / DEFAULT_BRIEF_LEDGER
+    if not path.exists():
+        return {}
+    try:
+        raw = pd.read_csv(path, encoding="utf-8-sig")
+    except Exception:
+        return {}
+    required = {"brief_date", "symbol", "name", "target_weight", "weight_change"}
+    if raw.empty or not required.issubset(raw.columns):
+        return {}
+
+    frame = raw.copy()
+    frame["brief_date"] = frame["brief_date"].astype(str)
+    if simulation_start_date:
+        frame = frame[frame["brief_date"] >= simulation_start_date].copy()
+    frame = frame[frame["brief_date"] <= current_brief_date].copy()
+    if frame.empty:
+        return {}
+
+    if account_id and "account_id" in frame.columns:
+        account_values = frame["account_id"].astype(str)
+        if account_id == "default":
+            frame = frame[(account_values == account_id) | account_values.map(_is_blank_scope_value)].copy()
+        else:
+            frame = frame[account_values == account_id].copy()
+    elif account_id and account_id != "default":
+        return {}
+
+    if strategy_id and "strategy_id" in frame.columns:
+        strategy_values = frame["strategy_id"].astype(str)
+        frame = frame[(strategy_values == strategy_id) | strategy_values.map(_is_blank_scope_value)].copy()
+    if frame.empty:
+        return {}
+
+    frames: dict[str, pd.DataFrame] = {}
+    for brief_date, day in frame.groupby("brief_date", sort=True):
+        frames[str(brief_date)] = _brief_ledger_to_account_frame(day)
+    return frames
+
+
 def collect_watchlist_frames(
     root: Path,
     current_watchlist: pd.DataFrame,
     current_brief_date: str,
     *,
     simulation_start_date: str = "",
+    account_id: str = "",
+    strategy_id: str = "",
 ) -> dict[str, pd.DataFrame]:
+    def matches_account_scope(df: pd.DataFrame) -> bool:
+        if account_id and "账户ID" in df.columns:
+            values = {str(value) for value in df["账户ID"].dropna().astype(str).unique()}
+            if values and account_id not in values:
+                return False
+        elif account_id and account_id != "default":
+            return False
+        if strategy_id and "策略ID" in df.columns:
+            values = {str(value) for value in df["策略ID"].dropna().astype(str).unique()}
+            if values and strategy_id not in values:
+                return False
+        return True
+
     frames: dict[str, pd.DataFrame] = {}
+    frames.update(
+        _load_brief_ledger_frames(
+            root=root,
+            current_brief_date=current_brief_date,
+            simulation_start_date=simulation_start_date,
+            account_id=account_id,
+            strategy_id=strategy_id,
+        )
+    )
     report_root = root / "reports"
+    watchlist_paths: list[tuple[str, Path]] = []
     if report_root.exists():
-        for path in sorted(report_root.glob("????-??-??/phase0_premarket_watchlist*.csv")):
-            brief_date = path.parent.name
-            if simulation_start_date and brief_date < simulation_start_date:
-                continue
-            if brief_date > current_brief_date or brief_date in frames:
-                continue
+        watchlist_paths.extend((path.parent.name, path) for path in report_root.glob("????-??-??/phase0_premarket_watchlist*.csv"))
+        watchlist_paths.extend(
+            (path.parents[2].name, path)
+            for path in report_root.glob("runs/????-??-??/*/premarket__watchlist.csv")
+        )
+        for fallback_date, path in sorted(watchlist_paths):
             try:
                 df = pd.read_csv(path, encoding="utf-8-sig")
             except Exception:
+                continue
+            brief_date = _brief_date_from_watchlist(df, fallback_date)
+            if simulation_start_date and brief_date < simulation_start_date:
+                continue
+            if brief_date > current_brief_date:
+                continue
+            if not matches_account_scope(df):
                 continue
             if _has_account_weight_columns(df):
                 frames[brief_date] = watchlist_to_account_frame(df, brief_date)
@@ -422,6 +656,8 @@ def build_account_ledger(
         current_watchlist,
         current_brief_date,
         simulation_start_date=account.simulation_start_date,
+        account_id=account.account_id,
+        strategy_id=account.strategy_id,
     )
     if not frames:
         return pd.DataFrame(), {}
@@ -431,8 +667,9 @@ def build_account_ledger(
     previous_cash_asset = float(account.initial_cash)
     rows: list[dict[str, Any]] = []
     trade_rows: list[dict[str, Any]] = []
+    order_event_rows: list[dict[str, Any]] = []
     position_rows: list[dict[str, Any]] = []
-    start_date = next(iter(frames.keys()))
+    start_date = str(account.simulation_start_date or next(iter(frames.keys())))
     available_shares: dict[str, float] = {}
 
     for brief_date, frame in frames.items():
@@ -536,8 +773,30 @@ def build_account_ledger(
                     shares = min(shares, market_shares)
                     trade_amount = shares * float(price)
                 if block_reasons or shares <= 0:
+                    reasons = block_reasons or ["成交股数为0"]
+                    order_event_rows.append(
+                        _order_event_row(
+                            account=account,
+                            brief_date=brief_date,
+                            signal_date=signal_date,
+                            symbol=symbol,
+                            name=str(current_names.get(symbol, previous_positions.get(symbol, (0.0, np.nan, ""))[2]) or ""),
+                            side=side,
+                            trade_time=trade_time,
+                            price=float(price),
+                            target_weight=target_weight,
+                            weight_before=current_weight,
+                            weight_change=weight_change,
+                            requested_shares=requested_shares,
+                            filled_shares=0.0,
+                            amount=0.0,
+                            reasons=reasons,
+                            event_type="unfilled",
+                            trade_status="未成交",
+                        )
+                    )
                     day_unfilled_orders += 1
-                    day_block_reasons.extend(block_reasons or ["成交股数为0"])
+                    day_block_reasons.extend(reasons)
                     continue
                 if side == "buy":
                     shares = _affordable_buy_shares(
@@ -548,6 +807,27 @@ def build_account_ledger(
                     )
                     trade_amount = shares * float(price)
                     if shares <= 0:
+                        order_event_rows.append(
+                            _order_event_row(
+                                account=account,
+                                brief_date=brief_date,
+                                signal_date=signal_date,
+                                symbol=symbol,
+                                name=str(current_names.get(symbol, previous_positions.get(symbol, (0.0, np.nan, ""))[2]) or ""),
+                                side=side,
+                                trade_time=trade_time,
+                                price=float(price),
+                                target_weight=target_weight,
+                                weight_before=current_weight,
+                                weight_change=weight_change,
+                                requested_shares=requested_shares,
+                                filled_shares=0.0,
+                                amount=0.0,
+                                reasons=["现金不足"],
+                                event_type="unfilled",
+                                trade_status="未成交",
+                            )
+                        )
                         day_unfilled_orders += 1
                         day_block_reasons.append("现金不足")
                         continue
@@ -555,6 +835,27 @@ def build_account_ledger(
                     shares = min(shares, current_shares)
                     trade_amount = shares * float(price)
                     if shares <= 0:
+                        order_event_rows.append(
+                            _order_event_row(
+                                account=account,
+                                brief_date=brief_date,
+                                signal_date=signal_date,
+                                symbol=symbol,
+                                name=str(current_names.get(symbol, previous_positions.get(symbol, (0.0, np.nan, ""))[2]) or ""),
+                                side=side,
+                                trade_time=trade_time,
+                                price=float(price),
+                                target_weight=target_weight,
+                                weight_before=current_weight,
+                                weight_change=weight_change,
+                                requested_shares=requested_shares,
+                                filled_shares=0.0,
+                                amount=0.0,
+                                reasons=["可卖持仓不足"],
+                                event_type="unfilled",
+                                trade_status="未成交",
+                            )
+                        )
                         day_unfilled_orders += 1
                         day_block_reasons.append("可卖持仓不足")
                         continue
@@ -579,6 +880,28 @@ def build_account_ledger(
                     post_trade_positions.pop(symbol, None)
                 estimated_trade_amount += trade_amount
                 estimated_volume += shares
+                if shares < requested_shares - 1e-12:
+                    order_event_rows.append(
+                        _order_event_row(
+                            account=account,
+                            brief_date=brief_date,
+                            signal_date=signal_date,
+                            symbol=symbol,
+                            name=str(current_names.get(symbol, previous_positions.get(symbol, (0.0, np.nan, ""))[2]) or ""),
+                            side=side,
+                            trade_time=trade_time,
+                            price=float(price),
+                            target_weight=target_weight,
+                            weight_before=current_weight,
+                            weight_change=weight_change,
+                            requested_shares=requested_shares,
+                            filled_shares=shares,
+                            amount=trade_amount,
+                            reasons=["成交量/参与率/现金/持仓约束导致部分成交"],
+                            event_type="partial_fill",
+                            trade_status="部分成交",
+                        )
+                    )
                 trade_rows.append(
                     {
                         "account_id": account.account_id,
@@ -656,6 +979,8 @@ def build_account_ledger(
         available_shares = {symbol: float(shares) for symbol, (shares, _close, _name) in post_trade_positions.items()}
 
     ledger = pd.DataFrame(rows)
+    if ledger.empty:
+        return ledger, {}
     account.ledger_path.parent.mkdir(parents=True, exist_ok=True)
     ledger.to_csv(account.ledger_path, index=False, encoding="utf-8-sig")
     write_account_database(
@@ -663,6 +988,7 @@ def build_account_ledger(
         daily_assets=ledger,
         trades=pd.DataFrame(trade_rows),
         positions=pd.DataFrame(position_rows),
+        order_events=pd.DataFrame(order_event_rows),
     )
     latest = ledger.iloc[-1].to_dict() if not ledger.empty else {}
     return ledger, latest
@@ -917,10 +1243,30 @@ def _prepare_signal_execution_frame(signal_frame: pd.DataFrame) -> pd.DataFrame:
     signal = signal_frame.copy()
     signal["date"] = pd.to_datetime(signal["date"], errors="coerce").dt.normalize()
     signal["symbol"] = signal["symbol"].astype(str)
-    for col in ["weight_unshifted", "open", "high", "low", "close", "volume", "amount", "previous_close"]:
+    numeric_cols = [
+        "weight_unshifted",
+        "open",
+        "high",
+        "low",
+        "close",
+        "volume",
+        "amount",
+        "previous_close",
+        "limit_up",
+        "limit_down",
+        "listing_trading_days",
+        "trade_days_since_listing",
+        "trading_days_since_listing",
+        "listing_trade_day_index",
+        "listing_trade_day_number",
+    ]
+    for col in numeric_cols:
         if col not in signal.columns:
             signal[col] = np.nan
         signal[col] = pd.to_numeric(signal[col], errors="coerce")
+    for col in ["is_suspended", "suspended", "is_limit_up", "is_limit_down"]:
+        if col not in signal.columns:
+            signal[col] = False
     if "name" not in signal.columns:
         signal["name"] = ""
     signal = signal.dropna(subset=["date", "symbol"]).sort_values(["symbol", "date"]).reset_index(drop=True)
@@ -951,6 +1297,17 @@ def _price_rows_from_signal_day(frame: pd.DataFrame) -> dict[str, dict[str, floa
             "previous_close": float(row.get("previous_close", np.nan)),
             "name": str(row.get("name", "")),
             "list_date": str(row.get("list_date", "")),
+            "limit_up": float(row.get("limit_up", np.nan)),
+            "limit_down": float(row.get("limit_down", np.nan)),
+            "is_limit_up": row.get("is_limit_up", False),
+            "is_limit_down": row.get("is_limit_down", False),
+            "is_suspended": row.get("is_suspended", False),
+            "suspended": row.get("suspended", False),
+            "listing_trading_days": float(row.get("listing_trading_days", np.nan)),
+            "trade_days_since_listing": float(row.get("trade_days_since_listing", np.nan)),
+            "trading_days_since_listing": float(row.get("trading_days_since_listing", np.nan)),
+            "listing_trade_day_index": float(row.get("listing_trade_day_index", np.nan)),
+            "listing_trade_day_number": float(row.get("listing_trade_day_number", np.nan)),
         }
     return out
 
@@ -1043,6 +1400,7 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
             account_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             initial_cash REAL NOT NULL,
+            strategy_id TEXT,
             simulation_start_date TEXT,
             enabled INTEGER NOT NULL,
             execution_price_mode TEXT NOT NULL,
@@ -1110,6 +1468,31 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
             lot_size INTEGER NOT NULL,
             PRIMARY KEY (account_id, brief_date, symbol)
         );
+
+        CREATE TABLE IF NOT EXISTS account_order_events (
+            account_id TEXT NOT NULL,
+            brief_date TEXT NOT NULL,
+            signal_date TEXT,
+            symbol TEXT NOT NULL,
+            name TEXT,
+            side TEXT NOT NULL,
+            trade_time TEXT NOT NULL,
+            price_mode TEXT NOT NULL,
+            price REAL,
+            target_weight REAL NOT NULL,
+            weight_before REAL NOT NULL,
+            weight_change REAL NOT NULL,
+            requested_shares REAL NOT NULL,
+            filled_shares REAL NOT NULL,
+            shares REAL NOT NULL,
+            lots REAL,
+            amount REAL NOT NULL,
+            trade_status TEXT NOT NULL,
+            block_reasons TEXT,
+            event_type TEXT NOT NULL,
+            is_estimated INTEGER NOT NULL,
+            PRIMARY KEY (account_id, brief_date, symbol, side, event_type)
+        );
         """
     )
     existing_trade_cols = {
@@ -1126,6 +1509,8 @@ def ensure_account_tables(conn: sqlite3.Connection) -> None:
     }
     if "simulation_start_date" not in existing_account_cols:
         conn.execute("ALTER TABLE simulated_accounts ADD COLUMN simulation_start_date TEXT")
+    if "strategy_id" not in existing_account_cols:
+        conn.execute("ALTER TABLE simulated_accounts ADD COLUMN strategy_id TEXT")
     if "raw_shares" not in existing_trade_cols:
         conn.execute("ALTER TABLE account_trades ADD COLUMN raw_shares REAL")
     if "rounding_rule" not in existing_trade_cols:
@@ -1154,6 +1539,7 @@ def write_account_database(
     daily_assets: pd.DataFrame,
     trades: pd.DataFrame,
     positions: pd.DataFrame,
+    order_events: pd.DataFrame | None = None,
 ) -> None:
     account.database_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(account.database_path) as conn:
@@ -1161,13 +1547,14 @@ def write_account_database(
         conn.execute(
             """
             INSERT OR REPLACE INTO simulated_accounts
-            (account_id, name, initial_cash, simulation_start_date, enabled, execution_price_mode, max_participation_rate, lot_size, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+            (account_id, name, initial_cash, strategy_id, simulation_start_date, enabled, execution_price_mode, max_participation_rate, lot_size, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
             """,
             (
                 account.account_id,
                 account.name,
                 account.initial_cash,
+                account.strategy_id,
                 account.simulation_start_date,
                 1 if account.enabled else 0,
                 account.execution_price_mode,
@@ -1178,6 +1565,7 @@ def write_account_database(
         conn.execute("DELETE FROM account_daily_assets WHERE account_id = ?", (account.account_id,))
         conn.execute("DELETE FROM account_trades WHERE account_id = ?", (account.account_id,))
         conn.execute("DELETE FROM account_positions WHERE account_id = ?", (account.account_id,))
+        conn.execute("DELETE FROM account_order_events WHERE account_id = ?", (account.account_id,))
         if not daily_assets.empty:
             conn.executemany(
                 """
@@ -1205,6 +1593,41 @@ def write_account_database(
                         "unfilled_orders",
                         "partial_fill_orders",
                         "block_reason_counts",
+                    ]
+                ].itertuples(index=False, name=None),
+            )
+        if order_events is not None and not order_events.empty:
+            conn.executemany(
+                """
+                INSERT OR REPLACE INTO account_order_events
+                (account_id, brief_date, signal_date, symbol, name, side, trade_time, price_mode, price,
+                 target_weight, weight_before, weight_change, requested_shares, filled_shares, shares, lots,
+                 amount, trade_status, block_reasons, event_type, is_estimated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                order_events[
+                    [
+                        "account_id",
+                        "brief_date",
+                        "signal_date",
+                        "symbol",
+                        "name",
+                        "side",
+                        "trade_time",
+                        "price_mode",
+                        "price",
+                        "target_weight",
+                        "weight_before",
+                        "weight_change",
+                        "requested_shares",
+                        "filled_shares",
+                        "shares",
+                        "lots",
+                        "amount",
+                        "trade_status",
+                        "block_reasons",
+                        "event_type",
+                        "is_estimated",
                     ]
                 ].itertuples(index=False, name=None),
             )

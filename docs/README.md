@@ -1,6 +1,6 @@
 # stok-mapping 正式文档索引
 
-本目录只放当前有效的项目文档、开发标准和策略说明。参考资料、备忘、会话归档、论文素材和远期展望统一从 [`refdocs/README.md`](../refdocs/README.md) 进入。
+本目录只放当前有效的项目文档、开发标准和策略说明。参考资料、论文素材和远期展望统一从 [`refdocs/README.md`](../refdocs/README.md) 进入；人工会话归档和长期项目记忆统一从 [`memory/README.md`](../memory/README.md) 进入。
 
 ## 项目主线
 
@@ -22,4 +22,5 @@
 - [Codex MCP 多 Agent 开发团队工作流](./CODEX_MCP_MULTI_AGENT_WORKFLOW.md)
 - [任务清单索引](tasks/README.md)
 - [文档归档](archive/)
+- [项目记忆与会话归档](../memory/README.md)
 - [参考资料索引](../refdocs/README.md)

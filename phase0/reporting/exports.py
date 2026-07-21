@@ -4,8 +4,8 @@ from pathlib import Path
 
 from phase0.config import load_config
 from phase0.execution.accounts import load_simulated_accounts
-from phase0.reporting.account_bill import export_account_bill_html
-from phase0.reporting.paths import create_report_run, latest_dir
+from phase0.reporting.account_bill import export_account_bill_html, export_account_bill_placeholder_html
+from phase0.reporting.paths import create_report_run, latest_dir, report_category_dir, slug
 
 
 def _load_report_config_if_available(config_path: Path) -> dict | None:
@@ -133,6 +133,8 @@ def export_phase0_premarket(
     report_output: str | Path | None = None,
     refresh_cache: bool = False,
     no_panel_cache: bool = False,
+    account_id: str | None = None,
+    as_of_date: str | None = None,
 ) -> dict:
     from phase0.reporting.premarket_watchlist import export_premarket_watchlist
 
@@ -140,12 +142,22 @@ def export_phase0_premarket(
     latest_report_output = None
     if output is None or report_output is None:
         cfg = _load_report_config_if_available(config_path)
-        report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="premarket", scope="watchlist")
+        report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="premarket", scope=account_id or "watchlist")
     if output is None and report_run is not None:
         output = report_run.artifact("premarket", "watchlist", "csv")
     if report_output is None and report_run is not None:
         report_output = report_run.artifact("premarket", "report", "html")
-        latest_report_output = latest_dir(root=config_path.resolve().parent, config=cfg, channel="watchlist") / "index.html"
+        if account_id:
+            latest_report_output = (
+                report_category_dir(root=config_path.resolve().parent, config=cfg, category="runs")
+                / "latest"
+                / "accounts"
+                / slug(str(account_id))
+                / "watchlist"
+                / "index.html"
+            )
+        else:
+            latest_report_output = latest_dir(root=config_path.resolve().parent, config=cfg, channel="watchlist") / "index.html"
 
     kwargs = {
         "config_path": config_path,
@@ -153,33 +165,48 @@ def export_phase0_premarket(
         "report_output": report_output,
         "refresh_cache": refresh_cache,
         "no_panel_cache": no_panel_cache,
+        "account_id": account_id,
+        "as_of_date": as_of_date,
     }
     if latest_report_output is not None:
         kwargs["latest_report_output"] = latest_report_output
     return export_premarket_watchlist(**kwargs)
 
 
-def export_brief_account_bill(*, config_path: Path, brief_date: str | None = None) -> dict:
-    cfg = load_config(config_path)
-    accounts = load_simulated_accounts(cfg, config_path.parent)
+def _select_account(accounts: list, account_id: str | None):
     if not accounts:
         raise ValueError("no enabled simulated account configured")
-    account = accounts[0]
+    if not account_id:
+        return accounts[0]
+    for account in accounts:
+        if account.account_id == account_id:
+            return account
+    available = ", ".join(account.account_id for account in accounts) or "<none>"
+    raise ValueError(f"simulated account {account_id!r} is not configured; available accounts: {available}")
+
+
+def export_brief_account_bill(*, config_path: Path, brief_date: str | None = None, account_id: str | None = None) -> dict:
+    cfg = load_config(config_path)
+    accounts = load_simulated_accounts(cfg, config_path.parent)
+    account = _select_account(accounts, account_id)
     if brief_date is None:
         import sqlite3
+        from phase0.execution.accounts import ensure_account_tables
 
         with sqlite3.connect(account.database_path) as conn:
+            ensure_account_tables(conn)
             row = conn.execute(
                 "SELECT MAX(brief_date) FROM account_daily_assets WHERE account_id = ?",
                 (account.account_id,),
             ).fetchone()
         brief_date = str(row[0]) if row and row[0] else ""
-    if not brief_date:
-        raise ValueError("no account daily asset rows found; run brief watchlist first")
     report_run = create_report_run(root=config_path.resolve().parent, config=cfg, command="brief-account-bill", scope=account.account_id)
     output = report_run.artifact("account_bill", "report", "html")
+    if not brief_date:
+        export_account_bill_placeholder_html(account=account, output_path=output)
+        return {"account": account.account_id, "brief_date": "", "account_bill": output, "status": "empty"}
     export_account_bill_html(account=account, brief_date=brief_date, output_path=output)
-    return {"account": account.account_id, "brief_date": brief_date, "account_bill": output}
+    return {"account": account.account_id, "brief_date": brief_date, "account_bill": output, "status": "confirmed"}
 
 
 def export_phase0_execution_gate(

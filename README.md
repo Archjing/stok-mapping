@@ -79,8 +79,10 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 - 已增加开发期统一调度入口：系统 cron 只调用 `scripts/run_project_scheduler.sh`，当前由 `phase0.cli maintain tick` 负责交易日历、运行窗口、重试和状态记录。
 - 严格 `qfq_asof` + point-in-time 股票池 + `strategy-admission` 复核后，当前**无可用于 paper review 或实盘模拟的合格策略**，当前**没有 selected candidate**。
 - `legacy_momentum_low_turnover_v1` 已降级为兼容基线和研究参考样本；旧 `qfq_current` / 旧 gate 结果不能视作当前准入结论。
-- `baseline_admission_all_v1` 配置层已包含 12 个候选；main 上仍需重跑全候选 admission 以纳入 `sleeve_composite_v1`，当前 sleeve 证据来自 scoped admission 且结论为 `reject`。
+- `baseline_admission_all_v1` 配置层已包含 13 个候选；main 上仍需按当前集合重跑全候选 admission，并生成日期、背景、命令口径、验证结果和治理动作明确的策略治理报告。
 - T5.2 投资策略情报工作流已建立 RAG-ready Markdown / CSV 语料基础：核心情报 note、策略转化草案、月度扫描索引、RAG 语料规范和 manifest 已落地；该层现位于 `knowledge/intelligence/`，只服务检索、摘要、反方审查和任务规划，不直接生成交易信号。
+- Python 代码已完成一轮分层整理：外部数据读取在 `phase0/data_access/`，数据更新与回填在 `phase0/data_governance/`，策略准入、归因、诊断在 `phase0/research/`，报告路径与登记在 `phase0/reporting/`，CLI 层只负责路由和参数解析。
+- `reports/` 根目录已收敛为白名单结构：`archive/`、`runs/`、`database_health/`、`strategy_admission/`、`phase0/`、`strategy_governance/` 和 `README.md`。常规报告、日志和 SQLite 数据库默认是本地运行资产，不随远端 Git 同步。
 - 账单导出和策略解释性输出已补齐基础版本，但这些产物不代表策略已通过实盘模拟门禁。
 - 账户级仿真 v2 已加入成交价口径、涨跌停、停牌、流动性参与率、未成交原因和真实账户 CSV 对账预留。
 - 历史 walk-forward / execution-gate 已默认使用 point-in-time 股票池：每一折按训练窗口结束日从本地历史库只读生成股票池，避免用当前股票池回测过去；日报 / watchlist / 模拟账户仍使用当前每日更新股票池。
@@ -90,14 +92,17 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 ## 架构层次
 
-当前系统可以理解为 6 层：
+当前系统可以理解为 9 层：
 
-- 数据源接入层：`Tushare`, `AkShare`, `yfinance`，并已最小接入 `FRED` 和 `Tiingo`。
-- 数据管理层：A 股 / US market 本地 SQLite 历史库、增量更新、覆盖率检查、新鲜度保护。
-- 股票池与特征层：A 股股票池、流动性/市值/行业约束、技术特征、财务因子。
-- 策略与信号层：本土主因子策略、跨市场 overlay、解释层。
-- 策略评估与治理层：walk-forward、compare mode、effectiveness gate、strategy change log。
-- 交付与交互层：Markdown/CSV 报告、Agent 辅助摘要，后续可扩展 Web/PWA/Tauri。
+- 数据源适配层：`Tushare`、`yfinance`、`FRED`、`Tiingo`、本地预下载包。
+- 本地数据资产层：A 股 / US / HK / 模拟账户 SQLite。
+- 数据质量与审计层：`db-health`、复权、财务 PIT、universe PIT、指数 as-of 审计。
+- 研究情报层：`knowledge/intelligence/`、情报台账、RAG-ready 语料、月度扫描。
+- 股票池与特征层：A 股股票池、PIT 股票池、技术/估值/财务因子。
+- 策略与信号层：`phase0/strategies/` 注册表、候选策略、跨市场 overlay。
+- 账户与执行仿真层：账单、模拟账户、执行 profile、成交约束和对账预留。
+- 策略评估与治理层：walk-forward、compare、admission、失败归因、过拟合、因子诊断。
+- 交付与运维层：brief、account-bill、reports、dashboard scan、scheduler、logs、memory、远端静态站点同步。
 
 详细架构说明见：
 
@@ -237,10 +242,12 @@ uv sync
 | `brief watchlist` | 阶段试用观察池入口；当前与 `brief daily` 同执行路径 | 推荐 |
 | `brief premarket` | 只导出原始盘前观察池，不更新 A 股历史库 | 推荐 |
 | `brief account-bill` | 从 SQLite 导出最新或指定日期的模拟交易账单 HTML | 推荐 |
+| `brief confirm-account-bills` | 盘后用当日 watchlist 重算模拟账户账本，刷新 latest 账单并发布 `/quant/` | 推荐 |
+| `site build/sync/publish` | 构建或发布多模拟账户静态控制台 `/quant/` | 推荐 |
 | `update-history` | 更新 A 股本地日线历史库 | 推荐 |
 | `update-us-market-history` | 更新 US market 跨市场历史库 | 推荐 |
 | `update-hk-market-history` | 更新港股历史库；当前是否实际启用取决于 `hk_market_history.enabled` | 预留 / 可检查 |
-| `update-financials` | 更新 A 股季度财务因子 | 推荐 |
+| `update-financials` | 更新 A 股季度财务因子；会逐期请求东方财富财报接口，网络慢时可能长时间等待 | 推荐 |
 | `run` | 运行 Phase 0 主流程 | 研究入口 |
 | `cost-sensitivity` | 运行显式成本敏感性测试 | 研究入口 |
 | `bill` | 导出当前主策略低换手回测账单、日资产表和 HTML 预览 | 研究入口 |
@@ -290,7 +297,9 @@ uv sync
 ./.venv/bin/python -m phase0.cli bill --config config.yaml
 ```
 
-账单使用 `phase0.execution` 中的账户级仿真 v2 参数，当前默认包含 `price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`、涨跌停检查和停牌检查。输出会记录全部成交、部分成交、未成交及原因。
+账单使用 `phase0.execution` 中的账户级仿真 v2 参数，当前默认包含 `price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`、最低佣金、过户费、最小成交金额、T+1 可卖库存、ST 5% 涨跌停、新股上市初期不限价、普通涨跌停检查和停牌检查。输出会记录全部成交、部分成交、未成交及原因。
+
+`compare` / `strategy-admission` 默认也会在 `account_execution` 诊断列里并行产出同一套确定性执行约束下的账户指标，包括账户年化收益、Sharpe、最大回撤、成交数、未成交数和未完全成交比例。当前 admission 主 gate 仍使用策略研究收益曲线，账户执行指标用于准入复核和 failure attribution，不直接替代主收益口径。
 
 成交价口径中的日期含义需要区分：`close` 表示执行日收盘价，即观察池对应执行日 15:00 附近价格；`next_open` 表示执行日开盘价，即观察池对应执行日 09:30 附近价格；`conservative` 表示执行日开盘价叠加保守缓冲后的估算价格。
 
@@ -307,7 +316,7 @@ uv sync
 当前内置两套 profile：
 
 - `research`：策略研究回测，当前使用 `slippage: 0.001`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: close`，并关闭涨跌停 / 停牌检查和流动性参与率限制。
-- `live`：实盘仿真回测，当前使用 `slippage: 0.00246`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`，并开启涨跌停和停牌检查。
+- `live`：实盘仿真回测，当前使用 `slippage: 0.00246`、`commission: 0.00025`、`stamp_duty_sell: 0.0005`、`price_mode: next_open`、`lot_size: 100`、`max_participation_rate: 0.05`，并开启最低佣金、过户费、最小成交金额、T+1、ST / 新股特殊涨跌停、普通涨跌停和停牌检查。
 
 显式指定 profile：
 
@@ -356,7 +365,23 @@ reports/live_execution_backtest/
 ```text
 reports/<brief_date>/phase0_premarket_watchlist_<brief_date>.csv
 reports/<brief_date>/phase0_watchlist_report_<brief_date>.html
+reports/<brief_date>/watchlist.css
 ```
+
+Watchlist HTML 产物已拆成模板和样式两层：HTML 由 `phase0/reporting/templates/watchlist.html` 的 Jinja2 模板渲染，Python 只负责准备结构化数据；页面样式由 `phase0/reporting/static/watchlist.css` 提供，并通过 `<link rel="stylesheet" href="watchlist.css">` 引入。当前视觉按 `/brief/ui-test/` 参考样例对齐：Belafonte Day / Belafonte Night 双主题、字体栈、配色、表格视觉、回到顶部按钮和 1920px / 2560px 大屏断点保持一致；主题切换脚本按参考样例内联在 HTML 尾部。
+
+生成和同步时，watchlist 被视为 HTML + CSS bundle，而不是单个 HTML 文件。当前会同时维护：
+
+```text
+reports/<brief_date>/phase0_watchlist_report_<brief_date>.html
+reports/<brief_date>/watchlist.css
+reports/runs/latest/watchlist/index.html
+reports/runs/latest/watchlist/watchlist.css
+reports/watchlist_today/index.html
+reports/watchlist_today/watchlist.css
+```
+
+远端 `/brief/` 同步读取 `reports/watchlist_today/` 整个目录。任何新增静态资源都应进入同一个 bundle 同步链路，避免远端页面引用丢失。
 
 `brief watchlist` 会维护模拟账户主账本，SQLite 为主存储：
 
@@ -380,9 +405,21 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 data/simulated_trading/phase0_daily_account_ledger.csv
 ```
 
-现阶段该流水默认按程序自动生成的目标仓位滚动；后续接入用户模拟交易确认后，可用用户实际成交/持仓状态替代这份自动状态。简报中的 `交易动作`、`当前权重`、`目标权重`、`权重变化` 使用连续模拟口径，`策略信号动作` 保留本次策略模型自身的信号口径。
+现阶段该流水默认按程序自动生成的目标仓位滚动；后续接入用户模拟交易确认后，可用用户实际成交/持仓状态替代这份自动状态。为压缩表格宽度，简报表头显示为 `动作`、`当前权重`、`目标权重`、`权重变化`、`持仓天数`，这些列使用当前模拟账户口径；`信号动作`、`信号持有天数` 保留本次策略模型自身的研究信号口径。模拟账户可在 `accounts.simulated[].simulation_start_date` 设置账户生命周期起点；账本重建不会继承早于该日期的历史 watchlist。
+
+多模拟账户运行时可使用：
+
+```bash
+./runit brief watchlist --config config.yaml --all-accounts
+```
+
+`accounts.simulated` 中 `enabled: true` 的账户都会生成自己的观察池、模拟账单和账户级 latest bundle。账户可以配置独立 `strategy_id`，因此不同账户可跟随不同策略和建仓日运行。
+
+Watchlist 顶部账户摘要固定展示 5 个指标：`总资产（元）`、`可用资金（元）`、`持仓市值（元）`、`当前仓位（%）`、`当前收益率（%）`。没有已确认账单时，摘要按模拟账户初始资金展示：总资产和可用资金为初始金额，持仓市值为 `0`，当前仓位为 `0`，当前收益率显示 `暂无`。
 
 注意：`brief watchlist` 当前展示的是计划层观察池；模拟账户账单只写入本地日线库已有对应执行日 OHLCV 的已确认日期。`next_open` / `conservative` 使用执行日开盘价附近撮合，`close` 使用执行日收盘价撮合，持仓按执行日收盘价估值。当前账单已接入 100 股整手、现金约束、佣金、卖出印花税、滑点、涨跌停 / 停牌检查和最大成交参与率；未成交 / 部分成交原因的结构化落库仍需后续增强。
+
+Watchlist 表格对齐规则已固化在 CSS class：`收盘价` 使用右对齐，其他数值列使用居中对齐，并统一启用 `tabular-nums`，保证宽表扫读时数字位置稳定。
 
 单独导出模拟交易账单 HTML：
 
@@ -391,13 +428,22 @@ data/simulated_trading/phase0_daily_account_ledger.csv
 ./.venv/bin/python -m phase0.cli brief account-bill --date 2026-06-03
 ```
 
+盘后确认当日模拟账户账单并发布静态控制台：
+
+```bash
+./.venv/bin/python -m phase0.cli brief confirm-account-bills --config config.yaml --all-accounts
+./.venv/bin/python -m phase0.cli brief confirm-account-bills --config config.yaml --all-accounts --date 2026-07-02
+```
+
+该命令不重新选股；它读取当日已落盘的 watchlist CSV，按每个 enabled 模拟账户自己的 `strategy_id`、`simulation_start_date` 和 `execution_price_mode` 重算账户账本。若当天 A 股执行价 OHLCV 已入库，则刷新 `reports/runs/latest/accounts/<account_id>/account_bill/index.html`，默认账户同时刷新 `reports/runs/latest/account_bill/index.html` 和 `reports/account_bill_today/index.html`，最后执行 `/quant/` 静态站点发布。
+
 单独导出 07:30 盘前观察池：
 
 ```bash
 ./.venv/bin/python -m phase0.cli brief premarket
 ```
 
-观察池会显示交易动作、权重变化、观察理由、成交价口径和执行风险提示。`brief premarket` 不负责更新 A 股本地历史库，日常使用优先跑 `brief daily`。
+观察池会显示动作、信号动作、权重变化、持仓天数、信号持有天数、观察理由、成交价口径和执行风险提示。`brief premarket` 不负责更新 A 股本地历史库，日常使用优先跑 `brief daily`。
 
 完整重建离线历史库：
 
@@ -435,6 +481,8 @@ data/simulated_trading/phase0_daily_account_ledger.csv
 ./.venv/bin/python -m phase0.cli update-financials --config config.yaml
 ```
 
+该命令依赖外部财报接口，当前主要耗时点通常是东方财富财报接口请求。若终端短时间没有新输出，不等于进程失效；可另开终端查看网络、日志或进程状态。中断运行只会停止当次更新，不应把未完成更新解释为财务数据已刷新。
+
 更新 US market 跨市场历史库：
 
 ```bash
@@ -468,10 +516,12 @@ bash scripts/install_dev_cron.sh
 `scripts/run_project_scheduler.sh` 当前是 wrapper：加载 `.env`、预热维护状态库后调用 `phase0.cli maintain tick`。具体任务由维护编排器判断运行窗口、交易日历、重试状态和健康门禁，当前默认包含：
 
 - 每周一 `03:30`：更新 A 股季度财务因子，日志写入 `logs/financial_factors_update.log`。
-- 交易日 `07:20`：运行 `brief watchlist`，生成阶段试用观察池页面 `reports/watchlist_today/index.html`，并同步到 ECS 远端目录 `BRIEF_SYNC_REMOTE_DIR`，日志写入 `logs/daily_brief_pipeline.log`。
+- 交易日 `07:20`：运行 `brief watchlist`，生成阶段试用观察池页面 `reports/watchlist_today/index.html`，并同步到远端；同步目标优先读取 `BRIEF_SYNC_REMOTE` / `BRIEF_SYNC_REMOTE_DIR`，未设置时 fallback 到代码默认静态站点目录。日志写入 `logs/daily_brief_pipeline.log`；若本次已生成确认模拟账户账单，还会镜像到 `reports/account_bill_today/index.html`，同步目标优先读取 `ACCOUNT_BILL_SYNC_REMOTE` / `ACCOUNT_BILL_SYNC_REMOTE_DIR`。
 - 交易日 `16:20`：更新港股历史库，日志写入 `logs/hk_market_history_update.log`。
 - 交易日 `16:30`：更新 A 股本地历史库，日志写入 `logs/manual_history_update.log`。
+- 交易日 `16:45`：运行 `brief confirm-account-bills --all-accounts`，用当日已生成的 watchlist 重算所有 enabled 模拟账户账本，刷新 `/quant/.../latest/account-bill/` 到当天已确认账单，并发布 `/quant/` 静态站点。日志写入 `logs/account_bill_confirm.log`。
 - 交易日 `17:10`：更新 US market 历史库，日志写入 `logs/us_market_history_update.log`。
+- 自然日 `20:45`：运行 `ai-corpus fetch --provider cctv-news --min-rows 1`，抓取当天央视网新闻联播公开文稿；若当天页面尚未发布导致空结果，晚间窗口内按重试策略继续尝试。日志写入 `logs/cctv_news_update.log`。
 
 调度器本身日志写入：
 
@@ -497,13 +547,14 @@ logs/project_scheduler.log
 - `core_selection_quality_momentum_v1`
 - `theme_exposure_momentum_v1`
 - `sleeve_composite_v1`
+- `sleeve_composite_low_churn_v1`
 
 `strategy-admission` 默认使用 `config.yaml` 中的 `phase0.walk_forward.admission.default_strategy_set` 和
 `phase0.walk_forward.admission.strategy_sets` 控制本轮候选集合；临时缩小范围优先用 CLI `--strategies` 覆盖，
 避免把临时实验状态写回配置。若长期不希望某个策略参与默认准入，可以在 `strategy_sets` 中注释对应策略行；
 该变更是持久设计变更，不会自动恢复。`phase0.walk_forward.strategy_v2.compare_strategies` 仅保留为向后兼容入口。
 
-当前默认准入集合 `baseline_admission_all_v1` 已包含上述 12 个候选。main 上已落盘的全候选 admission 仍需重跑以纳入 `sleeve_composite_v1`；`sleeve_composite_v1` 当前仅有 scoped admission 证据，结论为 `reject`，保持 research-only，不进入 paper review、模拟账户、日报或 watchlist。
+当前默认准入集合 `baseline_admission_all_v1` 已包含上述 13 个候选。main 上仍需按当前集合重跑全候选 admission；`sleeve_composite_v1` 与 `sleeve_composite_low_churn_v1` 仍保持 research-only 边界，未通过 admission 前不进入 paper review、模拟账户、日报或 watchlist。
 
 策略变更要求：
 
@@ -517,6 +568,29 @@ logs/project_scheduler.log
 ```text
 reports/phase0_strategy_change_log.md
 ```
+
+常规运行产物默认按 `reports/README.md` 的白名单目录管理。新代码优先使用 `phase0.reporting.paths` 生成 `reports/runs/<YYYY-MM-DD>/<timestamp>__<command>__<scope>/` 标准 run 目录；显式 `--output-dir` 仅用于实验、兼容或人工指定归档。
+
+目录边界：
+
+- `reports/`：程序生成的研究报告、审计报告、HTML/CSV/Markdown 报表和 dashboard 可索引产物。
+- `logs/`：机器运行日志、调度状态、锁文件和 pipeline stdout/stderr。
+- `memory/`：人工整理的会话归档、关键决策、长期项目记忆和历史计划快照。
+
+当前公网交付站点为 `http://share.spidermanread.men/`：
+
+- 简报页面：`/brief/`
+- 模拟账户账单页面：`/account-bill/`
+- 多模拟账户控制台：`/quant/`
+
+`/quant/` 本地构建入口：
+
+```bash
+./runit site build --config config.yaml
+./runit site publish --config config.yaml
+```
+
+静态控制台输出到 `reports/static_site/quant/`，远端同步只允许目标目录以 `/quant/` 结尾，不覆盖 `share.spidermanread.men` 站点根目录。详细设计见 [`docs/tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md`](/home/zj/workspace/stok-mapping/docs/tasks/ops/MULTI_ACCOUNT_STATIC_CONSOLE_TASKS.md)。
 
 ## Agent 与 MCP
 

@@ -12,6 +12,10 @@ ALLOWED_REPORT_ROOTS = {
     "strategy_admission",
     "strategy_governance",
 }
+LEGACY_COMPAT_REPORT_ROOTS = {
+    "account_bill_today",
+    "watchlist_today",
+}
 
 PATH_FILES = [
     Path("config.yaml"),
@@ -44,7 +48,7 @@ def _iter_policy_violations() -> list[tuple[str, str]]:
             while index >= 0:
                 suffix = literal[index + len("reports/") :]
                 root = suffix.split("/", 1)[0].split('"', 1)[0].split("'", 1)[0].strip()
-                if root and root not in ALLOWED_REPORT_ROOTS:
+                if root and root not in ALLOWED_REPORT_ROOTS | LEGACY_COMPAT_REPORT_ROOTS:
                     violations.append((str(path.relative_to(repo)), literal.strip()))
                     break
                 index = literal.find("reports/", index + 1)
