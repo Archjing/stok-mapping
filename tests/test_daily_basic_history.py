@@ -1,16 +1,27 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
 import pandas as pd
 import pytest
 
-from phase0.data_access.local_history import configure_local_history
+from phase0.data_access import local_history
 from phase0.data_access.daily_basic_history import (
     load_daily_basic_factor_frame,
     merge_point_in_time_daily_basic,
 )
+from phase0.data_access.local_history import configure_local_history
+
+
+@pytest.fixture(autouse=True)
+def restore_local_history_configuration() -> Iterator[None]:
+    original_config = vars(local_history._settings).copy()
+    try:
+        yield
+    finally:
+        configure_local_history(original_config)
 
 
 @pytest.fixture
@@ -104,3 +115,16 @@ def test_merge_point_in_time_daily_basic_matches_exact_date_only(daily_basic_db:
     assert merged.loc[merged["date"] == pd.Timestamp("2024-01-02"), "pe_ttm"].item() == 10
     assert merged.loc[merged["date"] == pd.Timestamp("2024-01-03"), "pb"].item() == 1.1
     assert pd.isna(merged.loc[merged["date"] == pd.Timestamp("2024-01-04"), "market_cap"].item())
+
+
+def test_merge_point_in_time_daily_basic_normalizes_panel_symbol_without_mutating_input(
+    daily_basic_db: Path,
+) -> None:
+    panel = pd.DataFrame({"symbol": [" AAA "], "date": ["2024-01-02"]})
+    original = panel.copy(deep=True)
+
+    merged = merge_point_in_time_daily_basic(panel, as_of_date="2024-01-02")
+
+    assert merged["market_cap"].item() == 100
+    assert merged["pe_ttm"].item() == 10
+    pd.testing.assert_frame_equal(panel, original)

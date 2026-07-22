@@ -16,6 +16,10 @@ def _empty_daily_basic_frame() -> pd.DataFrame:
     return pd.DataFrame(columns=["symbol", "date", *DAILY_BASIC_FACTOR_COLUMNS])
 
 
+def _normalize_symbol(value) -> str:
+    return str(value).strip() if pd.notna(value) else ""
+
+
 def load_daily_basic_factor_frame(
     *,
     symbols: Iterable[str],
@@ -28,7 +32,7 @@ def load_daily_basic_factor_frame(
     table_name = _safe_identifier(str(table))
     requested_symbols = sorted(
         symbol
-        for symbol in {str(value).strip() for value in symbols if pd.notna(value)}
+        for symbol in {_normalize_symbol(value) for value in symbols}
         if symbol
     )
     if not requested_symbols:
@@ -68,7 +72,7 @@ def load_daily_basic_factor_frame(
     if frame.empty:
         return _empty_daily_basic_frame()
     frame = frame.rename(columns={"pe_ratio": "pe_ttm", "pb_ratio": "pb"})
-    frame["symbol"] = frame["symbol"].map(lambda value: str(value).strip() if pd.notna(value) else "")
+    frame["symbol"] = frame["symbol"].map(_normalize_symbol)
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
     for column in DAILY_BASIC_FACTOR_COLUMNS:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
@@ -98,9 +102,9 @@ def merge_point_in_time_daily_basic(
         return merged
 
     merged["date"] = pd.to_datetime(merged["date"], errors="coerce").dt.normalize()
-    merged["symbol"] = merged["symbol"].where(merged["symbol"].isna(), merged["symbol"].astype(str))
+    merged["symbol"] = merged["symbol"].map(_normalize_symbol)
     valid_dates = merged["date"].dropna()
-    symbols = sorted(merged["symbol"].dropna().astype(str).unique().tolist())
+    symbols = sorted(symbol for symbol in merged["symbol"].unique().tolist() if symbol)
     if valid_dates.empty or not symbols:
         return merged
 
