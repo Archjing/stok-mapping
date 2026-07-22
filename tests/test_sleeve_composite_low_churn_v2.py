@@ -257,8 +257,21 @@ def test_research_only_identity_enablement_and_stable_format() -> None:
         "sleeve_composite_low_churn_v2:"
         "w=slow_quality_score:0.3/slow_value_score:0.2/slow_low_vol_score:0.2/"
         "slow_earnings_score:0.15/slow_residual_momentum_score:0.15,"
-        "buy_top=30,hold_top=50,rebalance=20d,min_hold=20d,max_w=0.04,industry_cap=3"
+        "min_available=4,buy_top=30,hold_top=50,rebalance=20d,min_hold=20d,"
+        "max_w=0.04,industry_cap=3"
     )
     assert set(QUALITY_COMPONENT_COLUMNS).issuperset(
         {"quality_roe_component", "quality_profit_growth_component"}
     )
+
+
+def test_format_params_audits_minimum_factor_availability() -> None:
+    strategy = SleeveCompositeLowChurnV2Strategy()
+    params = _select(strategy, pd.DataFrame(), _config())
+
+    default_format = strategy.format_params(params)
+    stricter_format = strategy.format_params({**params, "min_available_factors": 5})
+
+    assert "min_available=4" in default_format
+    assert "min_available=5" in stricter_format
+    assert default_format != stricter_format

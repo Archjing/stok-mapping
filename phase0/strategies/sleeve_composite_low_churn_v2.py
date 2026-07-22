@@ -178,6 +178,7 @@ class SleeveCompositeLowChurnV2Strategy(BaseStrategy):
         return (
             "sleeve_composite_low_churn_v2:"
             f"w={formatted_weights},"
+            f"min_available={params.get('min_available_factors')},"
             f"buy_top={params.get('buy_top_n', params.get('top_n', ''))},"
             f"hold_top={params.get('hold_top_n', '')},"
             f"rebalance={params.get('rebalance_days', '')}d,"
