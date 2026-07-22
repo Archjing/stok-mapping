@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 from typing import Any
 
@@ -21,6 +22,16 @@ STRATEGY_RESEARCH_COMMANDS = frozenset(
         "strategy-admission",
     }
 )
+
+
+def _positive_finite_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("cost multiplier must be finite and greater than zero") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("cost multiplier must be finite and greater than zero")
+    return parsed
 
 
 def _print_walk_forward_trace(console: Console, payload: dict[str, object]) -> None:
@@ -99,6 +110,12 @@ def register_strategy_research_commands(subparsers: argparse._SubParsersAction) 
     admission_parser.add_argument("--profile", action="store_true", help="Write walk-forward timing profile JSON under logs/perf")
     admission_parser.add_argument("--no-wf-cache", action="store_true", help="Disable walk-forward runtime caches for this run")
     admission_parser.add_argument("--refresh-wf-cache", action="store_true", help="Refresh walk-forward disk caches before use")
+    admission_parser.add_argument(
+        "--cost-multiplier",
+        type=_positive_finite_float,
+        default=1.0,
+        help="Scale walk-forward commission, sell stamp duty, and slippage (default: 1.0)",
+    )
 
     factor_parser = subparsers.add_parser("factor-effectiveness", help="Generate point-in-time factor effectiveness report")
     factor_parser.add_argument("--config", default="config.yaml", help="Path to config file")
@@ -150,6 +167,7 @@ def handle_strategy_research_command(
             profile_run=bool(args.profile),
             no_wf_cache=bool(args.no_wf_cache),
             refresh_wf_cache=bool(args.refresh_wf_cache),
+            cost_multiplier=float(getattr(args, "cost_multiplier", 1.0)),
         )
         research_console.print("[green]Strategy admission review complete[/green]")
         research_console.print(f"Strategies: {result.strategies}")

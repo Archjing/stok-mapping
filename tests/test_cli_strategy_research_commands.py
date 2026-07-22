@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 import phase0.cli as cli
 import phase0.cli_commands.gates as gates_cli
 import phase0.cli_commands.strategy_research as strategy_research_cli
@@ -46,6 +48,8 @@ def test_strategy_research_command_registration_preserves_args() -> None:
             "--profile",
             "--no-wf-cache",
             "--refresh-wf-cache",
+            "--cost-multiplier",
+            "1.5",
         ]
     )
     factor_args = parser.parse_args(["factor-effectiveness", "--output-dir", "factor"])
@@ -64,9 +68,23 @@ def test_strategy_research_command_registration_preserves_args() -> None:
     assert admission_args.profile is True
     assert admission_args.no_wf_cache is True
     assert admission_args.refresh_wf_cache is True
+    assert admission_args.cost_multiplier == 1.5
     assert factor_args.cmd == "factor-effectiveness"
     assert factor_args.config == "config.yaml"
     assert factor_args.output_dir == "factor"
+
+    default_admission_args = parser.parse_args(["strategy-admission"])
+    assert default_admission_args.cost_multiplier == 1.0
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "nan", "+inf", "-inf"])
+def test_strategy_admission_rejects_non_positive_or_non_finite_cost_multiplier(value: str) -> None:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="cmd")
+    strategy_research_cli.register_strategy_research_commands(subparsers)
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["strategy-admission", "--cost-multiplier", value])
 
 
 def test_overfit_handler_forwards_paths(monkeypatch, tmp_path: Path) -> None:
@@ -167,6 +185,7 @@ def test_strategy_admission_handler_forwards_scope_and_trace(monkeypatch, tmp_pa
         profile=True,
         no_wf_cache=True,
         refresh_wf_cache=True,
+        cost_multiplier=1.5,
     )
 
     exit_code = strategy_research_cli.handle_strategy_research_command(
@@ -192,6 +211,7 @@ def test_strategy_admission_handler_forwards_scope_and_trace(monkeypatch, tmp_pa
     assert calls[1]["profile_run"] is True
     assert calls[1]["no_wf_cache"] is True
     assert calls[1]["refresh_wf_cache"] is True
+    assert calls[1]["cost_multiplier"] == 1.5
     assert any("WF fold result" in line for line in trace_messages)
 
 

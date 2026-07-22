@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from phase0.research.admission.gate import resolve_admission_gate, resolve_diagnostic_suites
@@ -52,8 +53,24 @@ def run_strategy_admission(
     profile_run: bool = False,
     no_wf_cache: bool = False,
     refresh_wf_cache: bool = False,
+    cost_multiplier: float = 1.0,
 ) -> StrategyAdmissionResult:
-    wcfg = config.get("walk_forward", {})
+    try:
+        normalized_cost_multiplier = float(cost_multiplier)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("cost_multiplier must be finite and greater than zero") from exc
+    if not np.isfinite(normalized_cost_multiplier) or normalized_cost_multiplier <= 0:
+        raise ValueError("cost_multiplier must be finite and greater than zero")
+
+    effective_config = copy.deepcopy(config)
+    effective_wcfg = effective_config.setdefault("walk_forward", {})
+    effective_execution_cfg = effective_wcfg.setdefault("execution", {})
+    for cost_key in ("commission", "stamp_duty_sell", "slippage"):
+        effective_execution_cfg[cost_key] = (
+            float(effective_execution_cfg.get(cost_key, 0.0)) * normalized_cost_multiplier
+        )
+
+    wcfg = effective_wcfg
     available_presets = wcfg.get("presets", {}) or {}
     preset_names = presets or list(available_presets.keys())
     if not preset_names:
@@ -74,7 +91,12 @@ def run_strategy_admission(
     explicit_output_dir = output_dir is not None
     if output_dir is None:
         scope_name = strategy_scope.get("strategy_set") or "_".join(strategy_names[:3]) or "default"
-        report_run = create_report_run(root=root, config=config, command="strategy-admission", scope=str(scope_name))
+        report_run = create_report_run(
+            root=root,
+            config=effective_config,
+            command="strategy-admission",
+            scope=str(scope_name),
+        )
         output_dir = report_run.run_dir
     else:
         report_run = None
@@ -84,7 +106,7 @@ def run_strategy_admission(
     failure_rows: list[dict[str, Any]] = []
     shared_runtime = None
     for preset_name in preset_names:
-        scenario_cfg = copy.deepcopy(config)
+        scenario_cfg = copy.deepcopy(effective_config)
         scenario_wcfg = scenario_cfg.setdefault("walk_forward", {})
         scenario_wcfg["preset_name"] = preset_name
         scenario_execution_cfg = scenario_wcfg.setdefault("execution", {})
@@ -141,9 +163,11 @@ def run_strategy_admission(
         all_folds.append(folds)
 
     folds_df = pd.concat(all_folds, ignore_index=True) if all_folds else pd.DataFrame()
+    folds_df["research_cost_multiplier"] = normalized_cost_multiplier
     failures_df = pd.DataFrame(failure_rows)
     matrix_df = build_window_matrix(folds_df, failures_df, strategy_names, preset_names, gate_cfg)
-    attach_price_adjustment_status(matrix_df, config, gate_cfg)
+    matrix_df["research_cost_multiplier"] = normalized_cost_multiplier
+    attach_price_adjustment_status(matrix_df, effective_config, gate_cfg)
 
     folds_csv = (
         output_dir / "strategy_admission_candidate_folds.csv"
@@ -151,7 +175,7 @@ def run_strategy_admission(
         else report_run.artifact("strategy_admission", "candidate_folds", "csv")
     )
     if folds_df.empty:
-        pd.DataFrame().to_csv(folds_csv, index=False)
+        folds_df.to_csv(folds_csv, index=False)
     else:
         folds_df.to_csv(folds_csv, index=False)
 
@@ -164,7 +188,7 @@ def run_strategy_admission(
     overfit_df = pd.DataFrame()
     if not folds_df.empty:
         overfit_result = run_overfit_diagnostic(
-            config=config,
+            config=effective_config,
             root=root,
             candidates_path=folds_csv,
             folds_path=folds_csv,
@@ -221,7 +245,9 @@ def run_strategy_admission(
             presets=preset_names,
             strategy_scope=strategy_scope,
             output_dir=output_dir if explicit_output_dir else None,
+            cost_multiplier=normalized_cost_multiplier,
         ),
+        cost_multiplier=normalized_cost_multiplier,
     )
 
     return StrategyAdmissionResult(

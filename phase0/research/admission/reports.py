@@ -213,7 +213,9 @@ def _admission_command_hint(
     presets: list[str],
     strategy_scope: dict[str, Any],
     output_dir: Path | None,
+    cost_multiplier: float = 1.0,
 ) -> str:
+    normalized_cost_multiplier = _normalized_cost_multiplier(cost_multiplier)
     parts = [
         "phase0.cli",
         "strategy-admission",
@@ -228,6 +230,8 @@ def _admission_command_hint(
         parts.append("--strategies " + " ".join(strategies))
     if output_dir is not None:
         parts.append(f"--output-dir {output_dir}")
+    if normalized_cost_multiplier != 1.0:
+        parts.append(f"--cost-multiplier {normalized_cost_multiplier}")
     return " ".join(parts)
 
 
@@ -271,7 +275,9 @@ def _write_governance_report(
     diagnostics_suites: list[str],
     required_artifacts: list[str] | None = None,
     command_hint: str,
+    cost_multiplier: float = 1.0,
 ) -> None:
+    normalized_cost_multiplier = _normalized_cost_multiplier(cost_multiplier)
     action_counts = _value_counts(review, "admission_action")
     price_counts = _value_counts(matrix, "price_adjustment_status")
     industry_counts = _value_counts(matrix, "industry_diagnostic_status")
@@ -301,6 +307,7 @@ def _write_governance_report(
         f"- Presets: `{', '.join(presets)}`",
         f"- Strategies: `{', '.join(strategies)}`",
         f"- Diagnostics suites: `{', '.join(diagnostics_suites) if diagnostics_suites else 'none'}`",
+        f"- Research cost multiplier: `{normalized_cost_multiplier}`",
         "",
         "## Governance Boundary",
         "",
@@ -479,6 +486,13 @@ def _safe_str(value: Any, default: str = "") -> str:
         return default
     text = str(value)
     return default if text.lower() == "nan" else text
+
+
+def _normalized_cost_multiplier(value: float) -> float:
+    normalized = float(value)
+    if not np.isfinite(normalized) or normalized <= 0:
+        raise ValueError("cost_multiplier must be finite and greater than zero")
+    return normalized
 
 
 write_report = _write_report
