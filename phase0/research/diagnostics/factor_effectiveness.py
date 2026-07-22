@@ -11,6 +11,7 @@ import pandas as pd
 from phase0.data_governance.external_market_history import configure_hk_market_history, configure_us_market_history
 from phase0.data_access.daily_basic_history import merge_point_in_time_daily_basic
 from phase0.data_access.local_history import configure_local_history
+from phase0.research.factors.slow_multifactor import add_slow_multifactor_features
 from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds
 
@@ -56,6 +57,27 @@ FACTOR_SPECS = [
     FactorSpec("low_debt_to_asset", "low_debt_to_asset", "-debt_to_asset"),
     FactorSpec("ep", "ep", "1 / pe_ttm"),
     FactorSpec("low_pb", "low_pb", "-pb"),
+    FactorSpec("slow_quality", "slow_quality_score", "PIT quality neutralized by industry and size"),
+    FactorSpec(
+        "slow_earnings",
+        "slow_earnings_score",
+        "PIT earnings improvement neutralized by industry and size",
+    ),
+    FactorSpec(
+        "slow_value",
+        "slow_value_score",
+        "positive E/P and inverse P/B neutralized by industry and size",
+    ),
+    FactorSpec(
+        "slow_low_vol",
+        "slow_low_vol_score",
+        "60-day low volatility neutralized by industry and size",
+    ),
+    FactorSpec(
+        "slow_residual_momentum",
+        "slow_residual_momentum_score",
+        "120-to-20-day momentum neutralized by industry and size",
+    ),
 ]
 
 
@@ -106,7 +128,7 @@ def _add_factor_columns(panel: pd.DataFrame) -> pd.DataFrame:
     pe = pd.to_numeric(d["pe_ttm"], errors="coerce").replace(0, np.nan)
     d["ep"] = (1.0 / pe).replace([np.inf, -np.inf], np.nan)
     d["low_pb"] = -pd.to_numeric(d["pb"], errors="coerce")
-    return d
+    return add_slow_multifactor_features(d)
 
 
 def _add_forward_returns(panel: pd.DataFrame, horizon: int) -> pd.DataFrame:
