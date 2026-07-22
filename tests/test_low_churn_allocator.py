@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -173,6 +174,96 @@ def test_allocate_low_churn_preserves_none_and_unknown_as_distinct_industries() 
 
     second_day = output.signal_frame[output.signal_frame["date"] == dates[1]]
     assert set(second_day.loc[second_day["selected"] > 0, "symbol"]) == {"AAA", "BBB"}
+
+
+@pytest.mark.parametrize(
+    ("risk_overlay_scale", "expected_weight"),
+    [(-0.2, 0.0), (1.5, 0.5), (np.inf, 0.5), (-np.inf, 0.5), (np.nan, 0.5)],
+)
+def test_allocate_low_churn_normalizes_risk_overlay_scale(
+    risk_overlay_scale: float,
+    expected_weight: float,
+) -> None:
+    dates = list(pd.bdate_range("2024-01-02", periods=2))
+    panel = pd.DataFrame(
+        [
+            {
+                "date": date,
+                "symbol": "AAA",
+                "final_score": 0.9,
+                "score": 0.9,
+                "risk_overlay_scale": risk_overlay_scale,
+                "ret": 0.01,
+            }
+            for date in dates
+        ]
+    )
+
+    output = allocate_low_churn(
+        panel,
+        params={
+            "buy_top_n": 1,
+            "hold_top_n": 1,
+            "rebalance_days": 1,
+            "min_hold_days": 0,
+            "max_symbol_weight": 0.5,
+            "max_names_per_industry": None,
+        },
+        slippage=0.001,
+        commission=0.0,
+        stamp_duty_sell=0.0,
+        signal_columns=SIGNAL_COLUMNS,
+        metadata={},
+    )
+    signal = output.signal_frame.sort_values("date").reset_index(drop=True)
+
+    assert signal.loc[0, "weight_unshifted"] == expected_weight
+    assert signal.loc[1, "weight"] == expected_weight
+    assert signal["weight_unshifted"].between(0.0, 0.5).all()
+    assert signal["selected"].equals((signal["weight_unshifted"] > 0).astype(float))
+    assert np.isfinite(output.returns).all()
+    assert np.isfinite(output.exposure).all()
+
+
+def test_allocate_low_churn_rejects_duplicate_normalized_date_symbol_keys() -> None:
+    date = pd.Timestamp("2024-01-02")
+    panel = pd.DataFrame(
+        [
+            {
+                "date": date,
+                "symbol": 1,
+                "final_score": 0.9,
+                "score": 0.9,
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+            {
+                "date": date,
+                "symbol": "1",
+                "final_score": 0.8,
+                "score": 0.8,
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+        ]
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        allocate_low_churn(
+            panel,
+            params=_params(),
+            slippage=0.0,
+            commission=0.0,
+            stamp_duty_sell=0.0,
+            signal_columns=SIGNAL_COLUMNS,
+            metadata={},
+        )
+
+    message = str(exc_info.value)
+    assert "unique (date, symbol) rows" in message
+    assert "duplicate key samples" in message
+    assert "2024-01-02" in message
+    assert "'1'" in message
 
 
 @pytest.mark.parametrize(

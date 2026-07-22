@@ -38,7 +38,16 @@ def allocate_low_churn(
         empty = pd.Series(0.0, index=dates)
         return StrategyOutput(empty, empty, pd.DataFrame(), metadata)
 
-    d = scored_panel.copy().sort_values(["date", "symbol"]).reset_index(drop=True)
+    d = scored_panel.copy()
+    d["symbol"] = d["symbol"].astype(str)
+    duplicate_keys = d.loc[d.duplicated(["date", "symbol"], keep=False), ["date", "symbol"]]
+    if not duplicate_keys.empty:
+        samples = duplicate_keys.drop_duplicates().head(5).to_dict("records")
+        raise ValueError(
+            "allocate_low_churn requires unique (date, symbol) rows after symbol normalization; "
+            f"duplicate key samples: {samples}"
+        )
+    d = d.sort_values(["date", "symbol"]).reset_index(drop=True)
     d["rank"] = d.groupby("date")["final_score"].rank(method="first", ascending=False)
     d["rank_score"] = d["final_score"].where(d["final_score"].notna(), np.nan)
     buy_top_n = max(1, int(params.get("buy_top_n", params.get("top_n", 10))))
@@ -92,13 +101,7 @@ def allocate_low_churn(
                 raw_weight = min(max_symbol_weight, 1.0 / len(active))
                 current_weights = {
                     symbol: raw_weight
-                    * float(
-                        pd.to_numeric(
-                            pd.Series([indexed.loc[symbol, "risk_overlay_scale"]]), errors="coerce"
-                        )
-                        .fillna(1.0)
-                        .iloc[0]
-                    )
+                    * _normalize_risk_overlay_scale(indexed.loc[symbol, "risk_overlay_scale"])
                     for symbol in active
                 }
             else:
@@ -147,6 +150,13 @@ def _industry_slot_available(
         if _clean_industry(indexed.loc[active, "industry"]) == industry:
             same_industry_count += 1
     return same_industry_count < max_names_per_industry
+
+
+def _normalize_risk_overlay_scale(value: Any) -> float:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric) or not np.isfinite(numeric):
+        return 1.0
+    return float(np.clip(numeric, 0.0, 1.0))
 
 
 def _clean_industry(value: Any) -> str:
