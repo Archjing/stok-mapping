@@ -110,6 +110,8 @@ def test_select_params_uses_normalized_fixed_defaults() -> None:
 
     assert params["factor_weights"] == DEFAULT_WEIGHTS
     assert sum(params["factor_weights"].values()) == pytest.approx(1.0)
+    assert params["min_available_factors"] == 4
+    assert "min_available" not in params
     assert params["buy_top_n"] == 30
     assert params["hold_top_n"] == 50
     assert params["rebalance_days"] == 20

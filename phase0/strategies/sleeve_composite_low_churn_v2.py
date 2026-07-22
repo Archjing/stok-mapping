@@ -92,7 +92,7 @@ class SleeveCompositeLowChurnV2Strategy(BaseStrategy):
         return {
             "eligible": True,
             "factor_weights": factor_weights,
-            "min_available": max(
+            "min_available_factors": max(
                 1,
                 int(cfg.get("min_available", cfg.get("min_available_factors", 4))),
             ),
