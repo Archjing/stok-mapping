@@ -4,8 +4,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import phase0.strategies as strategies_package
 from phase0.research.factors import DEFAULT_WEIGHTS
 from phase0.strategies.sleeve_composite import QUALITY_COMPONENT_COLUMNS
+from phase0.strategies.registry import get_strategy
 from phase0.strategies.sleeve_composite_low_churn_v2 import SleeveCompositeLowChurnV2Strategy
 
 
@@ -21,6 +23,16 @@ REQUIRED_SLOW_COLUMNS = [
     "slow_factor_available_count",
     "slow_composite_score",
 ]
+
+
+def test_strategy_is_exported_and_registered_as_research_only() -> None:
+    package_strategy = getattr(strategies_package, "SleeveCompositeLowChurnV2Strategy", None)
+
+    assert package_strategy is SleeveCompositeLowChurnV2Strategy
+    registered = get_strategy("sleeve_composite_low_churn_v2")
+    assert isinstance(registered, SleeveCompositeLowChurnV2Strategy)
+    assert registered.supports_paper_trade is False
+    assert registered.supports_brief is False
 
 
 def _sample_panel() -> pd.DataFrame:

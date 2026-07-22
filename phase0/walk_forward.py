@@ -62,6 +62,7 @@ FINANCIAL_DIAGNOSTIC_STRATEGIES = {
     "quality_low_turnover_monthly_v1",
     "quality_low_turnover_regime_gate_v1",
     "sleeve_composite_v1",
+    "sleeve_composite_low_churn_v2",
 }
 
 TraceCallback = Callable[[dict[str, Any]], None]

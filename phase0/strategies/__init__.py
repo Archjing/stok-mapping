@@ -11,6 +11,7 @@ from phase0.strategies.quality_low_turnover_monthly import QualityLowTurnoverMon
 from phase0.strategies.residual_momentum_reversal import ResidualMomentumReversalStrategy
 from phase0.strategies.residual_momentum_reversal_v2 import ResidualMomentumReversalV2Strategy
 from phase0.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, SleeveCompositeStrategy
+from phase0.strategies.sleeve_composite_low_churn_v2 import SleeveCompositeLowChurnV2Strategy
 from phase0.strategies.strong_market_core_participation import StrongMarketCoreParticipationStrategy
 from phase0.strategies.strong_market_effective_participation import StrongMarketEffectiveParticipationStrategy
 from phase0.strategies.strong_market_liquid_breadth_participation import StrongMarketLiquidBreadthParticipationStrategy
@@ -47,6 +48,7 @@ __all__ = [
     "ResidualMomentumReversalV2Strategy",
     "SleeveCompositeStrategy",
     "SleeveCompositeLowChurnStrategy",
+    "SleeveCompositeLowChurnV2Strategy",
     "StrongMarketCoreParticipationStrategy",
     "StrongMarketEffectiveParticipationStrategy",
     "StrongMarketLiquidBreadthParticipationStrategy",

@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import pandas as pd
-import pytest
+from pathlib import Path
 from types import SimpleNamespace
 
+import pandas as pd
+import pytest
+
 import phase0.research.admission.runner as admission_runner
+from phase0.config import load_config
 from phase0.research.admission.reports import (
     admission_command_hint as _admission_command_hint,
     config_command_arg as _config_command_arg,
@@ -30,7 +33,7 @@ from phase0.research.admission.strategy_scope import (
     _resolve_strategy_scope,
 )
 from phase0.research.diagnostics.overfit import _metrics, _score, run_overfit_diagnostic
-from phase0.walk_forward import describe_walk_forward_presets
+from phase0.walk_forward import FINANCIAL_DIAGNOSTIC_STRATEGIES, describe_walk_forward_presets
 
 
 def test_strategy_scope_prefers_cli_strategies_over_strategy_set() -> None:
@@ -161,6 +164,69 @@ def test_strategy_set_forces_benchmark_core_alpha_overlay_switch() -> None:
     _force_strategy_set_enabled_for_admission(strategy_cfg, ["benchmark_core_alpha_overlay_v1"])
 
     assert strategy_cfg["local_factor"]["benchmark_core_alpha_overlay"]["enabled"] is True
+
+
+def test_strategy_set_forces_low_churn_v2_enabled_in_runtime_copy() -> None:
+    strategy_cfg = {"sleeve_composite_low_churn_v2": {"enabled": False}}
+
+    _force_strategy_set_enabled_for_admission(
+        strategy_cfg,
+        ["sleeve_composite_low_churn_v2"],
+    )
+
+    assert strategy_cfg["sleeve_composite_low_churn_v2"]["enabled"] is True
+
+
+def test_low_churn_v2_config_is_complete_and_isolated_for_research() -> None:
+    config = load_config(Path("config.yaml"))
+    walk_forward_cfg = config["walk_forward"]
+    admission_cfg = walk_forward_cfg["admission"]
+    strategy_cfg = walk_forward_cfg["strategy_v2"]
+
+    assert strategy_cfg["sleeve_composite_low_churn_v2"] == {
+        "enabled": False,
+        "market": "CN",
+        "daily_basic_table": "market_daily_basic",
+        "min_available_factors": 4,
+        "top_n": 30,
+        "hold_top_n": 50,
+        "rebalance_days": 20,
+        "min_hold_days": 20,
+        "max_symbol_weight": 0.04,
+        "max_names_per_industry": 3,
+        "factor_weights": {
+            "slow_quality_score": 0.30,
+            "slow_value_score": 0.20,
+            "slow_low_vol_score": 0.20,
+            "slow_earnings_score": 0.15,
+            "slow_residual_momentum_score": 0.15,
+        },
+    }
+    assert admission_cfg["strategy_sets"]["sleeve_low_churn_v2_research_v1"] == {
+        "description": "低换手慢因子 v2 专项研究；不代表准入、模拟或实盘资格。",
+        "strategies": [
+            "sleeve_composite_low_churn_v1",
+            "sleeve_composite_low_churn_v2",
+        ],
+    }
+    assert admission_cfg["default_strategy_set"] == "baseline_admission_all_v1"
+    assert "sleeve_composite_low_churn_v2" not in admission_cfg["strategy_sets"][
+        "baseline_admission_all_v1"
+    ]["strategies"]
+    assert "sleeve_composite_low_churn_v2" not in strategy_cfg["compare_strategies"]
+
+
+def test_low_churn_v2_is_added_to_financial_diagnostics_without_dropping_existing_members() -> None:
+    assert FINANCIAL_DIAGNOSTIC_STRATEGIES == {
+        "core_selection_quality_momentum_v1",
+        "low_vol_low_turnover_quality_v1",
+        "multifactor_volume_price_filter_v1",
+        "quality_growth_price_v1",
+        "quality_low_turnover_monthly_v1",
+        "quality_low_turnover_regime_gate_v1",
+        "sleeve_composite_v1",
+        "sleeve_composite_low_churn_v2",
+    }
 
 
 def test_overfit_gate_uses_configured_max_level() -> None:

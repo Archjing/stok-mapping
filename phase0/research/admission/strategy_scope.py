@@ -113,6 +113,7 @@ def _force_strategy_set_enabled_for_admission(strategy_cfg: dict[str, Any], stra
         "multifactor_volume_price_filter_v1": ("local_factor", "multifactor_filter"),
         "sleeve_composite_v1": ("sleeve_composite",),
         "sleeve_composite_low_churn_v1": ("sleeve_composite_low_churn",),
+        "sleeve_composite_low_churn_v2": ("sleeve_composite_low_churn_v2",),
     }
     for strategy_name in strategy_names:
         path = legacy_switches.get(str(strategy_name))

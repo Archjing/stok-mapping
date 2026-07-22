@@ -15,3 +15,4 @@
 - [multifactor_volume_price_filter_v1（多因子量价过滤）](./multifactor_volume_price_filter_v1.md)
 - [core_selection_quality_momentum_v1（核心选股质量动量）](./core_selection_quality_momentum_v1.md)
 - [theme_exposure_momentum_v1（主题暴露动量）](./theme_exposure_momentum_v1.md)
+- [sleeve_composite_low_churn_v2（低换手慢因子 V2）](./sleeve_composite_low_churn_v2.md)

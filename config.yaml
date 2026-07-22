@@ -393,6 +393,11 @@ phase0:
             - "legacy_momentum_low_turnover_v1"
             - "quality_low_turnover_monthly_v1"
             - "sleeve_composite_v1"
+        sleeve_low_churn_v2_research_v1:
+          description: "低换手慢因子 v2 专项研究；不代表准入、模拟或实盘资格。"
+          strategies:
+            - "sleeve_composite_low_churn_v1"
+            - "sleeve_composite_low_churn_v2"
       gate:
         annualized_return_min: 0.0
         sharpe_min: 0.5
@@ -493,6 +498,23 @@ phase0:
         min_hold_days: 20
         max_symbol_weight: 0.10
         max_names_per_industry: 2
+      sleeve_composite_low_churn_v2:
+        enabled: false
+        market: "CN"
+        daily_basic_table: "market_daily_basic"
+        min_available_factors: 4
+        top_n: 30
+        hold_top_n: 50
+        rebalance_days: 20
+        min_hold_days: 20
+        max_symbol_weight: 0.04
+        max_names_per_industry: 3
+        factor_weights:
+          slow_quality_score: 0.30
+          slow_value_score: 0.20
+          slow_low_vol_score: 0.20
+          slow_earnings_score: 0.15
+          slow_residual_momentum_score: 0.15
       cross_market:
         enabled: true
         tech_score_thresholds: [0.0, 0.5]
