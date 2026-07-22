@@ -13,12 +13,13 @@ from phase0.data_access.daily_basic_history import merge_point_in_time_daily_bas
 from phase0.data_access.local_history import configure_local_history
 from phase0.research.factors.slow_multifactor import add_slow_multifactor_features
 from phase0.reporting.paths import create_report_run
-from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds
+from phase0.walk_forward import iter_point_in_time_universe_folds
 
 
 DEFAULT_FORWARD_HORIZON = 20
 DEFAULT_GROUP_COUNT = 5
 DEFAULT_MIN_DAILY_SAMPLES = 30
+_VALIDATION_ROW_COLUMN = "_factor_effectiveness_is_validation"
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,39 @@ def _add_factor_columns(panel: pd.DataFrame) -> pd.DataFrame:
     d["ep"] = (1.0 / pe).replace([np.inf, -np.inf], np.nan)
     d["low_pb"] = -pd.to_numeric(d["pb"], errors="coerce")
     return add_slow_multifactor_features(d)
+
+
+def _prepare_factor_validation_panel(
+    contexts: list[dict[str, Any]],
+    config: dict[str, Any],
+    strategy_cfg: dict[str, Any],
+) -> pd.DataFrame:
+    from phase0.strategies.quality_low_turnover_monthly import QualityLowTurnoverMonthlyStrategy
+
+    frames: list[pd.DataFrame] = []
+    strategy = QualityLowTurnoverMonthlyStrategy()
+    for context in contexts:
+        train = context["train"].copy()
+        valid = context["valid"].copy()
+        for frame, is_validation in [(train, False), (valid, True)]:
+            frame["date"] = pd.to_datetime(frame["date"]).dt.normalize()
+            frame["fold"] = int(context["fold"])
+            if "walk_forward_preset" in context:
+                frame["walk_forward_preset"] = str(context["walk_forward_preset"])
+            frame[_VALIDATION_ROW_COLUMN] = is_validation
+
+        combined = pd.concat([train, valid], ignore_index=True)
+        combined = _merge_daily_basic(combined, config)
+        combined = strategy.prepare_panel(combined, strategy_cfg)
+        combined = _add_factor_columns(combined)
+        validation = combined[combined[_VALIDATION_ROW_COLUMN]].drop(columns=[_VALIDATION_ROW_COLUMN])
+        frames.append(validation)
+
+    if not frames:
+        return pd.DataFrame()
+    panel = pd.concat(frames, ignore_index=True)
+    partition_columns = [column for column in ["walk_forward_preset", "fold"] if column in panel.columns]
+    return panel.sort_values([*partition_columns, "symbol", "date"]).reset_index(drop=True)
 
 
 def _add_forward_returns(panel: pd.DataFrame, horizon: int) -> pd.DataFrame:
@@ -552,16 +586,7 @@ def run_factor_effectiveness_report(
             warnings=warnings,
         )
 
-    frames: list[pd.DataFrame] = []
-    for ctx in contexts:
-        valid = ctx["valid"].copy()
-        valid["date"] = pd.to_datetime(valid["date"]).dt.normalize()
-        valid["fold"] = int(ctx["fold"])
-        valid = _merge_daily_basic(valid, cfg)
-        valid = _add_point_in_time_financial_factors(valid, strategy_cfg)
-        frames.append(valid)
-    panel = pd.concat(frames, ignore_index=True).sort_values(["fold", "symbol", "date"]).reset_index(drop=True)
-    panel = _add_factor_columns(panel)
+    panel = _prepare_factor_validation_panel(contexts, cfg, strategy_cfg)
     panel = _add_forward_returns(panel, forward_horizon)
     label_col = f"forward_ret_{forward_horizon}d"
 
