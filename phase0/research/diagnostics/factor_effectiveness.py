@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -10,7 +9,8 @@ import numpy as np
 import pandas as pd
 
 from phase0.data_governance.external_market_history import configure_hk_market_history, configure_us_market_history
-from phase0.data_access.local_history import _safe_identifier, configure_local_history, local_history_path
+from phase0.data_access.daily_basic_history import merge_point_in_time_daily_basic
+from phase0.data_access.local_history import configure_local_history
 from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import _add_point_in_time_financial_factors, iter_point_in_time_universe_folds
 
@@ -70,86 +70,16 @@ def _configured_strategy_cfg(config: dict[str, Any]) -> dict[str, Any]:
     return strategy_cfg
 
 
-def _daily_basic_frame(
-    *,
-    config: dict[str, Any],
-    symbols: list[str],
-    start_date: pd.Timestamp,
-    end_date: pd.Timestamp,
-) -> pd.DataFrame:
-    if not symbols:
-        return pd.DataFrame()
-    local_cfg = config.get("local_history", {})
-    table = _safe_identifier(str(local_cfg.get("daily_basic_table", "market_daily_basic")))
-    market = str(local_cfg.get("market", "CN"))
-    db_path = local_history_path()
-    if not db_path.exists():
-        return pd.DataFrame()
-    placeholders = ",".join(["?"] * len(symbols))
-    query = f"""
-        SELECT symbol, date, pe_ratio, pb_ratio, turnover_rate
-        FROM {table}
-        WHERE market = ?
-          AND symbol IN ({placeholders})
-          AND date >= ?
-          AND date <= ?
-    """
-    params = [market, *symbols, start_date.date().isoformat(), end_date.date().isoformat()]
-    try:
-        with sqlite3.connect(db_path) as conn:
-            df = pd.read_sql_query(query, conn, params=params)
-    except (sqlite3.Error, ValueError):
-        return pd.DataFrame()
-    if df.empty:
-        return df
-    df["symbol"] = df["symbol"].astype(str)
-    df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.normalize()
-    for col in ["pe_ratio", "pb_ratio", "turnover_rate"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-    return df.dropna(subset=["symbol", "date"]).sort_values(["date", "symbol"])
-
-
 def _merge_daily_basic(panel: pd.DataFrame, config: dict[str, Any]) -> pd.DataFrame:
     if panel.empty:
         return panel
-    d = panel.copy()
-    d["date"] = pd.to_datetime(d["date"]).dt.normalize()
-    symbols = sorted(d["symbol"].astype(str).dropna().unique().tolist())
-    basics = _daily_basic_frame(
-        config=config,
-        symbols=symbols,
-        start_date=pd.Timestamp(d["date"].min()),
-        end_date=pd.Timestamp(d["date"].max()),
+    local_cfg = config.get("local_history", {})
+    return merge_point_in_time_daily_basic(
+        panel,
+        as_of_date=panel["date"].max(),
+        market=str(local_cfg.get("market", "CN")),
+        table=str(local_cfg.get("daily_basic_table", "market_daily_basic")),
     )
-    if basics.empty:
-        for col in ["pe_ttm", "pb", "turnover_rate"]:
-            if col not in d.columns:
-                d[col] = np.nan
-        return d
-
-    merged = d.merge(
-        basics.rename(
-            columns={
-                "pe_ratio": "_daily_basic_pe_ttm",
-                "pb_ratio": "_daily_basic_pb",
-                "turnover_rate": "_daily_basic_turnover_rate",
-            }
-        ),
-        on=["symbol", "date"],
-        how="left",
-    )
-    if "pe_ttm" not in merged.columns:
-        merged["pe_ttm"] = np.nan
-    if "pb" not in merged.columns:
-        merged["pb"] = np.nan
-    if "turnover_rate" not in merged.columns:
-        merged["turnover_rate"] = np.nan
-    merged["pe_ttm"] = pd.to_numeric(merged["pe_ttm"], errors="coerce").combine_first(merged["_daily_basic_pe_ttm"])
-    merged["pb"] = pd.to_numeric(merged["pb"], errors="coerce").combine_first(merged["_daily_basic_pb"])
-    merged["turnover_rate"] = pd.to_numeric(merged["turnover_rate"], errors="coerce").combine_first(
-        merged["_daily_basic_turnover_rate"]
-    )
-    return merged.drop(columns=["_daily_basic_pe_ttm", "_daily_basic_pb", "_daily_basic_turnover_rate"])
 
 
 def _add_factor_columns(panel: pd.DataFrame) -> pd.DataFrame:
