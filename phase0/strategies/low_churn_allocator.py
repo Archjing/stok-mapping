@@ -151,6 +151,4 @@ def _industry_slot_available(
 
 def _clean_industry(value: Any) -> str:
     industry = str(value).strip()
-    if industry.lower() in {"", "nan", "none", "<na>", "nat"}:
-        return "UNKNOWN"
-    return industry
+    return industry if industry and industry.lower() != "nan" else "UNKNOWN"

@@ -110,6 +110,71 @@ def test_allocate_low_churn_degrades_when_required_columns_are_missing() -> None
     assert output.metadata == metadata
 
 
+def test_allocate_low_churn_preserves_none_and_unknown_as_distinct_industries() -> None:
+    dates = list(pd.bdate_range("2024-01-02", periods=2))
+    panel = pd.DataFrame(
+        [
+            {
+                "date": dates[0],
+                "symbol": "AAA",
+                "industry": None,
+                "final_score": 0.9,
+                "score": 0.9,
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+            {
+                "date": dates[0],
+                "symbol": "BBB",
+                "industry": "UNKNOWN",
+                "final_score": float("nan"),
+                "score": float("nan"),
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+            {
+                "date": dates[1],
+                "symbol": "AAA",
+                "industry": None,
+                "final_score": 0.9,
+                "score": 0.9,
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+            {
+                "date": dates[1],
+                "symbol": "BBB",
+                "industry": "UNKNOWN",
+                "final_score": 0.8,
+                "score": 0.8,
+                "risk_overlay_scale": 1.0,
+                "ret": 0.0,
+            },
+        ]
+    )
+    panel["industry"] = pd.Series([None, "UNKNOWN", None, "UNKNOWN"], dtype=object)
+
+    output = allocate_low_churn(
+        panel,
+        params={
+            "buy_top_n": 2,
+            "hold_top_n": 2,
+            "rebalance_days": 1,
+            "min_hold_days": 0,
+            "max_symbol_weight": 0.5,
+            "max_names_per_industry": 1,
+        },
+        slippage=0.0,
+        commission=0.0,
+        stamp_duty_sell=0.0,
+        signal_columns=SIGNAL_COLUMNS,
+        metadata={},
+    )
+
+    second_day = output.signal_frame[output.signal_frame["date"] == dates[1]]
+    assert set(second_day.loc[second_day["selected"] > 0, "symbol"]) == {"AAA", "BBB"}
+
+
 @pytest.mark.parametrize(
     ("value", "expected"),
     [(None, None), ("", None), ("invalid", None), (0, None), (-1, None), ("3", 3)],
