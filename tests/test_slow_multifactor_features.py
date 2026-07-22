@@ -7,6 +7,25 @@ import pytest
 from phase0.research.factors import DEFAULT_WEIGHTS, add_slow_multifactor_features
 
 
+SLOW_FACTOR_PREFIXES = [
+    "slow_quality",
+    "slow_earnings",
+    "slow_value",
+    "slow_low_vol",
+    "slow_residual_momentum",
+]
+SLOW_FACTOR_OUTPUT_COLUMNS = [
+    *[f"{prefix}_raw" for prefix in SLOW_FACTOR_PREFIXES],
+    *[
+        column
+        for prefix in SLOW_FACTOR_PREFIXES
+        for column in [f"{prefix}_neutral", f"{prefix}_score"]
+    ],
+    "slow_factor_available_count",
+    "slow_composite_score",
+]
+
+
 def _sample_panel() -> pd.DataFrame:
     dates = pd.bdate_range("2024-01-02", periods=140)
     specifications = [
@@ -57,6 +76,24 @@ def _final_rows(result: pd.DataFrame) -> pd.DataFrame:
     return result[result["date"] == result["date"].max()].set_index("symbol")
 
 
+def _walk_forward_comparison_columns() -> list[str]:
+    return [
+        "slow_residual_momentum_raw",
+        *[
+            column
+            for prefix in SLOW_FACTOR_PREFIXES
+            for column in [f"{prefix}_neutral", f"{prefix}_score"]
+        ],
+        "slow_factor_available_count",
+        "slow_composite_score",
+    ]
+
+
+def _sorted_walk_forward_result(frame: pd.DataFrame) -> pd.DataFrame:
+    keys = ["walk_forward_preset", "fold", "symbol", "date"]
+    return frame[keys + _walk_forward_comparison_columns()].sort_values(keys).reset_index(drop=True)
+
+
 def test_default_weights_match_slow_multifactor_contract() -> None:
     assert DEFAULT_WEIGHTS == {
         "slow_quality_score": 0.30,
@@ -96,6 +133,46 @@ def test_slow_multifactor_does_not_look_ahead() -> None:
         baseline.loc[baseline["date"] <= cutoff, columns].reset_index(drop=True),
         perturbed.loc[perturbed["date"] <= cutoff, columns].reset_index(drop=True),
     )
+
+
+def test_walk_forward_partitions_match_independent_computation() -> None:
+    panel = _sample_panel()
+    partitions = [
+        panel.assign(walk_forward_preset=preset, fold=fold)
+        for preset in ["baseline", "quality"]
+        for fold in [1, 2]
+    ]
+    concatenated = pd.concat(partitions, ignore_index=True).sample(frac=1.0, random_state=19)
+
+    actual = add_slow_multifactor_features(concatenated)
+    expected = pd.concat(
+        [add_slow_multifactor_features(partition) for partition in partitions],
+        ignore_index=True,
+    )
+
+    pd.testing.assert_frame_equal(
+        _sorted_walk_forward_result(actual),
+        _sorted_walk_forward_result(expected),
+    )
+
+
+def test_short_folds_do_not_borrow_momentum_history() -> None:
+    panel = _sample_panel()
+    first_80_dates = sorted(panel["date"].unique())[:80]
+    short = panel[panel["date"].isin(first_80_dates)]
+    concatenated = pd.concat(
+        [
+            short.assign(walk_forward_preset="baseline", fold=1),
+            short.assign(walk_forward_preset="baseline", fold=2),
+        ],
+        ignore_index=True,
+    )
+
+    result = add_slow_multifactor_features(concatenated)
+
+    assert result["slow_residual_momentum_raw"].isna().all()
+    assert result["slow_residual_momentum_neutral"].isna().all()
+    assert result["slow_residual_momentum_score"].isna().all()
 
 
 def test_slow_value_is_industry_and_size_neutral() -> None:
@@ -175,9 +252,14 @@ def test_nonpositive_weight_total_is_rejected(weights: dict[str, float]) -> None
         add_slow_multifactor_features(_sample_panel().head(8), weights=weights)
 
 
-def test_empty_panel_is_returned_unchanged() -> None:
+def test_empty_panel_has_stable_output_schema_without_mutating_input() -> None:
     panel = pd.DataFrame(columns=["symbol", "date"])
+    original = panel.copy(deep=True)
 
     result = add_slow_multifactor_features(panel)
 
-    pd.testing.assert_frame_equal(result, panel)
+    pd.testing.assert_frame_equal(panel, original)
+    assert list(result.columns) == ["symbol", "date", *SLOW_FACTOR_OUTPUT_COLUMNS]
+    assert result.empty
+    for column in SLOW_FACTOR_OUTPUT_COLUMNS:
+        assert pd.api.types.is_numeric_dtype(result[column])

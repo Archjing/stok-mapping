@@ -15,6 +15,15 @@ DEFAULT_WEIGHTS = {
 }
 
 _FACTOR_SCORES = tuple(DEFAULT_WEIGHTS)
+_FACTOR_PREFIXES = (
+    "slow_quality",
+    "slow_earnings",
+    "slow_value",
+    "slow_low_vol",
+    "slow_residual_momentum",
+)
+_PARTITION_COLUMNS = ("walk_forward_preset", "fold")
+_RAW_COLUMNS = tuple(f"{prefix}_raw" for prefix in _FACTOR_PREFIXES)
 
 
 def _numeric_column(frame: pd.DataFrame, column: str) -> pd.Series:
@@ -37,11 +46,11 @@ def _mean_available(frame: pd.DataFrame, columns: Sequence[str]) -> pd.Series:
 def _neutralize_one_day(day: pd.DataFrame, raw_column: str) -> pd.Series:
     raw = _numeric_column(day, raw_column).replace([np.inf, -np.inf], np.nan)
     industry = day.get("industry", pd.Series("", index=day.index)).fillna("").astype(str)
-    centered_raw = raw - raw.groupby(industry).transform("mean")
+    centered_raw = raw - raw.groupby(industry, dropna=False).transform("mean")
 
     market_cap = _numeric_column(day, "market_cap").where(lambda values: values.gt(0))
     log_size = pd.Series(np.log(market_cap), index=day.index).where(centered_raw.notna())
-    centered_size = log_size - log_size.groupby(industry).transform("mean")
+    centered_size = log_size - log_size.groupby(industry, dropna=False).transform("mean")
     valid = centered_raw.notna() & centered_size.notna()
 
     result = centered_raw.copy()
@@ -58,16 +67,37 @@ def _neutralize_one_day(day: pd.DataFrame, raw_column: str) -> pd.Series:
     return result
 
 
-def _neutralized_rank(frame: pd.DataFrame, raw_column: str, output_prefix: str) -> pd.DataFrame:
+def _neutralized_rank(
+    frame: pd.DataFrame,
+    raw_column: str,
+    output_prefix: str,
+    partition_columns: Sequence[str] = (),
+) -> pd.DataFrame:
     neutral_column = f"{output_prefix}_neutral"
     score_column = f"{output_prefix}_score"
     neutral = pd.Series(np.nan, index=frame.index, dtype=float)
+    day_keys = [*partition_columns, "date"]
 
-    for _, day in frame.groupby("date", sort=True):
+    for _, day in frame.groupby(day_keys, sort=True, dropna=False):
         neutral.loc[day.index] = _neutralize_one_day(day, raw_column)
 
     frame[neutral_column] = neutral
-    frame[score_column] = frame.groupby("date", sort=False)[neutral_column].rank(method="average", pct=True)
+    frame[score_column] = frame.groupby(day_keys, sort=False, dropna=False)[neutral_column].rank(
+        method="average",
+        pct=True,
+    )
+    return frame
+
+
+def _empty_result(panel: pd.DataFrame) -> pd.DataFrame:
+    frame = panel.copy()
+    for column in _RAW_COLUMNS:
+        frame[column] = pd.Series(index=frame.index, dtype=float)
+    for prefix in _FACTOR_PREFIXES:
+        frame[f"{prefix}_neutral"] = pd.Series(index=frame.index, dtype=float)
+        frame[f"{prefix}_score"] = pd.Series(index=frame.index, dtype=float)
+    frame["slow_factor_available_count"] = pd.Series(index=frame.index, dtype="int64")
+    frame["slow_composite_score"] = pd.Series(index=frame.index, dtype=float)
     return frame
 
 
@@ -92,12 +122,13 @@ def add_slow_multifactor_features(
 ) -> pd.DataFrame:
     """Add deterministic point-in-time slow factor features to a panel."""
     if panel.empty:
-        return panel.copy()
+        return _empty_result(panel)
 
     frame = panel.copy()
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
     frame["symbol"] = frame["symbol"].astype(str).str.strip()
-    frame = frame.sort_values(["symbol", "date"], kind="stable").reset_index(drop=True)
+    partition_columns = [column for column in _PARTITION_COLUMNS if column in frame.columns]
+    frame = frame.sort_values([*partition_columns, "symbol", "date"], kind="stable").reset_index(drop=True)
     if "industry" not in frame.columns:
         frame["industry"] = ""
     else:
@@ -128,7 +159,8 @@ def add_slow_multifactor_features(
     frame["slow_value_raw"] = pd.concat([earnings_yield, book_yield], axis=1).mean(axis=1)
     frame["slow_low_vol_raw"] = -frame["vol60"]
 
-    grouped_close = frame.groupby("symbol", sort=False)["close"]
+    symbol_keys = [*partition_columns, "symbol"]
+    grouped_close = frame.groupby(symbol_keys, sort=False, dropna=False)["close"]
     frame["slow_residual_momentum_raw"] = grouped_close.shift(20) / grouped_close.shift(120) - 1.0
 
     for raw_column, prefix in [
@@ -138,7 +170,7 @@ def add_slow_multifactor_features(
         ("slow_low_vol_raw", "slow_low_vol"),
         ("slow_residual_momentum_raw", "slow_residual_momentum"),
     ]:
-        frame = _neutralized_rank(frame, raw_column, prefix)
+        frame = _neutralized_rank(frame, raw_column, prefix, partition_columns)
 
     factor_weights = _normalized_weights(weights)
     frame["slow_factor_available_count"] = frame[list(_FACTOR_SCORES)].notna().sum(axis=1)
