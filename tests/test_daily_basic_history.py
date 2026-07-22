@@ -56,6 +56,41 @@ def test_load_daily_basic_factor_frame_respects_as_of_date(daily_basic_db: Path)
     assert 999 not in frame["market_cap"].tolist()
 
 
+def test_load_daily_basic_factor_frame_returns_empty_when_table_is_missing(tmp_path: Path) -> None:
+    db_path = tmp_path / "history.sqlite"
+    with sqlite3.connect(db_path):
+        pass
+    configure_local_history({"path": str(db_path)})
+
+    frame = load_daily_basic_factor_frame(
+        symbols=["AAA"],
+        start_date="2024-01-01",
+        end_date="2024-01-31",
+    )
+
+    assert frame.empty
+
+
+def test_load_daily_basic_factor_frame_drops_invalid_symbols(daily_basic_db: Path) -> None:
+    with sqlite3.connect(daily_basic_db) as conn:
+        conn.executemany(
+            "INSERT INTO market_daily_basic VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                ("CN", "", "2024-01-02", 1, 1, 1, 1, 1),
+                ("CN", "   ", "2024-01-02", 2, 2, 2, 2, 2),
+                ("CN", None, "2024-01-02", 3, 3, 3, 3, 3),
+            ],
+        )
+
+    frame = load_daily_basic_factor_frame(
+        symbols=[" AAA ", "", "   ", None],
+        start_date="2024-01-02",
+        end_date="2024-01-02",
+    )
+
+    assert frame["symbol"].tolist() == ["AAA"]
+
+
 def test_merge_point_in_time_daily_basic_matches_exact_date_only(daily_basic_db: Path) -> None:
     panel = pd.DataFrame(
         {

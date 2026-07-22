@@ -26,7 +26,11 @@ def load_daily_basic_factor_frame(
     table: str = "market_daily_basic",
 ) -> pd.DataFrame:
     table_name = _safe_identifier(str(table))
-    requested_symbols = sorted({str(symbol) for symbol in symbols if pd.notna(symbol)})
+    requested_symbols = sorted(
+        symbol
+        for symbol in {str(value).strip() for value in symbols if pd.notna(value)}
+        if symbol
+    )
     if not requested_symbols:
         return _empty_daily_basic_frame()
 
@@ -58,18 +62,19 @@ def load_daily_basic_factor_frame(
     try:
         with sqlite3.connect(db_path) as conn:
             frame = pd.read_sql_query(query, conn, params=params)
-    except (sqlite3.Error, ValueError):
+    except (sqlite3.Error, pd.errors.DatabaseError, ValueError):
         return _empty_daily_basic_frame()
 
     if frame.empty:
         return _empty_daily_basic_frame()
     frame = frame.rename(columns={"pe_ratio": "pe_ttm", "pb_ratio": "pb"})
-    frame["symbol"] = frame["symbol"].astype(str)
+    frame["symbol"] = frame["symbol"].map(lambda value: str(value).strip() if pd.notna(value) else "")
     frame["date"] = pd.to_datetime(frame["date"], errors="coerce").dt.normalize()
     for column in DAILY_BASIC_FACTOR_COLUMNS:
         frame[column] = pd.to_numeric(frame[column], errors="coerce")
     return (
-        frame.dropna(subset=["symbol", "date"])
+        frame.loc[frame["symbol"].ne("")]
+        .dropna(subset=["date"])
         .drop_duplicates(subset=["date", "symbol"], keep="last")
         .sort_values(["date", "symbol"])
         .reset_index(drop=True)
