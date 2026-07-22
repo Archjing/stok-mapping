@@ -1,0 +1,120 @@
+from __future__ import annotations
+
+import pandas as pd
+import pytest
+
+from phase0.strategies.low_churn_allocator import allocate_low_churn
+
+
+SIGNAL_COLUMNS = [
+    "date",
+    "symbol",
+    "industry",
+    "final_score",
+    "score",
+    "rank",
+    "selected",
+    "raw_weight",
+    "weight_unshifted",
+    "weight",
+    "held_days",
+    "review_reason",
+    "ret",
+    "position_ret",
+]
+
+
+def _state_machine_panel() -> pd.DataFrame:
+    dates = pd.bdate_range("2024-01-02", periods=4)
+    daily_scores = [
+        {"AAA": 0.9, "BBB": 0.8, "CCC": 0.7},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.7},
+        {"AAA": 0.5, "BBB": 0.9, "CCC": 0.8},
+        {"AAA": 0.5, "BBB": 0.9, "CCC": 0.8},
+    ]
+    industries = {"AAA": "A", "BBB": "A", "CCC": "B"}
+    rows = []
+    for date, scores in zip(dates, daily_scores, strict=True):
+        for symbol in ["AAA", "BBB", "CCC"]:
+            rows.append(
+                {
+                    "date": date,
+                    "symbol": symbol,
+                    "industry": industries[symbol],
+                    "final_score": scores[symbol],
+                    "score": scores[symbol],
+                    "risk_overlay_scale": 1.0,
+                    "ret": 0.0,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
+def _params() -> dict[str, object]:
+    return {
+        "buy_top_n": 1,
+        "hold_top_n": 1,
+        "rebalance_days": 2,
+        "min_hold_days": 2,
+        "max_symbol_weight": 0.5,
+        "max_names_per_industry": 1,
+    }
+
+
+def test_allocate_low_churn_runs_the_existing_state_machine() -> None:
+    metadata = {"source": "allocator-unit-test"}
+
+    output = allocate_low_churn(
+        _state_machine_panel(),
+        params=_params(),
+        slippage=0.001,
+        commission=0.00025,
+        stamp_duty_sell=0.0005,
+        signal_columns=SIGNAL_COLUMNS,
+        metadata=metadata,
+    )
+    signal = output.signal_frame.set_index(["date", "symbol"])
+    dates = list(pd.bdate_range("2024-01-02", periods=4))
+
+    assert signal.loc[(dates[0], "AAA"), "weight_unshifted"] == 0.5
+    assert signal.loc[(dates[1], "AAA"), "weight_unshifted"] == 0.5
+    assert signal.loc[(dates[2], "AAA"), "weight_unshifted"] == 0.0
+    assert signal.loc[(dates[2], "BBB"), "weight_unshifted"] == 0.5
+    assert signal.loc[(dates[2], "AAA"), "weight"] == 0.5
+    assert signal.loc[(dates[3], "BBB"), "weight"] == 0.5
+    assert signal.loc[(dates[2], "AAA"), "held_days"] == 0
+    assert signal.loc[(dates[2], "BBB"), "held_days"] == 0
+    assert signal.loc[(dates[2], "BBB"), "review_reason"] == "fixed_rebalance"
+    assert output.returns.loc[dates[1]] == pytest.approx(-0.000625)
+    assert list(output.signal_frame.columns) == SIGNAL_COLUMNS
+    assert output.metadata == metadata
+
+
+def test_allocate_low_churn_degrades_when_required_columns_are_missing() -> None:
+    date = pd.Timestamp("2024-01-02")
+    metadata = {"source": "allocator-unit-test"}
+
+    output = allocate_low_churn(
+        pd.DataFrame([{"date": date, "final_score": 0.9}]),
+        params=_params(),
+        slippage=0.0,
+        commission=0.0,
+        stamp_duty_sell=0.0,
+        signal_columns=SIGNAL_COLUMNS,
+        metadata=metadata,
+    )
+
+    pd.testing.assert_series_equal(output.returns, pd.Series([0.0], index=pd.Index([date])))
+    pd.testing.assert_series_equal(output.exposure, pd.Series([0.0], index=pd.Index([date])))
+    assert output.signal_frame.empty
+    assert output.metadata == metadata
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [(None, None), ("", None), ("invalid", None), (0, None), (-1, None), ("3", 3)],
+)
+def test_optional_positive_int(value: object, expected: int | None) -> None:
+    from phase0.strategies.low_churn_allocator import optional_positive_int
+
+    assert optional_positive_int(value) == expected

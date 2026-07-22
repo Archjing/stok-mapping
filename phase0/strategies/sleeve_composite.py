@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 
 from phase0.strategies.base import BaseStrategy, StrategyOutput
+from phase0.strategies.low_churn_allocator import allocate_low_churn, optional_positive_int
 from phase0.strategies.registry import register
 
 
@@ -314,7 +315,7 @@ class SleeveCompositeLowChurnStrategy(SleeveCompositeStrategy):
                 "rebalance_days": max(1, int(cfg.get("rebalance_days", 20))),
                 "min_hold_days": max(0, int(cfg.get("min_hold_days", 20))),
                 "max_symbol_weight": float(cfg.get("max_symbol_weight", params.get("max_symbol_weight", 0.10))),
-                "max_names_per_industry": _optional_positive_int(
+                "max_names_per_industry": optional_positive_int(
                     cfg.get(
                         "max_names_per_industry",
                         strategy_cfg.get("constraints", {}).get("industry", {}).get("max_names_per_industry"),
@@ -345,91 +346,6 @@ class SleeveCompositeLowChurnStrategy(SleeveCompositeStrategy):
 
         d = scored.signal_frame.copy().sort_values(["date", "symbol"]).reset_index(drop=True)
         d = _attach_panel_metadata(d, panel, ["industry", "name"])
-        required = {"date", "symbol", "final_score", "risk_overlay_scale", "ret"}
-        if not required.issubset(d.columns):
-            dates = pd.Index(sorted(d.get("date", pd.Series(dtype=object)).dropna().unique()))
-            empty = pd.Series(0.0, index=dates)
-            return StrategyOutput(empty, empty, pd.DataFrame(), self.build_metadata(params))
-
-        d["rank"] = d.groupby("date")["final_score"].rank(method="first", ascending=False)
-        d["rank_score"] = d["final_score"].where(d["final_score"].notna(), np.nan)
-        buy_top_n = max(1, int(params.get("buy_top_n", params.get("top_n", 10))))
-        hold_top_n = max(buy_top_n, int(params.get("hold_top_n", buy_top_n * 2)))
-        rebalance_days = max(1, int(params.get("rebalance_days", 20)))
-        min_hold_days = max(0, int(params.get("min_hold_days", 20)))
-        max_symbol_weight = max(0.0, float(params.get("max_symbol_weight", 0.10)))
-        max_names_per_industry = _optional_positive_int(params.get("max_names_per_industry"))
-
-        current_weights: dict[str, float] = {}
-        held_days: dict[str, int] = {}
-        frames: list[pd.DataFrame] = []
-        for idx, (_, day) in enumerate(d.groupby("date", sort=True)):
-            day = day.copy()
-            review_reason = ""
-            if idx % rebalance_days == 0:
-                review_reason = "fixed_rebalance"
-                indexed = day.set_index(day["symbol"].astype(str))
-                for symbol in list(current_weights):
-                    if symbol not in indexed.index:
-                        rank = np.nan
-                        score = np.nan
-                    else:
-                        row = indexed.loc[symbol]
-                        rank = row["rank"]
-                        score = row["rank_score"]
-                    old_enough = held_days.get(symbol, 0) >= min_hold_days
-                    outside_hold_band = pd.isna(rank) or float(rank) > hold_top_n or pd.isna(score)
-                    if old_enough and outside_hold_band:
-                        current_weights.pop(symbol, None)
-                        held_days.pop(symbol, None)
-
-                candidates = day[day["rank_score"].notna()].sort_values(["rank", "symbol"])
-                for symbol in candidates["symbol"].astype(str):
-                    if len(current_weights) >= buy_top_n:
-                        break
-                    if not _industry_slot_available(
-                        symbol=symbol,
-                        day=day,
-                        current_weights=current_weights,
-                        max_names_per_industry=max_names_per_industry,
-                    ):
-                        continue
-                    if symbol not in current_weights:
-                        current_weights[symbol] = 0.0
-                        held_days[symbol] = 0
-
-                active = [symbol for symbol in current_weights if symbol in set(day["symbol"].astype(str))]
-                if active:
-                    indexed = day.set_index(day["symbol"].astype(str))
-                    raw_weight = min(max_symbol_weight, 1.0 / len(active))
-                    current_weights = {
-                        symbol: raw_weight
-                        * float(pd.to_numeric(pd.Series([indexed.loc[symbol, "risk_overlay_scale"]]), errors="coerce").fillna(1.0).iloc[0])
-                        for symbol in active
-                    }
-                else:
-                    current_weights = {}
-
-            day["review_reason"] = review_reason
-            day["raw_weight"] = day["symbol"].astype(str).map(lambda symbol: 1.0 if symbol in current_weights else 0.0)
-            day["weight_unshifted"] = day["symbol"].astype(str).map(lambda symbol: current_weights.get(symbol, 0.0))
-            day["selected"] = (day["weight_unshifted"] > 0).astype(float)
-            day["held_days"] = day["symbol"].astype(str).map(lambda symbol: held_days.get(symbol, 0)).fillna(0).astype(int)
-            frames.append(day)
-            for symbol in list(current_weights):
-                held_days[symbol] = held_days.get(symbol, 0) + 1
-
-        out = pd.concat(frames, ignore_index=True).sort_values(["symbol", "date"]).reset_index(drop=True)
-        out["weight"] = out.groupby("symbol")["weight_unshifted"].shift(1).fillna(0.0)
-        out["position_ret"] = out["weight"] * pd.to_numeric(out["ret"], errors="coerce").fillna(0.0)
-
-        weights = out.pivot(index="date", columns="symbol", values="weight").fillna(0.0)
-        turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
-        sells = weights.diff().clip(upper=0).abs().sum(axis=1).fillna(0.0)
-        gross = out.groupby("date")["position_ret"].sum()
-        costs = turnover * (slippage + commission) + sells * stamp_duty_sell
-        returns = gross.sub(costs, fill_value=0.0)
-        exposure = weights.sum(axis=1)
         columns = [
             "date",
             "symbol",
@@ -457,8 +373,15 @@ class SleeveCompositeLowChurnStrategy(SleeveCompositeStrategy):
             "name",
             *QUALITY_COMPONENT_COLUMNS,
         ]
-        signal_frame = out[[col for col in columns if col in out.columns]].copy()
-        return StrategyOutput(returns=returns, exposure=exposure, signal_frame=signal_frame, metadata=self.build_metadata(params))
+        return allocate_low_churn(
+            d,
+            params=params,
+            slippage=slippage,
+            commission=commission,
+            stamp_duty_sell=stamp_duty_sell,
+            signal_columns=columns,
+            metadata=self.build_metadata(params),
+        )
 
     def format_params(self, params: dict[str, Any]) -> str:
         return (
@@ -473,16 +396,6 @@ class SleeveCompositeLowChurnStrategy(SleeveCompositeStrategy):
             f"min_hold={params.get('min_hold_days', '')}d,"
             f"max_w={params.get('max_symbol_weight', '')}"
         )
-
-
-def _optional_positive_int(value: Any) -> int | None:
-    if value is None:
-        return None
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError):
-        return None
-    return parsed if parsed > 0 else None
 
 
 def _attach_panel_metadata(signal: pd.DataFrame, panel: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
@@ -511,31 +424,3 @@ def _attach_panel_metadata(signal: pd.DataFrame, panel: pd.DataFrame, columns: l
             missing = current.isna() | current.astype(str).str.strip().eq("")
             out[col] = current.where(~missing, out[panel_col])
     return out.drop(columns=[col for col in out.columns if col.startswith("__panel_")])
-
-
-def _industry_slot_available(
-    *,
-    symbol: str,
-    day: pd.DataFrame,
-    current_weights: dict[str, float],
-    max_names_per_industry: int | None,
-) -> bool:
-    if max_names_per_industry is None or "industry" not in day.columns:
-        return True
-    indexed = day.set_index(day["symbol"].astype(str))
-    if symbol not in indexed.index:
-        return True
-    industry = _clean_industry(indexed.loc[symbol, "industry"])
-    active_symbols = [active for active in current_weights if active in indexed.index]
-    same_industry_count = 0
-    for active in active_symbols:
-        if _clean_industry(indexed.loc[active, "industry"]) == industry:
-            same_industry_count += 1
-    return same_industry_count < max_names_per_industry
-
-
-def _clean_industry(value: Any) -> str:
-    industry = str(value).strip()
-    if not industry or industry.lower() == "nan":
-        return "UNKNOWN"
-    return industry

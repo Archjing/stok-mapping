@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, SleeveCompositeStrategy
@@ -46,6 +47,33 @@ def _sample_panel() -> pd.DataFrame:
                 },
             ]
         )
+    return pd.DataFrame(rows)
+
+
+def _low_churn_characterization_panel() -> pd.DataFrame:
+    dates = pd.bdate_range("2024-01-02", periods=8)
+    daily_scores = [
+        {"AAA": 0.9, "BBB": 0.8, "CCC": 0.7},
+        {"AAA": 0.8, "BBB": 0.9, "CCC": 0.7},
+        {"AAA": 0.8, "BBB": 0.9, "CCC": 0.7},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.8},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.8},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.8},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.8},
+        {"AAA": 0.6, "BBB": 0.9, "CCC": 0.8},
+    ]
+    returns = {"AAA": 0.01, "BBB": 0.02, "CCC": -0.01}
+    rows = []
+    for date, scores in zip(dates, daily_scores, strict=True):
+        for symbol in ["AAA", "BBB", "CCC"]:
+            rows.append(
+                {
+                    "date": date,
+                    "symbol": symbol,
+                    "ret": returns[symbol],
+                    "quality_growth_score": scores[symbol],
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -264,3 +292,104 @@ def test_sleeve_composite_low_churn_respects_industry_slots() -> None:
     selected = set(first_day.loc[first_day["weight_unshifted"] > 0, "symbol"])
     assert selected == {"AAA", "CCC"}
     assert "BBB" not in selected
+
+
+def test_sleeve_composite_low_churn_v1_characterization_with_costs() -> None:
+    panel = _low_churn_characterization_panel()
+    params = {
+        "defensive_quality_weight": 1.0,
+        "low_turnover_momentum_weight": 0.0,
+        "risk_overlay_weight": 0.0,
+        "momentum_window": 20,
+        "top_n": 1,
+        "buy_top_n": 1,
+        "hold_top_n": 2,
+        "rebalance_days": 2,
+        "min_hold_days": 5,
+        "max_symbol_weight": 0.50,
+        "max_names_per_industry": None,
+    }
+
+    output = SleeveCompositeLowChurnStrategy().apply(
+        panel,
+        params,
+        slippage=0.001,
+        commission=0.00025,
+        stamp_duty_sell=0.0005,
+    )
+    signal = output.signal_frame
+    dates = list(pd.bdate_range("2024-01-02", periods=8))
+
+    selected = signal.loc[signal["selected"] > 0, ["date", "symbol", "weight_unshifted", "held_days"]]
+    assert list(selected.itertuples(index=False, name=None)) == [
+        (dates[0], "AAA", 0.5, 0),
+        (dates[1], "AAA", 0.5, 1),
+        (dates[2], "AAA", 0.5, 2),
+        (dates[3], "AAA", 0.5, 3),
+        (dates[4], "AAA", 0.5, 4),
+        (dates[5], "AAA", 0.5, 5),
+        (dates[6], "BBB", 0.5, 0),
+        (dates[7], "BBB", 0.5, 1),
+    ]
+
+    live = signal.loc[signal["weight"] > 0, ["date", "symbol", "weight"]]
+    assert list(live.itertuples(index=False, name=None)) == [
+        (dates[1], "AAA", 0.5),
+        (dates[2], "AAA", 0.5),
+        (dates[3], "AAA", 0.5),
+        (dates[4], "AAA", 0.5),
+        (dates[5], "AAA", 0.5),
+        (dates[6], "AAA", 0.5),
+        (dates[7], "BBB", 0.5),
+    ]
+    review_reason = signal.groupby("date")["review_reason"].first()
+    assert review_reason.tolist() == [
+        "fixed_rebalance",
+        "",
+        "fixed_rebalance",
+        "",
+        "fixed_rebalance",
+        "",
+        "fixed_rebalance",
+        "",
+    ]
+    assert output.returns.tolist() == pytest.approx(
+        [0.0, 0.004375, 0.005, 0.005, 0.005, 0.005, 0.005, 0.0085]
+    )
+
+
+def test_sleeve_composite_low_churn_v1_exits_only_at_eligible_review() -> None:
+    panel = _low_churn_characterization_panel()
+    params = {
+        "defensive_quality_weight": 1.0,
+        "low_turnover_momentum_weight": 0.0,
+        "risk_overlay_weight": 0.0,
+        "momentum_window": 20,
+        "top_n": 1,
+        "buy_top_n": 1,
+        "hold_top_n": 2,
+        "rebalance_days": 2,
+        "min_hold_days": 5,
+        "max_symbol_weight": 0.50,
+        "max_names_per_industry": None,
+    }
+
+    signal = SleeveCompositeLowChurnStrategy().apply(
+        panel,
+        params,
+        slippage=0.001,
+        commission=0.00025,
+        stamp_duty_sell=0.0005,
+    ).signal_frame.set_index(["date", "symbol"])
+    dates = list(pd.bdate_range("2024-01-02", periods=8))
+
+    assert signal.loc[(dates[2], "AAA"), "rank"] == 2.0
+    assert signal.loc[(dates[2], "AAA"), "selected"] == 1.0
+    assert signal.loc[(dates[4], "AAA"), "rank"] == 3.0
+    assert signal.loc[(dates[4], "AAA"), "held_days"] == 4
+    assert signal.loc[(dates[4], "AAA"), "selected"] == 1.0
+    assert signal.loc[(dates[5], "AAA"), "held_days"] == 5
+    assert signal.loc[(dates[5], "AAA"), "review_reason"] == ""
+    assert signal.loc[(dates[5], "AAA"), "selected"] == 1.0
+    assert signal.loc[(dates[6], "AAA"), "selected"] == 0.0
+    assert signal.loc[(dates[6], "BBB"), "selected"] == 1.0
