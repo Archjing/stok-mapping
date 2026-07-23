@@ -26,6 +26,24 @@ from phase0.reporting.paths import create_report_run
 from phase0.walk_forward import create_walk_forward_runtime, run_walk_forward
 
 
+_EMPTY_FOLDS_COLUMNS = [
+    "strategy_id",
+    "candidate",
+    "walk_forward_preset",
+    "fold",
+    "status",
+    "failure_reason",
+    "research_cost_multiplier",
+]
+_SKIPPED_OVERFIT_COLUMNS = [
+    "strategy_id",
+    "overfit_risk_level",
+    "overfit_score",
+    "status",
+    "failure_reason",
+]
+
+
 @dataclass(frozen=True)
 class StrategyAdmissionResult:
     output_dir: Path
@@ -64,10 +82,9 @@ def run_strategy_admission(
 
     effective_config = copy.deepcopy(config)
     effective_wcfg = effective_config.setdefault("walk_forward", {})
-    effective_execution_cfg = effective_wcfg.setdefault("execution", {})
     for cost_key in ("commission", "stamp_duty_sell", "slippage"):
-        effective_execution_cfg[cost_key] = (
-            float(effective_execution_cfg.get(cost_key, 0.0)) * normalized_cost_multiplier
+        effective_wcfg[cost_key] = (
+            float(effective_wcfg.get(cost_key, 0.0)) * normalized_cost_multiplier
         )
 
     wcfg = effective_wcfg
@@ -162,7 +179,11 @@ def run_strategy_admission(
         folds["failure_reason"] = ""
         all_folds.append(folds)
 
-    folds_df = pd.concat(all_folds, ignore_index=True) if all_folds else pd.DataFrame()
+    folds_df = (
+        pd.concat(all_folds, ignore_index=True)
+        if all_folds
+        else pd.DataFrame(columns=_EMPTY_FOLDS_COLUMNS)
+    )
     folds_df["research_cost_multiplier"] = normalized_cost_multiplier
     failures_df = pd.DataFrame(failure_rows)
     matrix_df = build_window_matrix(folds_df, failures_df, strategy_names, preset_names, gate_cfg)
@@ -197,6 +218,9 @@ def run_strategy_admission(
         )
         overfit_csv = overfit_result.csv_path
         overfit_df = pd.read_csv(overfit_csv)
+    else:
+        overfit_csv.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(columns=_SKIPPED_OVERFIT_COLUMNS).to_csv(overfit_csv, index=False)
 
     constraint_df = build_constraint_review(matrix_df, overfit_df, preset_names, gate_cfg)
 

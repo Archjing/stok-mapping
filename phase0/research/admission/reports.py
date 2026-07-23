@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shlex
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -216,23 +217,27 @@ def _admission_command_hint(
     cost_multiplier: float = 1.0,
 ) -> str:
     normalized_cost_multiplier = _normalized_cost_multiplier(cost_multiplier)
-    parts = [
+    argv = [
+        "python",
+        "-m",
         "phase0.cli",
         "strategy-admission",
-        f"--config {config_arg}",
-        "--presets " + " ".join(presets),
+        "--config",
+        config_arg,
+        "--presets",
+        *presets,
     ]
     strategy_set = _safe_str(strategy_scope.get("strategy_set", ""))
     strategies = [str(item) for item in strategy_scope.get("strategies", [])]
     if strategy_set:
-        parts.append(f"--strategy-set {strategy_set}")
+        argv.extend(["--strategy-set", strategy_set])
     elif strategies:
-        parts.append("--strategies " + " ".join(strategies))
+        argv.extend(["--strategies", *strategies])
     if output_dir is not None:
-        parts.append(f"--output-dir {output_dir}")
+        argv.extend(["--output-dir", str(output_dir)])
     if normalized_cost_multiplier != 1.0:
-        parts.append(f"--cost-multiplier {normalized_cost_multiplier}")
-    return " ".join(parts)
+        argv.extend(["--cost-multiplier", str(normalized_cost_multiplier)])
+    return shlex.join(argv)
 
 
 def _config_command_arg(config_path: Path | None, root: Path) -> str:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import shlex
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -125,6 +126,36 @@ def test_admission_command_hint_records_only_non_default_cost_multiplier(tmp_pat
     assert "--cost-multiplier" not in default_hint
     assert "--cost-multiplier 1.5" in sensitivity_hint
     assert "--cost-multiplier 2.0" in integer_sensitivity_hint
+
+
+def test_admission_command_hint_round_trips_paths_with_spaces_and_cost_multiplier(tmp_path) -> None:
+    output_dir = tmp_path / "admission results"
+
+    hint = _admission_command_hint(
+        config_arg="configs/research config.yaml",
+        presets=["baseline", "quality"],
+        strategy_scope={"strategy_set": "", "strategies": ["demo_strategy"]},
+        output_dir=output_dir,
+        cost_multiplier=1.5,
+    )
+
+    assert shlex.split(hint) == [
+        "python",
+        "-m",
+        "phase0.cli",
+        "strategy-admission",
+        "--config",
+        "configs/research config.yaml",
+        "--presets",
+        "baseline",
+        "quality",
+        "--strategies",
+        "demo_strategy",
+        "--output-dir",
+        str(output_dir),
+        "--cost-multiplier",
+        "1.5",
+    ]
 
 
 @pytest.mark.parametrize("value", [0, -1, float("nan"), float("inf"), float("-inf")])
@@ -804,10 +835,13 @@ def test_strategy_admission_applies_cost_multiplier_without_mutating_config(
     original_config = {
         "local_history": {"price_adjustment_for_backtest": "qfq_asof"},
         "walk_forward": {
+            "commission": 0.00025,
+            "stamp_duty_sell": 0.0005,
+            "slippage": 0.00246,
             "execution": {
-                "commission": 0.00025,
-                "stamp_duty_sell": 0.0005,
-                "slippage": 0.00246,
+                "commission": 9.0,
+                "stamp_duty_sell": 8.0,
+                "slippage": 7.0,
                 "transfer_fee": 0.00001,
                 "minimum_commission": 5.0,
             },
@@ -879,10 +913,14 @@ def test_strategy_admission_applies_cost_multiplier_without_mutating_config(
     assert original_config == expected_original
     assert len(runtime_configs) == len(walk_forward_configs) == len(overfit_configs) == 1
     for effective_config in [runtime_configs[0], walk_forward_configs[0], overfit_configs[0]]:
-        execution = effective_config["walk_forward"]["execution"]
-        assert execution["commission"] == pytest.approx(0.000375)
-        assert execution["stamp_duty_sell"] == pytest.approx(0.00075)
-        assert execution["slippage"] == pytest.approx(0.00369)
+        walk_forward = effective_config["walk_forward"]
+        assert walk_forward["commission"] == pytest.approx(0.000375)
+        assert walk_forward["stamp_duty_sell"] == pytest.approx(0.00075)
+        assert walk_forward["slippage"] == pytest.approx(0.00369)
+        execution = walk_forward["execution"]
+        assert execution["commission"] == 9.0
+        assert execution["stamp_duty_sell"] == 8.0
+        assert execution["slippage"] == 7.0
         assert execution["transfer_fee"] == 0.00001
         assert execution["minimum_commission"] == 5.0
         assert effective_config["unrelated"] == {"nested": [1, 2, 3]}
@@ -1017,12 +1055,47 @@ def test_strategy_admission_default_output_uses_standard_overfit_path_when_no_fo
     )
 
     assert result.overfit_csv.name == "overfit__diagnostic.csv"
-    assert "overfit__diagnostic.csv" in result.governance_md.read_text(encoding="utf-8")
+    governance_text = result.governance_md.read_text(encoding="utf-8")
+    assert "overfit__diagnostic.csv" in governance_text
     empty_folds = pd.read_csv(result.folds_csv)
+    empty_overfit = pd.read_csv(result.overfit_csv)
     matrix = pd.read_csv(result.matrix_csv)
     assert empty_folds.empty
-    assert empty_folds.columns.tolist() == ["research_cost_multiplier"]
+    assert {
+        "strategy_id",
+        "candidate",
+        "walk_forward_preset",
+        "fold",
+        "status",
+        "failure_reason",
+        "research_cost_multiplier",
+    }.issubset(empty_folds.columns)
+    assert empty_overfit.empty
+    assert {
+        "strategy_id",
+        "overfit_risk_level",
+        "overfit_score",
+        "status",
+        "failure_reason",
+    }.issubset(empty_overfit.columns)
     assert matrix["research_cost_multiplier"].tolist() == [1.0]
+
+    artifact_paths = {
+        result.folds_csv,
+        result.matrix_csv,
+        result.constraint_csv,
+        result.report_md,
+        result.overfit_csv,
+    }
+    assert all(path.exists() for path in artifact_paths)
+    required_section = governance_text.split("## Required Artifacts", 1)[1].split("## Summary", 1)[0]
+    required_names = [
+        line.removeprefix("- `").removesuffix("`")
+        for line in required_section.splitlines()
+        if line.startswith("- `")
+    ]
+    assert required_names
+    assert all((result.output_dir / name).exists() for name in required_names)
 
 
 def test_strategy_admission_forwards_walk_forward_runtime_overrides(monkeypatch, tmp_path) -> None:
