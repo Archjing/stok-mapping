@@ -12,6 +12,7 @@ from phase0.data_governance.backfills.adjustment import backfill_adjustment_fact
 from phase0.data_governance.backfills.daily_basic import backfill_daily_basic_from_config
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.data_governance.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
+from phase0.data_governance.cross_market_reference_history import update_cross_market_reference_history_from_config
 from phase0.data_governance.financial_factors import update_financial_factors_from_config
 from phase0.data_governance.import_history import import_from_config, import_index_history_from_config
 from phase0.data_governance.backfills.tushare_history import (
@@ -35,6 +36,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "update-financials",
         "update-hk-market-history",
         "update-history",
+        "update-cross-market-reference-history",
         "update-us-market-history",
     }
 )
@@ -179,6 +181,12 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     us_history_parser = subparsers.add_parser("update-us-market-history", help="Incrementally update US market history database")
     us_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     us_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    reference_history_parser = subparsers.add_parser(
+        "update-cross-market-reference-history",
+        help="Incrementally update close-only cross-market reference series",
+    )
+    reference_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    reference_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
     hk_history_parser = subparsers.add_parser("update-hk-market-history", help="Incrementally update HK market history database")
     hk_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     hk_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
@@ -419,6 +427,22 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         update_console.print(f"Inserted rows: {result.inserted_rows}")
         update_console.print(f"Updated rows: {result.updated_rows}")
         update_console.print(f"Source: {result.source or 'N/A'}")
+        if result.warnings:
+            for warning in result.warnings:
+                update_console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-cross-market-reference-history":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_cross_market_reference_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+        color = "green" if result.ok else "red"
+        update_console.print(f"[{color}]Cross-market reference history update status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Latest date: {result.latest_date or 'N/A'}")
+        update_console.print(f"Coverage: {result.coverage:.4f} ({result.covered_symbols}/{result.symbol_count})")
+        update_console.print(f"Fetched rows: {result.fetched_rows}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        update_console.print(f"Updated rows: {result.updated_rows}")
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")

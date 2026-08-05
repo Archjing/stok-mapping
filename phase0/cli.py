@@ -77,6 +77,7 @@ def main() -> int:
             "import-history",
             "import-index-history",
             "update-financials",
+            "update-cross-market-reference-history",
             "update-hk-market-history",
             "update-history",
             "update-us-market-history",

@@ -11,6 +11,11 @@ from phase0.config import load_config
 from phase0.data_access.connectivity import ConnectivityResult, check_connectivity, fetch_yf_daily
 from phase0.data_governance.quality import aggregate_quality, audit_quality
 from phase0.data_governance.external_market_history import load_us_daily_from_history, update_us_market_history_from_config
+from phase0.data_governance.cross_market_reference_history import (
+    CrossMarketReferenceHistoryUpdateResult,
+    configure_cross_market_reference_history_from_config,
+    update_cross_market_reference_history_from_config,
+)
 from phase0.data_access.local_history import configure_local_history
 from phase0.reporting import (
     write_cost_sensitivity_report,
@@ -43,6 +48,19 @@ def _apply_walk_forward_runtime_overrides(
         cache_cfg["enabled"] = False
     if refresh_wf_cache:
         cache_cfg["refresh"] = True
+
+
+def require_fresh_cross_market_reference(
+    cfg: dict[str, Any],
+    result: CrossMarketReferenceHistoryUpdateResult,
+) -> None:
+    reference_enabled = bool(cfg.get("cross_market_reference_history", {}).get("enabled", False))
+    cross_market_enabled = bool(cfg.get("walk_forward", {}).get("strategy_v2", {}).get("cross_market", {}).get("enabled", False))
+    if reference_enabled and cross_market_enabled and not result.ok:
+        raise RuntimeError(
+            "cross_market_reference_history_gate_failed:"
+            f"status={result.status};coverage={result.coverage:.4f};latest_date={result.latest_date or 'N/A'}"
+        )
 
 
 def run_phase0(
@@ -93,6 +111,21 @@ def run_phase0(
             f"source={us_result.source or 'N/A'}"
         )
 
+    reference_result = None
+    reference_cfg = cfg.get("cross_market_reference_history", {})
+    configure_cross_market_reference_history_from_config(cfg, root)
+    if bool(reference_cfg.get("enabled", False)):
+        update_reference = bool(reference_cfg.get("run_before_phase0", True))
+        console.print("0c) Checking/updating cross-market reference history..." if update_reference else "0c) Checking cross-market reference history...")
+        reference_result = update_cross_market_reference_history_from_config(cfg, root, check_only=not update_reference)
+        color = "green" if reference_result.ok else "red"
+        console.print(
+            f"[{color}]Cross-market reference history status: {reference_result.status}[/{color}] "
+            f"latest={reference_result.latest_date or 'N/A'} "
+            f"coverage={reference_result.coverage:.4f}"
+        )
+        require_fresh_cross_market_reference(cfg, reference_result)
+
     console.print("1) Checking data-source connectivity...")
     connectivity = check_connectivity(cfg["data_sources"], years=years)
     if history_result is not None:
@@ -120,6 +153,18 @@ def run_phase0(
                 rows=us_result.fetched_rows,
                 latest_date=us_result.latest_date,
                 error=us_result.status if not message else f"{us_result.status}; {message}",
+            )
+        )
+    if reference_result is not None:
+        message = "; ".join(reference_result.warnings[-3:])
+        connectivity.append(
+            ConnectivityResult(
+                source="cross-market-reference-history",
+                target="pre_run_update",
+                ok=reference_result.ok,
+                rows=reference_result.fetched_rows,
+                latest_date=reference_result.latest_date,
+                error=reference_result.status if not message else f"{reference_result.status}; {message}",
             )
         )
 
@@ -166,7 +211,7 @@ def run_phase0(
     console.print("3) Running walk-forward backtest baseline...")
     for line in describe_walk_forward_presets(cfg.get("walk_forward", {})):
         console.print(f"[cyan]{line}[/cyan]")
-    wf = run_walk_forward(cfg)
+    wf = run_walk_forward(cfg, root=root)
     folds_df = wf["folds"]
     candidate_folds_df = wf.get("candidate_folds")
     summary = wf["summary"]
@@ -206,6 +251,7 @@ def run_phase0_cost_sensitivity(config_path: Path, scenarios: list[dict[str, flo
     root = config_path.parent
     cfg = load_config(config_path)
     configure_local_history(cfg.get("local_history", {}), root)
+    configure_cross_market_reference_history_from_config(cfg, root)
     configure_akshare_throttle(cfg.get("data_sources", {}).get("akshare", {}))
 
     cfg["cost_sensitivity"] = {
@@ -223,7 +269,7 @@ def run_phase0_cost_sensitivity(config_path: Path, scenarios: list[dict[str, flo
             f"stamp_duty_sell={float(scenario['stamp_duty_sell']):.5f}"
         )
 
-    sensitivity_df = run_cost_sensitivity(cfg)
+    sensitivity_df = run_cost_sensitivity(cfg, root=root)
     if not sensitivity_df.empty:
         save_walk_forward_csv(sensitivity_df, report_path(root=root, config=cfg, category="phase0", parts=("phase0_cost_sensitivity.csv",)))
     write_cost_sensitivity_report(

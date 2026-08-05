@@ -24,6 +24,11 @@ from phase0.data_governance.external_market_history import (
     load_us_daily_from_history,
     us_market_history_runtime_fallback_enabled,
 )
+from phase0.data_governance.cross_market_reference_history import (
+    configure_cross_market_reference_history_from_config,
+    load_cross_market_reference_from_history,
+    update_cross_market_reference_history_from_config,
+)
 from phase0.data_access.local_history import (
     configure_local_history,
     load_daily_from_local_history,
@@ -756,8 +761,11 @@ def _load_cross_market_features(years: int, cfg: dict[str, Any]) -> pd.DataFrame
     end = date.today()
     start = end - timedelta(days=365 * years + 20)
     history = load_us_daily_from_history(MARKET_TICKERS, start, end)
+    reference_history = load_cross_market_reference_from_history(MARKET_TICKERS, start, end)
     for ticker in MARKET_TICKERS:
-        if not history.empty:
+        if not reference_history.empty and ticker in set(reference_history["symbol"]):
+            df = reference_history[reference_history["symbol"] == ticker].copy()
+        elif not history.empty:
             df = history[history["symbol"] == ticker].copy()
         else:
             df = pd.DataFrame()
@@ -3443,14 +3451,20 @@ def _window_summary_fields(window_cfg: dict[str, Any], folds_df: pd.DataFrame) -
     }
 
 
-def _run_walk_forward_impl(config: dict[str, Any], *, trace_callback: TraceCallback | None = None) -> dict[str, Any]:
+def _run_walk_forward_impl(
+    config: dict[str, Any],
+    *,
+    root: Path,
+    trace_callback: TraceCallback | None = None,
+) -> dict[str, Any]:
     wcfg = config["walk_forward"]
     window_cfg = _resolve_walk_forward_window(wcfg)
     years = _effective_history_years(int(config["years"]), window_cfg)
     train_years = int(window_cfg["train_years"])
     validate_years = int(window_cfg["validate_years"])
-    configure_local_history(config.get("local_history", {}), Path.cwd())
-    configure_us_market_history(config.get("us_market_history", {}), Path.cwd())
+    configure_local_history(config.get("local_history", {}), root)
+    configure_us_market_history(config.get("us_market_history", {}), root)
+    configure_cross_market_reference_history_from_config(config, root)
     symbols = config["symbols"]
     universe_cfg = config.get("universe", {})
     use_point_in_time_universe = bool(
@@ -3695,13 +3709,24 @@ def run_walk_forward(
     *,
     trace_callback: TraceCallback | None = None,
     runtime: WalkForwardRuntime | None = None,
+    root: Path | None = None,
 ) -> dict[str, Any]:
-    root = Path.cwd()
+    root = root or Path.cwd()
+    reference_cfg = config.get("cross_market_reference_history", {})
+    cross_market_cfg = config.get("walk_forward", {}).get("strategy_v2", {}).get("cross_market", {})
+    if bool(reference_cfg.get("enabled", False)) and bool(cross_market_cfg.get("enabled", False)):
+        reference_result = update_cross_market_reference_history_from_config(config, root, check_only=True)
+        if not reference_result.ok:
+            raise RuntimeError(
+                "cross_market_reference_history_gate_failed:"
+                f"status={reference_result.status};coverage={reference_result.coverage:.4f};"
+                f"latest_date={reference_result.latest_date or 'N/A'}"
+            )
     runtime = runtime or _resolve_walk_forward_runtime(config, root)
     token = _WALK_FORWARD_RUNTIME.set(runtime)
     try:
         with _profile_step("run_walk_forward"):
-            result = _run_walk_forward_impl(config, trace_callback=trace_callback)
+            result = _run_walk_forward_impl(config, root=root, trace_callback=trace_callback)
         summary = result.setdefault("summary", {})
         summary["walk_forward_cache_enabled"] = bool(runtime.cache_enabled)
         summary["walk_forward_prepared_panel_cache_enabled"] = bool(runtime.prepared_panel_cache_enabled)
@@ -3717,7 +3742,7 @@ def run_walk_forward(
         _WALK_FORWARD_RUNTIME.reset(token)
 
 
-def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:
+def run_cost_sensitivity(config: dict[str, Any], *, root: Path | None = None) -> pd.DataFrame:
     sensitivity_cfg = config.get("cost_sensitivity", {})
     if not bool(sensitivity_cfg.get("enabled", False)):
         return pd.DataFrame()
@@ -3760,7 +3785,7 @@ def run_cost_sensitivity(config: dict[str, Any]) -> pd.DataFrame:
         scenario_wcfg["slippage"] = float(scenario.get("slippage", scenario_wcfg.get("slippage", 0.0)))
         scenario_wcfg["commission"] = float(scenario.get("commission", scenario_wcfg.get("commission", 0.0)))
         scenario_wcfg["stamp_duty_sell"] = float(scenario.get("stamp_duty_sell", scenario_wcfg.get("stamp_duty_sell", 0.0)))
-        result = run_walk_forward(scenario_cfg)
+        result = run_walk_forward(scenario_cfg, root=root)
         summary = result.get("summary", {})
         scenario_name = str(scenario.get("name", "scenario"))
         candidate_rows = summary.get("candidate_summary_rows", []) or []

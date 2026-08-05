@@ -25,6 +25,24 @@ def test_external_market_provider_dispatches_yfinance_hk_symbol(monkeypatch) -> 
     assert calls == [("0700.HK", 3)]
 
 
+def test_external_market_provider_dispatches_tiingo_for_us_symbols(monkeypatch) -> None:
+    calls: list[tuple[str, int]] = []
+
+    def fake_fetch_tiingo_daily(symbol: str, years: int) -> pd.DataFrame:
+        calls.append((symbol, years))
+        return pd.DataFrame({"date": ["2024-01-02"], "open": [1], "high": [1], "low": [1], "close": [1]})
+
+    monkeypatch.setattr(external_market, "fetch_tiingo_daily", fake_fetch_tiingo_daily)
+
+    result = external_market.fetch_external_market_daily(
+        "NVDA",
+        SimpleNamespace(provider="tiingo", years=5),
+    )
+
+    assert not result.empty
+    assert calls == [("NVDA", 5)]
+
+
 def test_external_market_provider_dispatches_supported_hk_providers(monkeypatch) -> None:
     calls: list[tuple[str, str, int]] = []
 

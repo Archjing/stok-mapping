@@ -129,12 +129,20 @@ def fetch_fred_series(
     api_key = os.getenv(api_key_env, "").strip()
     if api_key:
         params["api_key"] = api_key
-    resp = requests.get(
-        "https://api.stlouisfed.org/fred/series/observations",
-        params=params,
-        timeout=20,
-    )
-    resp.raise_for_status()
+    request_failed = False
+    request_status: int | str = "unknown"
+    try:
+        resp = requests.get(
+            "https://api.stlouisfed.org/fred/series/observations",
+            params=params,
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except requests.RequestException:
+        request_failed = True
+        request_status = getattr(locals().get("resp", None), "status_code", "unknown")
+    if request_failed:
+        raise RuntimeError(f"fred_request_failed:status={request_status}")
     payload = resp.json()
     observations = payload.get("observations", [])
     if not observations:

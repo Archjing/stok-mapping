@@ -105,6 +105,22 @@ phase0:
     run_before_phase0: true
     runtime_yfinance_fallback: false
     symbols: ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
+  cross_market_reference_history:
+    enabled: true
+    path: "data/cross_market_reference_history.sqlite"
+    daily_table: "cross_market_reference_daily"
+    source_audit_table: "cross_market_reference_source_runs"
+    years: 7
+    max_staleness_days: 3
+    min_symbol_coverage: 1.0
+    run_before_phase0: true
+    series:
+      "^NDX":
+        provider: "fred"
+        source_series_id: "NASDAQ100"
+      "^SOX":
+        provider: "fred"
+        source_series_id: "NASDAQSOX"
   hk_market_history:
     enabled: true
     path: "data/hk_market_history.sqlite"
@@ -196,7 +212,7 @@ phase0:
     chunk_size: 250000
   data_sources:
     fred:
-      enabled: false
+      enabled: true
       api_key_env: "FRED_API_KEY"
       cache:
         enabled: true

@@ -171,7 +171,7 @@ phase0:
 
     monkeypatch.setattr(phase0_run_cli, "configure_local_history", lambda cfg, root: None)
     monkeypatch.setattr(phase0_run_cli, "configure_akshare_throttle", lambda cfg: None)
-    monkeypatch.setattr(phase0_run_cli, "run_cost_sensitivity", lambda cfg: pd.DataFrame({"scenario": ["base"]}))
+    monkeypatch.setattr(phase0_run_cli, "run_cost_sensitivity", lambda cfg, *, root=None: pd.DataFrame({"scenario": ["base"]}))
     monkeypatch.setattr(phase0_run_cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
     monkeypatch.setattr(phase0_run_cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
 
