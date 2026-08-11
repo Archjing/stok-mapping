@@ -201,6 +201,43 @@ data/a_share_history.sqlite
 - 适合日常 / 每周维护。
 - 不负责长历史空白期回填。
 
+## ETF 历史数据能力
+
+ETF 能力使用独立数据库 `data/etf_history.sqlite`，不与 A 股个股研究主库混表。目录中的配置只定义允许回填的 named universe 和 sector；历史命令没有全市场、通配符、名称推断或 catalog fallback。
+
+标准工作流：
+
+```bash
+./.venv/bin/python -m phase0.cli sync-etf-catalog --config config.yaml
+./.venv/bin/python -m phase0.cli resolve-etf-universe --config config.yaml --universe sector_core_v1 --start-date 2018-01-01 --end-date 2026-08-11
+./.venv/bin/python -m phase0.cli backfill-etf-history --config config.yaml --universe sector_core_v1 --sector semiconductor --start-date 2018-01-01 --end-date 2026-08-11 --dry-run
+./.venv/bin/python -m phase0.cli backfill-etf-history --config config.yaml --universe sector_core_v1 --start-date 2018-01-01 --end-date 2026-08-11
+./.venv/bin/python -m phase0.cli backfill-etf-history --config config.yaml --resume-run-id <run-id>
+./.venv/bin/python -m phase0.cli audit-etf-history --config config.yaml --run-id <run-id>
+```
+
+数据范围与资源边界：
+
+- `sync-etf-catalog` 同步全量 ETF 基础目录，但目录行较轻量；active 和 delisted 两个端点必须都成功，失败的部分结果不会发布为可用 snapshot。
+- `resolve-etf-universe` 和 `backfill-etf-history` 只接受 `config.yaml` 中已经声明的 universe/sector。省略 `--sector` 表示该 named universe 内的全部 sector，不表示全市场 ETF。
+- 开始长区间任务前必须先运行 `--dry-run`，检查标的数、年度 chunk、数据集数、provider call/task 数和硬限制 headroom。
+- 新 run 的 manifest 固化 catalog snapshot、配置 digest、sector、标的和有效日期范围。`--resume-run-id` 只能恢复这个不可变 manifest，禁止再传 universe、sector、日期、dry-run 或 limit 参数。
+- 任一任务失败、有效上市区间内出现 empty chunk，或 run 未完成时，命令返回非零退出码 `2`；不能把 partial/failed 当作可用数据。
+
+价格与时间线语义：
+
+- `raw` 日线保留交易所原始价格，是交易执行与成交语义的价格口径。
+- `qfq_asof` 是研究读取口径，按 `raw × bar_date_factor / as_of_factor` 动态构造；查询会截断到 `as_of_date`。
+- 每个实际 bar date 必须存在同日复权因子。读取器不做 `ffill`、`bfill`，也不会查询或使用 `as_of_date` 之后的未来因子。
+- provider 返回但没有有效日期的跟踪指数关系只记为 non-PIT tracking observation，不能当作历史时点上的 ETF 跟踪关系事实。
+- 回填完成状态与研究准入状态分离：任务级 `status='ok'` 后仍需运行 audit；严格研究使用要求 `status='ok' AND audit_status='pass'`。
+
+本地资产策略：
+
+- `data/etf_history.sqlite`、`reports/database_health/etf_history/` 和相关日志都是 local-only 运行资产，不提交 Git。
+- 报告用于审计 run manifest、任务状态、empty/failed task、数据日期范围、重复逻辑键和实际 bar date 的因子覆盖。
+- 放弃或重建 ETF 运行数据时，只处理 ETF 独立数据库和 ETF 报告目录，不修改 `data/manual_history/a_share_history.sqlite`。
+
 ## 数据来源与维护方式
 
 当前库的维护已不再是“只依赖手动预下载包”的单一路径，而是多来源协作：

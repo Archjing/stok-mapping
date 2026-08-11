@@ -68,14 +68,18 @@ _print_manual_history_update_result = print_manual_history_update_result
 def main() -> int:
     top_level_groups = {
         "Data Import & Update": [
+            "audit-etf-history",
             "backfill-adjustment-factors",
             "backfill-daily-basic",
+            "backfill-etf-history",
             "backfill-index-asof",
             "backfill-tushare-financials",
             "backfill-tushare-history",
             "build-universe",
             "import-history",
             "import-index-history",
+            "resolve-etf-universe",
+            "sync-etf-catalog",
             "update-financials",
             "update-cross-market-reference-history",
             "update-hk-market-history",

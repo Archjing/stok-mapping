@@ -71,6 +71,33 @@ phase0:
     max_snapshot_staleness_days: 1
     min_snapshot_coverage: 0.80
     allow_stale_universe_fallback: false
+  etf_history:
+    enabled: true
+    path: "data/etf_history.sqlite"
+    catalog_max_age_days: 7
+    chunk_years: 1
+    max_symbols_per_run: 50
+    max_tasks_per_run: 1000
+    max_requests_per_minute: 100
+    max_retries: 3
+    retry_backoff_seconds: 2.0
+    stale_running_minutes: 30
+    report_dir: "reports/database_health/etf_history"
+    universes:
+      sector_core_v1:
+        sectors:
+          broad_market:
+            - symbol: "SH.510300"
+            - symbol: "SZ.159915"
+          semiconductor:
+            - symbol: "SH.512480"
+      single_etf:
+        manifest_source: "manual_config"
+        sectors:
+          semiconductor:
+            - symbol: "SH.512480"
+              ts_code: "512480.SH"
+              listed_from: "2019-06-12"
   reporting:
     root_dir: "reports"
     categories:

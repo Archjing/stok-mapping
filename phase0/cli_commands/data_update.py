@@ -8,9 +8,20 @@ from rich.console import Console
 
 from phase0.cli_commands.output import print_manual_history_update_result
 from phase0.config import load_config
+from phase0.data_access.providers.tushare import TushareAPIError, TusharePermissionError, TushareTokenError
 from phase0.data_governance.backfills.adjustment import backfill_adjustment_factors_from_config
 from phase0.data_governance.backfills.daily_bars import backfill_daily_bars_from_config
 from phase0.data_governance.backfills.daily_basic import backfill_daily_basic_from_config
+from phase0.data_governance.backfills.etf_history import (
+    ETFBackfillDryRunResult,
+    ETFBackfillPlanError,
+    ETFBackfillResult,
+    ETFResumeMismatchError,
+    backfill_etf_history_from_config,
+)
+from phase0.data_governance.etf_audit import audit_etf_history_from_config
+from phase0.data_governance.etf_catalog import StaleETFCatalogError, sync_etf_catalog_from_config
+from phase0.data_governance.etf_universe import ETFUniverseError, resolve_etf_universe_from_config
 from phase0.data_governance.backfills.index_history import backfill_index_history_from_config
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.data_governance.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
@@ -30,6 +41,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "backfill-adjustment-factors",
         "backfill-daily-basic",
         "backfill-daily-bars",
+        "backfill-etf-history",
         "backfill-index-asof",
         "backfill-index-history",
         "backfill-tushare-financials",
@@ -37,6 +49,9 @@ DATA_UPDATE_COMMANDS = frozenset(
         "build-universe",
         "import-history",
         "import-index-history",
+        "audit-etf-history",
+        "resolve-etf-universe",
+        "sync-etf-catalog",
         "update-financials",
         "update-hk-market-history",
         "update-history",
@@ -88,6 +103,28 @@ def _print_tushare_financial_progress(console: Console, progress: dict) -> None:
 
 
 def register_data_update_commands(subparsers: argparse._SubParsersAction) -> None:
+    etf_catalog_parser = subparsers.add_parser("sync-etf-catalog", help="Synchronize the lightweight A-share ETF catalog")
+    etf_catalog_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    etf_universe_parser = subparsers.add_parser("resolve-etf-universe", help="Resolve a configured ETF sector universe")
+    etf_universe_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    etf_universe_parser.add_argument("--universe", required=True, help="Configured ETF universe name")
+    etf_universe_parser.add_argument("--sector", action="append", default=None, help="Configured sector selector; repeat as needed")
+    etf_universe_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
+    etf_universe_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    etf_backfill_parser = subparsers.add_parser("backfill-etf-history", help="Dry-run, start, or resume scoped ETF history acquisition")
+    etf_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    etf_mode = etf_backfill_parser.add_mutually_exclusive_group(required=True)
+    etf_mode.add_argument("--universe", help="Configured ETF universe name for a new run")
+    etf_mode.add_argument("--resume-run-id", help="Immutable ETF backfill run ID to resume")
+    etf_backfill_parser.add_argument("--sector", action="append", default=None, help="Configured sector selector; repeat as needed")
+    etf_backfill_parser.add_argument("--start-date", default=None, help="Start date in YYYY-MM-DD for a new run")
+    etf_backfill_parser.add_argument("--end-date", default=None, help="End date in YYYY-MM-DD for a new run")
+    etf_backfill_parser.add_argument("--dry-run", action="store_true", help="Plan provider calls without creating a run")
+    etf_backfill_parser.add_argument("--limit-symbols", type=int, default=None, help="Optional stricter symbol cap")
+    etf_backfill_parser.add_argument("--limit-tasks", type=int, default=None, help="Optional stricter task/provider-call cap")
+    etf_audit_parser = subparsers.add_parser("audit-etf-history", help="Audit a persisted ETF history run")
+    etf_audit_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    etf_audit_parser.add_argument("--run-id", required=True, help="ETF backfill run ID")
     universe_parser = subparsers.add_parser("build-universe", help="Build local-factor A-share universe")
     universe_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     history_parser = subparsers.add_parser("import-history", help="Import manual A-share history zip files")
@@ -226,8 +263,123 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     )
 
 
+def _safe_etf_error(exc: Exception) -> str:
+    if isinstance(exc, TusharePermissionError):
+        return "Tushare permission denied for the requested ETF endpoint"
+    if isinstance(exc, TushareTokenError):
+        return "Tushare token is missing or invalid"
+    if isinstance(exc, TushareAPIError):
+        return "Tushare ETF provider request failed"
+    if isinstance(exc, (ETFBackfillPlanError, ETFResumeMismatchError, ETFUniverseError, StaleETFCatalogError, ValueError)):
+        return str(exc)
+    return f"ETF workflow failed ({exc.__class__.__name__})"
+
+
+def _handle_etf_data_command(
+    args: argparse.Namespace,
+    *,
+    parser: argparse.ArgumentParser,
+    console: Any,
+) -> int:
+    config_path = Path(args.config).resolve()
+    try:
+        if args.cmd == "sync-etf-catalog":
+            result = sync_etf_catalog_from_config(config_path)
+            color = "green" if result.status == "ok" else "red"
+            console.print(f"[{color}]ETF catalog sync status: {result.status}[/{color}]")
+            console.print(f"Snapshot: {result.snapshot_id}")
+            console.print(f"Active rows: {result.active_rows}")
+            console.print(f"Delisted rows: {result.delisted_rows}")
+            if result.error_kind:
+                console.print(f"Error kind: {result.error_kind}")
+            return 0 if result.status == "ok" else 2
+
+        if args.cmd == "resolve-etf-universe":
+            manifest = resolve_etf_universe_from_config(
+                config_path,
+                universe_name=args.universe,
+                requested_sectors=args.sector,
+                start_date=args.start_date,
+                end_date=args.end_date,
+            )
+            symbols = sorted({member.symbol for member in manifest.members})
+            console.print("[green]ETF universe resolved[/green]")
+            console.print(f"Universe: {manifest.universe_name}")
+            console.print(f"Manifest source: {manifest.manifest_source}")
+            console.print(f"Source reference: {manifest.catalog_snapshot_id}")
+            console.print(f"Sectors: {', '.join(manifest.requested_sectors)}")
+            console.print(f"Symbols ({len(symbols)}): {', '.join(symbols)}")
+            console.print(f"Config digest: {manifest.config_digest}")
+            return 0
+
+        if args.cmd == "backfill-etf-history":
+            resume_run_id = args.resume_run_id
+            resume_conflicts = (
+                args.universe,
+                args.sector,
+                args.start_date,
+                args.end_date,
+                args.limit_symbols,
+                args.limit_tasks,
+            )
+            if resume_run_id and (any(value is not None for value in resume_conflicts) or args.dry_run):
+                parser.error("--resume-run-id rejects --universe, --sector, dates, --dry-run, and limits")
+            if not resume_run_id and (not args.universe or not args.start_date or not args.end_date):
+                parser.error("new ETF backfill requires --universe, --start-date, and --end-date")
+            result = backfill_etf_history_from_config(
+                config_path,
+                universe_name=args.universe,
+                sectors=args.sector,
+                start_date=args.start_date,
+                end_date=args.end_date,
+                dry_run=args.dry_run,
+                resume_run_id=resume_run_id,
+                limit_symbols=args.limit_symbols,
+                limit_tasks=args.limit_tasks,
+            )
+            if isinstance(result, ETFBackfillDryRunResult):
+                console.print("[green]ETF history dry-run complete[/green]")
+                console.print(f"Universe: {result.manifest.universe_name}")
+                console.print(f"Sectors: {', '.join(result.manifest.requested_sectors)}")
+                console.print(f"Symbols: {result.symbol_count}")
+                console.print(f"Annual chunks: {result.chunk_count}")
+                console.print(f"Datasets: {result.dataset_count}")
+                console.print(f"Provider calls/tasks: {result.provider_call_count}")
+                console.print(f"Symbol headroom: {result.symbol_headroom}/{result.effective_symbol_limit}")
+                console.print(f"Task headroom: {result.task_headroom}/{result.effective_task_limit}")
+                return 0
+            if not isinstance(result, ETFBackfillResult):
+                raise TypeError("unexpected ETF backfill result")
+            color = "green" if result.status == "ok" else "red"
+            console.print(f"[{color}]ETF history backfill status: {result.status}[/{color}]")
+            console.print(f"Run ID: {result.run_id}")
+            console.print(f"Database: {result.db_path}")
+            console.print(f"Tasks: {result.succeeded_tasks}/{result.target_tasks} succeeded")
+            console.print(f"Empty: {result.empty_tasks}; failed: {result.failed_tasks}")
+            console.print(f"Inserted rows: {result.inserted_rows}")
+            return result.exit_code
+
+        if args.cmd == "audit-etf-history":
+            result = audit_etf_history_from_config(config_path, args.run_id)
+            color = "green" if result.status == "PASS" else "red"
+            console.print(f"[{color}]ETF history audit status: {result.status}[/{color}]")
+            console.print(f"Run ID: {result.run_id}")
+            console.print(f"Tasks: {result.succeeded_tasks}/{result.target_tasks} succeeded")
+            console.print(f"Factor gaps: {result.factor_missing_bar_dates}")
+            console.print(f"JSON report: {result.json_path}")
+            console.print(f"Markdown report: {result.markdown_path}")
+            return result.exit_code
+    except Exception as exc:
+        console.print(f"[red]{_safe_etf_error(exc)}[/red]")
+        return 2
+    parser.error("ETF data command expected")
+    return 2
+
+
 def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.ArgumentParser, console: Any | None = None) -> int:
     update_console = console or Console()
+    if args.cmd in {"sync-etf-catalog", "resolve-etf-universe", "backfill-etf-history", "audit-etf-history"}:
+        return _handle_etf_data_command(args, parser=parser, console=update_console)
     if args.cmd == "update-financials":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

@@ -103,7 +103,11 @@ def test_fred_reference_history_persists_close_only_series_and_audits_source(mon
         "data_sources": {"fred": {"api_key_env": "FRED_API_KEY", "cache": {"enabled": False}}},
     }
 
-    result = reference_history.update_cross_market_reference_history_from_config(cfg, tmp_path)
+    result = reference_history.update_cross_market_reference_history_from_config(
+        cfg,
+        tmp_path,
+        as_of_date=date(2026, 8, 7),
+    )
 
     assert result.ok
     assert result.status == "updated"

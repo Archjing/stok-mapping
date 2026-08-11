@@ -154,12 +154,17 @@ def _latest_dates(conn: sqlite3.Connection, settings: CrossMarketReferenceHistor
     return {str(symbol): pd.Timestamp(latest).date() for symbol, latest in rows if latest}
 
 
-def _coverage(conn: sqlite3.Connection, settings: CrossMarketReferenceHistorySettings) -> tuple[str, int, float]:
+def _coverage(
+    conn: sqlite3.Connection,
+    settings: CrossMarketReferenceHistorySettings,
+    *,
+    as_of_date: date,
+) -> tuple[str, int, float]:
     symbols = [mapping.symbol for mapping in settings.mappings]
     if not symbols:
         return "", 0, 0.0
     latest_dates = _latest_dates(conn, settings)
-    cutoff = date.today() - timedelta(days=max(0, settings.max_staleness_days))
+    cutoff = as_of_date - timedelta(days=max(0, settings.max_staleness_days))
     covered = [symbol for symbol in symbols if latest_dates.get(symbol) and latest_dates[symbol] >= cutoff]
     latest = max(latest_dates.values()).isoformat() if latest_dates else ""
     return latest, len(covered), len(covered) / len(symbols)
@@ -205,10 +210,12 @@ def update_cross_market_reference_history_from_config(
     root: Path,
     *,
     check_only: bool = False,
+    as_of_date: date | None = None,
 ) -> CrossMarketReferenceHistoryUpdateResult:
     configure_cross_market_reference_history_from_config(cfg, root)
     settings = _settings
     symbols = [mapping.symbol for mapping in settings.mappings]
+    effective_as_of_date = as_of_date or date.today()
     if not settings.enabled:
         return CrossMarketReferenceHistoryUpdateResult(settings.path, "disabled", "", 0, 0, 0.0, 0, 0, 0)
 
@@ -216,7 +223,7 @@ def update_cross_market_reference_history_from_config(
     warnings: list[str] = []
     with sqlite3.connect(settings.path) as conn:
         _ensure_tables(conn, settings)
-        latest, covered, coverage = _coverage(conn, settings)
+        latest, covered, coverage = _coverage(conn, settings, as_of_date=effective_as_of_date)
         if check_only:
             status = "check_ok" if coverage >= settings.min_symbol_coverage else "stale"
             return CrossMarketReferenceHistoryUpdateResult(
@@ -300,7 +307,7 @@ def update_cross_market_reference_history_from_config(
             inserted_rows += mapping_inserted
             updated_rows += mapping_updated
 
-        latest, covered, coverage = _coverage(conn, settings)
+        latest, covered, coverage = _coverage(conn, settings, as_of_date=effective_as_of_date)
         status = "updated" if coverage >= settings.min_symbol_coverage else "stale"
         conn.commit()
         return CrossMarketReferenceHistoryUpdateResult(
