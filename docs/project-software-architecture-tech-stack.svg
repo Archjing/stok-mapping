@@ -169,7 +169,7 @@
 
     <rect x="1090" y="630" width="500" height="166" rx="18" fill="#ffffff" stroke="#d6d0ea" stroke-width="2" filter="url(#softShadow)"/>
     <text x="1124" y="672" class="laneTitle">本地数据与审计产物</text>
-    <text x="1124" y="706" class="mono">data/manual_history/a_share_history.sqlite</text>
+    <text x="1124" y="706" class="mono">data/a_share_history.sqlite</text>
     <text x="1124" y="734" class="mono">data/us_market_history.sqlite · data/hk_market_history.sqlite</text>
     <text x="1124" y="762" class="mono">source audit tables · logs/scheduler/*.last</text>
 

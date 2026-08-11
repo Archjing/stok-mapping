@@ -307,7 +307,7 @@ def run_strategy_csi300_attribution(
 
 def _resolve_local_history_path(config: dict[str, Any], root: Path) -> Path:
     raw = config.get("local_history", {}) or {}
-    path = Path(raw.get("path", "data/manual_history/a_share_history.sqlite"))
+    path = Path(raw.get("path", "data/a_share_history.sqlite"))
     return path if path.is_absolute() else root / path
 
 

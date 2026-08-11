@@ -289,7 +289,7 @@ def run_adjustment_audit(
     output_md: Path | None = None,
 ) -> AdjustmentAuditResult:
     local_cfg = config.get("local_history", {})
-    db_path = Path(local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = Path(local_cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
     daily_table = str(local_cfg.get("daily_table", "market_daily_bars"))

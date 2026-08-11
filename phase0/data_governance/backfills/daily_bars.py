@@ -16,7 +16,7 @@ from phase0.data_access.providers.tushare import fetch_tushare_trade_date, tusha
 
 
 @dataclass
-class DailyBasicBackfillResult:
+class DailyBarsBackfillResult:
     db_path: Path
     table_name: str
     start_date: str
@@ -24,6 +24,7 @@ class DailyBasicBackfillResult:
     target_dates: int
     fetched_dates: int
     inserted_rows: int
+    daily_basic_inserted_rows: int
     skipped_existing_dates: int
     status: str
     warnings: list[str]
@@ -53,22 +54,31 @@ def _existing_dates(conn: sqlite3.Connection, *, table_name: str, start_date: st
         SELECT DISTINCT date
         FROM {table}
         WHERE market = 'CN'
+          AND adjust_type = 'bfq'
           AND date >= ?
           AND date <= ?
         """,
         conn,
         params=(start_date, end_date),
     )
-    return {str(value) for value in df["date"].dropna().tolist()}
+    return {str(value)[:10] for value in df["date"].dropna().tolist()}
 
 
-def backfill_daily_basic_from_config(
+def backfill_daily_bars_from_config(
     config_path: Path,
     *,
     start_date: str,
     end_date: str,
     limit_dates: int | None = None,
-) -> DailyBasicBackfillResult:
+) -> DailyBarsBackfillResult:
+    """Backfill historical market_daily_bars gaps (bfq + qfq) from Tushare.
+
+    Every pending trading day is fetched once via ``fetch_tushare_trade_date``,
+    which returns both adjust types plus the daily_basic meta frame.  The meta
+    frame is upserted into market_daily_basic as a side effect because the same
+    API call already paid for it; this keeps the two tables aligned for the
+    backfilled window.
+    """
     root = config_path.parent
     cfg = load_config(config_path)
     configure_local_history(cfg.get("local_history", {}), root)
@@ -78,12 +88,13 @@ def backfill_daily_basic_from_config(
     db_path = Path(local_cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
-    table_name = str(local_cfg.get("daily_basic_table", "market_daily_basic"))
+    table_name = str(local_cfg.get("daily_table", "market_daily_bars"))
+    daily_basic_table = str(local_cfg.get("daily_basic_table", "market_daily_basic"))
     calendar_table = str(local_cfg.get("calendar_table", "trading_calendar"))
 
     warnings: list[str] = []
     if not tushare_available(tcfg):
-        return DailyBasicBackfillResult(
+        return DailyBarsBackfillResult(
             db_path=db_path,
             table_name=table_name,
             start_date=start_date,
@@ -91,16 +102,18 @@ def backfill_daily_basic_from_config(
             target_dates=0,
             fetched_dates=0,
             inserted_rows=0,
+            daily_basic_inserted_rows=0,
             skipped_existing_dates=0,
             status="missing_tushare_token",
             warnings=[f"Tushare token env {tcfg.token_env} is not available."],
         )
 
     inserted_rows = 0
+    daily_basic_inserted_rows = 0
     fetched_dates = 0
     skipped_existing_dates = 0
     with sqlite3.connect(db_path) as conn:
-        ensure_daily_basic_table(conn, table_name=table_name)
+        ensure_daily_basic_table(conn, table_name=daily_basic_table)
         open_dates = _load_open_dates(conn, calendar_table=calendar_table, start_date=start_date, end_date=end_date)
         existing = _existing_dates(conn, table_name=table_name, start_date=start_date, end_date=end_date)
         pending = [value for value in open_dates if value not in existing]
@@ -108,32 +121,41 @@ def backfill_daily_basic_from_config(
             pending = pending[: int(limit_dates)]
         skipped_existing_dates = max(0, len(open_dates) - len(pending))
 
+        table = safe_identifier(table_name)
         for one_date in pending:
             try:
-                _, meta_rows = fetch_tushare_trade_date(
+                rows, meta_rows = fetch_tushare_trade_date(
                     pd.Timestamp(one_date).date(),
-                    adjust_types=["qfq"],
+                    adjust_types=["bfq", "qfq"],
                     cfg=tcfg,
                 )
             except Exception as exc:
                 warnings.append(f"{one_date}: {exc}")
                 continue
-            if meta_rows.empty:
-                warnings.append(f"{one_date}: daily_basic returned empty")
+            if rows.empty:
+                warnings.append(f"{one_date}: daily returned empty")
                 continue
-            inserted_rows += upsert_daily_basic_rows(conn, table_name=table_name, rows=meta_rows)
+            conn.execute(
+                f"DELETE FROM {table} WHERE market = 'CN' AND date = ? AND adjust_type IN ('bfq', 'qfq')",
+                (one_date,),
+            )
+            rows.to_sql(table, conn, if_exists="append", index=False)
+            inserted_rows += int(len(rows))
+            if not meta_rows.empty:
+                daily_basic_inserted_rows += upsert_daily_basic_rows(conn, table_name=daily_basic_table, rows=meta_rows)
             fetched_dates += 1
             conn.commit()
 
     status = "ok" if fetched_dates > 0 or skipped_existing_dates > 0 else "empty"
-    return DailyBasicBackfillResult(
+    return DailyBarsBackfillResult(
         db_path=db_path,
         table_name=table_name,
         start_date=start_date,
         end_date=end_date,
-        target_dates=len(open_dates) if 'open_dates' in locals() else 0,
+        target_dates=len(open_dates),
         fetched_dates=fetched_dates,
         inserted_rows=inserted_rows,
+        daily_basic_inserted_rows=daily_basic_inserted_rows,
         skipped_existing_dates=skipped_existing_dates,
         status=status,
         warnings=warnings,

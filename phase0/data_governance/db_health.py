@@ -1312,7 +1312,7 @@ def _check_scheduler(
 
     local_cfg = config.get("local_history", {})
     update_cfg = config.get("manual_history_update", {})
-    db_path = _resolve_path(root, local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = _resolve_path(root, local_cfg.get("path", "data/a_share_history.sqlite"))
     audit_table = str(update_cfg.get("source_audit_table", "market_data_source_runs"))
     if db_path.exists():
         with _connect(db_path) as conn:
@@ -1413,7 +1413,7 @@ def run_database_health_check(
 
     local_cfg = config.get("local_history", {})
     local_enabled = bool(local_cfg.get("enabled", True))
-    local_db_path = _resolve_path(root, local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    local_db_path = _resolve_path(root, local_cfg.get("path", "data/a_share_history.sqlite"))
     needs_local_db = scope in {"all", "cn", "financial"}
     if needs_local_db and not local_enabled:
         _add_summary(summary, section="cn", check_id="cn.database.enabled", status="warning", metric="enabled", value="false", threshold="true")

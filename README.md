@@ -70,7 +70,7 @@ A 股本土因子为主、跨市场风险/情绪 overlay 为辅的量化研究�
 
 - `docs/DEVELOPMENT_PLAN.md` 是当前主线状态事实源；若其他文档与其冲突，以该文件为准。
 - Phase 0 工程链路已验证可运行：数据链路、本地历史库、股票池、walk-forward、compare、报告与治理命令可闭环执行。
-- 已创建本地 A 股研究主库 `data/manual_history/a_share_history.sqlite`，用于回测、股票池、数据新鲜度保护和相关数据审计。
+- 已创建本地 A 股研究主库 `data/a_share_history.sqlite`，用于回测、股票池、数据新鲜度保护和相关数据审计。
 - 已导入 A 股前复权/不复权日线、股票列表、交易日历、退市清单、指数元数据和指数日线。
 - 已接入季度财务因子表，覆盖 `roe`, `revenue_growth`, `profit_growth`, `operating_cash_flow_to_net_profit`, `debt_to_asset`，当前本地库覆盖 2018-06-30 至 2026-03-31 共 32 个季度。
 - 已新增 `data/us_market_history.sqlite`，当前跨市场 overlay 从美股/ETF/VIX/CNH 本地库读取，不再在策略运行时临时抓取 yfinance。
@@ -167,7 +167,7 @@ Tiingo 当前还新增了一个最小新闻抓取入口 `fetch_tiingo_news()` �
 默认数据库：
 
 ```text
-data/manual_history/a_share_history.sqlite
+data/a_share_history.sqlite
 data/us_market_history.sqlite
 data/hk_market_history.sqlite
 ```
@@ -175,7 +175,7 @@ data/hk_market_history.sqlite
 数据库不进入 Git。目录说明见：
 
 ```text
-data/manual_history/README.md
+data/README.md
 ```
 
 `a_share_history.sqlite` 的时效保护只限制“当前股票池 / 当日研判”场景：如果本地最新交易日超过配置允许滞后，系统不会用旧快照生成当前股票池，而是返回空并告警。该限制不等于禁用研究主库，历史回测、指定历史区间分析和历史日线读取仍可继续进行。
@@ -204,7 +204,7 @@ data/manual_history/README.md
 
 当前已落地的数据资产主要包括：
 
-- `data/manual_history/a_share_history.sqlite`：A 股本地研究数据库，承载日线、股票元数据、交易日历、退市清单、指数数据和财务因子。
+- `data/a_share_history.sqlite`：A 股本地研究数据库，承载日线、股票元数据、交易日历、退市清单、指数数据和财务因子。
 - `data/us_market_history.sqlite`：美股 / ETF / VIX / CNH 跨市场 overlay 本地库。
 - `data/hk_market_history.sqlite`：港股观察池历史库，当前用于独立数据层验证，不参与主策略链路。
 - `data/universe/`：股票池和横截面快照产物，包括 `local_factor_universe.csv`、`a_share_snapshot.csv` 以及对应说明报告。

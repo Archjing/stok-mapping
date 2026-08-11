@@ -171,7 +171,7 @@ def backfill_adjustment_factors_from_config(
     local_cfg = cfg.get("local_history", {})
     data_cfg = cfg.get("data_sources", {})
     tcfg = tushare_config(data_cfg.get("tushare", {}))
-    db_path = Path(local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = Path(local_cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
     calendar_table = str(local_cfg.get("calendar_table", "trading_calendar"))

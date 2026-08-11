@@ -36,7 +36,7 @@
 
 ### 3.1 当前可直接使用的数据
 
-- [ ] A股本地历史库：`data/manual_history/a_share_history.sqlite`
+- [ ] A股本地历史库：`data/a_share_history.sqlite`
 - [ ] 日线 OHLCV / 指数日线 / 交易日历已可读
 - [ ] 当前股票池：`data/universe/local_factor_universe.csv`
 - [ ] 当前回测入口：`phase0/walk_forward.py`

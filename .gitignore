@@ -16,10 +16,6 @@ data/ai_corpus/
 data/reference/
 data/simulated_trading/
 data/universe/
-data/manual_history.lnk
-data/manual_history/*
-!data/manual_history/.gitkeep
-!data/manual_history/README.md
 experiments/*/outputs/
 experiments/*/logs/
 experiments/*/data/
@@ -71,6 +67,7 @@ reports/strategy_governance/*
 !reports/strategy_governance/.gitkeep
 *.sqlite
 *.sqlite-*
+*.sqlite.bak-*
 *.db
 *.db-*
 .DS_Store

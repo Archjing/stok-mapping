@@ -693,7 +693,7 @@ def run_index_asof_audit(
 ) -> IndexAsofAuditResult:
     benchmark = benchmark_symbol or str(config.get("benchmark_symbol", "SH.000300"))
     local_history = dict(config.get("local_history", {}))
-    db_path = Path(local_history.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = Path(local_history.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
     index_table = str(local_history.get("index_table", "market_index_bars"))

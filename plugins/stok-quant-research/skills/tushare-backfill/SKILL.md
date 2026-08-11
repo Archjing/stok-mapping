@@ -27,7 +27,7 @@ Use this skill when the task concerns Tushare daily/history/financial backfill, 
 - `phase0/tushare_financial_backfill.py`
 - `phase0/tushare_source.py`
 - `phase0/cli.py`
-- `data/manual_history/a_share_history.sqlite`
+- `data/a_share_history.sqlite`
 - `reports/tushare_financial_backfill_audit/`
 - `reports/tushare_history_backfill_audit/`
 
@@ -37,4 +37,3 @@ Use this skill when the task concerns Tushare daily/history/financial backfill, 
 - Empty usually means the interface returned no usable rows for that stock-period-interface tuple.
 - Failed usually means API, rate limit, permission, schema, network, or write failure.
 - For 200 calls/minute limits, three shards at 67/minute each are close to the aggregate cap; leave operational margin if other jobs also call Tushare.
-

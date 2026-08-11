@@ -355,7 +355,7 @@ def backfill_index_asof_from_config(
     data_cfg = cfg.get("data_sources", {})
     project_index_code = _normalize_project_index_code(index_code or str(cfg.get("benchmark_symbol", "SH.000300")))
     vendor_index_code = _to_vendor_index_code(project_index_code)
-    db_path = Path(local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = Path(local_cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
     csv_path, md_path = _audit_paths(root, index_code=project_index_code, start_date=start_date, end_date=end_date)

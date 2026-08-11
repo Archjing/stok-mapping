@@ -9,7 +9,7 @@ from phase0.reporting.premarket_watchlist import _latest_trade_date
 def test_panel_cache_key_includes_as_of_date() -> None:
     base = _panel_cache_key(
         config_path=Path("config.yaml"),
-        config={"local_history": {"path": "data/manual_history/a_share_history.sqlite"}, "universe": {"enabled": False}},
+        config={"local_history": {"path": "data/a_share_history.sqlite"}, "universe": {"enabled": False}},
         root=Path("."),
         symbols=["SH.600519"],
         history_years=5,
@@ -20,7 +20,7 @@ def test_panel_cache_key_includes_as_of_date() -> None:
     )
     other = _panel_cache_key(
         config_path=Path("config.yaml"),
-        config={"local_history": {"path": "data/manual_history/a_share_history.sqlite"}, "universe": {"enabled": False}},
+        config={"local_history": {"path": "data/a_share_history.sqlite"}, "universe": {"enabled": False}},
         root=Path("."),
         symbols=["SH.600519"],
         history_years=5,
@@ -37,7 +37,7 @@ def test_panel_cache_key_includes_as_of_date() -> None:
 def test_panel_cache_key_distinguishes_strict_asof_mode() -> None:
     strict_key = _panel_cache_key(
         config_path=Path("config.yaml"),
-        config={"local_history": {"path": "data/manual_history/a_share_history.sqlite"}, "universe": {"enabled": False}},
+        config={"local_history": {"path": "data/a_share_history.sqlite"}, "universe": {"enabled": False}},
         root=Path("."),
         symbols=["SH.600519"],
         history_years=5,
@@ -48,7 +48,7 @@ def test_panel_cache_key_distinguishes_strict_asof_mode() -> None:
     )
     live_key = _panel_cache_key(
         config_path=Path("config.yaml"),
-        config={"local_history": {"path": "data/manual_history/a_share_history.sqlite"}, "universe": {"enabled": False}},
+        config={"local_history": {"path": "data/a_share_history.sqlite"}, "universe": {"enabled": False}},
         root=Path("."),
         symbols=["SH.600519"],
         history_years=5,

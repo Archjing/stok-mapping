@@ -311,7 +311,7 @@ def test_confirm_account_bills_rebuilds_ledgers_and_publishes_site(monkeypatch, 
         calls.append(("export_account_bill", kwargs))
         return {"account": "default", "brief_date": "2026-07-02", "account_bill": bill, "status": "confirmed"}
 
-    monkeypatch.setattr(delivery_cli, "load_config", lambda path: {"reporting": {}, "local_history": {"path": "data/manual_history/a_share_history.sqlite"}})
+    monkeypatch.setattr(delivery_cli, "load_config", lambda path: {"reporting": {}, "local_history": {"path": "data/a_share_history.sqlite"}})
     monkeypatch.setattr(delivery_cli, "load_simulated_accounts", lambda cfg, root: [account])
     monkeypatch.setattr(delivery_cli, "build_account_ledger", fake_build_account_ledger)
     monkeypatch.setattr(delivery_cli, "export_brief_account_bill", fake_export_brief_account_bill)
@@ -331,7 +331,7 @@ def test_confirm_account_bills_rebuilds_ledgers_and_publishes_site(monkeypatch, 
     assert build_call[1]["root"] == tmp_path
     assert build_call[1]["current_brief_date"] == "2026-07-02"
     assert build_call[1]["account"] is account
-    assert build_call[1]["local_history_cfg"] == {"path": "data/manual_history/a_share_history.sqlite"}
+    assert build_call[1]["local_history_cfg"] == {"path": "data/a_share_history.sqlite"}
     assert build_call[1]["current_watchlist"]["股票代码"].tolist() == ["SH.600000"]
     assert (
         "export_account_bill",

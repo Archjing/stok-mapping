@@ -142,7 +142,7 @@ def audit_financial_pti(
     qcfg = strategy_cfg.get("local_factor", {}).get("quality_growth", {})
     table = str(qcfg.get("financial_table", "market_financial_factors"))
     lag_days = int(qcfg.get("financial_lag_days", 1))
-    db_path = _resolve_path(root, cfg.get("local_history", {}).get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = _resolve_path(root, cfg.get("local_history", {}).get("path", "data/a_share_history.sqlite"))
 
     with sqlite3.connect(db_path) as conn:
         if not _table_exists(conn, table):

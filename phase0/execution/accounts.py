@@ -277,7 +277,7 @@ def _load_execution_prices(
     if not symbols:
         return {}
     cfg = local_history_cfg or {}
-    db_path = _resolve_path(root, cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = _resolve_path(root, cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.exists():
         return {}
     daily_table = _safe_identifier(str(cfg.get("daily_table", "market_daily_bars")))

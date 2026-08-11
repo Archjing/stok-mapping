@@ -601,7 +601,7 @@ LLM 不直接生成评分与交易信号。
 
 - **主数据源**：Tushare
 - **fallback**：AkShare / 新浪快照 / 本地 A 股研究主库
-- **本地底座**：`data/manual_history/a_share_history.sqlite`
+- **本地底座**：`data/a_share_history.sqlite`
 
 当前状态：
 
@@ -1208,7 +1208,7 @@ stok-mapping/
 - [x] 实现 `T2.4` 策略过拟合诊断工具 MVP：基于现有 walk-forward 产物生成策略过拟合风险报告
 - [x] 实现 `T1.4` A 股历史 as-of 前复权治理只读审计：确认当前有 `bfq_raw/qfq_current/market_adj_factors`，可构造严格 `qfq_asof`
 - [x] 补齐 `market_adj_factors` 历史因子表
-- [x] 完成 `T1.6` 文档纠偏：`a_share_history.sqlite` 已明确为 A 股研究主库；`data/manual_history/` 当前视为历史路径名债，不在本阶段做真实目录迁移
+- [x] 完成 `T1.6` 主库路径治理：`a_share_history.sqlite` 已明确为 A 股研究主库，并已从 `data/manual_history/` 迁移至 `data/` 根目录
 - [x] 执行 Tushare 历史数据补全：新增 `backfill-tushare-history`，补齐 2016-01 起 `daily_basic` 与 `adj_factor` 日级字段；验收报告见 `reports/tushare_history_backfill_audit.md`
 - [x] 运行 `qfq_current` / `qfq_asof` 差异报告
 - [x] 运行主策略 `legacy_momentum_low_turnover_v1` 的 `qfq_current` / `qfq_asof` 对照回测，结论：`qfq_current` 降级为兼容口径参考

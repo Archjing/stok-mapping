@@ -530,7 +530,7 @@ QUANT_SITE_SYNC_REMOTE_DIR=/var/www/spidermanread/quant/
 
 本地数据库：
 
-- `data/manual_history/a_share_history.sqlite`
+- `data/a_share_history.sqlite`
 - `data/us_market_history.sqlite`
 - `data/hk_market_history.sqlite`
 - `data/ai_corpus/ai_corpus.sqlite`

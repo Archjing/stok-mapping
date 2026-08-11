@@ -114,7 +114,7 @@ walk-forward 分折账本不等于连续复利资金曲线。
 
 新策略只能使用三类已确认数据：
 
-1. 本地历史库：`data/manual_history/a_share_history.sqlite`
+1. 本地历史库：`data/a_share_history.sqlite`
 2. 股票池：`data/universe/local_factor_universe.csv`
 3. 项目内已验证可用的辅助数据：
    - `us_market_history.sqlite`

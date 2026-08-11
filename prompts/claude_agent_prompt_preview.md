@@ -343,7 +343,7 @@ phase0:
     industry_max_boards: 120
   local_history:
     enabled: true
-    path: "data/manual_history/a_share_history.sqlite"
+    path: "data/a_share_history.sqlite"
     market: "CN"
     adjust_type: "qfq"
     daily_table: "market_daily_bars"
@@ -388,7 +388,7 @@ phase0:
     csi_index_list_csv: "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数列表.csv"
     index_daily_zip: "/home/zj/workspace/tmp/A股数据_zip/指数/指数_日_kline.zip"
     csi_index_daily_zip: "/home/zj/workspace/tmp/A股数据_zip/指数/中证指数_日_kline.zip"
-    output_db: "data/manual_history/a_share_history.sqlite"
+    output_db: "data/a_share_history.sqlite"
     years: 10
     chunk_size: 250000
   data_sources:

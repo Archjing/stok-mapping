@@ -9,7 +9,9 @@ from rich.console import Console
 from phase0.cli_commands.output import print_manual_history_update_result
 from phase0.config import load_config
 from phase0.data_governance.backfills.adjustment import backfill_adjustment_factors_from_config
+from phase0.data_governance.backfills.daily_bars import backfill_daily_bars_from_config
 from phase0.data_governance.backfills.daily_basic import backfill_daily_basic_from_config
+from phase0.data_governance.backfills.index_history import backfill_index_history_from_config
 from phase0.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from phase0.data_governance.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
 from phase0.data_governance.cross_market_reference_history import update_cross_market_reference_history_from_config
@@ -27,7 +29,9 @@ DATA_UPDATE_COMMANDS = frozenset(
     {
         "backfill-adjustment-factors",
         "backfill-daily-basic",
+        "backfill-daily-bars",
         "backfill-index-asof",
+        "backfill-index-history",
         "backfill-tushare-financials",
         "backfill-tushare-history",
         "build-universe",
@@ -146,6 +150,28 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
         type=int,
         default=180,
         help="Client-side Tushare request throttle. Default 180 is below the 2000-point 200/minute tier.",
+    )
+    daily_bars_backfill_parser = subparsers.add_parser(
+        "backfill-daily-bars",
+        help="Backfill historical market_daily_bars gaps (bfq + qfq) from Tushare",
+    )
+    daily_bars_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    daily_bars_backfill_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
+    daily_bars_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    daily_bars_backfill_parser.add_argument("--limit-dates", type=int, default=None, help="Optional cap for number of open dates to fetch")
+    index_history_backfill_parser = subparsers.add_parser(
+        "backfill-index-history",
+        help="Backfill market_index_bars via Tushare index_daily and report missing indexes",
+    )
+    index_history_backfill_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    index_history_backfill_parser.add_argument("--start-date", required=True, help="Start date in YYYY-MM-DD")
+    index_history_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
+    index_history_backfill_parser.add_argument("--limit-symbols", type=int, default=None, help="Optional cap for number of indexes to fetch")
+    index_history_backfill_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=120,
+        help="Client-side Tushare request throttle for index_daily",
     )
     tushare_financial_parser = subparsers.add_parser(
         "backfill-tushare-financials",
@@ -308,6 +334,53 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         update_console.print(f"Inserted adj_factor rows: {result.inserted_adj_factor_rows}")
         update_console.print(f"Inserted dividend rows: {result.inserted_dividend_rows}")
         update_console.print(f"Skipped existing dates: {result.skipped_existing_dates}")
+        if result.warnings:
+            update_console.print("Warnings:")
+            for item in result.warnings[:20]:
+                update_console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "backfill-daily-bars":
+        config_path = Path(args.config).resolve()
+        update_console.print("[bold]A-share daily bars backfill started[/bold]")
+        result = backfill_daily_bars_from_config(
+            config_path,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            limit_dates=args.limit_dates,
+        )
+        color = "green" if result.status in {"ok", "empty"} else "red"
+        update_console.print(f"[{color}]Daily bars backfill status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Target dates: {result.target_dates}")
+        update_console.print(f"Fetched dates: {result.fetched_dates}")
+        update_console.print(f"Inserted bar rows: {result.inserted_rows}")
+        update_console.print(f"Inserted daily_basic rows: {result.daily_basic_inserted_rows}")
+        update_console.print(f"Skipped existing dates: {result.skipped_existing_dates}")
+        if result.warnings:
+            update_console.print("Warnings:")
+            for item in result.warnings[:20]:
+                update_console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "backfill-index-history":
+        config_path = Path(args.config).resolve()
+        update_console.print("[bold]A-share index history backfill started[/bold]")
+        result = backfill_index_history_from_config(
+            config_path,
+            start_date=str(args.start_date),
+            end_date=str(args.end_date),
+            limit_symbols=args.limit_symbols,
+            max_requests_per_minute=int(args.max_requests_per_minute),
+        )
+        color = "green" if result.status in {"ok", "empty"} else "red"
+        update_console.print(f"[{color}]Index history backfill status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Target symbols: {result.target_symbols}")
+        update_console.print(f"Fetched symbols: {result.fetched_symbols}")
+        update_console.print(f"Empty symbols: {result.empty_symbols}")
+        update_console.print(f"Failed symbols: {result.failed_symbols}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        if result.missing_symbols:
+            update_console.print(f"Missing indexes ({len(result.missing_symbols)}): {', '.join(result.missing_symbols[:20])}")
         if result.warnings:
             update_console.print("Warnings:")
             for item in result.warnings[:20]:

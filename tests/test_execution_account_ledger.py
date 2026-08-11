@@ -26,7 +26,7 @@ def _account(tmp_path: Path) -> SimulatedAccountConfig:
 
 
 def _write_history_db(tmp_path: Path) -> None:
-    db_path = tmp_path / "data" / "manual_history" / "a_share_history.sqlite"
+    db_path = tmp_path / "data" / "a_share_history.sqlite"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as conn:
         conn.executescript(
@@ -195,7 +195,7 @@ def test_collect_watchlist_frames_does_not_apply_unscoped_history_to_non_default
 def test_missing_future_execution_price_does_not_clear_existing_account_database(tmp_path: Path) -> None:
     _write_history_db(tmp_path)
     account = _account(tmp_path)
-    local_history_cfg = {"path": "data/manual_history/a_share_history.sqlite"}
+    local_history_cfg = {"path": "data/a_share_history.sqlite"}
 
     build_account_ledger(
         root=tmp_path,
@@ -223,7 +223,7 @@ def test_missing_future_execution_price_does_not_clear_existing_account_database
 def test_account_ledger_collects_standard_run_watchlists(tmp_path: Path) -> None:
     _write_history_db(tmp_path)
     account = _account(tmp_path)
-    local_history_cfg = {"path": "data/manual_history/a_share_history.sqlite"}
+    local_history_cfg = {"path": "data/a_share_history.sqlite"}
     run_watchlist = tmp_path / "reports" / "runs" / "2026-06-30" / "20260630_090000__premarket__watchlist" / "premarket__watchlist.csv"
     run_watchlist.parent.mkdir(parents=True, exist_ok=True)
     _watchlist(signal_date="2026-06-29", check_time="2026-06-30 07:30", target_weight="50.00%").to_csv(
@@ -247,7 +247,7 @@ def test_account_ledger_collects_standard_run_watchlists(tmp_path: Path) -> None
 
 def test_account_ledger_collects_historical_brief_ledger_when_run_watchlists_were_pruned(tmp_path: Path) -> None:
     _write_history_db(tmp_path)
-    with sqlite3.connect(tmp_path / "data" / "manual_history" / "a_share_history.sqlite") as conn:
+    with sqlite3.connect(tmp_path / "data" / "a_share_history.sqlite") as conn:
         conn.execute(
             """
             INSERT INTO market_daily_bars
@@ -286,7 +286,7 @@ def test_account_ledger_collects_historical_brief_ledger_when_run_watchlists_wer
         ]
     ).to_csv(brief_ledger, index=False, encoding="utf-8-sig")
     account = _account(tmp_path)
-    local_history_cfg = {"path": "data/manual_history/a_share_history.sqlite"}
+    local_history_cfg = {"path": "data/a_share_history.sqlite"}
 
     frames = collect_watchlist_frames(
         tmp_path,
@@ -317,7 +317,7 @@ def test_account_ledger_collects_historical_brief_ledger_when_run_watchlists_wer
 
 
 def test_account_ledger_persists_unfilled_order_events(tmp_path: Path) -> None:
-    db_path = tmp_path / "data" / "manual_history" / "a_share_history.sqlite"
+    db_path = tmp_path / "data" / "a_share_history.sqlite"
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as conn:
         conn.executescript(
@@ -360,7 +360,7 @@ def test_account_ledger_persists_unfilled_order_events(tmp_path: Path) -> None:
             "INSERT INTO market_stocks (market, symbol, name, list_date) VALUES ('CN', 'SH.600000', '浦发银行', '1999-11-10')"
         )
     account = replace(_account(tmp_path), max_participation_rate=0.05)
-    local_history_cfg = {"path": "data/manual_history/a_share_history.sqlite"}
+    local_history_cfg = {"path": "data/a_share_history.sqlite"}
     run_watchlist = tmp_path / "reports" / "runs" / "2026-06-30" / "20260630_090000__premarket__watchlist" / "premarket__watchlist.csv"
     run_watchlist.parent.mkdir(parents=True, exist_ok=True)
     _watchlist(signal_date="2026-06-29", check_time="2026-06-30 07:30", target_weight="50.00%").to_csv(

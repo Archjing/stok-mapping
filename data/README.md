@@ -5,7 +5,7 @@
 默认数据库：
 
 ```text
-data/manual_history/a_share_history.sqlite
+data/a_share_history.sqlite
 ```
 
 这个库是 `stok-mapping` 当前 A 股研究、回测、股票池、数据审计和日报前置检查的本地底座。它可以在在线主源异常时承担 fallback 角色，但 fallback 已经不是它的主定义。
@@ -24,7 +24,7 @@ data/manual_history/a_share_history.sqlite
 
 一句话理解：
 
-> `data/manual_history/a_share_history.sqlite` 现在是 A 股研究主库，本地优先、可复现、可审计；不是一个“抓数失败时才会用”的缓存文件。
+> `data/a_share_history.sqlite` 现在是 A 股研究主库，本地优先、可复现、可审计；不是一个“抓数失败时才会用”的缓存文件。
 
 ## 当前库内对象
 
@@ -149,6 +149,29 @@ data/manual_history/a_share_history.sqlite
 - 生成历史补齐验收报告。
 - 服务研究库完整性，而不是日常最新季度维护。
 
+补齐历史 `market_daily_bars`（bfq + qfq 双复权）缺口，并顺带对齐同窗口 `daily_basic`：
+
+```bash
+./.venv/bin/python -m phase0.cli backfill-daily-bars \
+  --config config.yaml \
+  --start-date 2016-01-04 \
+  --end-date 2016-04-29
+```
+
+补齐 `market_index_bars` 历史/尾部缺口（Tushare index_daily 主源；Tushare 未收录的指数会在输出中列出，不静默丢弃）：
+
+```bash
+./.venv/bin/python -m phase0.cli backfill-index-history \
+  --config config.yaml \
+  --start-date 2016-01-04 \
+  --end-date YYYY-MM-DD
+```
+
+职责：
+
+- `backfill-daily-bars`：按交易日抓取 Tushare daily，写入 bfq/qfq 两复权行；同一请求的 daily_basic 顺带 upsert。
+- `backfill-index-history`：按指数全窗口抓取 index_daily（覆盖早期缺口和过期尾部），窗口内先删后插；`--limit-symbols` 可分批跑。
+
 按 `period + symbol` 长任务补齐历史财务因子：
 
 ```bash
@@ -258,7 +281,7 @@ data/manual_history/a_share_history.sqlite
 
 当前建议按下面理解目录边界：
 
-- `data/manual_history/`
+- `data/a_share_history.sqlite`
   - A 股研究主库
 - `data/us_market_history.sqlite`
   - US/FX/ETF/VIX 跨市场库
@@ -269,7 +292,7 @@ data/manual_history/a_share_history.sqlite
 - `reports/`
   - 运行报告、验收报告、HTML 预览、CSV 导出和调度相关输出
 
-不要把 `data/manual_history/` 理解为报告目录，也不要把 `reports/` 理解为研究底库。
+不要把 `data/` 理解为报告目录，也不要把 `reports/` 理解为研究底库；`data/a_share_history.sqlite` 是 A 股研究底库。
 
 ## 一句话提醒
 

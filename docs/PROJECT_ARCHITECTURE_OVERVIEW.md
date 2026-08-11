@@ -298,7 +298,7 @@ CLI 不应该承载复杂业务逻辑；复杂逻辑应放入 `phase0/*` 模块�
 
 | 数据库 | 角色 | 主要表 |
 | --- | --- | --- |
-| `data/manual_history/a_share_history.sqlite` | A 股研究主库 | `market_daily_bars`, `market_stocks`, `market_daily_basic`, `market_financial_factors`, `market_adj_factors`, `trading_calendar`, `market_data_source_runs` |
+| `data/a_share_history.sqlite` | A 股研究主库 | `market_daily_bars`, `market_stocks`, `market_daily_basic`, `market_financial_factors`, `market_adj_factors`, `trading_calendar`, `market_data_source_runs` |
 | `data/us_market_history.sqlite` | US/FX/ETF/VIX 跨市场库 | `us_daily_bars`, `us_data_source_runs` |
 | `data/hk_market_history.sqlite` | HK 跨市场库 | `hk_daily_bars`, `hk_data_source_runs` |
 | `data/simulated_trading/simulated_accounts.sqlite` | 模拟账户账本 | 账户、资产、成交、持仓相关表 |

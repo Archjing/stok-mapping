@@ -35,7 +35,7 @@ def audit_universe_pit(
     configure_local_history(cfg.get("local_history", {}), root)
     universe = load_point_in_time_universe(cfg, root, as_of_date)
     local_cfg = cfg.get("local_history", {})
-    db_path = Path(local_cfg.get("path", "data/manual_history/a_share_history.sqlite"))
+    db_path = Path(local_cfg.get("path", "data/a_share_history.sqlite"))
     if not db_path.is_absolute():
         db_path = root / db_path
     meta_table = str(local_cfg.get("meta_table", "market_stocks"))

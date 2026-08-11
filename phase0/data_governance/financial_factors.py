@@ -44,7 +44,7 @@ def update_financial_factors_from_config(
     financial_cfg = cfg.get("financial_factors", {})
     data_cfg = cfg.get("data_sources", {})
 
-    db_path = Path(financial_cfg.get("path", local_cfg.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = Path(financial_cfg.get("path", local_cfg.get("path", "data/a_share_history.sqlite")))
     if not db_path.is_absolute():
         db_path = root / db_path
     table = _safe_identifier(str(financial_cfg.get("table", local_cfg.get("financial_table", "market_financial_factors"))))

@@ -39,7 +39,7 @@ def _safe_identifier(value: str) -> str:
 @dataclass
 class LocalHistorySettings:
     enabled: bool = True
-    path: Path = Path("data/manual_history/a_share_history.sqlite")
+    path: Path = Path("data/a_share_history.sqlite")
     market: str = "CN"
     adjust_type: str = "qfq"
     daily_table: str = "market_daily_bars"

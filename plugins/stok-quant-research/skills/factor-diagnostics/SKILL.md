@@ -29,7 +29,7 @@ Use shard and retry options only when the task explicitly requires backfill exec
 - `phase0/factor_effectiveness.py`
 - `phase0/tushare_financial_backfill.py`
 - `phase0/db_health.py`
-- `data/manual_history/a_share_history.sqlite`
+- `data/a_share_history.sqlite`
 - `reports/tushare_financial_backfill_audit/`
 - `reports/factor_effectiveness/`
 
@@ -38,4 +38,3 @@ Use shard and retry options only when the task explicitly requires backfill exec
 - Explain coverage as percentages in user-facing Markdown when reviewing reports.
 - For financial PIT inputs, verify report periods and as-of visibility before strategy interpretation.
 - For missing-field patch work, call only the interfaces needed by missing fields when code supports that path.
-

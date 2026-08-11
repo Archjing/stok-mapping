@@ -726,7 +726,7 @@ def update_manual_history_from_config(
     update_cfg = cfg.get("manual_history_update", {})
     data_cfg = cfg.get("data_sources", {})
 
-    db_path = Path(update_cfg.get("path", local_cfg.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = Path(update_cfg.get("path", local_cfg.get("path", "data/a_share_history.sqlite")))
     if not db_path.is_absolute():
         db_path = root / db_path
     daily_table = str(local_cfg.get("daily_table", "market_daily_bars"))

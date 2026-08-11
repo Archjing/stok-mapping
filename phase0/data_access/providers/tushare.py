@@ -240,6 +240,70 @@ def fetch_tushare_adj_factor_symbol(
     return normalize_adj_factors(raw)
 
 
+INDEX_DAILY_COLUMNS = [
+    "market",
+    "symbol",
+    "date",
+    "frequency",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "amount",
+    "advances",
+    "declines",
+    "name",
+    "source",
+]
+
+
+def fetch_tushare_index_daily(
+    local_symbol: str,
+    *,
+    ts_code: str,
+    start_date: date | str,
+    end_date: date | str,
+    cfg: TushareConfig,
+    name: str = "",
+) -> pd.DataFrame:
+    """Fetch daily bars for one index via Tushare index_daily.
+
+    ``local_symbol`` keeps the database's own symbol form (e.g. ``SH.000001``)
+    while ``ts_code`` is the Tushare code (e.g. ``000001.SH``).  Index bars are
+    stored in ``market_index_bars`` with the same column layout the zip import
+    uses; Tushare does not provide advances/declines so those stay NULL.
+    """
+    raw = _call(
+        "index_daily",
+        params={
+            "ts_code": ts_code,
+            "start_date": _parse_trade_date(start_date),
+            "end_date": _parse_trade_date(end_date),
+        },
+        fields=["ts_code", "trade_date", "open", "high", "low", "close", "vol", "amount"],
+        cfg=cfg,
+    )
+    if raw.empty:
+        return pd.DataFrame(columns=INDEX_DAILY_COLUMNS)
+    out = raw.copy()
+    out["symbol"] = local_symbol
+    out["date"] = pd.to_datetime(out["trade_date"], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+    for col in ["open", "high", "low", "close", "vol", "amount"]:
+        out[col] = pd.to_numeric(out.get(col), errors="coerce")
+    out = out.dropna(subset=["date", "open", "high", "low", "close"]).copy()
+    out["market"] = "CN"
+    out["frequency"] = "daily"
+    out["volume"] = out["vol"]
+    # Tushare amounts are in thousands of yuan; the manual history tables store yuan.
+    out["amount"] = out["amount"] * 1000.0
+    out["advances"] = None
+    out["declines"] = None
+    out["name"] = name
+    out["source"] = "tushare.index_daily"
+    return out.loc[:, INDEX_DAILY_COLUMNS].copy()
+
+
 def normalize_dividend(raw: pd.DataFrame) -> pd.DataFrame:
     if raw.empty:
         return pd.DataFrame()

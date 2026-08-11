@@ -296,7 +296,7 @@ def main() -> int:
 
     results: list[FetchResult] = []
 
-    history_db = Path(cfg.get("data_sources", {}).get("manual_history", {}).get("path", "data/manual_history/a_share_history.sqlite"))
+    history_db = Path(cfg.get("data_sources", {}).get("manual_history", {}).get("path", "data/a_share_history.sqlite"))
     a_prices = _load_latest_a_share_prices(history_db)
 
     ah_raw, result = _safe_fetch("AH 行情", "ak.stock_zh_ah_spot", ak.stock_zh_ah_spot)

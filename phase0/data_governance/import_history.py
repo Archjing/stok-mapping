@@ -723,7 +723,7 @@ def import_from_config(cfg: dict[str, Any], root: Path) -> ImportResult:
     index_daily_zip = _resolve_config_path(raw.get("index_daily_zip"), root=root)
     csi_index_daily_zip = _resolve_config_path(raw.get("csi_index_daily_zip"), root=root)
     local_history = cfg.get("local_history", {})
-    db_path = Path(raw.get("output_db", local_history.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = Path(raw.get("output_db", local_history.get("path", "data/a_share_history.sqlite")))
     if not db_path.is_absolute():
         db_path = root / db_path
     return import_manual_history(
@@ -749,7 +749,7 @@ def import_index_history_from_config(cfg: dict[str, Any], root: Path) -> IndexIm
     index_daily_zip = _resolve_config_path(raw.get("index_daily_zip"), root=root)
     csi_index_daily_zip = _resolve_config_path(raw.get("csi_index_daily_zip"), root=root)
     local_history = cfg.get("local_history", {})
-    db_path = Path(raw.get("output_db", local_history.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = Path(raw.get("output_db", local_history.get("path", "data/a_share_history.sqlite")))
     if not db_path.is_absolute():
         db_path = root / db_path
     db_path.parent.mkdir(parents=True, exist_ok=True)

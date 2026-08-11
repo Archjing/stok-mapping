@@ -653,7 +653,7 @@ def _trading_day_decision(*, root: Path, config_path: Path, spec: MaintenanceTas
 
     cfg = load_config(config_path) if config_path.exists() else {}
     local_cfg = cfg.get("local_history", {}) if isinstance(cfg, dict) else {}
-    db_path = _resolve_path(root, str(local_cfg.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = _resolve_path(root, str(local_cfg.get("path", "data/a_share_history.sqlite")))
     table = str(local_cfg.get("calendar_table", "trading_calendar"))
     if not table.replace("_", "").isalnum():
         return weekday in {1, 2, 3, 4, 5}, f"calendar_unavailable_fallback_weekday(scope=cn, reason=invalid_table, weekday={weekday})"

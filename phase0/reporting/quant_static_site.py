@@ -200,7 +200,7 @@ def _latest_confirmed_bill_date_for_today(*, frames: dict[str, pd.DataFrame], to
 
 def _execution_price_status(*, root: Path, config: dict[str, Any], date_value: str) -> tuple[bool, str]:
     local_cfg = config.get("local_history", {}) if isinstance(config, dict) else {}
-    db_path = Path(str(local_cfg.get("path", "data/manual_history/a_share_history.sqlite")))
+    db_path = Path(str(local_cfg.get("path", "data/a_share_history.sqlite")))
     if not db_path.is_absolute():
         db_path = root / db_path
     if not db_path.exists():
