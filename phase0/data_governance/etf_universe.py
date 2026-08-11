@@ -6,9 +6,12 @@ import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime
+from pathlib import Path
 
+from phase0.config import load_config
 from phase0.data_access.symbols import from_tushare_symbol, normalize_etf_symbol, to_tushare_symbol
 from phase0.data_governance.etf_catalog import latest_completed_catalog_snapshot
+from phase0.data_governance.etf_store import ensure_etf_schema
 
 
 @dataclass(frozen=True)
@@ -173,3 +176,36 @@ def resolve_etf_universe(
         universe_name, requested_tuple, start_date, end_date,
         history_config_digest(phase0_cfg, universe_name, requested_tuple), snapshot, tuple(members),
     )
+
+
+def resolve_etf_universe_from_config(
+    config_path: Path,
+    *,
+    universe_name: str,
+    requested_sectors: list[str] | None,
+    start_date: str,
+    end_date: str,
+) -> ETFUniverseManifest:
+    """Resolve a named ETF universe against the configured catalog store."""
+    config_path = Path(config_path).resolve()
+    phase0_cfg = load_config(config_path)
+    history_cfg = _history_cfg(phase0_cfg)
+    try:
+        requested_start = date.fromisoformat(start_date)
+        requested_end = date.fromisoformat(end_date)
+    except ValueError as exc:
+        raise ETFUniverseError("start_date and end_date must be ISO dates") from exc
+    db_path = Path(str(history_cfg.get("path", "data/etf_history.sqlite")))
+    if not db_path.is_absolute():
+        db_path = config_path.parent / db_path
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as conn:
+        ensure_etf_schema(conn)
+        return resolve_etf_universe(
+            conn,
+            phase0_cfg=phase0_cfg,
+            universe_name=universe_name,
+            requested_sectors=requested_sectors,
+            start_date=requested_start,
+            end_date=requested_end,
+        )

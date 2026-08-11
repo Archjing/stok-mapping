@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 import phase0.cli as cli
 import phase0.cli_commands.data_update as data_update_cli
+from phase0.data_access.providers.tushare import TusharePermissionError, TushareTokenError
+from phase0.data_governance.backfills.etf_history import ETFBackfillDryRunResult, ETFBackfillResult
+from phase0.data_governance.etf_catalog import ETFCatalogSyncResult, StaleETFCatalogError
+from phase0.data_governance.etf_universe import ETFManifestMember, ETFUniverseManifest
 
 
 def _silent_console() -> SimpleNamespace:
@@ -45,6 +52,31 @@ def _universe_result() -> SimpleNamespace:
         output_path=Path("universe.csv"),
         report_path=Path("universe.md"),
         warnings=[],
+    )
+
+
+def _etf_manifest() -> ETFUniverseManifest:
+    member = ETFManifestMember(
+        universe_name="sector_core_v1",
+        sector="semiconductor",
+        symbol="SH.512480",
+        ts_code="512480.SH",
+        requested_start=date(2026, 1, 1),
+        requested_end=date(2026, 8, 11),
+        effective_start=date(2026, 1, 1),
+        effective_end=date(2026, 8, 11),
+        expected_tracking_index=None,
+        resolved_tracking_index="CSI.931865",
+        mapping_assertion_status="not_configured",
+    )
+    return ETFUniverseManifest(
+        universe_name="sector_core_v1",
+        requested_sectors=("semiconductor",),
+        requested_start=date(2026, 1, 1),
+        requested_end=date(2026, 8, 11),
+        config_digest="digest-123",
+        catalog_snapshot_id="snapshot-123",
+        members=(member,),
     )
 
 
@@ -94,6 +126,196 @@ def test_data_update_command_registration_preserves_args() -> None:
     assert financial_args.missing_fields == "roe,debt_to_asset"
     assert financial_args.shard_index == 1
     assert financial_args.shard_count == 3
+
+
+def test_etf_command_registration_preserves_scoped_arguments() -> None:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="cmd")
+    data_update_cli.register_data_update_commands(subparsers)
+
+    sync_args = parser.parse_args(["sync-etf-catalog", "--config", "custom.yaml"])
+    universe_args = parser.parse_args([
+        "resolve-etf-universe", "--universe", "sector_core_v1", "--sector", "semiconductor",
+        "--start-date", "2018-01-01", "--end-date", "2026-08-11",
+    ])
+    dry_run_args = parser.parse_args([
+        "backfill-etf-history", "--universe", "sector_core_v1", "--sector", "semiconductor",
+        "--start-date", "2018-01-01", "--end-date", "2026-08-11", "--dry-run",
+        "--limit-symbols", "1", "--limit-tasks", "2",
+    ])
+    resume_args = parser.parse_args(["backfill-etf-history", "--resume-run-id", "run-123"])
+    audit_args = parser.parse_args(["audit-etf-history", "--run-id", "run-123"])
+
+    assert sync_args.config == "custom.yaml"
+    assert universe_args.sector == ["semiconductor"]
+    assert dry_run_args.universe == "sector_core_v1"
+    assert dry_run_args.dry_run is True
+    assert dry_run_args.limit_symbols == 1
+    assert dry_run_args.limit_tasks == 2
+    assert resume_args.resume_run_id == "run-123"
+    assert audit_args.run_id == "run-123"
+    with pytest.raises(SystemExit) as exc_info:
+        parser.parse_args(["backfill-etf-history", "--resume-run-id", "run-123", "--universe", "sector_core_v1"])
+    assert exc_info.value.code == 2
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("sector", ["semiconductor"]),
+        ("start_date", "2026-01-01"),
+        ("end_date", "2026-08-11"),
+        ("dry_run", True),
+        ("limit_symbols", 1),
+        ("limit_tasks", 2),
+    ],
+)
+def test_etf_resume_direct_handler_rejects_new_run_arguments(field: str, value: object) -> None:
+    values = {
+        "cmd": "backfill-etf-history",
+        "config": "config.yaml",
+        "universe": None,
+        "sector": None,
+        "start_date": None,
+        "end_date": None,
+        "dry_run": False,
+        "resume_run_id": "run-123",
+        "limit_symbols": None,
+        "limit_tasks": None,
+    }
+    values[field] = value
+    with pytest.raises(SystemExit) as exc_info:
+        data_update_cli.handle_data_update_command(
+            SimpleNamespace(**values),
+            parser=argparse.ArgumentParser(),
+            console=_silent_console(),
+        )
+    assert exc_info.value.code == 2
+
+
+def test_etf_handlers_forward_arguments_and_use_dry_run_result_counts(monkeypatch, tmp_path: Path) -> None:
+    calls: list[tuple[str, dict[str, object]]] = []
+    manifest = _etf_manifest()
+    dry_run = ETFBackfillDryRunResult(
+        manifest=manifest,
+        task_specs=(),
+        symbol_count=17,
+        chunk_count=9,
+        dataset_count=2,
+        provider_call_count=34,
+        effective_symbol_limit=50,
+        effective_task_limit=1000,
+        symbol_headroom=33,
+        task_headroom=966,
+    )
+
+    def fake_sync(config_path: Path):
+        calls.append(("sync", {"config_path": config_path}))
+        return ETFCatalogSyncResult("ok", "snapshot-123", 10, 2, None, None)
+
+    def fake_resolve(config_path: Path, **kwargs):
+        calls.append(("resolve", {"config_path": config_path, **kwargs}))
+        return manifest
+
+    def fake_backfill(config_path: Path, **kwargs):
+        calls.append(("backfill", {"config_path": config_path, **kwargs}))
+        return dry_run
+
+    def fake_audit(config_path: Path, run_id: str):
+        calls.append(("audit", {"config_path": config_path, "run_id": run_id}))
+        return SimpleNamespace(
+            status="PASS", run_id=run_id, succeeded_tasks=34, target_tasks=34,
+            factor_missing_bar_dates=0, json_path=tmp_path / "audit.json",
+            markdown_path=tmp_path / "audit.md", exit_code=0,
+        )
+
+    monkeypatch.setattr(data_update_cli, "sync_etf_catalog_from_config", fake_sync)
+    monkeypatch.setattr(data_update_cli, "resolve_etf_universe_from_config", fake_resolve)
+    monkeypatch.setattr(data_update_cli, "backfill_etf_history_from_config", fake_backfill)
+    monkeypatch.setattr(data_update_cli, "audit_etf_history_from_config", fake_audit)
+    console, lines = _recording_console()
+    config = str(tmp_path / "config.yaml")
+
+    assert data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="sync-etf-catalog", config=config), parser=argparse.ArgumentParser(), console=console,
+    ) == 0
+    assert data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="resolve-etf-universe", config=config, universe="sector_core_v1", sector=["semiconductor"], start_date="2018-01-01", end_date="2026-08-11"),
+        parser=argparse.ArgumentParser(), console=console,
+    ) == 0
+    assert data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="backfill-etf-history", config=config, universe="sector_core_v1", sector=["semiconductor"], start_date="2018-01-01", end_date="2026-08-11", dry_run=True, resume_run_id=None, limit_symbols=1, limit_tasks=20),
+        parser=argparse.ArgumentParser(), console=console,
+    ) == 0
+    assert data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="audit-etf-history", config=config, run_id="run-123"),
+        parser=argparse.ArgumentParser(), console=console,
+    ) == 0
+
+    resolved_config = (tmp_path / "config.yaml").resolve()
+    assert calls == [
+        ("sync", {"config_path": resolved_config}),
+        ("resolve", {"config_path": resolved_config, "universe_name": "sector_core_v1", "requested_sectors": ["semiconductor"], "start_date": "2018-01-01", "end_date": "2026-08-11"}),
+        ("backfill", {"config_path": resolved_config, "universe_name": "sector_core_v1", "sectors": ["semiconductor"], "start_date": "2018-01-01", "end_date": "2026-08-11", "dry_run": True, "resume_run_id": None, "limit_symbols": 1, "limit_tasks": 20}),
+        ("audit", {"config_path": resolved_config, "run_id": "run-123"}),
+    ]
+    output = "\n".join(lines)
+    assert "Symbols: 17" in output
+    assert "Annual chunks: 9" in output
+    assert "Provider calls/tasks: 34" in output
+    assert "Task headroom: 966/1000" in output
+
+
+@pytest.mark.parametrize("status", ["partial", "failed"])
+def test_etf_backfill_unsuccessful_status_returns_two(monkeypatch, tmp_path: Path, status: str) -> None:
+    monkeypatch.setattr(
+        data_update_cli,
+        "backfill_etf_history_from_config",
+        lambda *args, **kwargs: ETFBackfillResult("run-123", status, 2, 1, 0, 1, 5, tmp_path / "etf.sqlite"),
+    )
+    exit_code = data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="backfill-etf-history", config=str(tmp_path / "config.yaml"), universe="sector_core_v1", sector=None, start_date="2026-01-01", end_date="2026-08-11", dry_run=False, resume_run_id=None, limit_symbols=None, limit_tasks=None),
+        parser=argparse.ArgumentParser(), console=_silent_console(),
+    )
+    assert exit_code == 2
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        TushareTokenError("fund_daily", None, "token=RAW_SECRET_TOKEN"),
+        TusharePermissionError("etf_basic", 40203, "payload=RAW_SECRET_TOKEN permission denied"),
+        StaleETFCatalogError("latest ETF catalog snapshot is older than 7 days"),
+    ],
+)
+def test_etf_handler_errors_return_two_without_raw_provider_payload(monkeypatch, tmp_path: Path, error: Exception) -> None:
+    def fail(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(data_update_cli, "resolve_etf_universe_from_config", fail)
+    console, lines = _recording_console()
+    exit_code = data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="resolve-etf-universe", config=str(tmp_path / "config.yaml"), universe="sector_core_v1", sector=None, start_date="2026-01-01", end_date="2026-08-11"),
+        parser=argparse.ArgumentParser(), console=console,
+    )
+    assert exit_code == 2
+    assert "RAW_SECRET_TOKEN" not in "\n".join(lines)
+
+
+def test_etf_catalog_failure_does_not_print_raw_error_message(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(
+        data_update_cli,
+        "sync_etf_catalog_from_config",
+        lambda config_path: ETFCatalogSyncResult("failed", "snapshot-123", 0, 0, "permission_denied", "payload=RAW_SECRET_TOKEN"),
+    )
+    console, lines = _recording_console()
+    exit_code = data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="sync-etf-catalog", config=str(tmp_path / "config.yaml")),
+        parser=argparse.ArgumentParser(), console=console,
+    )
+    assert exit_code == 2
+    assert "permission_denied" in "\n".join(lines)
+    assert "RAW_SECRET_TOKEN" not in "\n".join(lines)
 
 
 def test_update_history_handler_rebuilds_universe_when_configured(monkeypatch, tmp_path: Path) -> None:

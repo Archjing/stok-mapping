@@ -63,3 +63,29 @@ def test_latest_catalog_rejects_stale_snapshot():
         conn.execute("INSERT INTO etf_catalog_sync_runs VALUES (?,?,?,?,?,?,?,?,?)", ("old", "ok", "ok", "ok", 1, 1, "2026-08-01T00:00:00", "2026-08-01T00:01:00", None))
         with pytest.raises(StaleETFCatalogError):
             catalog.latest_completed_catalog_snapshot(conn, max_age_days=7, now=datetime(2026, 8, 11))
+
+
+def test_sync_from_config_resolves_dedicated_store_and_provider_settings(tmp_path, monkeypatch):
+    captured: dict[str, object] = {}
+    expected = object()
+    monkeypatch.setattr(
+        catalog,
+        "load_config",
+        lambda path: {
+            "etf_history": {"path": "data/etf.sqlite"},
+            "data_sources": {"tushare": {"enabled": True, "token_env": "ETF_TEST_TOKEN"}},
+        },
+    )
+
+    def fake_sync(db_path, *, provider_cfg):
+        captured.update(db_path=db_path, provider_cfg=provider_cfg)
+        return expected
+
+    monkeypatch.setattr(catalog, "sync_etf_catalog", fake_sync)
+    config_path = tmp_path / "project" / "config.yaml"
+    result = catalog.sync_etf_catalog_from_config(config_path)
+
+    assert result is expected
+    assert captured["db_path"] == config_path.parent / "data/etf.sqlite"
+    assert captured["provider_cfg"].enabled is True
+    assert captured["provider_cfg"].token_env == "ETF_TEST_TOKEN"

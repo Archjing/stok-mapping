@@ -8,12 +8,14 @@ from pathlib import Path
 
 import requests
 
+from phase0.config import load_config
 from phase0.data_access.providers.tushare import (
     TushareAPIError,
     TushareConfig,
     TusharePermissionError,
     TushareTokenError,
     fetch_tushare_etf_basic,
+    tushare_config,
 )
 from phase0.data_governance.etf_store import (
     ensure_etf_schema,
@@ -34,6 +36,12 @@ class ETFCatalogSyncResult:
 
 class StaleETFCatalogError(RuntimeError):
     """No completed catalog snapshot satisfies the configured freshness bound."""
+
+
+def _mapping(value: object, *, name: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} configuration must be a mapping")
+    return value
 
 
 def _iso(value: datetime) -> str:
@@ -101,6 +109,19 @@ def sync_etf_catalog(
                     (_iso(now or datetime.now()), message, snapshot_id),
                 )
         return ETFCatalogSyncResult("failed", snapshot_id, 0, 0, _error_kind(exc), message)
+
+
+def sync_etf_catalog_from_config(config_path: Path) -> ETFCatalogSyncResult:
+    """Resolve the dedicated ETF store and Tushare settings from config."""
+    config_path = Path(config_path).resolve()
+    phase0_cfg = load_config(config_path)
+    history_cfg = _mapping(phase0_cfg.get("etf_history"), name="phase0.etf_history")
+    data_sources_cfg = _mapping(phase0_cfg.get("data_sources", {}), name="phase0.data_sources")
+    provider_raw = _mapping(data_sources_cfg.get("tushare", {}), name="phase0.data_sources.tushare")
+    db_path = Path(str(history_cfg.get("path", "data/etf_history.sqlite")))
+    if not db_path.is_absolute():
+        db_path = config_path.parent / db_path
+    return sync_etf_catalog(db_path, provider_cfg=tushare_config(provider_raw))
 
 
 def latest_completed_catalog_snapshot(

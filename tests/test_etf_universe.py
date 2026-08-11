@@ -7,6 +7,7 @@ from datetime import date, datetime
 import pytest
 
 from phase0.data_governance.etf_store import ensure_etf_schema
+from phase0.data_governance import etf_universe as universe
 from phase0.data_governance.etf_universe import ETFUniverseError, history_config_digest, resolve_etf_universe
 
 
@@ -89,3 +90,32 @@ def test_digest_is_stable_for_key_order_and_changes_for_membership(cfg):
     changed = copy.deepcopy(cfg)
     changed["etf_history"]["universes"]["sector_core_v1"]["sectors"]["semiconductor"] = []
     assert history_config_digest(cfg, "sector_core_v1") != history_config_digest(changed, "sector_core_v1")
+
+
+def test_resolve_from_config_resolves_store_and_iso_dates(tmp_path, monkeypatch, cfg):
+    captured: dict[str, object] = {}
+    expected = object()
+    configured = copy.deepcopy(cfg)
+    configured["etf_history"]["path"] = "data/etf.sqlite"
+    monkeypatch.setattr(universe, "load_config", lambda path: configured)
+
+    def fake_resolve(conn, **kwargs):
+        captured.update(kwargs)
+        return expected
+
+    monkeypatch.setattr(universe, "resolve_etf_universe", fake_resolve)
+    config_path = tmp_path / "project" / "config.yaml"
+    result = universe.resolve_etf_universe_from_config(
+        config_path,
+        universe_name="sector_core_v1",
+        requested_sectors=["semiconductor"],
+        start_date="2018-01-01",
+        end_date="2026-08-11",
+    )
+
+    assert result is expected
+    assert (config_path.parent / "data/etf.sqlite").exists()
+    assert captured["universe_name"] == "sector_core_v1"
+    assert captured["requested_sectors"] == ["semiconductor"]
+    assert captured["start_date"] == date(2018, 1, 1)
+    assert captured["end_date"] == date(2026, 8, 11)
