@@ -119,3 +119,98 @@ def test_resolve_from_config_resolves_store_and_iso_dates(tmp_path, monkeypatch,
     assert captured["requested_sectors"] == ["semiconductor"]
     assert captured["start_date"] == date(2018, 1, 1)
     assert captured["end_date"] == date(2026, 8, 11)
+
+
+def test_single_etf_manual_config_resolves_without_catalog_snapshot() -> None:
+    cfg = {
+        "etf_history": {
+            "catalog_max_age_days": 7,
+            "chunk_years": 1,
+            "max_symbols_per_run": 50,
+            "max_tasks_per_run": 1000,
+            "universes": {
+                "single_etf": {
+                    "manifest_source": "manual_config",
+                    "sectors": {
+                        "semiconductor": [{
+                            "symbol": "SH.512480",
+                            "ts_code": "512480.SH",
+                            "listed_from": "2019-06-12",
+                        }],
+                    },
+                },
+            },
+        },
+    }
+    with sqlite3.connect(":memory:") as conn:
+        ensure_etf_schema(conn)
+        manifest = resolve_etf_universe(
+            conn,
+            phase0_cfg=cfg,
+            universe_name="single_etf",
+            requested_sectors=None,
+            start_date=date(2010, 1, 1),
+            end_date=date(2026, 8, 11),
+            now=datetime(2026, 8, 11),
+        )
+
+    assert manifest.manifest_source == "manual_config"
+    assert manifest.catalog_snapshot_id.startswith("manual-config:")
+    assert manifest.requested_sectors == ("semiconductor",)
+    assert manifest.members == (
+        universe.ETFManifestMember(
+            "single_etf",
+            "semiconductor",
+            "SH.512480",
+            "512480.SH",
+            date(2010, 1, 1),
+            date(2026, 8, 11),
+            date(2019, 6, 12),
+            date(2026, 8, 11),
+            None,
+            None,
+            "not_applicable_manual_config",
+        ),
+    )
+
+
+def test_single_etf_manual_config_fails_closed_for_ambiguous_or_invalid_metadata() -> None:
+    cfg = {
+        "etf_history": {
+            "catalog_max_age_days": 7,
+            "chunk_years": 1,
+            "max_symbols_per_run": 50,
+            "max_tasks_per_run": 1000,
+            "universes": {
+                "single_etf": {
+                    "manifest_source": "manual_config",
+                    "sectors": {
+                        "semiconductor": [{
+                            "symbol": "SH.512480",
+                            "ts_code": "512480.SH",
+                            "listed_from": "2019-06-12",
+                        }],
+                    },
+                },
+            },
+        },
+    }
+    with sqlite3.connect(":memory:") as conn:
+        ensure_etf_schema(conn)
+        duplicate = copy.deepcopy(cfg)
+        duplicate["etf_history"]["universes"]["single_etf"]["sectors"]["semiconductor"].append({
+            "symbol": "SH.510300", "ts_code": "510300.SH", "listed_from": "2012-05-28",
+        })
+        with pytest.raises(ETFUniverseError, match="exactly one ETF"):
+            resolve_etf_universe(
+                conn, phase0_cfg=duplicate, universe_name="single_etf", requested_sectors=None,
+                start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11),
+            )
+
+        mismatched = copy.deepcopy(cfg)
+        mismatched["etf_history"]["universes"]["single_etf"]["sectors"]["semiconductor"][0]["ts_code"] = "512480.SZ"
+        with pytest.raises(ETFUniverseError, match="exchange mismatch"):
+            resolve_etf_universe(
+                conn, phase0_cfg=mismatched, universe_name="single_etf", requested_sectors=None,
+                start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11),
+            )

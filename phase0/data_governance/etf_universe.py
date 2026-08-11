@@ -38,6 +38,7 @@ class ETFUniverseManifest:
     config_digest: str
     catalog_snapshot_id: str
     members: tuple[ETFManifestMember, ...]
+    manifest_source: str = "catalog"
 
 
 class ETFUniverseError(RuntimeError):
@@ -98,6 +99,13 @@ def resolve_etf_universe(
         raise ETFUniverseError("start_date must be on or before end_date")
     history = _history_cfg(phase0_cfg)
     universe = _universe_cfg(phase0_cfg, universe_name)
+    if not set(universe).issubset({"sectors", "manifest_source"}):
+        raise ETFUniverseError("ETF universe keys must be sectors and optional manifest_source")
+    manifest_source = str(universe.get("manifest_source", "catalog"))
+    if manifest_source not in {"catalog", "manual_config"}:
+        raise ETFUniverseError("ETF manifest_source must be catalog or manual_config")
+    if universe_name == "single_etf" and manifest_source != "manual_config":
+        raise ETFUniverseError("single_etf must use manifest_source manual_config")
     sectors_value = universe.get("sectors")
     if not isinstance(sectors_value, dict) or not sectors_value:
         raise ETFUniverseError("ETF universe sectors must be a non-empty mapping")
@@ -114,15 +122,22 @@ def resolve_etf_universe(
         selected = sorted(selected)
 
     seen: dict[str, str] = {}
-    parsed: dict[str, list[tuple[str, str | None]]] = {}
+    parsed: dict[str, list[dict[str, object]]] = {}
     for sector in all_sector_names:
         entries = sectors_value.get(sector)
         if not isinstance(entries, list):
             raise ETFUniverseError(f"sector {sector} must be a list")
         parsed[sector] = []
         for entry in entries:
-            if not isinstance(entry, dict) or not set(entry).issubset({"symbol", "expected_tracking_index"}) or "symbol" not in entry:
-                raise ETFUniverseError("ETF selector keys must be symbol and optional expected_tracking_index")
+            allowed_keys = (
+                {"symbol", "expected_tracking_index"}
+                if manifest_source == "catalog"
+                else {"symbol", "ts_code", "listed_from"}
+            )
+            if not isinstance(entry, dict) or not set(entry).issubset(allowed_keys) or "symbol" not in entry:
+                if manifest_source == "catalog":
+                    raise ETFUniverseError("ETF selector keys must be symbol and optional expected_tracking_index")
+                raise ETFUniverseError("manual ETF selector keys must be symbol, ts_code, and listed_from")
             try:
                 symbol = normalize_etf_symbol(entry["symbol"])
             except ValueError as exc:
@@ -130,35 +145,63 @@ def resolve_etf_universe(
             if symbol in seen:
                 raise ETFUniverseError(f"ETF symbol {symbol} appears in multiple sectors: {seen[symbol]},{sector}")
             seen[symbol] = sector
-            parsed[sector].append((symbol, _tracking_symbol(entry.get("expected_tracking_index"))))
+            if manifest_source == "catalog":
+                parsed[sector].append({"symbol": symbol, "expected": _tracking_symbol(entry.get("expected_tracking_index"))})
+            else:
+                ts_code = str(entry.get("ts_code") or "").strip().upper()
+                if to_tushare_symbol(symbol) != ts_code:
+                    raise ETFUniverseError(f"manual ETF symbol exchange mismatch: {symbol} versus {ts_code or '<missing>'}")
+                try:
+                    listed_from = date.fromisoformat(str(entry.get("listed_from") or ""))
+                except ValueError as exc:
+                    raise ETFUniverseError(f"manual ETF listed_from must be an ISO date for {symbol}") from exc
+                parsed[sector].append({"symbol": symbol, "ts_code": ts_code, "listed_from": listed_from})
 
-    try:
-        snapshot = latest_completed_catalog_snapshot(conn, max_age_days=int(history.get("catalog_max_age_days", 7)), now=now)
-    except RuntimeError as exc:
-        raise ETFUniverseError(str(exc)) from exc
+    if manifest_source == "manual_config" and len(seen) != 1:
+        raise ETFUniverseError("manual_config ETF universe must declare exactly one ETF")
+    if manifest_source == "catalog":
+        try:
+            snapshot = latest_completed_catalog_snapshot(conn, max_age_days=int(history.get("catalog_max_age_days", 7)), now=now)
+        except RuntimeError as exc:
+            raise ETFUniverseError(str(exc)) from exc
+    else:
+        snapshot = f"manual-config:{history_config_digest(phase0_cfg, universe_name, tuple(selected))}"
     members: list[ETFManifestMember] = []
     for sector in selected:
-        for symbol, expected in sorted(parsed[sector]):
-            row = conn.execute(
-                "SELECT ts_code,list_status,list_date,delist_date FROM market_etfs WHERE catalog_snapshot_id=? AND symbol=?",
-                (snapshot, symbol),
-            ).fetchone()
-            if row is None:
-                raise ETFUniverseError(f"configured ETF symbol missing from catalog: {symbol}")
-            ts_code, list_status, listed_text, delisted_text = row
-            if to_tushare_symbol(symbol) != ts_code:
-                raise ETFUniverseError(f"ETF symbol exchange mismatch: {symbol} versus {ts_code}")
-            mapping = conn.execute(
-                "SELECT tracking_index_symbol FROM market_etf_tracking_mappings WHERE catalog_snapshot_id=? AND symbol=? AND mapping_kind='provider_observation' ORDER BY observed_at DESC LIMIT 1",
-                (snapshot, symbol),
-            ).fetchone()
-            resolved = _tracking_symbol(mapping[0]) if mapping and mapping[0] else None
-            if expected is not None and expected != resolved:
-                raise ETFUniverseError(f"tracking index mismatch for {symbol}: expected {expected}, resolved {resolved}")
-            listed = date.fromisoformat(listed_text)
-            if list_status == "D" and not delisted_text:
-                raise ETFUniverseError(f"delisted ETF {symbol} has no reliable delist_date")
-            lifecycle_end = date.fromisoformat(delisted_text) if delisted_text else end_date
+        for entry in sorted(parsed[sector], key=lambda value: str(value["symbol"])):
+            symbol = str(entry["symbol"])
+            if manifest_source == "catalog":
+                row = conn.execute(
+                    "SELECT ts_code,list_status,list_date,delist_date FROM market_etfs WHERE catalog_snapshot_id=? AND symbol=?",
+                    (snapshot, symbol),
+                ).fetchone()
+                if row is None:
+                    raise ETFUniverseError(f"configured ETF symbol missing from catalog: {symbol}")
+                ts_code, list_status, listed_text, delisted_text = row
+                if to_tushare_symbol(symbol) != ts_code:
+                    raise ETFUniverseError(f"ETF symbol exchange mismatch: {symbol} versus {ts_code}")
+                mapping = conn.execute(
+                    "SELECT tracking_index_symbol FROM market_etf_tracking_mappings WHERE catalog_snapshot_id=? AND symbol=? AND mapping_kind='provider_observation' ORDER BY observed_at DESC LIMIT 1",
+                    (snapshot, symbol),
+                ).fetchone()
+                resolved = _tracking_symbol(mapping[0]) if mapping and mapping[0] else None
+                expected = entry["expected"]
+                if expected is not None and expected != resolved:
+                    raise ETFUniverseError(f"tracking index mismatch for {symbol}: expected {expected}, resolved {resolved}")
+                listed = date.fromisoformat(str(listed_text))
+                if list_status == "D" and not delisted_text:
+                    raise ETFUniverseError(f"delisted ETF {symbol} has no reliable delist_date")
+                lifecycle_end = date.fromisoformat(str(delisted_text)) if delisted_text else end_date
+                mapping_status = "matched" if expected is not None else "not_configured"
+            else:
+                ts_code = str(entry["ts_code"])
+                listed = entry["listed_from"]
+                if not isinstance(listed, date):
+                    raise ETFUniverseError(f"manual ETF listed_from is invalid for {symbol}")
+                lifecycle_end = end_date
+                expected = None
+                resolved = None
+                mapping_status = "not_applicable_manual_config"
             effective_start = max(start_date, listed)
             effective_end = min(end_date, lifecycle_end)
             if effective_start > effective_end:
@@ -166,7 +209,7 @@ def resolve_etf_universe(
             members.append(ETFManifestMember(
                 universe_name, sector, symbol, str(ts_code), start_date, end_date,
                 effective_start, effective_end, expected, resolved,
-                "matched" if expected is not None else "not_configured",
+                mapping_status,
             ))
     if not members:
         raise ETFUniverseError("ETF universe has no lifecycle overlap with requested dates")
@@ -174,7 +217,7 @@ def resolve_etf_universe(
     requested_tuple = tuple(selected)
     return ETFUniverseManifest(
         universe_name, requested_tuple, start_date, end_date,
-        history_config_digest(phase0_cfg, universe_name, requested_tuple), snapshot, tuple(members),
+        history_config_digest(phase0_cfg, universe_name, requested_tuple), snapshot, tuple(members), manifest_source,
     )
 
 

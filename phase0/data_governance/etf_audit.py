@@ -20,6 +20,7 @@ class ETFAuditResult:
     universe_name: str
     config_digest: str
     catalog_snapshot_id: str
+    manifest_source: str
     target_tasks: int
     succeeded_tasks: int
     empty_tasks: int
@@ -68,7 +69,8 @@ def _write_reports(
         f"- Requested sectors: `{', '.join(run['requested_sectors'])}`",
         f"- Requested dates: `{run['requested_start']}` to `{run['requested_end']}`",
         f"- Config digest: `{run['config_digest']}`",
-        f"- Catalog snapshot: `{run['catalog_snapshot_id']}`",
+        f"- Manifest source: `{run['manifest_source']}`",
+        f"- Source reference: `{run['catalog_snapshot_id']}`",
         f"- Task status: `{run['task_status']}`",
         f"- Audit status persisted: `{payload['audit_status']}`",
         "",
@@ -118,7 +120,7 @@ def _write_reports(
         lines.append(f"- `{item['symbol']}` `{item['date']}`")
     lines.extend([
         "",
-        "## Metadata Boundary",
+            "## Metadata Boundary",
         "",
         "- Provider tracking observations without effective dates are non-PIT metadata and are not historical membership facts.",
         f"- Non-PIT tracking observation rows in the catalog snapshot: {payload['non_pit_tracking_observations']}",
@@ -137,7 +139,7 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
     with sqlite3.connect(db_path) as conn:
         run_row = conn.execute(
             """SELECT universe_name,requested_sectors_json,requested_start,requested_end,
-                      config_digest,catalog_snapshot_id,status,target_tasks,succeeded_tasks,
+                      config_digest,catalog_snapshot_id,manifest_source,status,target_tasks,succeeded_tasks,
                       empty_tasks,failed_tasks
                FROM etf_backfill_runs WHERE run_id=?""",
             (run_id,),
@@ -152,6 +154,7 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
             requested_end,
             config_digest,
             catalog_snapshot_id,
+            manifest_source,
             task_status,
             stored_target,
             stored_succeeded,
@@ -301,12 +304,13 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
                     "factor_max": factor_range[1],
                     "factor_rows": factor_range[2],
                 })
-            non_pit_tracking_observations = conn.execute(
-                """SELECT COUNT(*) FROM market_etf_tracking_mappings
-                   WHERE catalog_snapshot_id=? AND mapping_kind='provider_observation'
-                     AND (is_point_in_time=0 OR effective_from IS NULL)""",
-                (catalog_snapshot_id,),
-            ).fetchone()[0]
+            if manifest_source == "catalog":
+                non_pit_tracking_observations = conn.execute(
+                    """SELECT COUNT(*) FROM market_etf_tracking_mappings
+                       WHERE catalog_snapshot_id=? AND mapping_kind='provider_observation'
+                         AND (is_point_in_time=0 OR effective_from IS NULL)""",
+                    (catalog_snapshot_id,),
+                ).fetchone()[0]
         except Exception as exc:
             audit_error = f"{exc.__class__.__name__}: {str(exc)[:500]}"
 
@@ -340,6 +344,7 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
                 "requested_end": requested_end,
                 "config_digest": config_digest,
                 "catalog_snapshot_id": catalog_snapshot_id,
+                "manifest_source": manifest_source,
                 "task_status": task_status,
             },
             "task_counts": task_counts,
@@ -369,6 +374,7 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
             universe_name=str(universe_name),
             config_digest=str(config_digest),
             catalog_snapshot_id=str(catalog_snapshot_id),
+            manifest_source=str(manifest_source),
             target_tasks=task_counts["target_tasks"],
             succeeded_tasks=task_counts["succeeded_tasks"],
             empty_tasks=task_counts["empty_tasks"],

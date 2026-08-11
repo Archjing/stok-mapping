@@ -243,7 +243,7 @@ def create_etf_backfill_run(
     } for spec in specs]
     with conn:
         ensure_etf_schema(conn)
-        conn.execute("INSERT INTO etf_backfill_runs(run_id,universe_name,requested_sectors_json,requested_start,requested_end,config_digest,catalog_snapshot_id,status,created_at) VALUES (?,?,?,?,?,?,?,'planned',?)", (run_id, manifest.universe_name, json.dumps(manifest.requested_sectors), manifest.requested_start.isoformat(), manifest.requested_end.isoformat(), manifest.config_digest, manifest.catalog_snapshot_id, timestamp))
+        conn.execute("INSERT INTO etf_backfill_runs(run_id,universe_name,requested_sectors_json,requested_start,requested_end,config_digest,catalog_snapshot_id,manifest_source,status,created_at) VALUES (?,?,?,?,?,?,?,?,'planned',?)", (run_id, manifest.universe_name, json.dumps(manifest.requested_sectors), manifest.requested_start.isoformat(), manifest.requested_end.isoformat(), manifest.config_digest, manifest.catalog_snapshot_id, manifest.manifest_source, timestamp))
         insert_manifest_members(conn, member_rows)
         insert_backfill_tasks(conn, task_rows)
         refresh_run_counts(conn, run_id)
@@ -251,10 +251,10 @@ def create_etf_backfill_run(
 
 
 def load_persisted_manifest(conn: sqlite3.Connection, run_id: str) -> ETFUniverseManifest:
-    run = conn.execute("SELECT universe_name,requested_sectors_json,requested_start,requested_end,config_digest,catalog_snapshot_id FROM etf_backfill_runs WHERE run_id=?", (run_id,)).fetchone()
+    run = conn.execute("SELECT universe_name,requested_sectors_json,requested_start,requested_end,config_digest,catalog_snapshot_id,manifest_source FROM etf_backfill_runs WHERE run_id=?", (run_id,)).fetchone()
     if run is None:
         raise ETFResumeMismatchError(f"unknown run_id: {run_id}")
-    universe, sectors_json, start_text, end_text, digest, snapshot = run
+    universe, sectors_json, start_text, end_text, digest, snapshot, manifest_source = run
     rows = conn.execute("SELECT universe_name,catalog_snapshot_id,sector,symbol,ts_code,requested_start,requested_end,effective_start,effective_end,expected_tracking_index,resolved_tracking_index,mapping_assertion_status FROM etf_backfill_manifest_members WHERE run_id=? ORDER BY sector,symbol", (run_id,)).fetchall()
     if not rows:
         raise ETFResumeMismatchError("persisted manifest is empty")
@@ -263,7 +263,7 @@ def load_persisted_manifest(conn: sqlite3.Connection, run_id: str) -> ETFUnivers
         if row[0] != universe or row[1] != snapshot or row[5] != start_text or row[6] != end_text:
             raise ETFResumeMismatchError("persisted manifest disagrees with run identity")
         members.append(ETFManifestMember(row[0], row[2], row[3], row[4], date.fromisoformat(row[5]), date.fromisoformat(row[6]), date.fromisoformat(row[7]), date.fromisoformat(row[8]), row[9], row[10], row[11]))
-    return ETFUniverseManifest(universe, tuple(json.loads(sectors_json)), date.fromisoformat(start_text), date.fromisoformat(end_text), digest, snapshot, tuple(members))
+    return ETFUniverseManifest(universe, tuple(json.loads(sectors_json)), date.fromisoformat(start_text), date.fromisoformat(end_text), digest, snapshot, tuple(members), str(manifest_source))
 
 
 def load_resumable_tasks(
@@ -283,9 +283,15 @@ def load_resumable_tasks(
 
 def validate_resume_contract(conn: sqlite3.Connection, run_id: str, *, phase0_cfg: dict[str, object]) -> ETFUniverseManifest:
     manifest = load_persisted_manifest(conn, run_id)
-    status = conn.execute("SELECT status FROM etf_catalog_sync_runs WHERE snapshot_id=?", (manifest.catalog_snapshot_id,)).fetchone()
-    if status is None or status[0] != "ok":
-        raise ETFResumeMismatchError("catalog_snapshot_id is not a completed catalog")
+    if manifest.manifest_source == "catalog":
+        status = conn.execute("SELECT status FROM etf_catalog_sync_runs WHERE snapshot_id=?", (manifest.catalog_snapshot_id,)).fetchone()
+        if status is None or status[0] != "ok":
+            raise ETFResumeMismatchError("catalog_snapshot_id is not a completed catalog")
+    elif manifest.manifest_source == "manual_config":
+        if not manifest.catalog_snapshot_id.startswith("manual-config:"):
+            raise ETFResumeMismatchError("manual_config manifest source reference is invalid")
+    else:
+        raise ETFResumeMismatchError(f"unknown persisted manifest_source: {manifest.manifest_source}")
     current_digest = history_config_digest(phase0_cfg, manifest.universe_name, manifest.requested_sectors)
     if current_digest != manifest.config_digest:
         raise ETFResumeMismatchError("config_digest does not match current history configuration")

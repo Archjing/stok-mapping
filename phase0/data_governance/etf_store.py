@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS market_etf_adj_factors (
 CREATE TABLE IF NOT EXISTS etf_backfill_runs (
  run_id TEXT PRIMARY KEY, universe_name TEXT NOT NULL, requested_sectors_json TEXT NOT NULL,
  requested_start TEXT NOT NULL, requested_end TEXT NOT NULL, config_digest TEXT NOT NULL,
- catalog_snapshot_id TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('planned','running','ok','partial','failed')),
+ catalog_snapshot_id TEXT NOT NULL, manifest_source TEXT NOT NULL DEFAULT 'catalog', status TEXT NOT NULL CHECK(status IN ('planned','running','ok','partial','failed')),
  audit_status TEXT NOT NULL DEFAULT 'not_run' CHECK(audit_status IN ('not_run','pass','blocking','error')),
  target_tasks INTEGER NOT NULL DEFAULT 0, succeeded_tasks INTEGER NOT NULL DEFAULT 0,
  empty_tasks INTEGER NOT NULL DEFAULT 0, failed_tasks INTEGER NOT NULL DEFAULT 0,
@@ -68,6 +68,9 @@ CREATE INDEX IF NOT EXISTS idx_etf_manifest_run_sector ON etf_backfill_manifest_
 
 def ensure_etf_schema(conn: sqlite3.Connection) -> None:
     conn.executescript(SCHEMA_SQL)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(etf_backfill_runs)")}
+    if "manifest_source" not in columns:
+        conn.execute("ALTER TABLE etf_backfill_runs ADD COLUMN manifest_source TEXT NOT NULL DEFAULT 'catalog'")
 
 
 def _value(value: object) -> object:

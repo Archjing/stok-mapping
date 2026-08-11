@@ -91,6 +91,13 @@ phase0:
             - symbol: "SZ.159915"
           semiconductor:
             - symbol: "SH.512480"
+      single_etf:
+        manifest_source: "manual_config"
+        sectors:
+          semiconductor:
+            - symbol: "SH.512480"
+              ts_code: "512480.SH"
+              listed_from: "2019-06-12"
   reporting:
     root_dir: "reports"
     categories:
