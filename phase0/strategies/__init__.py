@@ -3,6 +3,7 @@ from phase0.strategies.legacy_momentum_low_turnover import LegacyMomentumLowTurn
 from phase0.strategies.low_vol_low_turnover_quality import LowVolLowTurnoverQualityStrategy
 from phase0.strategies.ma_kline_baseline import MaKlineBaselineStrategy
 from phase0.strategies.core_selection_quality_momentum import CoreSelectionQualityMomentumStrategy
+from phase0.strategies.cross_market_semiconductor_timing import CrossMarketSemiconductorTimingStrategy
 from phase0.strategies.multifactor_volume_price_filter import MultifactorVolumePriceFilterStrategy
 from phase0.strategies.price_volume_low_turnover import PriceVolumeLowTurnoverStrategy
 from phase0.strategies.quality_growth_price import QualityGrowthPriceStrategy
@@ -35,6 +36,7 @@ from phase0.strategies.registry import available_strategies, get_strategy, regis
 
 __all__ = [
     "CoreSelectionQualityMomentumStrategy",
+    "CrossMarketSemiconductorTimingStrategy",
     "LegacyMomentumStrategy",
     "LegacyMomentumLowTurnoverStrategy",
     "LowVolLowTurnoverQualityStrategy",

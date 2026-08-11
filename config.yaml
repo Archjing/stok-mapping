@@ -424,6 +424,7 @@ phase0:
             - "theme_exposure_momentum_v1"
             - "sleeve_composite_v1"
             - "sleeve_composite_low_churn_v1"
+            - "cross_market_semiconductor_timing_v1"
         quality_research_v1:
           description: "质量/低换手策略专项研究集合。"
           strategies:
@@ -476,6 +477,7 @@ phase0:
         - "theme_exposure_momentum_v1"
         - "sleeve_composite_v1"
         - "sleeve_composite_low_churn_v1"
+        - "cross_market_semiconductor_timing_v1"
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -592,6 +594,13 @@ phase0:
           SH.600276: healthcare
           SH.600900: defensive
           SH.600030: financial
+      cross_market_semiconductor_timing:
+        enabled: true
+        years: 7
+        sox_thresholds: [0.005, 0.008, 0.01, 0.012, 0.015, 0.02]
+        vix_thresholds: [19, 20, 21, 22, 23, 24, 25]
+        position_sizes: [0.50, 0.55, 0.60]
+        train_min_signals: 3
       price_volume_features:
         amount_ma_window: 20
         breakout_window: 20
@@ -707,6 +716,17 @@ phase0:
         strategy_id: "legacy_momentum_low_turnover_v1"
         simulation_start_date: "2026-06-30"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger.csv"
+        database_path: "data/simulated_trading/simulated_accounts.sqlite"
+        execution_price_mode: "next_open"
+        max_participation_rate: 0.05
+        lot_size: 100
+      - account_id: "semiconductor_timing"
+        name: "半导体SOX+VIX择时账户"
+        enabled: true
+        initial_cash: 200000
+        strategy_id: "cross_market_semiconductor_timing_v1"
+        simulation_start_date: "2021-06-01"
+        ledger_path: "data/simulated_trading/phase0_daily_account_ledger_semiconductor.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
         execution_price_mode: "next_open"
         max_participation_rate: 0.05
