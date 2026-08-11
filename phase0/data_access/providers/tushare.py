@@ -10,9 +10,38 @@ import pandas as pd
 import requests
 
 from phase0.data_access.local_history import normalize_cn_symbol
+from phase0.data_access.symbols import from_tushare_symbol, normalize_etf_symbol, to_tushare_symbol
 
 
 TUSHARE_API_URL = "http://api.tushare.pro"
+
+ETF_CATALOG_COLUMNS = [
+    "symbol", "ts_code", "name", "short_name", "exchange", "list_status",
+    "setup_date", "list_date", "delist_date", "etf_type", "management_name",
+    "custodian_name", "management_fee", "index_code_raw",
+    "tracking_index_symbol", "tracking_index_name", "source",
+]
+ETF_DAILY_COLUMNS = [
+    "symbol", "ts_code", "date", "price_mode", "open", "high", "low", "close",
+    "pre_close", "change_amount", "change_pct", "volume", "amount", "source",
+]
+ETF_FACTOR_COLUMNS = ["symbol", "ts_code", "date", "adj_factor", "source"]
+
+
+class TushareAPIError(RuntimeError):
+    def __init__(self, api_name: str, code: object, message: str):
+        super().__init__(f"Tushare {api_name} failed: code={code}, msg={message}")
+        self.api_name = api_name
+        self.code = code
+        self.message = message
+
+
+class TusharePermissionError(TushareAPIError):
+    """The token is valid but the endpoint or fields are not authorized."""
+
+
+class TushareTokenError(TushareAPIError):
+    """The configured token is missing, invalid, or rejected."""
 
 
 @dataclass
@@ -54,7 +83,7 @@ def token_env_is_set(cfg: TushareConfig) -> bool:
 def _call(api_name: str, *, params: dict[str, Any], fields: list[str], cfg: TushareConfig) -> pd.DataFrame:
     token = _token(cfg)
     if not token:
-        raise RuntimeError(f"Tushare token is not set in environment variable {cfg.token_env}")
+        raise TushareTokenError(api_name, None, f"token is not set in environment variable {cfg.token_env}")
 
     payload = {
         "api_name": api_name,
@@ -68,16 +97,111 @@ def _call(api_name: str, *, params: dict[str, Any], fields: list[str], cfg: Tush
             response = requests.post(cfg.api_url, json=payload, timeout=30)
             response.raise_for_status()
             data = response.json()
-            if data.get("code") != 0:
-                raise RuntimeError(f"Tushare {api_name} failed: code={data.get('code')}, msg={data.get('msg')}")
-            items = data.get("data", {}).get("items", [])
-            columns = data.get("data", {}).get("fields", fields)
+            code = data.get("code")
+            message = str(data.get("msg") or "unknown error")
+            if code != 0:
+                lowered = message.lower()
+                if "permission" in lowered or "权限" in message:
+                    raise TusharePermissionError(api_name, code, message)
+                if "token" in lowered:
+                    raise TushareTokenError(api_name, code, message)
+                raise TushareAPIError(api_name, code, message)
+            response_data = data.get("data") or {}
+            items = response_data.get("items", [])
+            columns = response_data.get("fields", fields)
             return pd.DataFrame(items, columns=columns)
+        except TushareAPIError:
+            raise
         except Exception as exc:
             last_error = exc
             if attempt + 1 < max(1, cfg.max_retries):
                 time.sleep(cfg.retry_backoff * (attempt + 1))
     raise RuntimeError(str(last_error) if last_error else f"Tushare {api_name} failed")
+
+
+def _iso_date(value: object) -> str | None:
+    if value is None or pd.isna(value) or str(value).strip() == "":
+        return None
+    parsed = pd.to_datetime(str(value), format="%Y%m%d", errors="coerce")
+    return None if pd.isna(parsed) else parsed.strftime("%Y-%m-%d")
+
+
+def fetch_tushare_etf_basic(*, list_status: str, cfg: TushareConfig) -> pd.DataFrame:
+    fields = [
+        "ts_code", "csname", "extname", "cname", "index_code", "index_name",
+        "setup_date", "list_date", "delist_date", "list_status", "exchange",
+        "mgt_name", "custod_name", "mgt_fee", "etf_type",
+    ]
+    raw = _call("etf_basic", params={"list_status": list_status}, fields=fields, cfg=cfg)
+    if raw.empty:
+        return pd.DataFrame(columns=ETF_CATALOG_COLUMNS)
+    out = pd.DataFrame(index=raw.index)
+    out["symbol"] = raw["ts_code"].map(from_tushare_symbol)
+    out["ts_code"] = raw["ts_code"].astype(str).str.upper()
+    out["name"] = raw.get("cname", raw.get("extname"))
+    out["short_name"] = raw.get("csname")
+    out["exchange"] = raw.get("exchange")
+    out["list_status"] = raw.get("list_status")
+    out["setup_date"] = raw.get("setup_date", pd.Series(index=raw.index, dtype=object)).map(_iso_date)
+    out["list_date"] = raw.get("list_date", pd.Series(index=raw.index, dtype=object)).map(_iso_date)
+    out["delist_date"] = raw.get("delist_date", pd.Series(index=raw.index, dtype=object)).map(_iso_date)
+    out["etf_type"] = raw.get("etf_type")
+    out["management_name"] = raw.get("mgt_name")
+    out["custodian_name"] = raw.get("custod_name")
+    out["management_fee"] = pd.to_numeric(raw.get("mgt_fee"), errors="coerce")
+    out["index_code_raw"] = raw.get("index_code")
+    out["tracking_index_symbol"] = raw.get("index_code", pd.Series(index=raw.index, dtype=object)).map(from_tushare_symbol)
+    out["tracking_index_name"] = raw.get("index_name")
+    out["source"] = "tushare.etf_basic"
+    return out[ETF_CATALOG_COLUMNS].reset_index(drop=True)
+
+
+def fetch_tushare_etf_daily(
+    symbol: str,
+    *,
+    start_date: date | str,
+    end_date: date | str,
+    cfg: TushareConfig,
+) -> pd.DataFrame:
+    local = normalize_etf_symbol(symbol)
+    ts_code = to_tushare_symbol(local)
+    fields = ["ts_code", "trade_date", "open", "high", "low", "close", "pre_close", "change", "pct_chg", "vol", "amount"]
+    raw = _call("fund_daily", params={"ts_code": ts_code, "start_date": _parse_trade_date(start_date), "end_date": _parse_trade_date(end_date)}, fields=fields, cfg=cfg)
+    if raw.empty:
+        return pd.DataFrame(columns=ETF_DAILY_COLUMNS)
+    out = pd.DataFrame(index=raw.index)
+    out["symbol"] = raw["ts_code"].map(from_tushare_symbol)
+    out["ts_code"] = raw["ts_code"].astype(str).str.upper()
+    out["date"] = pd.to_datetime(raw["trade_date"], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+    out["price_mode"] = "raw"
+    for target, source in (("open", "open"), ("high", "high"), ("low", "low"), ("close", "close"), ("pre_close", "pre_close"), ("change_amount", "change"), ("change_pct", "pct_chg")):
+        out[target] = pd.to_numeric(raw.get(source), errors="coerce")
+    out["volume"] = pd.to_numeric(raw.get("vol"), errors="coerce") * 100.0
+    out["amount"] = pd.to_numeric(raw.get("amount"), errors="coerce") * 1000.0
+    out["source"] = "tushare.fund_daily"
+    return out[ETF_DAILY_COLUMNS].reset_index(drop=True)
+
+
+def fetch_tushare_etf_adj_factors(
+    symbol: str,
+    *,
+    start_date: date | str,
+    end_date: date | str,
+    cfg: TushareConfig,
+) -> pd.DataFrame:
+    local = normalize_etf_symbol(symbol)
+    ts_code = to_tushare_symbol(local)
+    fields = ["ts_code", "trade_date", "adj_factor"]
+    raw = _call("fund_adj", params={"ts_code": ts_code, "start_date": _parse_trade_date(start_date), "end_date": _parse_trade_date(end_date)}, fields=fields, cfg=cfg)
+    if raw.empty:
+        return pd.DataFrame(columns=ETF_FACTOR_COLUMNS)
+    out = pd.DataFrame(index=raw.index)
+    out["symbol"] = raw["ts_code"].map(from_tushare_symbol)
+    out["ts_code"] = raw["ts_code"].astype(str).str.upper()
+    out["date"] = pd.to_datetime(raw["trade_date"], format="%Y%m%d", errors="coerce").dt.strftime("%Y-%m-%d")
+    out["adj_factor"] = pd.to_numeric(raw.get("adj_factor"), errors="coerce")
+    out["source"] = "tushare.fund_adj"
+    return out[ETF_FACTOR_COLUMNS].reset_index(drop=True)
 
 
 def _parse_trade_date(value: date | str) -> str:
