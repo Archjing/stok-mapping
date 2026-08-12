@@ -11,6 +11,12 @@
 - Topic Tags: `lasso;factor-pricing`
 - Strategy Tags: `factor-selection;redundancy-control`
 
+## 归档完整性
+
+- PDF SHA-256: `c5f8857db2a727bcfcdada9157bb7cbd108184214f9190ab26206af2aba9f32c`
+- Markdown SHA-256: `10242db07cc796be9cb58ee5cd59eda33117627e76859364908fcf4c43617580`
+- Markdown 行尾口径：LF；仅规范化 PDF 转写遗留的混合行尾，不改写论文正文或研究结论。
+
 ## Abstract
 
 这篇论文用双重选择 LASSO 从中国股市 85 个定价因子中识别候选因子的边际有效性。研究强调，判断因子有效性时不能只看风险溢价，还要看随机贴现因子载荷，并通过“横截面 LASSO -> 逐步 LASSO -> 筛选后 OLS”的流程控制遗漏变量和冗余因子。论文发现 2014 年后提出的 15 个候选因子中有 7 个具有边际有效性，且在多种稳健性检验下基本保持。对本项目而言，它最适合作为因子库治理、候选策略筛选和冗余控制的方法论依据。
