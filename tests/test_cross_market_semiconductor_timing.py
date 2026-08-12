@@ -211,7 +211,7 @@ def test_intraday_output_counts_the_t_plus_one_exit_day_as_exposed(monkeypatch) 
     monkeypatch.setattr(
         CrossMarketSemiconductorTimingStrategy,
         "_load_5min_bars",
-        staticmethod(lambda *_args: intraday),
+        staticmethod(lambda *args, **kwargs: intraday),
     )
 
     output = CrossMarketSemiconductorTimingStrategy()._simulate_intraday(
@@ -253,7 +253,7 @@ def test_admission_intraday_path_cancels_unfilled_weak_limit_without_open_fill(m
     monkeypatch.setattr(
         CrossMarketSemiconductorTimingStrategy,
         "_load_5min_bars",
-        staticmethod(lambda *_args: intraday),
+        staticmethod(lambda *args, **kwargs: intraday),
     )
 
     output = CrossMarketSemiconductorTimingStrategy().apply(

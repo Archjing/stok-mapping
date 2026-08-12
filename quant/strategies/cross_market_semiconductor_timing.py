@@ -129,6 +129,35 @@ STRONG_SIGNAL_THRESHOLD = 0.01   # SOX > 1% → market order at open
 LIMIT_ORDER_DISCOUNT = 0.01      # open × 0.99 for weak-signal limit orders
 TRAILING_STOP_RATIO = 0.98       # sell when price ≤ running_high × 0.98
 
+# Per-target default tuning (validated by 5-min backtests).
+# - SH.512480 (v1.2.0): VIX<19 + 2% trailing stop is optimal; its single-day
+#   >3% momentum days are only ~9%, so the trailing stop protects drawdowns.
+# - SH.588200 (科创芯片): VIX<20 + pure T+1 scheduled_close is optimal; its
+#   single-day >3% momentum days are ~21%, so a trailing stop sells the
+#   momentum prematurely. See reports/star_mapping_backtest_588200/回测报告.md.
+PER_TARGET_DEFAULTS: dict[str, dict[str, Any]] = {
+    "SH.512480": {
+        "vix_threshold": 19.0,
+        "trailing_stop_ratio": 0.98,
+        "exit_mode": "trailing_stop",
+    },
+    "SH.512760": {
+        "vix_threshold": 19.0,
+        "trailing_stop_ratio": 0.98,
+        "exit_mode": "trailing_stop",
+    },
+    "SH.588200": {
+        "vix_threshold": 20.0,
+        "trailing_stop_ratio": 0.98,
+        "exit_mode": "scheduled_close",
+    },
+}
+
+
+def _target_default(target_symbol: str, key: str) -> Any:
+    """Return a per-target default, falling back to the 512480 convention."""
+    return PER_TARGET_DEFAULTS.get(target_symbol, PER_TARGET_DEFAULTS["SH.512480"]).get(key)
+
 
 def map_us_features_to_next_cn_trading_day(
     us_features: pd.DataFrame,
@@ -305,6 +334,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         stamp_duty_sell: float = 0.0,
         min_commission: float = 5.0,
         price_tick: float = 0.001,
+        intraday_data_path: Path | str | None = None,
     ) -> SimulatedAccountConfig:
         return SimulatedAccountConfig(
             account_id="backtest",
@@ -313,7 +343,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             ledger_path="/dev/null",
             database_path="/dev/null",
             execution_model="single_etf_intraday",
-            intraday_data_path=Path(ETF_DB_PATH),
+            intraday_data_path=Path(str(intraday_data_path)) if intraday_data_path is not None else Path(ETF_DB_PATH),
             execution_price_mode="next_open",
             price_tick=float(price_tick),
             lot_size=int(lot_size),
@@ -481,6 +511,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
 
     def account_execution_params(self, strategy_cfg: dict[str, Any]) -> dict[str, Any]:
         cfg = strategy_cfg.get("cross_market_semiconductor_timing", {})
+        target_symbol = normalize_semiconductor_timing_target(cfg.get("target_symbol"))
 
         def first_value(key: str, default: float) -> float:
             raw = cfg.get(key, [default])
@@ -489,13 +520,14 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             return float(raw)
 
         return {
-            "target_symbol": normalize_semiconductor_timing_target(cfg.get("target_symbol")),
+            "target_symbol": target_symbol,
             "sox_threshold": first_value("sox_thresholds", 0.005),
-            "vix_threshold": first_value("vix_thresholds", 19.0),
+            "vix_threshold": first_value("vix_thresholds", _target_default(target_symbol, "vix_threshold")),
             "position_size": first_value("position_sizes", 1.0),
             "strong_signal_threshold": float(cfg.get("strong_signal_threshold", STRONG_SIGNAL_THRESHOLD)),
             "limit_order_discount": float(cfg.get("limit_order_discount", LIMIT_ORDER_DISCOUNT)),
-            "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", TRAILING_STOP_RATIO)),
+            "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
+            "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
             "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
             "fallback_time": str(cfg.get("fallback_time", "14:55")),
         }
@@ -528,7 +560,8 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
                         "position_size": float(pos),
                         "strong_signal_threshold": float(cfg.get("strong_signal_threshold", STRONG_SIGNAL_THRESHOLD)),
                         "limit_order_discount": float(cfg.get("limit_order_discount", LIMIT_ORDER_DISCOUNT)),
-                        "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", TRAILING_STOP_RATIO)),
+                        "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
+                        "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
                         "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
                         "fallback_time": str(cfg.get("fallback_time", "14:55")),
                     }
@@ -557,11 +590,12 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             best = {
                 "target_symbol": target_symbol,
                 "sox_threshold": 0.005,
-                "vix_threshold": 19.0,
+                "vix_threshold": float(cfg.get("vix_thresholds", [_target_default(target_symbol, "vix_threshold")])[0] if cfg.get("vix_thresholds") else _target_default(target_symbol, "vix_threshold")),
                 "position_size": 1.0,
                 "strong_signal_threshold": float(cfg.get("strong_signal_threshold", STRONG_SIGNAL_THRESHOLD)),
                 "limit_order_discount": float(cfg.get("limit_order_discount", LIMIT_ORDER_DISCOUNT)),
-                "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", TRAILING_STOP_RATIO)),
+                "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
+                "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
                 "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
                 "fallback_time": str(cfg.get("fallback_time", "14:55")),
                 "train_score": 0.0,
@@ -594,6 +628,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             cfg_params["limit_order_discount"] = float(params["limit_order_discount"])
         if "trailing_stop_ratio" in params:
             cfg_params["trailing_stop_ratio"] = float(params["trailing_stop_ratio"])
+        exit_mode = str(params.get("exit_mode", "trailing_stop"))
 
         return self._simulate_intraday(
             panel, params,
@@ -607,7 +642,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             f"SOX>{params.get('sox_threshold', 0.005):.1%},"
             f"VIX<{params.get('vix_threshold', 19):.0f},"
             f"pos={params.get('position_size', 1.0):.0%},"
-            f"trail={params.get('trailing_stop_ratio', TRAILING_STOP_RATIO)}"
+            f"exit={params.get('exit_mode', 'trailing_stop')}"
         )
 
     def build_metadata(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -623,6 +658,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             "weak_unfilled_action": str(params.get("weak_unfilled_action", "cancel")),
             "holding_sessions": 1,
             "trailing_drawdown": 1.0 - float(params.get("trailing_stop_ratio", TRAILING_STOP_RATIO)),
+            "exit_mode": str(params.get("exit_mode", "trailing_stop")),
             "fallback_time": str(params.get("fallback_time", "14:55")),
             "position_size": float(params.get("position_size", 1.0)),
         }
@@ -708,12 +744,18 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         d0 = d["date"].min()
         d1 = d["date"].max()
         target_symbol = normalize_semiconductor_timing_target(params.get("target_symbol"))
-        intraday = self._load_5min_bars(d0, d1, target_symbol)
+        etf_database_path = params.get("etf_database_path")
+        if etf_database_path is None:
+            etf_database_path = Path(ETF_DB_PATH)
+        elif not Path(str(etf_database_path)).is_absolute():
+            etf_database_path = Path.cwd() / Path(str(etf_database_path))
+        intraday = self._load_5min_bars(d0, d1, target_symbol, database_path=Path(str(etf_database_path)))
         account = self._account_config(
             initial_cash=100_000,
             slippage=slippage,
             commission=commission,
             stamp_duty_sell=stamp_duty_sell,
+            intraday_data_path=etf_database_path,
         )
         policy = SingleEtfIntradayPolicy(
             target_symbol=target_symbol,
@@ -727,6 +769,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             holding_sessions=1,
             trailing_drawdown=1.0 - trailing_stop_ratio,
             fallback_time=str(params.get("fallback_time", "14:55")),
+            exit_mode=str(params.get("exit_mode", "trailing_stop")),
             position_size=position_size,
         )
         result = run_single_etf_intraday_account_execution(

@@ -838,6 +838,28 @@ quant:
         stamp_duty_sell: 0.0
         transfer_fee_rate: 0.0
         min_trade_amount: 0.0
+      - account_id: "star_chip_us_sentiment_close"
+        name: "科创芯片美股情绪映射_收盘兑现版_v1"
+        enabled: true
+        initial_cash: 200000
+        strategy_id: "cross_market_semiconductor_timing_etf_v1"
+        strategy_params:
+          target_symbol: "SH.588200"
+        simulation_start_date: "2026-08-12"
+        ledger_path: "data/simulated_trading/phase0_daily_account_ledger_star_chip_close.csv"
+        database_path: "data/simulated_trading/simulated_accounts.sqlite"
+        execution_model: "single_etf_intraday"
+        intraday_data_path: "data/etf_history.sqlite"
+        execution_price_mode: "next_open"
+        max_participation_rate: 0.05
+        price_tick: 0.001
+        lot_size: 100
+        commission: 0.00025
+        min_commission: 5.0
+        slippage: 0.0001
+        stamp_duty_sell: 0.0
+        transfer_fee_rate: 0.0
+        min_trade_amount: 0.0
   execution:
     price_mode: "next_open"
     conservative_price_buffer: 0.001

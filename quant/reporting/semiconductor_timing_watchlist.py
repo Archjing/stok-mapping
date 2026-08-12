@@ -29,6 +29,26 @@ def supports_semiconductor_timing_watchlist(account: Any) -> bool:
     )
 
 
+# Per-target signal thresholds displayed on the watchlist.  Kept in sync with
+# quant/strategies/cross_market_semiconductor_timing.py PER_TARGET_DEFAULTS.
+# - SH.512480: VIX<19 + trailing stop (validated v1.2.0).
+# - SH.588200 (科创芯片): VIX<20 + pure T+1 scheduled_close (2026-08 5-min backtest).
+_WATCHLIST_PER_TARGET: dict[str, dict[str, Any]] = {
+    "SH.512480": {"sox_pct": 0.5, "vix": 19},
+    "SH.512760": {"sox_pct": 0.5, "vix": 19},
+    "SH.588200": {"sox_pct": 0.5, "vix": 20},
+}
+
+
+def _watchlist_thresholds(account: Any) -> tuple[float, float]:
+    """Return (sox_threshold_pct, vix_threshold) for the account's target ETF."""
+    target = str((getattr(account, "strategy_params", {}) or {}).get("target_symbol", ""))
+    if target in _WATCHLIST_PER_TARGET:
+        item = _WATCHLIST_PER_TARGET[target]
+        return float(item["sox_pct"]), float(item["vix"])
+    return 0.5, 19.0
+
+
 def _resolve_path(root: Path, value: str, default: str) -> Path:
     path = Path(value or default)
     return path if path.is_absolute() else root / path
@@ -204,6 +224,7 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
     research_context, research_context_error = _load_research_market_context(root, config)
     news, latest_ingested_at, news_error = _load_us_market_news(root, config)
     account_name = str(getattr(account, "name", "半导体ETF美股情绪映射择时_v1"))
+    sox_pct, vix_th = _watchlist_thresholds(account)
     title = f"{account_name}｜盘前观察池"
     if snapshot:
         market_html = f"""
@@ -239,7 +260,7 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
   <section class="bill-section">
     <h2>SOX / VIX 已完成交易日行情</h2>
     {market_html}
-    <p>当前执行信号：SOX &gt; 0.5% 且 VIX &lt; 19；SOX &gt; 1.0% 为强信号。</p>
+    <p>当前执行信号：SOX &gt; {sox_pct:.1f}% 且 VIX &lt; {vix_th:.0f}；SOX &gt; 1.0% 为强信号。</p>
   </section>
   <section class="bill-section">
     <h2>研究市场背景</h2>

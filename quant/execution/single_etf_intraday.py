@@ -39,6 +39,7 @@ class SingleEtfIntradayPolicy:
     holding_sessions: int = 1
     trailing_drawdown: float = 0.02
     fallback_time: str = "14:55"
+    exit_mode: str = "trailing_stop"  # "trailing_stop" | "scheduled_close"
     position_size: float = 1.0
     strong_position_size: float | None = None
     weak_position_size: float | None = None
@@ -50,6 +51,8 @@ class SingleEtfIntradayPolicy:
             raise ValueError("executable mode only supports weak_unfilled_action='cancel'")
         if self.holding_sessions < 1:
             raise ValueError("holding_sessions must be at least 1")
+        if self.exit_mode not in ("trailing_stop", "scheduled_close"):
+            raise ValueError("exit_mode must be 'trailing_stop' or 'scheduled_close'")
         if not 0.0 < self.trailing_drawdown < 1.0:
             raise ValueError("trailing_drawdown must be between 0 and 1")
         if not 0.0 <= self.weak_limit_discount < 1.0:
@@ -82,6 +85,7 @@ class SingleEtfIntradayPolicy:
             holding_sessions=int(raw.get("holding_sessions", 1)),
             trailing_drawdown=float(raw.get("trailing_drawdown", 0.02)),
             fallback_time=str(raw.get("fallback_time", "14:55")),
+            exit_mode=str(raw.get("exit_mode", "trailing_stop")),
             position_size=float(raw.get("position_size", 1.0)),
             strong_position_size=(
                 float(raw["strong_position_size"])
@@ -226,6 +230,11 @@ def evaluate_trailing_exit(
     so OHLC data never assumes that the high occurred before the low.
     Slippage is accounted for by the account cost model rather than changing
     the reported market fill price.
+
+    ``exit_mode="scheduled_close"`` skips the trailing-stop logic entirely and
+    sells at the configured fallback time (14:55) close — the correct design
+    for high-momentum targets (e.g. SH.588200) whose single-day rallies make a
+    trailing stop sell the momentum prematurely.
     """
     _ = slippage
     day_bars = _normalize_intraday_bars(bars)
@@ -234,6 +243,15 @@ def evaluate_trailing_exit(
         return ExitDecision("data_missing", None, None, "missing_exit_intraday_bars", high_watermark)
 
     fallback = policy.fallback_time
+    if policy.exit_mode == "scheduled_close":
+        # Pure T+1 close-out: no trailing, sell at fallback_time (or last bar).
+        last_bar = day_bars.iloc[-1]
+        last_time = pd.Timestamp(last_bar["time"])
+        if last_time.strftime("%H:%M") < fallback:
+            return ExitDecision("data_missing", None, None, "missing_fallback_bar", high_watermark)
+        sell_px = round_price_to_tick(float(last_bar["close"]), "sell", price_tick)
+        return ExitDecision("filled", sell_px, last_time, "scheduled_exit", high_watermark)
+
     for _, bar in day_bars.iterrows():
         bar_time = pd.Timestamp(bar["time"])
         stop_price = round_price_to_tick(
