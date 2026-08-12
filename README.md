@@ -20,7 +20,7 @@
 准入报告、模拟账本、盘前观察池与静态站点
 ```
 
-项目根目录的 `./runit` 等价于 `./.venv/bin/python -m phase0.cli`。模块与命令目前仍使用 `phase0` 名称；迁移到 `quant` 是计划中的重命名，尚未实施。
+项目根目录的 `./runit` 等价于 `./.venv/bin/python -m quant.cli`。应用代码统一使用 `quant` 命名空间；历史产物（如 `reports/phase0_*`、`data/simulated_trading/phase0_daily_account_ledger.csv`）的名称保持不变，`python -m phase0.cli` 仅作为临时兼容转发入口。
 
 ## 当前能力（2026-08-12）
 
@@ -89,7 +89,7 @@
 - [架构说明](docs/PROJECT_ARCHITECTURE_OVERVIEW.md)：模块边界、数据流、账户执行和运维边界。
 - [开发计划](docs/DEVELOPMENT_PLAN.md)：完成项、当前优先级、验收门槛和技术债。
 - [编码规范](docs/CODING_STYLE_RULES.md)：Python、数据、策略、测试和配置的工程约束。
-- [CLI 使用说明](docs/PHASE0_CLI_USER_GUIDE.md)：当前命令、参数和站点发布配置。
+- [CLI 使用说明](docs/QUANT_CLI_USER_GUIDE.md)：当前命令、参数和站点发布配置。
 - [策略研发规范](docs/STRATEGY_DEVELOPMENT_GUIDELINES.md)：策略从假设到 admission 的最小研发流程。
 - [文档索引](docs/README.md)：现行文档、策略说明与历史归档的边界。
 

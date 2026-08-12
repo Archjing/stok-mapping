@@ -2,7 +2,7 @@
 
 > 面向对象：项目维护者、策略研究者与后续实现者
 > 最后审视：2026-08-12
-> 当前实现命名：`phase0`（`quant` 是规划中的重命名，不是现有 import 或 CLI）
+> 当前实现命名：`quant`（`phase0` 仅保留临时 CLI 兼容转发，其余 `phase0.*` 领域模块不再作为第二命名空间支持）
 
 ## 1. 系统定位与边界
 
@@ -107,7 +107,7 @@ A 股本地库
 
 ### 5.1 维护编排
 
-系统 cron 只调用 `scripts/run_project_scheduler.sh`，由 `phase0.cli maintain tick` 根据时间窗、锁、重试状态与交易日条件决定执行。已知注册任务包括：
+系统 cron 只调用 `scripts/run_project_scheduler.sh`，由 `quant.cli maintain tick` 根据时间窗、锁、重试状态与交易日条件决定执行。已知注册任务包括：
 
 - `06:30`：`us_market_news` RSS 元数据采集；
 - `07:20`：`brief watchlist --all-accounts`；
@@ -118,7 +118,7 @@ A 股本地库
 
 ### 5.2 静态站点与盘前页面
 
-`phase0/reporting/quant_static_site.py` 生成 `reports/static_site/quant/`，包括账户页、资产/成交信息、盘前观察池和研究比较图。半导体账户页面展示 SOX/VIX 和 `us_market_news` 的来源、发布时间、标题、URL；新闻只做人工研判。
+`quant/reporting/quant_static_site.py` 生成 `reports/static_site/quant/`，包括账户页、资产/成交信息、盘前观察池和研究比较图。半导体账户页面展示 SOX/VIX 和 `us_market_news` 的来源、发布时间、标题、URL；新闻只做人工研判。
 
 `site build` 只生成本地文件；`site sync` 与 `site publish` 通过 rsync 同步。远端参数从 `.env` 读取：
 
@@ -151,12 +151,12 @@ QUANT_SITE_SYNC_PASSWORD=...
 | P1 | 多市场交易日历 | A 股、US、HK 的独立交易日、半日市和异常休市判断 |
 | P1 | 统一策略治理 | 将专用单 ETF 执行的验证口径与组合 admission 并列管理，而不制造伪可比排名 |
 | P2 | `CN_PANIC_HO30` 工程化 | 去除硬编码路径，接入配置/CLI/审计/调度，并先完成数据质量验证 |
-| P2 | `phase0 → quant` 重命名 | 分阶段兼容迁移 imports、CLI、路径和文档，不破坏现有命令 |
+| P2 | `quant` 命名空间收尾 | 观察期后移除 `stok-phase0` 与 `phase0.cli` 兼容转发（迁移计划 Task 12），不破坏现有命令 |
 
 ## 8. 维护入口
 
 - [开发计划](DEVELOPMENT_PLAN.md)：状态、优先级和验收门槛。
 - [编码规范](CODING_STYLE_RULES.md)：实施边界与测试要求。
-- [CLI 使用说明](PHASE0_CLI_USER_GUIDE.md)：实际命令和参数。
+- [CLI 使用说明](QUANT_CLI_USER_GUIDE.md)：实际命令和参数。
 - [数据资产说明](../data/README.md)：数据库、回填和价格口径。
 - [策略研发规范](STRATEGY_DEVELOPMENT_GUIDELINES.md)：从研究假设到准入的流程。

@@ -2,7 +2,7 @@
 
 > 版本：v0.1（草案）
 > 日期：2026-08-13
-> 状态：待评审。本文档在"策略验证优先于平台化"的主线约束下，规划把现有 `phase0` CLI 能力 API 化，并在保留现有静态站点视觉（Belafonte Day/Night）的基础上，演进为一个可交互的量化研究控制台。
+> 状态：待评审。本文档在"策略验证优先于平台化"的主线约束下，规划把现有 `quant` CLI 能力 API 化，并在保留现有静态站点视觉（Belafonte Day/Night）的基础上，演进为一个可交互的量化研究控制台。
 > 关联文档：[DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md)（唯一事实源）、[PROJECT_ARCHITECTURE_OVERVIEW.md](PROJECT_ARCHITECTURE_OVERVIEW.md)（架构细节）。
 
 ---
@@ -10,7 +10,7 @@
 ## 0. TL;DR
 
 - **定位**：本地优先的"研究控制台"。它把 `./runit` 下已经能跑的命令变成可点击、可填参、可看进度的 Web 界面，**不改写策略口径、不新增下单能力、不碰券商**。它服务于"让策略验证更快、更可观测"，而不是把系统变成面向外部的 SaaS。
-- **技术栈**：后端 FastAPI（复用现有 `phase0` 纯 Python 函数，包一层 API，不迁移核心逻辑）；前端 Vite + React + TypeScript + Tailwind，用 CSS 变量 1:1 复刻现有 `phase0/reporting/static/style.css` 的 Belafonte 主题；异步任务用本地进程池 + SQLite 任务表，不引入 Redis。
+- **技术栈**：后端 FastAPI（复用现有 `quant` 纯 Python 函数，包一层 API，不迁移核心逻辑）；前端 Vite + React + TypeScript + Tailwind，用 CSS 变量 1:1 复刻现有 `quant/reporting/static/style.css` 的 Belafonte 主题；异步任务用本地进程池 + SQLite 任务表，不引入 Redis。
 - **关键取舍**：先做"读"（看账户、看回测、看情报、看报告），后做"写"（建账户、跑回测、调参数），最后做"实时"（盘中刷新、WebSocket 推送）。写操作全部走**任务队列**，因为一次 walk-forward 或回填是分钟级长任务，HTTP 请求不能同步等待。
 - **分三阶段**：M1 只读控制台（1–2 周）→ M2 交互式研究/回测/账户管理（2–4 周）→ M3 盘中实时与观测（按需）。
 
@@ -40,7 +40,7 @@
 - 不新增策略类型或改变任何策略口径（这是"策略验证"主线的事，与平台无关）。
 - 不做多用户、权限、租户。单机本地工具，用户就是本机研究员。
 - 不做云部署 / 容器编排 / 横向扩展。
-- `phase0 → quant` 重命名不在本计划内（保持 `phase0` 名称，避免破坏现有命令）。
+- `phase0 → quant` 重命名已完成（`quant` 是唯一应用命名空间）。Web 层统一 import `quant.*`；`phase0.cli` 仅保留为临时兼容转发入口。
 
 ### 1.4 成功标准（Meta）
 
@@ -53,7 +53,7 @@
 
 ### 2.1 视觉资产
 
-- 静态站点在 `reports/static_site/quant/`，主题 CSS 源文件在 `phase0/reporting/static/style.css`（499 行）。
+- 静态站点在 `reports/static_site/quant/`，主题 CSS 源文件在 `quant/reporting/static/style.css`（499 行）。
 - 主题名 **Belafonte Day / Belafonte Night**（源自 Jan T. Sott 的 macOS Terminal 配色）。
   - Light：暖羊皮纸底 `#fffaed`，卡片 `#ded8c8`，正文 `#45373c`，强调 `#426a79`。
   - Dark：深酒红底 `#20111b`，正文 `#b88f55`。
@@ -63,18 +63,18 @@
 - 涨红跌绿是项目明确口径（`PROJECT_ARCHITECTURE_OVERVIEW.md`："上涨使用红色、下跌使用绿色"）；表格 `buy/sell/hold` 行则用 `--focus-row` / `--red-row` 区分语义。前端必须沿用这套色语义，不随图表库默认色。
 - **结论**：这些设计 token 可以直接搬进前端设计系统（见 §6）。
 
-### 2.2 后端能力（全部在 `phase0/`，纯 Python，无任何 web 框架）
+### 2.2 后端能力（全部在 `quant/`，纯 Python，无任何 web 框架）
 
 | 领域 | 模块 | 可 API 化的能力 |
 | --- | --- | --- |
-| 数据治理 | `phase0/data_governance/*` | `update-history`、`update-us/hk-market-history`、`backfill-etf-history`、`resolve-etf-universe`、`db-health`、审计 |
-| 策略研究 | `phase0/walk_forward.py`、`phase0/research/*`、`phase0/strategies/*` | walk-forward 回测、compare、factor-effectiveness、overfit-diagnostic、execution-gate、admission、failure-attribution |
-| 策略注册 | `phase0/strategies/registry.py` | `available_strategies()` 枚举 32 个已注册策略（分布在 `strategies/` 下，部分文件定义多个变体） |
-| 模拟执行 | `phase0/execution/*` | `accounts.py`（日频目标权重）、`single_etf_intraday.py`（5 分钟 ETF）、`strategy_ledger.py` |
-| 账户 | `phase0/execution/accounts.py` + `config.yaml: accounts` | 账户配置、台账、账单、`intraday-account --recover-missing` |
-| 情报 | `phase0/intelligence/*` | `collect`、`import-local`、`review-candidates`、`validate`；`ai_corpus` 查询 |
-| 交付 | `phase0/reporting/*` | 观察池、简报、对照图、`quant_static_site.py` 的 build/publish |
-| 运维 | `phase0/maintenance_orchestrator.py` | `maintain tick/status/run/stop/resume/supervise` |
+| 数据治理 | `quant/data_governance/*` | `update-history`、`update-us/hk-market-history`、`backfill-etf-history`、`resolve-etf-universe`、`db-health`、审计 |
+| 策略研究 | `quant/walk_forward.py`、`quant/research/*`、`quant/strategies/*` | walk-forward 回测、compare、factor-effectiveness、overfit-diagnostic、execution-gate、admission、failure-attribution |
+| 策略注册 | `quant/strategies/registry.py` | `available_strategies()` 枚举 32 个已注册策略（分布在 `strategies/` 下，部分文件定义多个变体） |
+| 模拟执行 | `quant/execution/*` | `accounts.py`（日频目标权重）、`single_etf_intraday.py`（5 分钟 ETF）、`strategy_ledger.py` |
+| 账户 | `quant/execution/accounts.py` + `config.yaml: accounts` | 账户配置、台账、账单、`intraday-account --recover-missing` |
+| 情报 | `quant/intelligence/*` | `collect`、`import-local`、`review-candidates`、`validate`；`ai_corpus` 查询 |
+| 交付 | `quant/reporting/*` | 观察池、简报、对照图、`quant_static_site.py` 的 build/publish |
+| 运维 | `quant/maintenance_orchestrator.py` | `maintain tick/status/run/stop/resume/supervise` |
 
 关键结论：**核心业务逻辑都是"输入 config + 参数 → 产出文件/报告/DB 行"的纯函数，没有全局可变状态**。这意味着 API 层可以做得很薄——大部分端点只是"把 HTTP 参数翻译成函数调用，把返回值序列化成 JSON"。
 
@@ -90,7 +90,7 @@
 
 ### D1. 单体 FastAPI 应用 + 薄 API 层，不重写核心逻辑
 
-后端是一个 FastAPI app，直接 import `phase0.*` 的函数。理由：
+后端是一个 FastAPI app，直接 import `quant.*` 的函数。理由：
 
 - 核心逻辑已经在 CLI 里验证过，重写只会引入口径漂移。
 - FastAPI 的 Pydantic 模型可以用来做参数校验，把 CLI 的 argparse 约束搬到 HTTP 层。
@@ -111,7 +111,7 @@
 
 - 一个 uvicorn 进程常驻，负责 HTTP + 进程池。
 - **长任务并发上限**：CPU 密集任务（walk-forward/admission）并发上限设为 `max(1, cpu_count-1)`，防止拖垮本机。
-- **与现有 cron 的关系**：现有 `scripts/run_project_scheduler.sh` → `phase0.cli maintain tick` 的调度链路**保持不变**。Web 的任务队列是"用户主动触发的任务"，调度链是"系统定时任务"，两者读写同一套 DB 与报告目录，通过文件锁（现有 `maintain` 已有锁机制）避免冲突。
+- **与现有 cron 的关系**：现有 `scripts/run_project_scheduler.sh` → `quant.cli maintain tick` 的调度链路**保持不变**。Web 的任务队列是"用户主动触发的任务"，调度链是"系统定时任务"，两者读写同一套 DB 与报告目录，通过文件锁（现有 `maintain` 已有锁机制）避免冲突。
 
 ### D4. 数据一致性：单一事实源仍是 `config.yaml` + SQLite + `reports/`
 
@@ -145,7 +145,7 @@
 
 | 组件 | 选择 | 理由 |
 | --- | --- | --- |
-| Web 框架 | **FastAPI** | 与现有 `phase0` 纯函数无缝集成；Pydantic 校验参数；自动 OpenAPI 文档；异步友好（SSE/WS 简单） |
+| Web 框架 | **FastAPI** | 与现有 `quant` 纯函数无缝集成；Pydantic 校验参数；自动 OpenAPI 文档；异步友好（SSE/WS 简单） |
 | 服务 | **uvicorn[standard]** | FastAPI 官方配套；已作为传递依赖存在 |
 | 任务执行 | `ProcessPoolExecutor`（标准库） | 无新依赖，进程隔离保护内存与 GIL |
 | 任务状态 | SQLite（新增 `web_jobs` 表） | 与项目 SQLite-first 一致 |
@@ -215,7 +215,7 @@ Job ──(进度)──> web_jobs 表 ──(SSE)──> 前端
 
 ```text
 stok-mapping/
-├─ phase0/                     # 现有核心（不动）
+├─ quant/                     # 现有核心（不动）
 ├─ web/                        # 新增
 │  ├─ app/
 │  │  ├─ main.py               # FastAPI app 工厂
@@ -248,7 +248,7 @@ stok-mapping/
 ### 6.2 请求流（读）
 
 ```text
-Browser ──GET /api/accounts──> FastAPI ──import phase0──> 读 config/SQLite/报告
+Browser ──GET /api/accounts──> FastAPI ──import quant──> 读 config/SQLite/报告
          <──JSON─────────────            <──纯函数返回──
 ```
 
@@ -256,7 +256,7 @@ Browser ──GET /api/accounts──> FastAPI ──import phase0──> 读 co
 
 ```text
 Browser ──POST /api/runs──> FastAPI 校验→入队(web_jobs)→返回 202 {job_id}
-Worker（进程池）──运行 phase0 函数──> 写 reports/ + run_index + 进度
+Worker（进程池）──运行 quant 函数──> 写 reports/ + run_index + 进度
 Browser ──GET /api/jobs/{id}（或 SSE）──> 轮询进度/结果
 ```
 
@@ -278,7 +278,7 @@ Browser ──GET /api/jobs/{id}（或 SSE）──> 轮询进度/结果
 | GET | `/api/strategies` | 列出可用策略（含元数据） | `strategies/registry` |
 | GET | `/api/strategies/{id}` | 单策略详情 + 支持的报告类型 | — |
 | GET | `/api/presets` | walk-forward presets 与 admission strategy_sets | `strategy-admission --presets` 描述 |
-| POST | `/api/runs/walk-forward` | 发起一次回测/compare | `run` / `phase0_run` |
+| POST | `/api/runs/walk-forward` | 发起一次回测/compare | `run` / `pipeline_run` |
 | POST | `/api/runs/admission` | 发起 admission | `strategy-admission` |
 | POST | `/api/runs/diagnostic` | overfit / execution-gate / failure-attribution | `overfit-diagnostic` 等 |
 | GET | `/api/runs` | 运行索引（可过滤 kind/strategy/状态，支持对比） | 新增 `run_index` |
@@ -440,7 +440,7 @@ Browser ──GET /api/jobs/{id}（或 SSE）──> 轮询进度/结果
 | 前端复刻视觉走样 | 与静态站点不一致 | 用同一份 CSS 变量源；抽 `theme/` 单一 token 文件；视觉验收对照截图 |
 | 密钥/密码泄漏到 Web | 安全 | 密钥仍只从 `.env` 读；Bearer token 保护写端点；`publish` 按钮后端用 `SSH_ASKPASS`，前端不碰密码 |
 | 进度推送的钩子不够细 | 任务详情"假死" | 复用 `walk_forward.TraceCallback`；不足则在 CLI 层补 trace 点（同时惠及 CLI） |
-| `phase0 → quant` 重命名未来发生 | Web import 路径变更 | Web 层全部 import 集中在 `adapters.py`，重命名时只改一处 |
+| `quant` 命名空间后续演进（如移除 `phase0.cli` 兼容转发） | Web import 路径变更 | Web 层全部 import 集中在 `adapters.py`，改动只在一处 |
 
 **建议在开工前与项目主人确认的点**：
 

@@ -9,7 +9,7 @@
 | [PROJECT_ARCHITECTURE_OVERVIEW.md](PROJECT_ARCHITECTURE_OVERVIEW.md) | 系统边界、模块职责、数据流、运维与架构债务 | 模块、数据流或运行边界变化时 |
 | [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 已完成能力、当前优先级、验收门槛和下一阶段 | 计划状态或研发优先级变化时 |
 | [CODING_STYLE_RULES.md](CODING_STYLE_RULES.md) | Python、数据治理、策略、配置、测试和文档规范 | 形成稳定工程约束时 |
-| [PHASE0_CLI_USER_GUIDE.md](PHASE0_CLI_USER_GUIDE.md) | 当前 CLI 的操作手册 | 命令、参数或运行行为变化时 |
+| [QUANT_CLI_USER_GUIDE.md](QUANT_CLI_USER_GUIDE.md) | 当前 CLI 的操作手册 | 命令、参数或运行行为变化时 |
 | [STRATEGY_DEVELOPMENT_GUIDELINES.md](STRATEGY_DEVELOPMENT_GUIDELINES.md) | 策略研发、回测、admission 与模拟账户准则 | 策略治理规则变化时 |
 
 ## 策略说明与研究接口

@@ -14,13 +14,13 @@
 
 | 层 | 职责 | 禁止事项 |
 | --- | --- | --- |
-| `phase0/cli_commands/` | 参数解析、路由、用户输出 | 不实现领域算法或直接写复杂业务逻辑 |
-| `phase0/data_access/` | 已落库数据读取、provider 读取适配 | 不隐藏数据写入或策略决策 |
-| `phase0/data_governance/` | 更新、回填、质量检查、审计 | 不把临时网络响应当作策略结果 |
-| `phase0/strategies/` | 信号定义与策略参数 | 不直接联网、不写报告、不直接写账户账本 |
-| `phase0/research/` | walk-forward、admission、诊断 | 不绕开价格/as-of/成本口径 |
-| `phase0/execution/` | 模拟订单、成交、账本状态 | 不使用未来价格或静默修复不一致账本 |
-| `phase0/reporting/` | 报告、静态页、可视化 | 不反向改变策略、数据或账户状态 |
+| `quant/cli_commands/` | 参数解析、路由、用户输出 | 不实现领域算法或直接写复杂业务逻辑 |
+| `quant/data_access/` | 已落库数据读取、provider 读取适配 | 不隐藏数据写入或策略决策 |
+| `quant/data_governance/` | 更新、回填、质量检查、审计 | 不把临时网络响应当作策略结果 |
+| `quant/strategies/` | 信号定义与策略参数 | 不直接联网、不写报告、不直接写账户账本 |
+| `quant/research/` | walk-forward、admission、诊断 | 不绕开价格/as-of/成本口径 |
+| `quant/execution/` | 模拟订单、成交、账本状态 | 不使用未来价格或静默修复不一致账本 |
+| `quant/reporting/` | 报告、静态页、可视化 | 不反向改变策略、数据或账户状态 |
 
 依赖应从 CLI/交付层向领域和数据层单向流动。为兼容旧路径创建 alias shim 时，必须有迁移计划和兼容测试；不要长期复制两份业务实现。
 
