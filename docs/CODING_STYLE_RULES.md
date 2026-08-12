@@ -1,240 +1,80 @@
-# Coding Style Rules
+# stok-mapping 编码规范
 
-## General Principles
+> 本文是项目的长期工程约束。架构边界见 [PROJECT_ARCHITECTURE_OVERVIEW.md](PROJECT_ARCHITECTURE_OVERVIEW.md)，策略验证流程见 [STRATEGY_DEVELOPMENT_GUIDELINES.md](STRATEGY_DEVELOPMENT_GUIDELINES.md)。
 
-* 优先可读性，其次性能，其次优雅性
-* 避免隐式行为，所有关键逻辑必须显式表达
-* 保持函数与模块职责单一（Single Responsibility Principle）
-* 禁止“聪明代码”（clever code），允许“直白冗长代码”
+## 1. 基本原则
 
----
+- 优先正确性、可追溯性和可读性，再考虑抽象与性能。
+- 新代码必须解决明确的当前问题；避免为单一用例搭建通用框架。
+- 关键业务规则显式表达，命名说明业务意义；注释解释“为什么”和约束，不逐行复述代码。
+- 保持小而可验证的改动；不顺带重写无关模块或覆盖用户已有改动。
+- 代码、配置、报告和数据必须区分：运行资产不等于版本化源文件。
 
-## KISS Principle
+## 2. 模块与依赖
 
-KISS means: Keep It Simple and Straightforward.
+| 层 | 职责 | 禁止事项 |
+| --- | --- | --- |
+| `phase0/cli_commands/` | 参数解析、路由、用户输出 | 不实现领域算法或直接写复杂业务逻辑 |
+| `phase0/data_access/` | 已落库数据读取、provider 读取适配 | 不隐藏数据写入或策略决策 |
+| `phase0/data_governance/` | 更新、回填、质量检查、审计 | 不把临时网络响应当作策略结果 |
+| `phase0/strategies/` | 信号定义与策略参数 | 不直接联网、不写报告、不直接写账户账本 |
+| `phase0/research/` | walk-forward、admission、诊断 | 不绕开价格/as-of/成本口径 |
+| `phase0/execution/` | 模拟订单、成交、账本状态 | 不使用未来价格或静默修复不一致账本 |
+| `phase0/reporting/` | 报告、静态页、可视化 | 不反向改变策略、数据或账户状态 |
 
-在本项目中，KISS 是工程约束，不是口号：
+依赖应从 CLI/交付层向领域和数据层单向流动。为兼容旧路径创建 alias shim 时，必须有迁移计划和兼容测试；不要长期复制两份业务实现。
 
-* 能用清晰函数解决的，不先抽象成框架
-* 能用显式流程表达的，不用隐式 hook / callback / magic registry
-* 能复用现有 CLI、模块和数据表的，不另起一套并行系统
-* 新抽象必须减少真实重复、降低维护成本或固化稳定边界
-* 复杂方案必须说明它解决的具体问题，并有测试或验证结果支撑
+## 3. Python 实现
 
-代码评审时，以下情况默认要求回退或重做：
+- 使用类型标注，尤其是公开函数、配置对象、时间/价格/路径参数和返回结构。
+- 业务值使用具名变量、`dataclass` 或明确的配置对象；避免不解释的字面量和位置参数堆叠。
+- 函数保持单一职责。复杂流程按“读取/校验/计算/写入/报告”拆分，允许为清晰性略长于固定行数限制。
+- I/O、数据库事务、网络调用和时间依赖必须在边界层显式可见，便于测试替换。
+- 捕获异常时附加 provider、symbol、日期范围、账户/任务 ID 等上下文；不得 `except Exception: pass`。
+- 对不可恢复的数据缺失、口径冲突或账本不一致返回明确失败状态/退出码，不用静默 fallback 掩盖。
 
-* 为单一用例创建通用框架
-* 用过度参数化隐藏真实业务规则
-* 为了“优雅”牺牲可读性、可调试性或可追溯性
-* 在没有稳定需求前引入多层继承、插件系统、后台队列或外部服务
+## 4. 数据、时间线与策略规则
 
----
+### 数据治理
 
-## Naming Conventions
+- 策略和报告优先读取本地已审计数据；禁止在策略计算路径临时联网取价。
+- 明确区分原始交易价格、研究复权价格和估值价格。`qfq_asof` 仅用于研究，成交模拟使用可在当时获得的执行价格。
+- 不得 ffill/bfill 缺失复权因子、分钟 bar 或关键交易日来伪造可用性；必须报告缺失与降级。
+- 所有外部源更新都要记录 source、时间、覆盖、失败与 freshness；provider “返回空”不能等同于“已经最新”。
+- SQLite、原始数据、日志和报告默认 local-only，不提交 Git。
 
-* 使用语义明确的命名，而非缩写
-* 函数名必须是动词开头（createUser, fetchData）
-* 布尔变量必须表达状态（isLoaded, hasPermission）
-* 避免单字母变量（循环索引除外）
+### 无未来函数
 
----
+- `as_of_date` 之前可见的数据才可参与特征、信号与订单决策。
+- 美股日线映射 A 股时，源市场必须已收盘，目标交易日必须严格晚于源日期。
+- 分钟规则只能使用已完成 bar；日内限价订单的成交/撤销按当时订单状态处理，不能用收盘后信息回填开盘成交。
+- 盘后恢复可以重放完整数据核验，但若与实时产物冲突必须停止并审计，不能静默覆盖。
 
-## Function Design
+### 策略配置
 
-* 单函数建议 ≤ 50 行（超过必须拆分）
-* 参数 ≤ 4 个，超过则使用对象封装
-* 避免深层嵌套（建议 ≤ 3 层）
-* 禁止副作用隐藏在函数内部
+- 可调参数、标的、账户现金、执行模型和受控 universe 写入 `config.yaml`；不要硬编码在脚本。
+- 新 ETF 或新策略先声明数据覆盖和验证状态；白名单出现不代表自动可交易。
+- `enabled: false` 应真正关闭该账户相关的运行任务；避免孤立的定时任务继续写无归属数据。
 
----
+## 5. 测试与验证
 
-## Error Handling
+- 修改计算逻辑时添加或更新单元测试：正常路径、边界值、错误输入和回归场景。
+- 修改 CLI 时覆盖参数解析、成功/失败退出码和关键用户可见文本。
+- 修改数据更新时覆盖：空响应、重复键、日期缺口、失败任务、as-of/freshness 边界。
+- 修改执行逻辑时覆盖：开盘建单、限价成交/撤单、T+1、止损、尾盘退出、空仓、缺分钟数据和恢复不一致。
+- 修改静态页时至少验证构建结果、关键页面/JSON 字段与链接；不要把“构建成功”误写为“远端发布成功”。
+- 提交前运行与改动相称的测试并执行 `git diff --check`。无法运行的验证要说明原因、未验证范围和风险。
 
-* 所有 I/O 必须显式处理 error
-* 不允许 silent failure（吞异常）
-* 错误必须包含上下文信息
-* 使用统一 error format（code + message + context）
+## 6. 配置、密钥与发布
 
----
+- `config.yaml` 保存非敏感、可版本化的策略与运行参数；`.env` 保存 token、密码、远端地址等环境差异项。
+- 禁止在代码、配置、文档、fixture、日志或 commit message 中写入密钥。
+- 子进程参数不得携带密码；站点同步使用临时 `SSH_ASKPASS`，并确保临时文件权限最小化和清理。
+- 所有 rsync 发布目标必须限制在 `/quant/` 子目录；禁止把目录根或 SQLite 同步出去。
 
-## State Management
+## 7. 文档与提交
 
-* state 必须集中管理，不允许分散 mutation
-* 禁止跨模块隐式修改共享状态
-* 所有 state change 必须可追踪
-
----
-
-# Architecture Constraints
-
-## Core Architecture Principles
-
-* 强制模块化（Modular First）
-* 分层清晰：UI / Service / Domain / Infrastructure
-* 禁止跨层调用（UI → DB 直接访问禁止）
-
----
-
-## Dependency Rules
-
-* 依赖方向必须单向（top-down）
-* domain 层不得依赖 infrastructure
-* service 层不得依赖 UI
-
----
-
-## System Design Constraints
-
-* 所有系统必须支持水平扩展（stateless first）
-* 数据访问必须抽象 repository layer
-* 外部服务调用必须封装 adapter
-
----
-
-## Performance Constraints
-
-* 默认考虑 O(n) 或更优
-* 避免在 request path 中执行重计算
-* 所有 cache 必须有失效策略
-
----
-
-## Security Constraints
-
-* 所有 input 必须 validate + sanitize
-* 默认最小权限原则（least privilege）
-* 敏感数据禁止 log
-
----
-
-# Repo Conventions
-
-## Directory Structure
-
-* `/src`：核心业务代码
-* `/domain`：领域模型
-* `/services`：业务服务层
-* `/infra`：基础设施（DB, API, cache）
-* `/tests`：测试代码
-* `/scripts`：工具脚本
-
----
-
-## File Naming
-
-* kebab-case（user-service.ts）
-* 测试文件：*.test.ts
-* 工具文件：*.util.ts 或 *.helper.ts（尽量减少）
-
----
-
-## Module Rules
-
-* 一个模块一个明确职责
-* index 文件仅用于 re-export，不写逻辑
-* 禁止循环依赖（必须显式检测）
-
----
-
-## Documentation
-
-* 每个模块必须有 README 或 header comment
-* API 必须有 input/output 示例
-* 复杂逻辑必须解释“why not just what”
-* 中文注释应按程序逻辑整合为段落，说明“这一段为什么这样设计、约束是什么、风险在哪里”，不要为每个显而易见的变量逐行复述代码。
-* 量化策略、数据治理、回测和调度代码中的关键段落应优先解释：数据口径、point-in-time 边界、未来函数规避、成本/换手处理、fallback 行为和验收风险。
-* 注释密度以帮助下一位维护者快速理解流程为准；如果注释比代码更难读，应收敛为阶段性说明或迁移到文档。
-
----
-
-# Workflow (Test / Lint / Commit)
-
-## Development Workflow
-
-标准流程必须遵循：
-
-1. 理解需求
-2. 设计方案（可选但推荐）
-3. 实现最小可运行版本
-4. 补齐边界情况
-5. 添加测试
-6. 运行 lint + format
-7. 提交代码
-
----
-
-## Testing Rules
-
-* 新功能必须附带测试
-* bug fix 必须添加 regression test
-* 测试必须覆盖：
-
-  * 正常路径
-  * 边界条件
-  * 错误输入
-
----
-
-## Test Types
-
-* Unit tests：逻辑验证
-* Integration tests：模块交互
-* E2E tests：关键用户路径
-
----
-
-## Lint Rules
-
-* lint 必须 zero warning 才允许 commit
-* format 自动化（prettier / equivalent）
-* 禁止手动格式化代码风格
-
----
-
-## Commit Conventions
-
-采用 conventional commits：
-
-* feat: 新功能
-* fix: bug 修复
-* refactor: 重构（无行为变化）
-* test: 测试相关
-* chore: 工程/工具链
-* docs: 文档
-
----
-
-## Commit Rules
-
-* 一个 commit 只做一件事
-* commit message 必须描述“做了什么 + 为什么”
-* 禁止大杂烩 commit
-
----
-
-## Pull Request Rules
-
-* 必须有描述（problem / solution / impact）
-* 必须通过 CI
-* 必须 review 才能 merge
-
----
-
-# Execution Discipline
-
-所有代码变更必须满足：
-
-* 可运行
-* 可测试
-* 可回滚
-* 可解释
-
-任何“临时 hack”必须标记 TODO + reason
-
----
-
-# Non-Negotiable Principle
-
-如果存在更简单方案：
-
-优先选择更简单的方案，而不是更“高级”的方案。
+- 架构变更更新架构说明；能力状态或优先级变化更新开发计划；操作行为变化更新 CLI 手册。
+- 历史专项任务、一次性实验和旧计划归档，不维护成第二套“当前事实”。
+- 提交应原子、可读、只含同一目的的代码/测试/文档；不提交数据库、报告、日志、原始数据或 `.env`。
+- 不使用 `git reset --hard`、`git checkout --` 等破坏性命令处理脏工作区；先识别和保留用户既有改动。

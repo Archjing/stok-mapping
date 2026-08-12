@@ -1,26 +1,25 @@
-# stok-mapping 正式文档索引
+# 文档索引
 
-本目录只放当前有效的项目文档、开发标准和策略说明。参考资料、论文素材和远期展望统一从 [`refdocs/README.md`](../refdocs/README.md) 进入；人工会话归档和长期项目记忆统一从 [`memory/README.md`](../memory/README.md) 进入。
+`docs/` 只保留当前维护所需的事实源、操作说明和策略说明。历史任务分解、一次性研发计划和过期评估已移至 [archive/](archive/)，不再作为当前项目状态的依据。
 
-## 项目主线
+## 长期维护的主文档
 
-- [开发计划书](./DEVELOPMENT_PLAN.md)
-- [项目整体架构说明](./PROJECT_ARCHITECTURE_OVERVIEW.md)
-- [长期技术栈演进方案](./LONG_TERM_TECH_STACK_EVOLUTION_PLAN.md)
-- [Coding Style Rules](./CODING_STYLE_RULES.md)
+| 文档 | 用途 | 更新时机 |
+| --- | --- | --- |
+| [PROJECT_ARCHITECTURE_OVERVIEW.md](PROJECT_ARCHITECTURE_OVERVIEW.md) | 系统边界、模块职责、数据流、运维与架构债务 | 模块、数据流或运行边界变化时 |
+| [DEVELOPMENT_PLAN.md](DEVELOPMENT_PLAN.md) | 已完成能力、当前优先级、验收门槛和下一阶段 | 计划状态或研发优先级变化时 |
+| [CODING_STYLE_RULES.md](CODING_STYLE_RULES.md) | Python、数据治理、策略、配置、测试和文档规范 | 形成稳定工程约束时 |
+| [PHASE0_CLI_USER_GUIDE.md](PHASE0_CLI_USER_GUIDE.md) | 当前 CLI 的操作手册 | 命令、参数或运行行为变化时 |
+| [STRATEGY_DEVELOPMENT_GUIDELINES.md](STRATEGY_DEVELOPMENT_GUIDELINES.md) | 策略研发、回测、admission 与模拟账户准则 | 策略治理规则变化时 |
 
-## 策略研发
+## 策略说明与研究接口
 
-- [策略开发 Guideline](./STRATEGY_DEVELOPMENT_GUIDELINES.md)
-- [策略开发任务单 Checklist](./STRATEGY_DEV_CHECKLIST.md)
-- [候选策略解释索引](./strategy_explanations/INDEX.md)
-- [当前策略池评估与下一步研发迭代建议](./STRATEGY_POOL_REVIEW_2026-06-03.md)
-- [有效量化策略研发实施方案](./EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md)
+- [策略说明索引](strategy_explanations/INDEX.md)：已注册策略的可读说明；其结果仍须以实际回测与 admission 产物为准。
+- [数据资产说明](../data/README.md)：本地 SQLite、数据源、价格口径和审计边界。
+- [参考资料索引](../refdocs/README.md)：论文、外部资料和历史会话上下文，不是当前工程事实源。
 
-## 相关入口
+## 归档规则
 
-- [Codex MCP 多 Agent 开发团队工作流](./CODEX_MCP_MULTI_AGENT_WORKFLOW.md)
-- [任务清单索引](tasks/README.md)
-- [文档归档](archive/)
-- [项目记忆与会话归档](../memory/README.md)
-- [参考资料索引](../refdocs/README.md)
+- 不再维护的设计草案、任务清单和阶段性评估进入 `archive/`；Git 历史保留其可追溯性。
+- 新的长期规则优先更新上表五份主文档，而不是新增平行的“总体计划”或“架构说明”。
+- 新的短期研发拆解可放入 issue、PR 描述或临时计划；完成后将结论回写到架构或开发计划，并归档临时材料。

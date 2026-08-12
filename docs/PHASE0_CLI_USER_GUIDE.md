@@ -2,7 +2,7 @@
 
 适用范围：`python -m phase0.cli` 当前已实现命令。  
 默认配置文件：`config.yaml`。  
-说明口径：以 [phase0/cli.py](/home/zj/workspace/stok-mapping/phase0/cli.py) 实际参数为准。
+说明口径：以 [`phase0/cli.py`](../phase0/cli.py) 实际参数为准。
 
 项目根目录快捷入口：`./runit`。它等价于 `./.venv/bin/python -m phase0.cli`。
 
@@ -122,8 +122,6 @@ Walk-forward runtime cache 默认只缓存安全边界：同一数据源签名�
 profile JSON 会记录 cache manifest，包括数据源 mtime/size、复权口径、cache 开关和命中统计。需要排查缓存影响时可加 `--no-wf-cache`；
 启用磁盘缓存后需要重建时可加 `--refresh-wf-cache`。
 
-### 3.2 AI 语料库命令
-
 ### 3.2 5 分钟单 ETF 模拟账户
 
 `intraday-account`：按配置重放“外部市场信号 → 下一 A 股交易日 → 单只 ETF 入场 →
@@ -138,7 +136,7 @@ ETF；账户 ID、现金、持仓、成交、净值和 SQLite 状态彼此隔离
 `SZ.159995`、`SZ.159813`、`SZ.159801`、`SH.588200`。策略会拒绝清单外的代码。
 新增账户前必须分别确认该 ETF 的日线和 5 分钟线覆盖，并完成独立回测、walk-forward 与
 admission；512480 的历史结果不能外推到其它 ETF。缺失关键分钟数据时命令会以退出码
-`2` 结束，且 `--write-state` 不会写入不完整账户状态。
+`2` 结束，且 `--recover-missing` 不会以不完整重放结果写入账户。
 
 以下是账户配置模板，仅供复制后按实际资金、账户名称和已验证标的填写；它不会自动创建或
 启用新账户：
@@ -170,11 +168,11 @@ admission；512480 的历史结果不能外推到其它 ETF。缺失关键分钟
   --as-of 2026-08-11 \
   --json
 
-# 仅在执行数据完整时，替换该账户的本地 SQLite 重放快照
+# 盘后以完整 5 分钟线核验当日实时结果；只有当日产物缺失或不完整时才补写
 ./.venv/bin/python -m phase0.cli intraday-account \
   --account-id semiconductor_timing \
   --as-of 2026-08-11 \
-  --write-state
+  --recover-missing
 ```
 
 执行口径：
@@ -183,10 +181,19 @@ admission；512480 的历史结果不能外推到其它 ETF。缺失关键分钟
 - T+1 使用 5 分钟 OHLC 完成 bar 做追踪止损；当前 bar 的 high 不能反向触发同一 bar 的 low。
 - 跳空跌破止损线时按 bar 开盘价成交，不按不可获得的止损价成交。
 - 未触发止损时要求存在配置的 `14:55` bar，并按该 bar 收盘价退出。
-- 缺失关键 5 分钟数据时返回退出码 `2`，且 `--write-state` 拒绝写入不完整状态。
+- 缺失关键 5 分钟数据时返回退出码 `2`，且 `--recover-missing` 拒绝用不完整重放结果恢复状态。
 - 样本末日刚入场且未来 T+1 尚未发生时，状态为 `open_position_pending_exit`，不属于数据缺失。
 
-边界：该命令是盘后确定性重放和模拟账户状态生成器，不是盘中实时行情订阅器、订单调度器或券商交易接口。
+盘后核验与恢复：
+
+- 不带 `--recover-missing` 时，命令只重放和输出核验结果，不修改账户数据库。
+- 带 `--recover-missing` 时，命令只处理 `--as-of` 指定交易日；当天资产、成交或订单产物缺失／不完整时，才补写该日专用账户表，不清空历史台账。
+- 当天已有完整实时产物且与重放一致时，结果为 `verified`，不写库。
+- 当天已有产物但与完整分钟线重放不一致时，结果为 `mismatch` 并以退出码 `2` 结束；命令不会静默覆盖实时账本，必须先审计差异。
+- 恢复会按完整分钟线重新执行原有规则；弱信号限价单全天未触及时保持“收盘撤单”，不会事后按开盘价补造买入成交。
+- 当天 ETF 日线尚未落库时，恢复会读取同日开盘快照和已采集的 5 分钟线，并把已完成的美国收盘信号映射到该 A 股会话；这只用于当日执行和台账恢复，不会伪造或回填 ETF 日线记录。
+
+边界：该命令是盘后确定性重放、核验与缺失恢复工具，不是盘中实时行情订阅器、订单调度器或券商交易接口。实时链路应在开盘与盘中持续生成台账和订单；盘后重放仅在该链路中断、行情采集失败或当日产物缺失时用于恢复和复核。
 
 ### 3.3 AI 语料库命令
 
@@ -502,10 +509,13 @@ data/simulated_trading/phase0_daily_brief_ledger.csv
 
 ```bash
 QUANT_SITE_SYNC_REMOTE=linuxuser@108.61.182.91
-QUANT_SITE_SYNC_REMOTE_DIR=/var/www/spidermanread/quant/
+QUANT_SITE_SYNC_REMOTE_DIR=/var/www/share/quant/
+QUANT_SITE_SYNC_PASSWORD=your-password
 ```
 
-安全边界：`site sync` 只允许远端目录以 `/quant/` 结尾，不会同步到 `/var/www/spidermanread/` 根目录；静态站点只包含 HTML/CSS/JSON/CSV，不上传 SQLite。
+将这些值写入未跟踪的 `.env`，不要提交到 Git。地址字段只写 `user@host`，不加 `ssh://` 或 `https://`；若密码含 shell 特殊字符，使用双引号包裹。`QUANT_SITE_SYNC_PASSWORD` 通过临时 `SSH_ASKPASS` 提供给 ssh，不作为命令行参数。
+
+安全边界：`site sync` 只允许远端目录以 `/quant/` 结尾，不会同步到 `/var/www/share/` 根目录；静态站点只包含 HTML/CSS/JSON/CSV，不上传 SQLite。
 
 `financial-pti`：财务因子 point-in-time 校验。
 
