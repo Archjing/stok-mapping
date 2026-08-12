@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-import phase0.research.diagnostics.market_context as market_context
-from phase0.research.diagnostics.market_context import run_strategy_market_context
+import quant.research.diagnostics.market_context as market_context
+from quant.research.diagnostics.market_context import run_strategy_market_context
 
 
 def _config() -> dict:

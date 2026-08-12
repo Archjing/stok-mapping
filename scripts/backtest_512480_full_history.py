@@ -17,9 +17,9 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phase0.config import load_config
-from phase0.research.metrics import annualized_return, max_drawdown, sharpe
-from phase0.strategies import get_strategy
+from quant.config import load_config
+from quant.research.metrics import annualized_return, max_drawdown, sharpe
+from quant.strategies import get_strategy
 
 ETF_DB = Path("data/etf_history.sqlite")
 US_DB = Path("data/us_market_history.sqlite")

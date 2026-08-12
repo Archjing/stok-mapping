@@ -12,5 +12,5 @@ stok_ensure_logs_dir "${PROJECT_ROOT}"
 stok_load_dotenv "${PROJECT_ROOT}"
 
 echo "[$(stok_timestamp)] watchlist pipeline started"
-"${PYTHON_BIN}" -m phase0.cli brief watchlist --config config.yaml
+"${PYTHON_BIN}" -m quant.cli brief watchlist --config config.yaml
 echo "[$(stok_timestamp)] watchlist pipeline finished"

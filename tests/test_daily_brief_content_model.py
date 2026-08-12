@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.reporting.daily_brief import (
+from quant.reporting.daily_brief import (
     DAILY_BRIEF_SECTION_ORDER,
     NO_ADMISSION_PASS_MESSAGE,
     DailyBriefDocument,
@@ -241,7 +241,7 @@ def test_reporting_package_import_does_not_require_jinja2() -> None:
                 [
                     "import sys",
                     "sys.modules['jinja2'] = None",
-                    "import phase0.reporting as reporting",
+                    "import quant.reporting as reporting",
                     "assert reporting.DailyBriefDocument.__name__ == 'DailyBriefDocument'",
                 ]
             ),

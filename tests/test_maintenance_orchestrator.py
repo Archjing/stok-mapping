@@ -3,17 +3,18 @@ from types import SimpleNamespace
 
 import yaml
 
-import phase0.cli as cli
-import phase0.cli_commands.maintenance as maintenance_cli
-import phase0.cli_commands.system as system_cli
-from phase0.cli import summarize_system_maintenance_status
-from phase0.cli_commands.system import summarize_system_maintenance_status as new_summarize_system_maintenance_status
-from phase0.maintenance_orchestrator import (
+import quant.cli as cli
+import quant.cli_commands.maintenance as maintenance_cli
+import quant.cli_commands.system as system_cli
+from quant.cli import summarize_system_maintenance_status
+from quant.cli_commands.system import summarize_system_maintenance_status as new_summarize_system_maintenance_status
+from quant.maintenance_orchestrator import (
     MaintenanceDecision,
     MaintenanceShardStatusRow,
     MaintenanceStatusResult,
     MaintenanceStatusRow,
     _default_registry,
+    _effective_maintenance_command,
     _run_health_gate,
     maintenance_status,
 )
@@ -44,7 +45,7 @@ def test_daily_brief_runs_all_enabled_simulated_accounts() -> None:
     assert daily_brief.command == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "brief",
         "watchlist",
         "--config",
@@ -72,7 +73,7 @@ def test_etf_opening_snapshot_runs_after_opening_auction_on_cn_trading_days() ->
 def test_etf_opening_snapshot_is_disabled_without_an_enabled_intraday_account(tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        "phase0:\n"
+        "quant:\n"
         "  accounts:\n"
         "    simulated:\n"
         "      - account_id: semiconductor_timing\n"
@@ -127,7 +128,7 @@ def test_gov_policy_fetch_runs_with_prefetch_probe_before_daily_brief(monkeypatc
     assert gov_policy.command == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "ai-corpus",
         "fetch",
         "--config",
@@ -182,7 +183,7 @@ def test_account_bill_confirm_runs_after_a_share_history() -> None:
     assert account_bill_confirm.command == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "brief",
         "confirm-account-bills",
         "--config",
@@ -210,7 +211,7 @@ def test_cctv_news_runs_daily_after_broadcast_with_retry() -> None:
     assert cctv_news.command == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "ai-corpus",
         "fetch",
         "--config",
@@ -253,7 +254,7 @@ def test_cninfo_risk_events_runs_daily_before_cctv_with_zero_row_tolerance(monke
     assert cninfo.command == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "ai-corpus",
         "fetch",
         "--config",
@@ -276,8 +277,8 @@ def test_cninfo_risk_events_runs_daily_before_cctv_with_zero_row_tolerance(monke
 def test_manual_history_update_includes_bfq_execution_prices() -> None:
     config = yaml.safe_load(Path("config.yaml").read_text(encoding="utf-8"))
 
-    assert config["phase0"]["local_history"]["execution_adjust_type"] == "bfq"
-    assert "bfq" in config["phase0"]["manual_history_update"]["adjust_types"]
+    assert config["quant"]["local_history"]["execution_adjust_type"] == "bfq"
+    assert "bfq" in config["quant"]["manual_history_update"]["adjust_types"]
 
 
 def test_health_gate_uses_config_option_not_last_command_arg(monkeypatch) -> None:
@@ -287,7 +288,7 @@ def test_health_gate_uses_config_option_not_last_command_arg(monkeypatch) -> Non
         captured["command"] = command
         return SimpleNamespace(returncode=0, stdout="ok")
 
-    monkeypatch.setattr("phase0.maintenance_orchestrator.subprocess.run", fake_run)
+    monkeypatch.setattr("quant.maintenance_orchestrator.subprocess.run", fake_run)
 
     decision = MaintenanceDecision(
         task_name="daily_brief",
@@ -297,7 +298,7 @@ def test_health_gate_uses_config_option_not_last_command_arg(monkeypatch) -> Non
         command=[
             ".venv/bin/python",
             "-m",
-            "phase0.cli",
+            "quant.cli",
             "brief",
             "watchlist",
             "--config",
@@ -322,7 +323,7 @@ def test_health_gate_uses_config_option_not_last_command_arg(monkeypatch) -> Non
     assert captured["command"] == [
         ".venv/bin/python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "db-health",
         "--config",
         "config.yaml",
@@ -428,7 +429,7 @@ def test_system_status_cli_reads_maintenance_status_without_refresh(monkeypatch,
         "exit",
         lambda self, status=0, message=None: (_ for _ in ()).throw(SystemExit(status)),
     )
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "system", "status", "--config", "config.yaml"])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "system", "status", "--config", "config.yaml"])
 
     try:
         exit_code = cli.main()
@@ -446,7 +447,7 @@ def test_system_status_cli_reads_maintenance_status_without_refresh(monkeypatch,
 def test_maintenance_status_read_only_missing_db_does_not_create_db(tmp_path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        "phase0:\n"
+        "quant:\n"
         "  maintenance_orchestrator:\n"
         "    state_db: data/maintenance/missing.sqlite\n",
         encoding="utf-8",
@@ -484,7 +485,7 @@ def test_maintain_status_cli_keeps_default_refresh_behavior(monkeypatch, capsys)
         "exit",
         lambda self, status=0, message=None: (_ for _ in ()).throw(SystemExit(status)),
     )
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "maintain", "status", "--config", "config.yaml"])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "maintain", "status", "--config", "config.yaml"])
 
     try:
         exit_code = cli.main()
@@ -532,7 +533,7 @@ def test_maintain_tick_cli_forwards_dry_run_without_starting_tasks(monkeypatch, 
     )
     monkeypatch.setattr(
         "sys.argv",
-        ["phase0.cli", "maintain", "tick", "--config", "config.yaml", "--dry-run", "--as-of", "2026-06-23 08:00"],
+        ["quant.cli", "maintain", "tick", "--config", "config.yaml", "--dry-run", "--as-of", "2026-06-23 08:00"],
     )
 
     try:
@@ -551,3 +552,100 @@ def test_maintain_tick_cli_forwards_dry_run_without_starting_tasks(monkeypatch, 
     ]
     assert "Maintenance tick started" in captured.out
     assert "Dry run: True" in captured.out
+
+
+def test_effective_command_migrates_only_the_legacy_cli_module() -> None:
+    command = [
+        "python",
+        "-m",
+        "phase0.cli",
+        "update",
+        "--phase0-cli-flag",
+        "phase0.cli",
+    ]
+    effective = _effective_maintenance_command(command)
+    assert effective[0:3] == ["python", "-m", "quant.cli"]
+    # A bare 'phase0.cli' later in the argument list (e.g. an artifact or flag value)
+    # is not a '-m phase0.cli' pair, so it must be preserved.
+    assert effective == ["python", "-m", "quant.cli", "update", "--phase0-cli-flag", "phase0.cli"]
+
+
+def test_effective_command_preserves_non_cli_phase0_artifact_arguments() -> None:
+    command = [
+        "python",
+        "-m",
+        "phase0.cli",
+        "report",
+        "--output-dir",
+        "reports/phase0/daily",
+    ]
+    effective = _effective_maintenance_command(command)
+    assert effective == [
+        "python",
+        "-m",
+        "quant.cli",
+        "report",
+        "--output-dir",
+        "reports/phase0/daily",
+    ]
+
+
+def test_effective_command_is_identity_when_no_legacy_module() -> None:
+    command = ["python", "-m", "quant.cli", "maintain", "tick"]
+    assert _effective_maintenance_command(command) == command
+
+
+def test_maintenance_resume_spawns_quant_cli_and_keeps_db_row_untouched(tmp_path, monkeypatch) -> None:
+    import json
+    import sqlite3
+
+    from quant import maintenance_orchestrator as orchestrator
+
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text("quant: {}\n", encoding="utf-8")
+    state_db = tmp_path / "maintenance.sqlite"
+    monkeypatch.setattr(orchestrator, "_configured_state_db", lambda root, cfg: state_db)
+    monkeypatch.setattr(orchestrator, "_refresh_shards", lambda conn, root: 0)
+
+    legacy_command = [
+        "python",
+        "-m",
+        "phase0.cli",
+        "maintain",
+        "shard",
+        "--resume-flag",
+    ]
+
+    spawned: list[list[str]] = []
+
+    def fake_popen(command, **kwargs):
+        spawned.append(command)
+        return SimpleNamespace(pid=4242)
+
+    monkeypatch.setattr(orchestrator.subprocess, "Popen", fake_popen)
+
+    with orchestrator._connect(state_db) as conn:
+        orchestrator._ensure_schema(conn)
+        run_id = conn.execute(
+            "INSERT INTO maintenance_runs (task_name, status, trigger_source, started_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("tushare_financial_backfill", "failed", "resume_test", "2026-08-12T08:00:00"),
+        ).lastrowid
+        conn.execute(
+            "INSERT INTO maintenance_shards (run_id, shard_index, task_name, shard_count, status, started_at, command_json, log_path) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (run_id, 0, "tushare_financial_backfill", 1, "failed", "2026-08-12T08:00:00", json.dumps(legacy_command), "logs/backfill.log"),
+        )
+        conn.commit()
+
+    result = orchestrator.maintenance_resume(config_path)
+
+    assert len(spawned) == 1
+    assert spawned[0][0:3] == ["python", "-m", "quant.cli"]
+
+    with orchestrator._connect(state_db) as conn:
+        row = conn.execute("SELECT command_json FROM maintenance_shards WHERE shard_id = 1").fetchone()
+    # The persisted database row must still record the legacy module; only the
+    # launched command is normalized.
+    assert json.loads(row[0]) == legacy_command
+    assert result.status == "resumed"

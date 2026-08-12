@@ -5,16 +5,16 @@ from pathlib import Path
 
 import pandas as pd
 
-import phase0.cli_commands.ai_corpus as ai_corpus_cli
-import phase0.ai_corpus.providers.cctv_news as cctv_news_provider
-from phase0.ai_corpus import (
+import quant.cli_commands.ai_corpus as ai_corpus_cli
+import quant.ai_corpus.providers.cctv_news as cctv_news_provider
+from quant.ai_corpus import (
     fetch_ai_corpus,
     fetch_cctv_news,
     parse_cctv_content_page,
     parse_cctv_day_page,
     query_ai_corpus_documents,
 )
-from phase0.cli_commands.ai_corpus import handle_ai_corpus_command
+from quant.cli_commands.ai_corpus import handle_ai_corpus_command
 
 
 FIXTURE_DIR = Path("tests/fixtures/ai_corpus/cctv_news")
@@ -25,7 +25,7 @@ def _write_config(root: Path) -> Path:
     config_path.write_text(
         "\n".join(
             [
-                "phase0:",
+                "quant:",
                 "  ai_corpus:",
                 "    database_path: data/ai_corpus/ai_corpus.sqlite",
             ]
@@ -200,7 +200,7 @@ def test_fetch_ai_corpus_cctv_accepts_date_range(monkeypatch, tmp_path: Path) ->
             ]
         )
 
-    monkeypatch.setattr("phase0.ai_corpus.api.fetch_cctv_news", fake_fetch_cctv_news)
+    monkeypatch.setattr("quant.ai_corpus.api.fetch_cctv_news", fake_fetch_cctv_news)
 
     frame = fetch_ai_corpus(
         provider="cctv-news",

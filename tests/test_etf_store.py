@@ -5,7 +5,7 @@ import sqlite3
 import pandas as pd
 import pytest
 
-from phase0.data_governance.etf_store import (
+from quant.data_governance.etf_store import (
     ensure_etf_schema,
     insert_backfill_tasks,
     insert_manifest_members,

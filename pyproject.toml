@@ -1,7 +1,7 @@
 [project]
 name = "stok-mapping"
 version = "0.1.0"
-description = "Phase 0 pipeline for cross-market mapping validation"
+description = "Quant pipeline for cross-market mapping validation"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -22,7 +22,22 @@ dependencies = [
 ]
 
 [project.scripts]
+stok-quant = "quant.cli:main"
 stok-phase0 = "phase0.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["quant*", "phase0*"]
+
+[tool.setuptools.package-data]
+"quant.reporting" = [
+  "templates/*.html",
+  "static/*.css",
+  "static/research/*.html",
+]
 
 [dependency-groups]
 dev = [

@@ -6,9 +6,9 @@ from datetime import date, datetime
 
 import pytest
 
-from phase0.data_governance.etf_store import ensure_etf_schema
-from phase0.data_governance import etf_universe as universe
-from phase0.data_governance.etf_universe import ETFUniverseError, history_config_digest, resolve_etf_universe
+from quant.data_governance.etf_store import ensure_etf_schema
+from quant.data_governance import etf_universe as universe
+from quant.data_governance.etf_universe import ETFUniverseError, history_config_digest, resolve_etf_universe
 
 
 @pytest.fixture

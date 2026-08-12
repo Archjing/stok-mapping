@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phase0.research.factors import DEFAULT_WEIGHTS, add_slow_multifactor_features
+from quant.research.factors import DEFAULT_WEIGHTS, add_slow_multifactor_features
 
 
 SLOW_FACTOR_PREFIXES = [

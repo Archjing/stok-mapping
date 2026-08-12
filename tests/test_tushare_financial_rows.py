@@ -4,8 +4,8 @@ import sqlite3
 
 import pandas as pd
 
-from phase0.data_governance.backfills import tushare_financial_rows
-from phase0.data_governance.backfills import tushare_history
+from quant.data_governance.backfills import tushare_financial_rows
+from quant.data_governance.backfills import tushare_history
 
 
 def test_tushare_financial_row_helpers_are_import_compatible() -> None:

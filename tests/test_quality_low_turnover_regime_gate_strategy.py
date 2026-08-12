@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.quality_low_turnover_regime_gate import (
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.quality_low_turnover_regime_gate import (
     QualityLowTurnoverRegimeGateStrategy,
     _add_index_regime_features,
 )
@@ -101,7 +101,7 @@ def test_add_index_regime_features_uses_previous_index_close(monkeypatch) -> Non
         return index
 
     monkeypatch.setattr(
-        "phase0.strategies.quality_low_turnover_regime_gate.load_index_daily_from_local_history",
+        "quant.strategies.quality_low_turnover_regime_gate.load_index_daily_from_local_history",
         fake_load_index,
     )
 

@@ -3,8 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from types import SimpleNamespace
 
-import phase0.cli as cli
-import phase0.cli_commands.data_governance as data_governance_cli
+import quant.cli as cli
+import quant.cli_commands.data_governance as data_governance_cli
 
 
 def test_data_governance_command_registration_preserves_args() -> None:
@@ -44,7 +44,7 @@ def test_adjustment_audit_handler_forwards_paths(monkeypatch, tmp_path: Path) ->
     lines: list[str] = []
 
     def fake_load_config(path):
-        return {"phase0": {"local_history": {}}}
+        return {"local_history": {}}
 
     def fake_run_adjustment_audit(**kwargs):
         calls.append(kwargs)
@@ -88,7 +88,7 @@ def test_index_asof_handler_forwards_audit_args(monkeypatch, tmp_path: Path) -> 
     calls: list[dict[str, object]] = []
 
     def fake_load_config(path):
-        return {"phase0": {"benchmark_symbol": "SH.000300"}}
+        return {"benchmark_symbol": "SH.000300"}
 
     def fake_run_index_asof_audit(**kwargs):
         calls.append(kwargs)
@@ -106,7 +106,7 @@ def test_index_asof_handler_forwards_audit_args(monkeypatch, tmp_path: Path) -> 
 
     monkeypatch.setattr(data_governance_cli, "load_config", fake_load_config)
     monkeypatch.setattr(data_governance_cli, "run_index_asof_audit", fake_run_index_asof_audit)
-    monkeypatch.setattr(data_governance_cli.os, "sys", SimpleNamespace(argv=["phase0.cli", "index-asof-audit"]))
+    monkeypatch.setattr(data_governance_cli.os, "sys", SimpleNamespace(argv=["quant.cli", "index-asof-audit"]))
     args = SimpleNamespace(
         cmd="index-asof-audit",
         config=str(tmp_path / "config.yaml"),
@@ -130,7 +130,7 @@ def test_index_asof_handler_forwards_audit_args(monkeypatch, tmp_path: Path) -> 
             "benchmark_symbol": "SH.000300",
             "candidate_folds_path": (tmp_path / "folds.csv").resolve(),
             "output_dir": (tmp_path / "audit").resolve(),
-            "command": "phase0.cli index-asof-audit",
+            "command": "quant.cli index-asof-audit",
         }
     ]
 
@@ -139,7 +139,7 @@ def test_db_health_handler_forwards_args_and_fail_on(monkeypatch, tmp_path: Path
     calls: list[dict[str, object]] = []
 
     def fake_load_config(path):
-        return {"phase0": {"local_history": {}}}
+        return {"local_history": {}}
 
     def fake_run_database_health_check(**kwargs):
         calls.append(kwargs)
@@ -200,7 +200,7 @@ def test_cli_main_delegates_data_governance_commands(monkeypatch, tmp_path: Path
         return 0
 
     monkeypatch.setattr(cli, "handle_data_governance_command", fake_handle_data_governance_command)
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "db-health", "--config", str(tmp_path / "config.yaml")])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "db-health", "--config", str(tmp_path / "config.yaml")])
 
     assert cli.main() == 0
     assert calls == [("db-health", tmp_path / "config.yaml", True)]

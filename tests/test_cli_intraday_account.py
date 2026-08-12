@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from phase0.cli_commands import intraday_account as intraday_cli
-from phase0.execution import intraday_account_runner as account_runner
+from quant.cli_commands import intraday_account as intraday_cli
+from quant.execution import intraday_account_runner as account_runner
 
 
 class CaptureConsole:

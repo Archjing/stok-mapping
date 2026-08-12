@@ -3,7 +3,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from phase0.reporting.hk_market_history import build_report
+from quant.reporting.hk_market_history import build_report
 
 
 def test_hk_market_history_report_builds_from_local_sqlite(tmp_path: Path) -> None:
@@ -61,7 +61,7 @@ def test_hk_market_history_report_builds_from_local_sqlite(tmp_path: Path) -> No
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"""
-phase0:
+quant:
   hk_market_history:
     path: {db_path}
     daily_table: hk_daily_bars

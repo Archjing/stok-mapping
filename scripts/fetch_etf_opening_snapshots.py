@@ -16,8 +16,8 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phase0.config import load_config
-from phase0.data_access.etf_opening_snapshot import parse_eastmoney_quote, write_etf_opening_snapshot
+from quant.config import load_config
+from quant.data_access.etf_opening_snapshot import parse_eastmoney_quote, write_etf_opening_snapshot
 
 
 EASTMONEY_QUOTE_URL = (

@@ -1,6 +1,6 @@
 import pandas as pd
 
-from phase0.reporting.premarket_watchlist import _format_html
+from quant.reporting.premarket_watchlist import _format_html
 
 
 def test_watchlist_table_aligns_close_price_right_and_other_numeric_columns_center() -> None:
@@ -70,7 +70,7 @@ def test_watchlist_table_aligns_close_price_right_and_other_numeric_columns_cent
 
 def test_watchlist_static_assets_include_belafonte_theme_and_interactions() -> None:
     root = __import__("pathlib").Path(__file__).resolve().parents[1]
-    css = (root / "phase0" / "reporting" / "static" / "style.css").read_text(encoding="utf-8")
+    css = (root / "quant" / "reporting" / "static" / "style.css").read_text(encoding="utf-8")
 
     assert "Based on macOS Terminal Themes by Jan T. Sott" in css
     assert "Belafonte Day" in css

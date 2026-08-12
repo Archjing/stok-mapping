@@ -13,10 +13,10 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phase0.strategies.cross_market_semiconductor_timing import (
+from quant.strategies.cross_market_semiconductor_timing import (
     CrossMarketSemiconductorTimingStrategy,
 )
-from phase0.research.metrics import annualized_return, max_drawdown, sharpe
+from quant.research.metrics import annualized_return, max_drawdown, sharpe
 
 s = CrossMarketSemiconductorTimingStrategy()
 

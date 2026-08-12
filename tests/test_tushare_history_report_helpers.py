@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.data_governance.backfills import tushare_history
-from phase0.data_governance.backfills import tushare_history_reports
+from quant.data_governance.backfills import tushare_history
+from quant.data_governance.backfills import tushare_history_reports
 
 
 def test_tushare_history_report_helpers_are_import_compatible() -> None:
@@ -94,7 +94,7 @@ def test_tushare_history_missing_token_path_writes_reports(tmp_path: Path, monke
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"""
-phase0:
+quant:
   local_history:
     path: "{db_path}"
     daily_table: "market_daily_bars"

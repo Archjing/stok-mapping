@@ -6,10 +6,10 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import phase0.research.diagnostics.factor_effectiveness as factor_effectiveness
-from phase0.data_access import local_history
-from phase0.data_governance import external_market_history
-from phase0.research.diagnostics.factor_effectiveness import (
+import quant.research.diagnostics.factor_effectiveness as factor_effectiveness
+from quant.data_access import local_history
+from quant.data_governance import external_market_history
+from quant.research.diagnostics.factor_effectiveness import (
     FACTOR_SPECS,
     FactorSpec,
     _add_factor_columns,

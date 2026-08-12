@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
-import phase0.cli as cli
-import phase0.cli_commands.gates as gates_cli
-import phase0.cli_commands.strategy_research as strategy_research_cli
+import quant.cli as cli
+import quant.cli_commands.gates as gates_cli
+import quant.cli_commands.strategy_research as strategy_research_cli
 
 
 def _silent_console() -> SimpleNamespace:
@@ -91,7 +91,7 @@ def test_overfit_handler_forwards_paths(monkeypatch, tmp_path: Path) -> None:
     calls: list[dict[str, object]] = []
 
     def fake_load_config(path: Path) -> dict[str, object]:
-        return {"phase0": {"walk_forward": {}}}
+        return {"walk_forward": {}}
 
     def fake_run_overfit_diagnostic(**kwargs):
         calls.append(kwargs)
@@ -136,7 +136,7 @@ def test_strategy_admission_handler_forwards_scope_and_trace(monkeypatch, tmp_pa
     trace_messages: list[str] = []
 
     def fake_load_config(path: Path) -> dict[str, object]:
-        return {"phase0": {"walk_forward": {"presets": {"baseline": {}}}}}
+        return {"walk_forward": {"presets": {"baseline": {}}}}
 
     def fake_describe_walk_forward_presets(walk_forward_cfg, presets, *, default_all: bool):
         calls.append(
@@ -219,7 +219,7 @@ def test_factor_effectiveness_handler_runs_health_gate_then_report(monkeypatch, 
     calls: list[dict[str, object]] = []
 
     def fake_load_config(path: Path) -> dict[str, object]:
-        return {"phase0": {"local_history": {}}}
+        return {"local_history": {}}
 
     def fake_run_database_health_check(**kwargs):
         calls.append({"health": kwargs})
@@ -283,7 +283,7 @@ def test_factor_effectiveness_handler_stops_when_health_gate_fails(monkeypatch, 
     called_factor = False
 
     def fake_load_config(path: Path) -> dict[str, object]:
-        return {"phase0": {"local_history": {}}}
+        return {"local_history": {}}
 
     def fake_run_database_health_check(**kwargs):
         return SimpleNamespace(
@@ -324,7 +324,7 @@ def test_cli_main_delegates_strategy_research_commands(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(
         "sys.argv",
         [
-            "phase0.cli",
+            "quant.cli",
             "strategy-admission",
             "--config",
             str(tmp_path / "config.yaml"),

@@ -3,9 +3,9 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phase0.data_access import symbols
-from phase0.data_access.providers import tushare as provider
-from phase0.data_access.providers.tushare import TushareConfig, TusharePermissionError
+from quant.data_access import symbols
+from quant.data_access.providers import tushare as provider
+from quant.data_access.providers.tushare import TushareConfig, TusharePermissionError
 
 
 def test_suffix_qualified_symbols_do_not_guess_exchange_from_prefix() -> None:

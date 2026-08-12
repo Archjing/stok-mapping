@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from phase0.reporting.premarket_watchlist import _resolve_report_output_template
+from quant.reporting.premarket_watchlist import _resolve_report_output_template
 
 
 def test_premarket_default_output_uses_configured_phase0_category(tmp_path: Path) -> None:

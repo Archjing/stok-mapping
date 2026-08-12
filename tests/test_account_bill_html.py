@@ -4,8 +4,8 @@ import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
-from phase0.execution.accounts import ensure_account_tables
-from phase0.reporting.account_bill import export_account_bill_html, export_account_bill_placeholder_html
+from quant.execution.accounts import ensure_account_tables
+from quant.reporting.account_bill import export_account_bill_html, export_account_bill_placeholder_html
 
 
 def test_account_bill_html_uses_belafonte_bundle(tmp_path: Path) -> None:

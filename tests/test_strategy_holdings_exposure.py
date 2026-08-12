@@ -4,7 +4,7 @@ import sqlite3
 
 import pandas as pd
 
-from phase0.research.holdings.exposure import (
+from quant.research.holdings.exposure import (
     _coverage_summary,
     _daily_exposure_from_holdings,
     _ensure_optional_fold_metric_columns,
@@ -13,7 +13,7 @@ from phase0.research.holdings.exposure import (
     _industry_exposure_from_holdings,
     _summary_from_daily,
 )
-from phase0.research.admission.strategy_scope import _force_strategy_set_enabled_for_admission
+from quant.research.admission.strategy_scope import _force_strategy_set_enabled_for_admission
 
 
 def test_holding_rows_and_daily_exposure_keep_target_and_live_weights() -> None:

@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.intelligence import tiingo_news_probe
+from quant.intelligence import tiingo_news_probe
 
 
 def test_tiingo_news_probe_default_output_uses_configured_archive_category(monkeypatch, tmp_path: Path) -> None:
     (tmp_path / "config.yaml").write_text(
         """
-phase0:
+quant:
   reporting:
     root_dir: local_reports
     categories:
@@ -28,7 +28,7 @@ phase0:
 
 
 def test_tiingo_news_probe_explicit_output_remains_project_relative(monkeypatch, tmp_path: Path) -> None:
-    (tmp_path / "config.yaml").write_text("phase0: {}\n", encoding="utf-8")
+    (tmp_path / "config.yaml").write_text("quant: {}\n", encoding="utf-8")
 
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("sys.argv", ["tiingo_news_probe.py", "--output", "custom/probe.md", "--days", "1", "--limit", "1"])

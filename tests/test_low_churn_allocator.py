@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from phase0.strategies.low_churn_allocator import allocate_low_churn
+from quant.strategies.low_churn_allocator import allocate_low_churn
 
 
 SIGNAL_COLUMNS = [
@@ -271,6 +271,6 @@ def test_allocate_low_churn_rejects_duplicate_normalized_date_symbol_keys() -> N
     [(None, None), ("", None), ("invalid", None), (0, None), (-1, None), ("3", 3)],
 )
 def test_optional_positive_int(value: object, expected: int | None) -> None:
-    from phase0.strategies.low_churn_allocator import optional_positive_int
+    from quant.strategies.low_churn_allocator import optional_positive_int
 
     assert optional_positive_int(value) == expected

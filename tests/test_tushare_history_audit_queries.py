@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import sqlite3
 
-from phase0.data_governance.backfills import tushare_history
-from phase0.data_governance.backfills import tushare_history_audit_queries
+from quant.data_governance.backfills import tushare_history
+from quant.data_governance.backfills import tushare_history_audit_queries
 
 
 def _create_history_audit_tables(conn: sqlite3.Connection) -> None:

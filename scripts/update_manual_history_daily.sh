@@ -12,5 +12,5 @@ stok_ensure_logs_dir "${PROJECT_ROOT}"
 stok_load_dotenv "${PROJECT_ROOT}"
 
 echo "[$(stok_timestamp)] manual history update started"
-"${PYTHON_BIN}" -m phase0.cli update-history --config config.yaml
+"${PYTHON_BIN}" -m quant.cli update-history --config config.yaml
 echo "[$(stok_timestamp)] manual history update finished"

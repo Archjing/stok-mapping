@@ -5,7 +5,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from phase0.reporting import execution_effectiveness as _impl
+from quant.reporting import execution_effectiveness as _impl
 
 sys.modules[__name__] = _impl
 

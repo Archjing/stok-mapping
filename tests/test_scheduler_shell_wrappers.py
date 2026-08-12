@@ -18,7 +18,7 @@ def _copy_scheduler_scripts(tmp_path: Path) -> Path:
     shutil.copy2(ROOT / "scripts" / "lib" / "project_env.sh", lib / "project_env.sh")
     shutil.copy2(ROOT / "scripts" / "run_project_scheduler.sh", scripts / "run_project_scheduler.sh")
     shutil.copy2(ROOT / "scripts" / "install_dev_cron.sh", scripts / "install_dev_cron.sh")
-    (project / "config.yaml").write_text("phase0: {}\n", encoding="utf-8")
+    (project / "config.yaml").write_text("quant: {}\n", encoding="utf-8")
     return project
 
 
@@ -71,8 +71,8 @@ def test_project_scheduler_wrapper_uses_shared_env_and_preserves_cli_calls(tmp_p
     assert result.returncode == 0
     assert (project / "logs").is_dir()
     assert [call["argv"] for call in calls] == [
-        ["-m", "phase0.cli", "maintain", "status", "--config", str(project / "config.yaml")],
-        ["-m", "phase0.cli", "maintain", "tick", "--config", str(project / "config.yaml")],
+        ["-m", "quant.cli", "maintain", "status", "--config", str(project / "config.yaml")],
+        ["-m", "quant.cli", "maintain", "tick", "--config", str(project / "config.yaml")],
     ]
     assert {call["cwd"] for call in calls} == {str(project)}
     assert {call["env_flag"] for call in calls} == {"loaded_from_dotenv"}

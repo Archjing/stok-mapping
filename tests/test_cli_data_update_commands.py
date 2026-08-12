@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 import pytest
 
-import phase0.cli as cli
-import phase0.cli_commands.data_update as data_update_cli
-from phase0.data_access.providers.tushare import TusharePermissionError, TushareTokenError
-from phase0.data_governance.backfills.etf_history import ETFBackfillDryRunResult, ETFBackfillResult
-from phase0.data_governance.etf_catalog import ETFCatalogSyncResult, StaleETFCatalogError
-from phase0.data_governance.etf_universe import ETFManifestMember, ETFUniverseManifest
+import quant.cli as cli
+import quant.cli_commands.data_update as data_update_cli
+from quant.data_access.providers.tushare import TusharePermissionError, TushareTokenError
+from quant.data_governance.backfills.etf_history import ETFBackfillDryRunResult, ETFBackfillResult
+from quant.data_governance.etf_catalog import ETFCatalogSyncResult, StaleETFCatalogError
+from quant.data_governance.etf_universe import ETFManifestMember, ETFUniverseManifest
 
 
 def _silent_console() -> SimpleNamespace:
@@ -748,7 +748,7 @@ def test_cli_main_delegates_data_update_commands(monkeypatch, tmp_path: Path) ->
         return 0
 
     monkeypatch.setattr(cli, "handle_data_update_command", fake_handle_data_update_command)
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "update-history", "--config", str(tmp_path / "config.yaml")])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "update-history", "--config", str(tmp_path / "config.yaml")])
 
     assert cli.main() == 0
     assert calls == [("update-history", True)]

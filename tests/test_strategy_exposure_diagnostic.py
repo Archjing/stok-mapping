@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.research.diagnostics.exposure import run_strategy_exposure_diagnostic
+from quant.research.diagnostics.exposure import run_strategy_exposure_diagnostic
 
 
 def test_strategy_exposure_diagnostic_merges_existing_artifacts_and_writes_reports(tmp_path) -> None:
@@ -100,7 +100,7 @@ def test_strategy_exposure_diagnostic_merges_existing_artifacts_and_writes_repor
         market_context_path=context_path,
         universe_path=universe_path,
         output_dir=output_dir,
-        command="phase0.cli strategy-exposure-diagnostic ...",
+        command="quant.cli strategy-exposure-diagnostic ...",
     )
 
     assert result.rows == 2

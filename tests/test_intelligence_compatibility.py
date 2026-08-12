@@ -4,15 +4,15 @@ from importlib import import_module
 
 import pytest
 
-import phase0.intelligence as intelligence
-from phase0.intelligence.schema import IntelligenceValidationResult, LEDGER_COLUMNS
+import quant.intelligence as intelligence
+from quant.intelligence.schema import IntelligenceValidationResult, LEDGER_COLUMNS
 
 
 @pytest.mark.parametrize(
     ("module_name", "symbol_pairs"),
     [
         (
-            "phase0.intelligence.collection",
+            "quant.intelligence.collection",
             [
                 ("collect_intelligence", "collect_intelligence"),
                 ("import_local_intelligence", "import_local_intelligence"),
@@ -33,7 +33,7 @@ from phase0.intelligence.schema import IntelligenceValidationResult, LEDGER_COLU
             ],
         ),
         (
-            "phase0.intelligence.candidates",
+            "quant.intelligence.candidates",
             [
                 ("_write_candidates", "write_candidates"),
                 ("_write_review_csv", "write_review_csv"),
@@ -41,7 +41,7 @@ from phase0.intelligence.schema import IntelligenceValidationResult, LEDGER_COLU
             ],
         ),
         (
-            "phase0.intelligence.review",
+            "quant.intelligence.review",
             [
                 ("review_intelligence_candidates", "review_intelligence_candidates"),
                 ("_source_excerpt", "_source_excerpt"),
@@ -51,7 +51,7 @@ from phase0.intelligence.schema import IntelligenceValidationResult, LEDGER_COLU
             ],
         ),
         (
-            "phase0.intelligence.validation",
+            "quant.intelligence.validation",
             [
                 ("validate_intelligence_ledger", "validate_intelligence_ledger"),
                 ("_read_ledger", "_read_ledger"),

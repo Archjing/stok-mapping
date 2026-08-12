@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-import phase0.cli as cli
-import phase0.cli_commands.phase0_run as phase0_run_cli
-import phase0.cli_commands.reports as report_cli
-import phase0.reporting.exports as report_exports
+import quant.cli as cli
+import quant.cli_commands.pipeline_run as pipeline_run_cli
+import quant.cli_commands.reports as report_cli
+import quant.reporting.exports as report_exports
 
 
 def _assert_standard_run(path: Path, *, root: Path, command: str, scope: str) -> None:
@@ -23,7 +23,7 @@ def _assert_standard_run(path: Path, *, root: Path, command: str, scope: str) ->
 def _write_config(path: Path) -> None:
     path.write_text(
         """
-phase0:
+quant:
   reporting:
     root_dir: local_reports
     categories:
@@ -58,7 +58,7 @@ def test_report_export_handler_forwards_bill_args(monkeypatch, tmp_path: Path) -
     calls: list[dict[str, object]] = []
     lines: list[str] = []
 
-    def fake_export_phase0_low_turnover_bill(**kwargs):
+    def fake_export_low_turnover_bill(**kwargs):
         calls.append(kwargs)
         return {
             "strategy_id": "demo_strategy",
@@ -68,7 +68,7 @@ def test_report_export_handler_forwards_bill_args(monkeypatch, tmp_path: Path) -
             "rows": 3,
         }
 
-    monkeypatch.setattr(report_cli, "export_phase0_low_turnover_bill", fake_export_phase0_low_turnover_bill)
+    monkeypatch.setattr(report_cli, "export_low_turnover_bill", fake_export_low_turnover_bill)
     args = SimpleNamespace(
         cmd="bill",
         config=str(tmp_path / "config.yaml"),
@@ -100,7 +100,7 @@ def test_report_export_handler_forwards_execution_profile_args(monkeypatch, tmp_
     calls: list[dict[str, object]] = []
     lines: list[str] = []
 
-    def fake_export_phase0_execution_gate(**kwargs):
+    def fake_export_execution_gate(**kwargs):
         calls.append(kwargs)
         return {
             "strategy_id": "demo_strategy",
@@ -109,7 +109,7 @@ def test_report_export_handler_forwards_execution_profile_args(monkeypatch, tmp_
             "report": tmp_path / "execution_gate.md",
         }
 
-    monkeypatch.setattr(report_cli, "export_phase0_execution_gate", fake_export_phase0_execution_gate)
+    monkeypatch.setattr(report_cli, "export_execution_gate", fake_export_execution_gate)
     args = SimpleNamespace(
         cmd="execution-gate",
         config=str(tmp_path / "config.yaml"),
@@ -165,7 +165,7 @@ def test_cli_main_delegates_top_level_report_export_commands(monkeypatch, tmp_pa
         return 0
 
     monkeypatch.setattr(cli, "handle_report_export_command", fake_handle_report_export_command)
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "bill", "--config", str(tmp_path / "config.yaml")])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "bill", "--config", str(tmp_path / "config.yaml")])
 
     assert cli.main() == 0
     assert calls == [("bill", tmp_path / "config.yaml", True)]
@@ -187,9 +187,9 @@ def test_low_turnover_bill_defaults_to_standard_run_dir(monkeypatch, tmp_path: P
         calls.append(kwargs)
         return {"bill": kwargs["output"], "daily": kwargs["daily_output"], "preview": kwargs["preview_output"]}
 
-    monkeypatch.setattr("phase0.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
+    monkeypatch.setattr("quant.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
-    result = report_exports.export_phase0_low_turnover_bill(config_path=tmp_path / "config.yaml")
+    result = report_exports.export_low_turnover_bill(config_path=tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
@@ -206,9 +206,9 @@ def test_low_turnover_bill_uses_configured_run_dir(monkeypatch, tmp_path: Path) 
         calls.append(kwargs)
         return {"bill": kwargs["output"], "daily": kwargs["daily_output"], "preview": kwargs["preview_output"]}
 
-    monkeypatch.setattr("phase0.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
+    monkeypatch.setattr("quant.reporting.strategy_bill.export_strategy_bill", fake_export_strategy_bill)
 
-    result = report_exports.export_phase0_low_turnover_bill(config_path=config_path)
+    result = report_exports.export_low_turnover_bill(config_path=config_path)
 
     assert calls
     _assert_configured_run(Path(result["bill"]), root=tmp_path, command="bill", scope="legacy_momentum_low_turnover_v1")
@@ -222,9 +222,9 @@ def test_market_regime_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
         return {"summary": kwargs["summary_output"], "segments": kwargs["segment_output"], "html": kwargs["html_output"]}
 
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr("phase0.reporting.market_regime.export_market_regime_report", fake_export_market_regime_report)
+    monkeypatch.setattr("quant.reporting.market_regime.export_market_regime_report", fake_export_market_regime_report)
 
-    result = report_exports.export_phase0_market_regime_report(root=tmp_path)
+    result = report_exports.export_market_regime_report(root=tmp_path)
 
     assert calls
     _assert_standard_run(Path(result["summary"]), root=tmp_path, command="market_regime", scope="low_turnover")
@@ -239,9 +239,9 @@ def test_financial_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path)
         calls.append(kwargs)
         return {"summary": kwargs["summary_output"], "samples": kwargs["sample_output"], "html": kwargs["html_output"]}
 
-    monkeypatch.setattr("phase0.data_governance.financial_pti.audit_financial_pti", fake_audit_financial_pti)
+    monkeypatch.setattr("quant.data_governance.financial_pti.audit_financial_pti", fake_audit_financial_pti)
 
-    result = report_exports.export_phase0_financial_pti(tmp_path / "config.yaml")
+    result = report_exports.export_financial_pti(tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["summary"]), root=tmp_path, command="financial_pti", scope="qfq_asof")
@@ -256,9 +256,9 @@ def test_universe_pti_defaults_to_standard_run_dir(monkeypatch, tmp_path: Path) 
         calls.append(kwargs)
         return {"report": kwargs["report_output"]}
 
-    monkeypatch.setattr("phase0.data_governance.universe_pit.audit_universe_pit", fake_audit_universe_pit)
+    monkeypatch.setattr("quant.data_governance.universe_pit.audit_universe_pit", fake_audit_universe_pit)
 
-    result = report_exports.export_phase0_universe_pit(tmp_path / "config.yaml", as_of_date="2021-05-28")
+    result = report_exports.export_universe_pit(tmp_path / "config.yaml", as_of_date="2021-05-28")
 
     assert calls
     _assert_standard_run(Path(result["report"]), root=tmp_path, command="universe_pti", scope="2021_05_28")
@@ -272,9 +272,9 @@ def test_premarket_defaults_to_standard_run_and_latest(monkeypatch, tmp_path: Pa
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
 
-    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("quant.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    result = report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml")
+    result = report_exports.export_premarket(config_path=tmp_path / "config.yaml")
 
     assert calls
     _assert_standard_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
@@ -290,9 +290,9 @@ def test_premarket_account_id_uses_account_scope_and_latest(monkeypatch, tmp_pat
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"], "account_id": kwargs["account_id"]}
 
-    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("quant.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    result = report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml", account_id="quality")
+    result = report_exports.export_premarket(config_path=tmp_path / "config.yaml", account_id="quality")
 
     assert result["account_id"] == "quality"
     _assert_standard_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="quality")
@@ -307,9 +307,9 @@ def test_premarket_forwards_as_of_date(monkeypatch, tmp_path: Path) -> None:
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
 
-    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("quant.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    report_exports.export_phase0_premarket(config_path=tmp_path / "config.yaml", as_of_date="2026-06-30")
+    report_exports.export_premarket(config_path=tmp_path / "config.yaml", as_of_date="2026-06-30")
 
     assert calls[0]["as_of_date"] == "2026-06-30"
 
@@ -323,9 +323,9 @@ def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -
         calls.append(kwargs)
         return {"watchlist": kwargs["output"], "report": kwargs["report_output"]}
 
-    monkeypatch.setattr("phase0.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
+    monkeypatch.setattr("quant.reporting.premarket_watchlist.export_premarket_watchlist", fake_export_premarket_watchlist)
 
-    result = report_exports.export_phase0_premarket(config_path=config_path)
+    result = report_exports.export_premarket(config_path=config_path)
 
     assert calls
     _assert_configured_run(Path(result["watchlist"]), root=tmp_path, command="premarket", scope="watchlist")
@@ -334,7 +334,7 @@ def test_premarket_uses_configured_run_and_latest(monkeypatch, tmp_path: Path) -
 
 
 def test_phase0_cost_sensitivity_compatibility_aliases_new_command_module() -> None:
-    assert cli.run_phase0_cost_sensitivity is phase0_run_cli.run_phase0_cost_sensitivity
+    assert cli.run_pipeline_cost_sensitivity is pipeline_run_cli.run_pipeline_cost_sensitivity
 
 
 def test_phase0_cost_sensitivity_uses_configured_phase0_category(monkeypatch, tmp_path: Path) -> None:
@@ -343,13 +343,13 @@ def test_phase0_cost_sensitivity_uses_configured_phase0_category(monkeypatch, tm
     saved_paths: list[Path] = []
     report_paths: list[Path] = []
 
-    monkeypatch.setattr(phase0_run_cli, "configure_local_history", lambda cfg, root: None)
-    monkeypatch.setattr(phase0_run_cli, "configure_akshare_throttle", lambda cfg: None)
-    monkeypatch.setattr(phase0_run_cli, "run_cost_sensitivity", lambda cfg, *, root=None: pd.DataFrame({"scenario": ["base"]}))
-    monkeypatch.setattr(phase0_run_cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
-    monkeypatch.setattr(phase0_run_cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
+    monkeypatch.setattr(pipeline_run_cli, "configure_local_history", lambda cfg, root: None)
+    monkeypatch.setattr(pipeline_run_cli, "configure_akshare_throttle", lambda cfg: None)
+    monkeypatch.setattr(pipeline_run_cli, "run_cost_sensitivity", lambda cfg, *, root=None: pd.DataFrame({"scenario": ["base"]}))
+    monkeypatch.setattr(pipeline_run_cli, "save_walk_forward_csv", lambda df, output_path: saved_paths.append(Path(output_path)))
+    monkeypatch.setattr(pipeline_run_cli, "write_cost_sensitivity_report", lambda path, df: report_paths.append(Path(path)))
 
-    exit_code = phase0_run_cli.run_phase0_cost_sensitivity(
+    exit_code = pipeline_run_cli.run_pipeline_cost_sensitivity(
         config_path,
         [{"name": "base", "slippage": 0.001, "commission": 0.0, "stamp_duty_sell": 0.0}],
     )
@@ -435,11 +435,11 @@ def test_account_bill_without_daily_rows_exports_placeholder(monkeypatch, tmp_pa
 
 
 def test_cli_report_export_helper_names_remain_compatible() -> None:
-    assert cli._export_phase0_low_turnover_bill is report_exports.export_phase0_low_turnover_bill
-    assert cli._export_phase0_market_regime_report is report_exports.export_phase0_market_regime_report
-    assert cli._export_phase0_oos_report is report_exports.export_phase0_oos_report
-    assert cli._export_phase0_financial_pti is report_exports.export_phase0_financial_pti
-    assert cli._export_phase0_universe_pit is report_exports.export_phase0_universe_pit
-    assert cli._export_phase0_premarket is report_exports.export_phase0_premarket
+    assert cli._export_low_turnover_bill is report_exports.export_low_turnover_bill
+    assert cli._export_market_regime_report is report_exports.export_market_regime_report
+    assert cli._export_oos_report is report_exports.export_oos_report
+    assert cli._export_financial_pti is report_exports.export_financial_pti
+    assert cli._export_universe_pit is report_exports.export_universe_pit
+    assert cli._export_premarket is report_exports.export_premarket
     assert cli._export_brief_account_bill is report_exports.export_brief_account_bill
-    assert cli._export_phase0_execution_gate is report_exports.export_phase0_execution_gate
+    assert cli._export_execution_gate is report_exports.export_execution_gate

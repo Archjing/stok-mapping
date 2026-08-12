@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from phase0.data_access.etf_opening_snapshot import (
+from quant.data_access.etf_opening_snapshot import (
     ensure_etf_opening_snapshot_schema,
     parse_eastmoney_quote,
     write_etf_opening_snapshot,

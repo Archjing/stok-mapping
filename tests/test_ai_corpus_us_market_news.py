@@ -4,9 +4,9 @@ import argparse
 import sqlite3
 from pathlib import Path
 
-from phase0.ai_corpus import fetch_ai_corpus, query_ai_corpus_documents, upsert_ai_corpus_documents
-from phase0.ai_corpus.registry import canonical_provider_name, get_provider_spec
-from phase0.cli_commands.ai_corpus import handle_ai_corpus_command, register_ai_corpus_commands
+from quant.ai_corpus import fetch_ai_corpus, query_ai_corpus_documents, upsert_ai_corpus_documents
+from quant.ai_corpus.registry import canonical_provider_name, get_provider_spec
+from quant.cli_commands.ai_corpus import handle_ai_corpus_command, register_ai_corpus_commands
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures/ai_corpus/us_market_news"
@@ -74,7 +74,7 @@ def test_us_market_news_registry_alias_and_cli_route(tmp_path: Path) -> None:
 
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
-        "phase0:\n"
+        "quant:\n"
         "  ai_corpus:\n"
         "    database_path: data/ai_corpus/ai_corpus.sqlite\n"
         "    us_market_news:\n"
@@ -108,7 +108,7 @@ def test_us_market_news_registry_alias_and_cli_route(tmp_path: Path) -> None:
 
 
 def test_us_market_news_is_registered_before_premarket_brief() -> None:
-    from phase0.maintenance_orchestrator import _default_registry
+    from quant.maintenance_orchestrator import _default_registry
 
     specs = _default_registry(Path("config.yaml"))
     by_name = {item.name: item for item in specs}

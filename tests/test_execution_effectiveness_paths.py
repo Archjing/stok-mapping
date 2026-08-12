@@ -2,14 +2,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.reporting import execution_effectiveness as module
+from quant.reporting import execution_effectiveness as module
 
 
 def test_explicit_fold_and_report_outputs_remain_project_relative(monkeypatch, tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         """
-phase0:
+quant:
   reporting:
     root_dir: reports
     categories:
@@ -72,7 +72,7 @@ def test_configured_execution_outputs_resolve_under_report_root(monkeypatch, tmp
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         """
-phase0:
+quant:
   reporting:
     root_dir: local_reports
     categories:

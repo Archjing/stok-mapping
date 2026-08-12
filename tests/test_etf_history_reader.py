@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.data_access.etf_history import ETFAdjustmentCoverageError, ETFHistoryReader
-from phase0.data_governance.etf_store import (
+from quant.data_access.etf_history import ETFAdjustmentCoverageError, ETFHistoryReader
+from quant.data_governance.etf_store import (
     ensure_etf_schema,
     upsert_etf_adj_factors,
     upsert_etf_daily_bars,

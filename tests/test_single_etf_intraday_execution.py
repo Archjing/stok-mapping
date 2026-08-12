@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.execution.accounts import SimulatedAccountConfig
-from phase0.execution.single_etf_intraday import (
+from quant.execution.accounts import SimulatedAccountConfig
+from quant.execution.single_etf_intraday import (
     SingleEtfIntradayExecutionState,
     SingleEtfIntradayPolicy,
     evaluate_trailing_exit,

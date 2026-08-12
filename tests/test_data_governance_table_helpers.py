@@ -5,9 +5,9 @@ import sqlite3
 import pandas as pd
 import pytest
 
-import phase0.data_governance.update_history as governance_update_history
-from phase0.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
-from phase0.data_governance.sql import safe_identifier, to_sql_value
+import quant.data_governance.update_history as governance_update_history
+from quant.data_governance.daily_basic import ensure_daily_basic_table, upsert_daily_basic_rows
+from quant.data_governance.sql import safe_identifier, to_sql_value
 
 
 def test_safe_identifier_accepts_simple_sql_identifiers() -> None:

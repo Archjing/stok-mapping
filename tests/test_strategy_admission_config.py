@@ -8,21 +8,21 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-import phase0.research.admission.runner as admission_runner
-from phase0.config import load_config
-from phase0.research.admission.reports import (
+import quant.research.admission.runner as admission_runner
+from quant.config import load_config
+from quant.research.admission.reports import (
     admission_command_hint as _admission_command_hint,
     config_command_arg as _config_command_arg,
     write_governance_report as _write_governance_report,
     write_report as _write_report,
 )
-from phase0.research.admission.runner import run_strategy_admission
-from phase0.research.admission.gate import (
+from quant.research.admission.runner import run_strategy_admission
+from quant.research.admission.gate import (
     overfit_blocks_admission as _overfit_blocks_admission,
     resolve_admission_gate as _resolve_admission_gate,
     resolve_diagnostic_suites as _resolve_diagnostic_suites,
 )
-from phase0.research.admission.review import (
+from quant.research.admission.review import (
     admission_action as _admission_action,
     attach_price_adjustment_status as _attach_price_adjustment_status,
     industry_missing_window_count as _industry_missing_window_count,
@@ -30,12 +30,12 @@ from phase0.research.admission.review import (
     turnover_fail_window_count as _turnover_fail_window_count,
     window_metrics as _window_metrics,
 )
-from phase0.research.admission.strategy_scope import (
+from quant.research.admission.strategy_scope import (
     _force_strategy_set_enabled_for_admission,
     _resolve_strategy_scope,
 )
-from phase0.research.diagnostics.overfit import _metrics, _score, run_overfit_diagnostic
-from phase0.walk_forward import FINANCIAL_DIAGNOSTIC_STRATEGIES, describe_walk_forward_presets
+from quant.research.diagnostics.overfit import _metrics, _score, run_overfit_diagnostic
+from quant.walk_forward import FINANCIAL_DIAGNOSTIC_STRATEGIES, describe_walk_forward_presets
 
 
 def test_strategy_scope_prefers_cli_strategies_over_strategy_set() -> None:
@@ -94,7 +94,7 @@ def test_strategy_scope_rejects_unknown_strategy_set() -> None:
 
 def test_admission_command_hint_records_actual_config_path(tmp_path) -> None:
     config_path = tmp_path / "config.main_strategy_i7_price_volume_industry_relative_20260624.yaml"
-    config_path.write_text("phase0: {}\n", encoding="utf-8")
+    config_path.write_text("quant: {}\n", encoding="utf-8")
 
     hint = _admission_command_hint(
         config_arg=_config_command_arg(config_path, tmp_path),
@@ -142,7 +142,7 @@ def test_admission_command_hint_round_trips_paths_with_spaces_and_cost_multiplie
     assert shlex.split(hint) == [
         "python",
         "-m",
-        "phase0.cli",
+        "quant.cli",
         "strategy-admission",
         "--config",
         "configs/research config.yaml",
@@ -808,14 +808,14 @@ def test_governance_report_records_scope_boundaries_and_required_artifacts(tmp_p
         },
         gate_cfg={"require_qfq_asof": True, "overfit_risk_max": "medium"},
         diagnostics_suites=["data_quality_v1", "overfit_v1"],
-        command_hint="phase0.cli strategy-admission --strategy-set baseline_admission_all_v1",
+        command_hint="quant.cli strategy-admission --strategy-set baseline_admission_all_v1",
     )
 
     text = output_path.read_text(encoding="utf-8")
 
     assert "# Strategy Admission Governance Report" in text
     assert "baseline_admission_all_v1" in text
-    assert "phase0.cli strategy-admission --strategy-set baseline_admission_all_v1" in text
+    assert "quant.cli strategy-admission --strategy-set baseline_admission_all_v1" in text
     assert "`qfq_asof`" in text
     assert "research_only" in text
     assert "不得进入 paper review / 模拟账户 / 日报 / watchlist" in text

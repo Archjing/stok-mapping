@@ -7,8 +7,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from phase0.data_access import local_history
-import phase0.walk_forward as wf
+from quant.data_access import local_history
+import quant.walk_forward as wf
 
 
 class DummyStrategy:

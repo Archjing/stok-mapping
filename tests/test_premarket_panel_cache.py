@@ -2,8 +2,8 @@ import sqlite3
 from datetime import date
 from pathlib import Path
 
-from phase0.reporting.strategy_bill import _panel_cache_key
-from phase0.reporting.premarket_watchlist import _latest_trade_date
+from quant.reporting.strategy_bill import _panel_cache_key
+from quant.reporting.premarket_watchlist import _latest_trade_date
 
 
 def test_panel_cache_key_includes_as_of_date() -> None:

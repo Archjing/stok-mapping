@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-import phase0.cli as cli
-import phase0.cli_commands.delivery as delivery_cli
+import quant.cli as cli
+import quant.cli_commands.delivery as delivery_cli
 
 
 def _silent_console() -> SimpleNamespace:
@@ -122,7 +122,7 @@ def test_watchlist_pipeline_updates_history_and_copies_latest(monkeypatch, tmp_p
         calls.append(("update_history", {"cfg": cfg, "root": root, "check_only": check_only}))
         return _history_result(inserted_rows=2)
 
-    def fake_export_phase0_premarket(**kwargs):
+    def fake_export_premarket(**kwargs):
         calls.append(("export_premarket", kwargs))
         return {
             "watchlist": tmp_path / "watchlist.csv",
@@ -146,7 +146,7 @@ def test_watchlist_pipeline_updates_history_and_copies_latest(monkeypatch, tmp_p
 
     monkeypatch.setattr(delivery_cli, "load_config", fake_load_config)
     monkeypatch.setattr(delivery_cli, "update_manual_history_from_config", fake_update_manual_history_from_config)
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fake_export_phase0_premarket)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fake_export_premarket)
     monkeypatch.setattr(delivery_cli, "_sync_watchlist_to_remote", fake_sync)
     monkeypatch.setattr(delivery_cli, "_sync_account_bill_to_cloud", fake_sync)
     monkeypatch.setattr(delivery_cli, "load_simulated_accounts", lambda cfg, root: [])
@@ -214,7 +214,7 @@ def test_watchlist_pipeline_all_accounts_runs_each_enabled_account(monkeypatch, 
     def fake_load_accounts(cfg, root):
         return [Account("default"), Account("quality")]
 
-    def fake_export_phase0_premarket(**kwargs):
+    def fake_export_premarket(**kwargs):
         account_id = str(kwargs["account_id"])
         calls.append(("export_premarket", kwargs))
         report = tmp_path / f"{account_id}_report.html"
@@ -236,7 +236,7 @@ def test_watchlist_pipeline_all_accounts_runs_each_enabled_account(monkeypatch, 
     monkeypatch.setattr(delivery_cli, "load_config", fake_load_config)
     monkeypatch.setattr(delivery_cli, "load_simulated_accounts", fake_load_accounts)
     monkeypatch.setattr(delivery_cli, "update_manual_history_from_config", fake_update_manual_history_from_config)
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fake_export_phase0_premarket)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fake_export_premarket)
     monkeypatch.setattr(delivery_cli, "_sync_watchlist_to_remote", lambda console, local_dir: None)
     monkeypatch.setattr(delivery_cli, "_sync_account_bill_to_cloud", lambda console, local_dir: None)
     monkeypatch.setattr(delivery_cli, "build_quant_static_site", lambda **kwargs: {"site_root": tmp_path / "reports" / "static_site" / "quant"})
@@ -401,7 +401,7 @@ def test_confirm_account_bills_returns_failure_when_today_is_not_confirmed(monke
 def test_watchlist_pipeline_forwards_as_of_date(monkeypatch, tmp_path: Path) -> None:
     calls: list[tuple[str, dict[str, object]]] = []
 
-    def fake_export_phase0_premarket(**kwargs):
+    def fake_export_premarket(**kwargs):
         calls.append(("export_premarket", kwargs))
         report = tmp_path / "watchlist.html"
         report.write_text("<html>watchlist</html>", encoding="utf-8")
@@ -416,7 +416,7 @@ def test_watchlist_pipeline_forwards_as_of_date(monkeypatch, tmp_path: Path) -> 
         }
 
     monkeypatch.setattr(delivery_cli, "load_config", lambda path: {"reporting": {}})
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fake_export_phase0_premarket)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fake_export_premarket)
     monkeypatch.setattr(delivery_cli, "_sync_watchlist_to_remote", lambda console, local_dir: None)
     monkeypatch.setattr(delivery_cli, "build_quant_static_site", lambda **kwargs: {"site_root": tmp_path / "reports" / "static_site" / "quant"})
     monkeypatch.setattr(delivery_cli, "sync_quant_static_site", lambda **kwargs: {"remote": "deploy@example", "remote_dir": "/var/www/spidermanread/quant/"})
@@ -453,7 +453,7 @@ def test_publish_watchlist_static_assets_without_regenerating_report(monkeypatch
     def fake_sync(console, local_dir: Path) -> None:
         calls.append(("sync", {"local_dir": local_dir}))
 
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fail_export)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fail_export)
     monkeypatch.setattr(delivery_cli, "_sync_watchlist_to_remote", fake_sync)
     monkeypatch.setattr(delivery_cli, "BRIEF_TODAY_MIRROR", tmp_path / "external" / "brief_today" / "index.html")
 
@@ -487,11 +487,11 @@ def test_watchlist_pipeline_check_only_stops_before_export(monkeypatch, tmp_path
     )
     monkeypatch.setattr(delivery_cli, "Console", lambda: _silent_console())
 
-    def fake_export_phase0_premarket(**kwargs):
+    def fake_export_premarket(**kwargs):
         calls.append("export")
         return {}
 
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fake_export_phase0_premarket)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fake_export_premarket)
 
     exit_code = delivery_cli.run_watchlist_pipeline(
         config_path=tmp_path / "config.yaml",
@@ -511,7 +511,7 @@ def test_watchlist_pipeline_skips_account_bill_sync_when_bill_is_missing(monkeyp
     monkeypatch.setattr(delivery_cli, "load_config", lambda path: {"reporting": {}})
     monkeypatch.setattr(
         delivery_cli,
-        "export_phase0_premarket",
+        "export_premarket",
         lambda **kwargs: {
             "watchlist": tmp_path / "watchlist.csv",
             "report": report,
@@ -546,7 +546,7 @@ def test_delivery_handler_forwards_premarket_and_account_bill(monkeypatch, tmp_p
     stylesheet = tmp_path / "style.css"
     stylesheet.write_text(":root { --text: #45373c; }", encoding="utf-8")
 
-    def fake_export_phase0_premarket(**kwargs):
+    def fake_export_premarket(**kwargs):
         calls.append(("premarket", kwargs))
         return {
             "watchlist": tmp_path / "watchlist.csv",
@@ -567,7 +567,7 @@ def test_delivery_handler_forwards_premarket_and_account_bill(monkeypatch, tmp_p
     def fake_sync(console, local_dir: Path) -> None:
         calls.append(("sync", {"local_dir": local_dir}))
 
-    monkeypatch.setattr(delivery_cli, "export_phase0_premarket", fake_export_phase0_premarket)
+    monkeypatch.setattr(delivery_cli, "export_premarket", fake_export_premarket)
     monkeypatch.setattr(delivery_cli, "export_brief_account_bill", fake_export_brief_account_bill)
     monkeypatch.setattr(delivery_cli, "_sync_account_bill_to_cloud", fake_sync)
     monkeypatch.setattr(delivery_cli, "load_config", lambda path: {"reporting": {}})
@@ -665,7 +665,7 @@ def test_cli_main_delegates_delivery_commands(monkeypatch, tmp_path: Path) -> No
         return 0
 
     monkeypatch.setattr(cli, "handle_delivery_command", fake_handle_delivery_command)
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "brief", "watchlist", "--config", str(tmp_path / "config.yaml")])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "brief", "watchlist", "--config", str(tmp_path / "config.yaml")])
 
     assert cli.main() == 0
     assert calls == [("brief", "watchlist", True)]

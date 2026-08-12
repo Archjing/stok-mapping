@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phase0.research.diagnostics.filter import _daily_filter_rows, _fold_summary_row
+from quant.research.diagnostics.filter import _daily_filter_rows, _fold_summary_row
 
 
 def test_filter_diagnostic_marks_rare_strong_context_as_bottleneck() -> None:

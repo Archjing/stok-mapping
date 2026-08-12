@@ -7,7 +7,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.data_governance.backfills.etf_history import (
+from quant.data_governance.backfills.etf_history import (
     ETFBackfillLimits,
     ETFBackfillPlanError,
     ETFResumeMismatchError,
@@ -21,9 +21,9 @@ from phase0.data_governance.backfills.etf_history import (
     plan_etf_task_specs,
     validate_resume_contract,
 )
-from phase0.data_access.providers.tushare import TusharePermissionError
-from phase0.data_governance.etf_store import ensure_etf_schema
-from phase0.data_governance.etf_universe import ETFManifestMember, ETFUniverseManifest, history_config_digest
+from quant.data_access.providers.tushare import TusharePermissionError
+from quant.data_governance.etf_store import ensure_etf_schema
+from quant.data_governance.etf_universe import ETFManifestMember, ETFUniverseManifest, history_config_digest
 
 
 def _cfg() -> dict[str, object]:
@@ -215,7 +215,7 @@ def test_empty_listed_chunk_is_persisted_and_blocks_ok(tmp_path):
 @pytest.mark.parametrize(("limit_symbols", "limit_tasks"), [(1, None), (None, 2)])
 def test_resume_rejects_new_run_limits(monkeypatch, tmp_path, limit_symbols, limit_tasks):
     monkeypatch.setattr(
-        "phase0.data_governance.backfills.etf_history.load_config",
+        "quant.data_governance.backfills.etf_history.load_config",
         lambda _path: {
             "etf_history": {"path": str(tmp_path / "etf.sqlite")},
             "data_sources": {"tushare": {}},

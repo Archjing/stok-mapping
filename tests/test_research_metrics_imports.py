@@ -5,9 +5,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-import phase0.walk_forward as legacy_walk_forward
-from phase0.research import metrics
-from phase0.research.metrics import annualized_return, calc_metrics, max_drawdown, sharpe
+import quant.walk_forward as legacy_walk_forward
+from quant.research import metrics
+from quant.research.metrics import annualized_return, calc_metrics, max_drawdown, sharpe
 
 
 def test_research_metrics_match_walk_forward_legacy_helpers() -> None:
@@ -50,7 +50,7 @@ def test_strategy_modules_use_research_metrics_instead_of_walk_forward_private_h
     offenders: list[str] = []
     for path in (root / "phase0" / "strategies").glob("*.py"):
         text = path.read_text(encoding="utf-8")
-        if "from phase0.walk_forward import _calc_metrics" in text:
+        if "from quant.walk_forward import _calc_metrics" in text:
             offenders.append(path.name)
 
     assert offenders == []

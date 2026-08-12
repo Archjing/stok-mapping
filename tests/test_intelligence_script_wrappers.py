@@ -7,7 +7,7 @@ import sys
 import pandas as pd
 import pytest
 
-from phase0.intelligence.hk_a_mapping_factors import _normalize_ah_comparison, _normalize_hsgt_hist
+from quant.intelligence.hk_a_mapping_factors import _normalize_ah_comparison, _normalize_hsgt_hist
 
 
 @pytest.mark.parametrize(
@@ -15,14 +15,14 @@ from phase0.intelligence.hk_a_mapping_factors import _normalize_ah_comparison, _
     [
         (
             "scripts.export_hk_a_mapping_factors",
-            "phase0.intelligence.hk_a_mapping_factors",
+            "quant.intelligence.hk_a_mapping_factors",
             ["_normalize_ah_comparison", "_normalize_hsgt_hist"],
             "scripts/export_hk_a_mapping_factors.py",
             "--holding-symbol",
         ),
         (
             "scripts.tiingo_news_probe",
-            "phase0.intelligence.tiingo_news_probe",
+            "quant.intelligence.tiingo_news_probe",
             ["main"],
             "scripts/tiingo_news_probe.py",
             "--tickers",

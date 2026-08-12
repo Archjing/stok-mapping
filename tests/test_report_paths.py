@@ -1,7 +1,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from phase0.reporting.paths import create_report_run, latest_dir, report_config_path, report_path, scratch_dir
+from quant.reporting.paths import create_report_run, latest_dir, report_config_path, report_path, scratch_dir
 
 
 def test_create_report_run_uses_date_command_and_scope(tmp_path: Path) -> None:

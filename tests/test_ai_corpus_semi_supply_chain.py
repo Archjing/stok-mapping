@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from phase0.ai_corpus import fetch_ai_corpus, upsert_ai_corpus_documents
-from phase0.ai_corpus.registry import canonical_provider_name, get_provider_spec
+from quant.ai_corpus import fetch_ai_corpus, upsert_ai_corpus_documents
+from quant.ai_corpus.registry import canonical_provider_name, get_provider_spec
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures/ai_corpus/semi_supply_chain"
@@ -38,7 +38,7 @@ def test_fixture_fetch_parses_both_corpus_types(tmp_path: Path) -> None:
 
 
 def test_fixture_upsert_is_idempotent(tmp_path: Path) -> None:
-    from phase0.ai_corpus import query_ai_corpus_documents
+    from quant.ai_corpus import query_ai_corpus_documents
 
     frame = fetch_ai_corpus(
         provider="tsmc",

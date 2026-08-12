@@ -5,9 +5,9 @@ import sqlite3
 import pandas as pd
 import pytest
 
-from phase0.data_governance.financial_factors import ensure_financial_factor_table
-from phase0.data_governance.backfills import tushare_financial_tasks
-from phase0.data_governance.backfills import tushare_history
+from quant.data_governance.financial_factors import ensure_financial_factor_table
+from quant.data_governance.backfills import tushare_financial_tasks
+from quant.data_governance.backfills import tushare_history
 
 
 def test_tushare_financial_task_helpers_are_import_compatible() -> None:

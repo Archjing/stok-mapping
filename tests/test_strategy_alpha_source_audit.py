@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.research.attribution.alpha_source import run_strategy_alpha_source_audit
+from quant.research.attribution.alpha_source import run_strategy_alpha_source_audit
 
 
 def test_strategy_alpha_source_audit_compares_folds_and_contributors(tmp_path) -> None:

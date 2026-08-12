@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.config import load_config
-from phase0.data_access.local_history import configure_local_history, load_snapshot_from_local_history_as_of
-from phase0.execution.accounts import SimulatedAccountConfig, run_signal_account_execution
-from phase0.strategies.base import StrategyOutput
-from phase0.strategies.constraints import apply_strategy_constraints
-from phase0.walk_forward import _build_account_execution_config, _merge_signal_metadata, _signal_trace_summary
+from quant.config import load_config
+from quant.data_access.local_history import configure_local_history, load_snapshot_from_local_history_as_of
+from quant.execution.accounts import SimulatedAccountConfig, run_signal_account_execution
+from quant.strategies.base import StrategyOutput
+from quant.strategies.constraints import apply_strategy_constraints
+from quant.walk_forward import _build_account_execution_config, _merge_signal_metadata, _signal_trace_summary
 
 
 def _sample_output() -> StrategyOutput:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from phase0.data_governance.us_market_features import (
+from quant.data_governance.us_market_features import (
     load_common_market_daily_features,
     load_completed_market_snapshot,
 )

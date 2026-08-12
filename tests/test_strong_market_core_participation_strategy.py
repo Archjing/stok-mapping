@@ -3,8 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.strong_market_core_participation import StrongMarketCoreParticipationStrategy
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.strong_market_core_participation import StrongMarketCoreParticipationStrategy
 
 
 def _panel(dates: pd.DatetimeIndex | None = None) -> pd.DataFrame:

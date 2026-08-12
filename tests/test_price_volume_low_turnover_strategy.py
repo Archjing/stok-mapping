@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.price_volume_low_turnover import PriceVolumeLowTurnoverStrategy
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.price_volume_low_turnover import PriceVolumeLowTurnoverStrategy
 
 
 def _panel() -> pd.DataFrame:

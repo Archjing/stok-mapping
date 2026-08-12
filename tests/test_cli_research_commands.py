@@ -4,8 +4,8 @@ import argparse
 from pathlib import Path
 from types import SimpleNamespace
 
-import phase0.cli as cli
-import phase0.cli_commands.research as research_cli
+import quant.cli as cli
+import quant.cli_commands.research as research_cli
 
 
 def _silent_console() -> SimpleNamespace:
@@ -62,7 +62,7 @@ def test_market_context_handler_configures_local_history_and_forwards_args(monke
 
     def fake_load_config(path: Path) -> dict[str, object]:
         calls.append(("load_config", {"path": path}))
-        return {"phase0": {"local_history": {"path": "history.sqlite"}, "benchmark_symbol": "SH.000300"}}
+        return {"local_history": {"path": "history.sqlite"}, "benchmark_symbol": "SH.000300"}
 
     def fake_configure_local_history(raw: dict[str, object], root: Path) -> None:
         calls.append(("configure_local_history", {"raw": raw, "root": root}))
@@ -124,7 +124,7 @@ def test_exposure_handler_forwards_command_and_paths(monkeypatch, tmp_path: Path
     calls: list[dict[str, object]] = []
 
     def fake_load_config(path: Path) -> dict[str, object]:
-        return {"phase0": {"local_history": {}}}
+        return {"local_history": {}}
 
     def fake_run_strategy_exposure_diagnostic(**kwargs):
         calls.append(kwargs)
@@ -142,7 +142,7 @@ def test_exposure_handler_forwards_command_and_paths(monkeypatch, tmp_path: Path
     monkeypatch.setattr(
         research_cli.os,
         "sys",
-        SimpleNamespace(argv=["phase0.cli", "strategy-exposure-diagnostic", "--candidate-folds", "folds.csv"]),
+        SimpleNamespace(argv=["quant.cli", "strategy-exposure-diagnostic", "--candidate-folds", "folds.csv"]),
     )
 
     args = SimpleNamespace(
@@ -170,7 +170,7 @@ def test_exposure_handler_forwards_command_and_paths(monkeypatch, tmp_path: Path
             "market_context_path": (tmp_path / "market_context.csv").resolve(),
             "universe_path": (tmp_path / "universe.csv").resolve(),
             "output_dir": (tmp_path / "exposure").resolve(),
-            "command": "phase0.cli strategy-exposure-diagnostic --candidate-folds folds.csv",
+            "command": "quant.cli strategy-exposure-diagnostic --candidate-folds folds.csv",
         }
     ]
 
@@ -238,7 +238,7 @@ def test_cli_main_delegates_research_commands(monkeypatch, tmp_path: Path) -> No
     monkeypatch.setattr(
         "sys.argv",
         [
-            "phase0.cli",
+            "quant.cli",
             "strategy-role-card",
             "--strategy",
             "sample_strategy",

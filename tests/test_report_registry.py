@@ -4,9 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-import phase0.cli as cli
-import phase0.cli_commands.dashboard as dashboard_cli
-from phase0.reporting.registry import classify_legacy_artifact, scan_report_artifacts, write_report_manifest
+import quant.cli as cli
+import quant.cli_commands.dashboard as dashboard_cli
+from quant.reporting.registry import (
+    classify_legacy_artifact,
+    classify_legacy_brief_artifact,
+    scan_report_artifacts,
+    write_report_manifest,
+)
 
 
 def _write(path: Path, text: str = "x") -> None:
@@ -140,7 +145,7 @@ def test_legacy_date_dir_artifacts_do_not_collapse_across_modules_or_files(tmp_p
 
 def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsys, tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
-    config_path.write_text("phase0: {}\n", encoding="utf-8")
+    config_path.write_text("quant: {}\n", encoding="utf-8")
     calls = []
 
     def fake_write_report_manifest(*, root, manifest_path=None, reports_dir=None):
@@ -158,7 +163,7 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
         ],
     )
     monkeypatch.setattr(dashboard_cli, "Console", lambda: SimpleNamespace(print=print))
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "dashboard", "scan", "--config", str(config_path)])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "dashboard", "scan", "--config", str(config_path)])
 
     exit_code = cli.main()
     captured = capsys.readouterr()
@@ -175,7 +180,7 @@ def test_dashboard_scan_cli_writes_manifest_and_prints_counts(monkeypatch, capsy
 
 def test_dashboard_scan_handler_writes_manifest_and_prints_counts(monkeypatch, capsys, tmp_path: Path) -> None:
     config_path = tmp_path / "config.yaml"
-    config_path.write_text("phase0: {}\n", encoding="utf-8")
+    config_path.write_text("quant: {}\n", encoding="utf-8")
     calls = []
 
     def fake_write_report_manifest(*, root, manifest_path=None, reports_dir=None):
@@ -207,3 +212,16 @@ def test_dashboard_scan_handler_writes_manifest_and_prints_counts(monkeypatch, c
     assert "Runs: 2" in captured.out
     assert "Artifacts: 2" in captured.out
     assert "csv=1, markdown=1" in captured.out
+
+
+def test_quant_registry_still_classifies_legacy_premarket_artifact(tmp_path: Path) -> None:
+    path = tmp_path / "phase0_premarket_watchlist_2026-08-12.csv"
+    path.write_text("symbol\nSH.512480\n", encoding="utf-8")
+    result = classify_legacy_brief_artifact(path.name)
+    assert result == "brief"
+
+
+def test_quant_registry_rejects_non_legacy_brief_filenames() -> None:
+    assert classify_legacy_brief_artifact("daily_watchlist_2026-08-12.csv") is None
+    assert classify_legacy_brief_artifact("phase0_backfill_report_2026-08-12.md") is None
+

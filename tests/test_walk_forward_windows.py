@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.walk_forward import _date_window_slices, _window_summary_fields
+from quant.walk_forward import _date_window_slices, _window_summary_fields
 
 
 def test_date_window_slices_use_calendar_year_boundaries_not_252_trading_days() -> None:

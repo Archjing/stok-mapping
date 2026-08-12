@@ -12,28 +12,28 @@ import pytest
     [
         (
             "scripts.export_execution_effectiveness_report",
-            "phase0.reporting.execution_effectiveness",
+            "quant.reporting.execution_effectiveness",
             ["DEFAULT_OUTPUT_DIR", "export_execution_effectiveness_report"],
             "scripts/export_execution_effectiveness_report.py",
             "--strategy-id",
         ),
         (
             "scripts.export_hk_market_history_report",
-            "phase0.reporting.hk_market_history",
+            "quant.reporting.hk_market_history",
             ["build_report"],
             "scripts/export_hk_market_history_report.py",
             "--output",
         ),
         (
             "scripts.export_market_regime_report",
-            "phase0.reporting.market_regime",
+            "quant.reporting.market_regime",
             ["export_market_regime_report"],
             "scripts/export_market_regime_report.py",
             "--summary-output",
         ),
         (
             "scripts.export_premarket_watchlist",
-            "phase0.reporting.premarket_watchlist",
+            "quant.reporting.premarket_watchlist",
             [
                 "DEFAULT_REPORT_OUTPUT",
                 "export_premarket_watchlist",
@@ -45,7 +45,7 @@ import pytest
         ),
         (
             "scripts.export_strategy_bill",
-            "phase0.reporting.strategy_bill",
+            "quant.reporting.strategy_bill",
             [
                 "DEFAULT_STRATEGY_ID",
                 "DEFAULT_PANEL_CACHE",
@@ -59,14 +59,14 @@ import pytest
         ),
         (
             "scripts.export_strategy_oos_report",
-            "phase0.reporting.strategy_oos",
+            "quant.reporting.strategy_oos",
             ["DEFAULT_PROFILE_OOS_REPORT_OUTPUT", "export_strategy_oos_report"],
             "scripts/export_strategy_oos_report.py",
             "--strategy-id",
         ),
         (
             "scripts.export_strategy_period_compare",
-            "phase0.reporting.strategy_period_compare",
+            "quant.reporting.strategy_period_compare",
             ["DEFAULT_COMPARE_TITLE", "main"],
             "scripts/export_strategy_period_compare.py",
             "--early-curve",

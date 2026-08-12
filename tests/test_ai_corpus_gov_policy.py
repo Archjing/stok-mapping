@@ -8,9 +8,9 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-import phase0.ai_corpus.api as ai_corpus_api
-import phase0.cli_commands.ai_corpus as ai_corpus_cli
-from phase0.ai_corpus import (
+import quant.ai_corpus.api as ai_corpus_api
+import quant.cli_commands.ai_corpus as ai_corpus_cli
+from quant.ai_corpus import (
     AI_CORPUS_DOCUMENT_COLUMNS,
     audit_gov_policy_probe_report,
     build_gov_policy_params,
@@ -24,8 +24,8 @@ from phase0.ai_corpus import (
     query_ai_corpus_documents,
     upsert_ai_corpus_documents,
 )
-from phase0.ai_corpus.providers import gov_policy
-from phase0.cli_commands.ai_corpus import handle_ai_corpus_command
+from quant.ai_corpus.providers import gov_policy
+from quant.cli_commands.ai_corpus import handle_ai_corpus_command
 
 
 FIXTURE_DIR = Path("tests/fixtures/ai_corpus/gov_policy")
@@ -66,7 +66,7 @@ def _write_config(root: Path) -> Path:
     config_path.write_text(
         "\n".join(
             [
-                "phase0:",
+                "quant:",
                 "  ai_corpus:",
                 "    database_path: data/ai_corpus/ai_corpus.sqlite",
                 "    raw_archive_dir: data/raw_data/ai_corpus/gov_policy",

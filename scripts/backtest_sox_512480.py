@@ -4,7 +4,7 @@
 
 本脚本保留一个旧研究对照：弱信号全天未触及后，仍回填当天开盘成交。
 只有这个回填动作属于事后情景；“开盘挂限价、触及成交、未触及收盘撤单”本身
-是可执行规则，并由 phase0.execution.single_etf_intraday 提供 admission/模拟口径。
+是可执行规则，并由 quant.execution.single_etf_intraday 提供 admission/模拟口径。
 
 用法: .venv/bin/python3 scripts/backtest_sox_512480.py
 """
@@ -20,13 +20,13 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phase0.execution.accounts import (
+from quant.execution.accounts import (
     SimulatedAccountConfig,
     _affordable_buy_shares,
     _trade_cost,
 )
-from phase0.research.metrics import annualized_return, max_drawdown, sharpe
-from phase0.strategies.cross_market_semiconductor_timing import (
+from quant.research.metrics import annualized_return, max_drawdown, sharpe
+from quant.strategies.cross_market_semiconductor_timing import (
     map_us_features_to_next_cn_trading_day,
 )
 

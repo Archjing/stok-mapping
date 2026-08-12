@@ -5,8 +5,8 @@ import sqlite3
 import pandas as pd
 import pytest
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.strong_market_effective_participation import (
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.strong_market_effective_participation import (
     StrongMarketEffectiveParticipationStrategy,
     _attach_benchmark_weights,
 )
@@ -157,7 +157,7 @@ def test_attach_benchmark_weights_uses_lagged_asof_table(tmp_path, monkeypatch) 
                 ("2024-01-10", "B2", 20.0),
             ],
         )
-    monkeypatch.setattr("phase0.strategies.strong_market_effective_participation.local_history_path", lambda: db_path)
+    monkeypatch.setattr("quant.strategies.strong_market_effective_participation.local_history_path", lambda: db_path)
     panel = pd.DataFrame(
         {
             "date": [pd.Timestamp("2024-01-10"), pd.Timestamp("2024-01-11")],

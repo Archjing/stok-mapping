@@ -9,14 +9,14 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0 import walk_forward
-from phase0.cli_commands import data_update as data_update_cli
-from phase0.cli_commands import phase0_run
-from phase0.data_governance.cross_market_reference_history import CrossMarketReferenceHistoryUpdateResult
+from quant import walk_forward
+from quant.cli_commands import data_update as data_update_cli
+from quant.cli_commands import pipeline_run
+from quant.data_governance.cross_market_reference_history import CrossMarketReferenceHistoryUpdateResult
 
 
 def test_reference_history_configuration_does_not_leak_previous_defaults(tmp_path: Path) -> None:
-    reference_history = importlib.import_module("phase0.data_governance.cross_market_reference_history")
+    reference_history = importlib.import_module("quant.data_governance.cross_market_reference_history")
 
     reference_history.configure_cross_market_reference_history({"path": "custom.sqlite", "years": 3}, tmp_path)
     reference_history.configure_cross_market_reference_history({}, tmp_path)
@@ -44,11 +44,11 @@ def test_phase0_blocks_enabled_cross_market_overlay_when_reference_history_is_st
     )
 
     with pytest.raises(RuntimeError, match="cross_market_reference_history_gate_failed:status=stale"):
-        phase0_run.require_fresh_cross_market_reference(cfg, result)
+        pipeline_run.require_fresh_cross_market_reference(cfg, result)
 
 
 def test_reference_history_respects_disabled_fred_source(monkeypatch, tmp_path: Path) -> None:
-    reference_history = importlib.import_module("phase0.data_governance.cross_market_reference_history")
+    reference_history = importlib.import_module("quant.data_governance.cross_market_reference_history")
     monkeypatch.setattr(
         reference_history,
         "fetch_fred_series",
@@ -70,7 +70,7 @@ def test_reference_history_respects_disabled_fred_source(monkeypatch, tmp_path: 
 
 
 def test_fred_reference_history_persists_close_only_series_and_audits_source(monkeypatch, tmp_path: Path) -> None:
-    module_name = "phase0.data_governance.cross_market_reference_history"
+    module_name = "quant.data_governance.cross_market_reference_history"
     assert importlib.util.find_spec(module_name) is not None
     reference_history = importlib.import_module(module_name)
 

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from phase0.data_governance import external_market_history
+from quant.data_governance import external_market_history
 
 
 def _settings(db_path: Path) -> external_market_history.MarketHistorySettings:

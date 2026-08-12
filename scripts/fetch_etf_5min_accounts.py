@@ -26,7 +26,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from phase0.config import load_config
+from quant.config import load_config
 
 DB_PATH = Path("data/etf_history.sqlite")
 TABLE = "market_etf_5min_bars"

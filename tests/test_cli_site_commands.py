@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-import phase0.cli as cli
-import phase0.cli_commands.site as site_cli
+import quant.cli as cli
+import quant.cli_commands.site as site_cli
 
 
 def test_site_command_registration_supports_build_sync_publish() -> None:
@@ -88,7 +88,7 @@ def test_cli_main_delegates_site_commands(monkeypatch, tmp_path: Path) -> None:
         return 0
 
     monkeypatch.setattr(cli, "handle_site_command", fake_handle_site_command)
-    monkeypatch.setattr("sys.argv", ["phase0.cli", "site", "build", "--config", str(tmp_path / "config.yaml")])
+    monkeypatch.setattr("sys.argv", ["quant.cli", "site", "build", "--config", str(tmp_path / "config.yaml")])
 
     assert cli.main() == 0
     assert calls == [("site", "build", True)]

@@ -6,7 +6,7 @@ from dataclasses import replace
 
 import pandas as pd
 
-from phase0.execution.accounts import SimulatedAccountConfig, build_account_ledger, collect_watchlist_frames, load_simulated_accounts
+from quant.execution.accounts import SimulatedAccountConfig, build_account_ledger, collect_watchlist_frames, load_simulated_accounts
 
 
 def _account(tmp_path: Path) -> SimulatedAccountConfig:

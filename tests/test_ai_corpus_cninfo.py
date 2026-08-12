@@ -4,8 +4,8 @@ import argparse
 import sqlite3
 from pathlib import Path
 
-from phase0.ai_corpus import fetch_ai_corpus, fetch_cninfo_announcements, parse_cninfo_announcements
-from phase0.cli_commands.ai_corpus import handle_ai_corpus_command
+from quant.ai_corpus import fetch_ai_corpus, fetch_cninfo_announcements, parse_cninfo_announcements
+from quant.cli_commands.ai_corpus import handle_ai_corpus_command
 
 
 FIXTURE_DIR = Path("tests/fixtures/ai_corpus/cninfo")
@@ -16,7 +16,7 @@ def _write_config(root: Path) -> Path:
     config_path.write_text(
         "\n".join(
             [
-                "phase0:",
+                "quant:",
                 "  ai_corpus:",
                 "    database_path: data/ai_corpus/ai_corpus.sqlite",
             ]

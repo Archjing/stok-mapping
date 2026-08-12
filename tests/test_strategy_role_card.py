@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.research.summaries.role_card import run_strategy_role_card
+from quant.research.summaries.role_card import run_strategy_role_card
 
 
 def test_strategy_role_card_generates_research_only_rules(tmp_path) -> None:

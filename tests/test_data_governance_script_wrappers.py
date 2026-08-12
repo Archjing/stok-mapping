@@ -12,17 +12,17 @@ import pytest
     [
         (
             "scripts.audit_financial_pti",
-            "phase0.data_governance.financial_pti",
+            "quant.data_governance.financial_pti",
             ["audit_financial_pti"],
         ),
         (
             "scripts.audit_universe_pit",
-            "phase0.data_governance.universe_pit",
+            "quant.data_governance.universe_pit",
             ["audit_universe_pit"],
         ),
         (
             "scripts.check_local_history_consistency",
-            "phase0.data_governance.local_history_consistency",
+            "quant.data_governance.local_history_consistency",
             ["_build_comparison"],
         ),
     ],

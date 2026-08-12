@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import pandas as pd
 import requests
 
-from phase0.data_access.providers import external_market
+from quant.data_access.providers import external_market
 
 
 def test_external_market_provider_dispatches_yahoo_chart_for_yfinance_hk_symbol(monkeypatch) -> None:

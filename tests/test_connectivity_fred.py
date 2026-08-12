@@ -4,7 +4,7 @@ import pytest
 import requests
 import traceback
 
-from phase0.data_access import connectivity
+from quant.data_access import connectivity
 
 
 def test_fetch_fred_series_redacts_api_key_from_http_failure(monkeypatch) -> None:

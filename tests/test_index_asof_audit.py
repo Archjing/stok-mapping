@@ -4,7 +4,7 @@ import sqlite3
 
 import pandas as pd
 
-from phase0.data_governance.index_asof_audit import run_index_asof_audit
+from quant.data_governance.index_asof_audit import run_index_asof_audit
 
 
 def _create_base_db(path) -> None:

@@ -6,10 +6,10 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
-from phase0.data_access.providers.tushare import ETF_CATALOG_COLUMNS, TushareConfig, TusharePermissionError
-from phase0.data_governance import etf_catalog as catalog
-from phase0.data_governance.etf_catalog import StaleETFCatalogError
-from phase0.data_governance.etf_store import ensure_etf_schema
+from quant.data_access.providers.tushare import ETF_CATALOG_COLUMNS, TushareConfig, TusharePermissionError
+from quant.data_governance import etf_catalog as catalog
+from quant.data_governance.etf_catalog import StaleETFCatalogError
+from quant.data_governance.etf_store import ensure_etf_schema
 
 
 def _catalog_frame(ts_code: str, list_status: str) -> pd.DataFrame:

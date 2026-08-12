@@ -6,13 +6,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.execution.accounts import SimulatedAccountConfig
-from phase0.strategies.base import StrategyOutput
-from phase0.strategies.cross_market_semiconductor_timing import (
+from quant.execution.accounts import SimulatedAccountConfig
+from quant.strategies.base import StrategyOutput
+from quant.strategies.cross_market_semiconductor_timing import (
     CrossMarketSemiconductorTimingStrategy,
     map_us_features_to_next_cn_trading_day,
 )
-from phase0 import walk_forward
+from quant import walk_forward
 
 
 def _load_backtest_module():

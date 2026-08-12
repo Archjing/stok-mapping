@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategies.low_vol_low_turnover_quality import LowVolLowTurnoverQualityStrategy
+from quant.strategies.low_vol_low_turnover_quality import LowVolLowTurnoverQualityStrategy
 
 
 def _panel_with_industry_crowding() -> pd.DataFrame:

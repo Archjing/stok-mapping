@@ -7,12 +7,12 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.data_access import local_history
-from phase0.data_access.daily_basic_history import (
+from quant.data_access import local_history
+from quant.data_access.daily_basic_history import (
     load_daily_basic_factor_frame,
     merge_point_in_time_daily_basic,
 )
-from phase0.data_access.local_history import configure_local_history
+from quant.data_access.local_history import configure_local_history
 
 
 @pytest.fixture(autouse=True)

@@ -1,4 +1,4 @@
-from phase0.reporting.premarket_watchlist import _account_summary_cards
+from quant.reporting.premarket_watchlist import _account_summary_cards
 
 
 def test_account_summary_cards_include_requested_account_metrics() -> None:

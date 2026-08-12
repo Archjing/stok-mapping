@@ -3,8 +3,8 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, SleeveCompositeStrategy
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.sleeve_composite import SleeveCompositeLowChurnStrategy, SleeveCompositeStrategy
 
 
 def _sample_panel() -> pd.DataFrame:

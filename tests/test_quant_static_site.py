@@ -9,15 +9,15 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from phase0.execution.accounts import ensure_account_tables
-from phase0.reporting.market_comparison_chart import (
+from quant.execution.accounts import ensure_account_tables
+from quant.reporting.market_comparison_chart import (
     ComparisonChartConfig,
     ComparisonSeriesConfig,
     build_comparison_chart_data_from_frames,
     find_consecutive_move_runs,
     project_daily_mapping_signals,
 )
-from phase0.reporting.quant_static_site import (
+from quant.reporting.quant_static_site import (
     build_quant_static_site,
     sync_quant_static_site,
 )
@@ -629,7 +629,7 @@ def test_sync_quant_static_site_targets_only_quant_directory(monkeypatch, tmp_pa
     def fake_run(cmd, *, check: bool):
         calls.append(cmd)
 
-    monkeypatch.setattr("phase0.reporting.quant_static_site.subprocess.run", fake_run)
+    monkeypatch.setattr("quant.reporting.quant_static_site.subprocess.run", fake_run)
 
     result = sync_quant_static_site(root=tmp_path, site_root=site_root, remote="deploy@example", remote_dir="/var/www/share/quant/")
 
@@ -649,7 +649,7 @@ def test_sync_quant_static_site_uses_env_password_without_exposing_it_in_command
     def fake_run(cmd, *, check: bool, env: dict[str, str]):
         calls.append((cmd, env))
 
-    monkeypatch.setattr("phase0.reporting.quant_static_site.subprocess.run", fake_run)
+    monkeypatch.setattr("quant.reporting.quant_static_site.subprocess.run", fake_run)
 
     sync_quant_static_site(root=tmp_path, site_root=site_root, remote="deploy@example", remote_dir="/var/www/share/quant/")
 

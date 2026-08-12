@@ -8,7 +8,7 @@ PROJECT_ROOT="$(stok_project_root)"
 PYTHON_BIN="$(stok_python_bin "${PROJECT_ROOT}")"
 LOG_DIR="$(stok_log_dir "${PROJECT_ROOT}")"
 LOCK_FILE="${LOG_DIR}/financial_factors_weekly.lock"
-UPDATE_CMD=("${PYTHON_BIN}" -m phase0.cli update-financials --config config.yaml)
+UPDATE_CMD=("${PYTHON_BIN}" -m quant.cli update-financials --config config.yaml)
 
 cd "${PROJECT_ROOT}"
 stok_ensure_logs_dir "${PROJECT_ROOT}"

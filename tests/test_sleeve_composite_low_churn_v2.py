@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import phase0.strategies as strategies_package
-from phase0.research.factors import DEFAULT_WEIGHTS
-from phase0.strategies.sleeve_composite import QUALITY_COMPONENT_COLUMNS
-from phase0.strategies.registry import get_strategy
-from phase0.strategies.sleeve_composite_low_churn_v2 import SleeveCompositeLowChurnV2Strategy
+import quant.strategies as strategies_package
+from quant.research.factors import DEFAULT_WEIGHTS
+from quant.strategies.sleeve_composite import QUALITY_COMPONENT_COLUMNS
+from quant.strategies.registry import get_strategy
+from quant.strategies.sleeve_composite_low_churn_v2 import SleeveCompositeLowChurnV2Strategy
 
 
 SLOW_SCORE_COLUMNS = [

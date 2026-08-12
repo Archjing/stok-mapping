@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from phase0.research.core_coverage.core_reachability import (
+from quant.research.core_coverage.core_reachability import (
     _asof_weight_date_map,
     _diagnose_fold,
     _fold_summary,
@@ -245,8 +245,8 @@ def test_seed_benchmark_panel_adds_missing_core_members(monkeypatch: pytest.Monk
             ]
         )
 
-    monkeypatch.setattr("phase0.research.core_coverage.core_reachability.load_daily_from_local_history", fake_load_daily)
-    monkeypatch.setattr("phase0.research.core_coverage.core_reachability._lookup_stock_industry", lambda symbol: "Tech")
+    monkeypatch.setattr("quant.research.core_coverage.core_reachability.load_daily_from_local_history", fake_load_daily)
+    monkeypatch.setattr("quant.research.core_coverage.core_reachability._lookup_stock_industry", lambda symbol: "Tech")
 
     seeded = _seed_benchmark_panel(
         panel=panel,

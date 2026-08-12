@@ -4,9 +4,9 @@ import csv
 from pathlib import Path
 from types import SimpleNamespace
 
-from phase0.cli_commands.intelligence import handle_intelligence_command
-from phase0.config import load_config
-from phase0.intelligence import LEDGER_COLUMNS, _write_candidates, review_intelligence_candidates, validate_intelligence_ledger
+from quant.cli_commands.intelligence import handle_intelligence_command
+from quant.config import load_config
+from quant.intelligence import LEDGER_COLUMNS, _write_candidates, review_intelligence_candidates, validate_intelligence_ledger
 
 
 def _write_config(root: Path) -> Path:
@@ -14,7 +14,7 @@ def _write_config(root: Path) -> Path:
     config_path.write_text(
         "\n".join(
             [
-                "phase0:",
+                "quant:",
                 "  intelligence:",
                 "    ledger: knowledge/intelligence/strategy_intelligence_ledger.csv",
                 "    rag_manifest: knowledge/intelligence/rag_manifest.csv",
@@ -257,7 +257,7 @@ def test_intelligence_validate_cli_handler_forwards_args_and_error_exit(monkeypa
             raise AssertionError(message)
 
     monkeypatch.setattr(
-        "phase0.cli_commands.intelligence.validate_intelligence_ledger",
+        "quant.cli_commands.intelligence.validate_intelligence_ledger",
         fake_validate_intelligence_ledger,
     )
     args = SimpleNamespace(

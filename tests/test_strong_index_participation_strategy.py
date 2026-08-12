@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.strong_index_participation import (
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.strong_index_participation import (
     StrongIndexParticipationDynamicTriggerStrategy,
     StrongIndexParticipationStrategy,
 )
@@ -102,7 +102,7 @@ def test_strong_index_participation_shifts_index_context(monkeypatch) -> None:
         assert symbol == "SH.000300"
         return index_df
 
-    monkeypatch.setattr("phase0.strategies.strong_index_participation.load_index_daily_from_local_history", fake_load_index)
+    monkeypatch.setattr("quant.strategies.strong_index_participation.load_index_daily_from_local_history", fake_load_index)
     panel = _panel(pd.date_range("2024-01-01", periods=10, freq="D"))
     prepared = strategy.prepare_panel(
         panel,

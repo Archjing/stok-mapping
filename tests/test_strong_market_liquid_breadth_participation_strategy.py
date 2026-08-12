@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from phase0.strategies import available_strategies, get_strategy
-from phase0.strategies.strong_market_liquid_breadth_participation import (
+from quant.strategies import available_strategies, get_strategy
+from quant.strategies.strong_market_liquid_breadth_participation import (
     StrongMarketLiquidBreadthParticipationStrategy,
 )
 

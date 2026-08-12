@@ -7,8 +7,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from phase0.data_access import local_history
-from phase0.data_governance.backfills import index_history
+from quant.data_access import local_history
+from quant.data_governance.backfills import index_history
 
 
 @pytest.fixture(autouse=True)
@@ -70,7 +70,7 @@ def _write_config(tmp_path: Path, db_path: Path) -> Path:
     config_path = tmp_path / "config.yaml"
     config_path.write_text(
         f"""
-phase0:
+quant:
   local_history:
     path: "{db_path}"
   data_sources:
