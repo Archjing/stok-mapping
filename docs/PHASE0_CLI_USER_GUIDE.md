@@ -687,8 +687,8 @@ QUANT_SITE_SYNC_PASSWORD=your-password
 
 ## 8. 参考源码
 
-- CLI 入口：[phase0/cli.py](/home/zj/workspace/stok-mapping/phase0/cli.py)
-- 数据源适配：[phase0/data_access/connectivity.py](/home/zj/workspace/stok-mapping/phase0/data_access/connectivity.py)
-- 外部市场 provider 适配：[phase0/data_access/providers/external_market.py](/home/zj/workspace/stok-mapping/phase0/data_access/providers/external_market.py)
-- US/HK 历史库更新：[phase0/data_governance/external_market_history.py](/home/zj/workspace/stok-mapping/phase0/data_governance/external_market_history.py)
-- A 股增量更新：[phase0/data_governance/update_history.py](/home/zj/workspace/stok-mapping/phase0/data_governance/update_history.py)
+- CLI 入口：[phase0/cli.py](../phase0/cli.py)
+- 数据源适配：[phase0/data_access/connectivity.py](../phase0/data_access/connectivity.py)
+- 外部市场 provider 适配：[phase0/data_access/providers/external_market.py](../phase0/data_access/providers/external_market.py)
+- US/HK 历史库更新：[phase0/data_governance/external_market_history.py](../phase0/data_governance/external_market_history.py)
+- A 股增量更新：[phase0/data_governance/update_history.py](../phase0/data_governance/update_history.py)

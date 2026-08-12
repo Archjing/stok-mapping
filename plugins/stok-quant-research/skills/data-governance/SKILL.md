@@ -29,9 +29,13 @@ Use this skill when the task concerns local database health, data quality gates,
 - `phase0/db_health.py`
 - `phase0/maintenance_orchestrator.py`
 - `scripts/run_project_scheduler.sh`
-- `docs/tasks/ops/DATA_GOVERNANCE_ORCHESTRATOR_TASKS.md`
+- `docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
+- `docs/DEVELOPMENT_PLAN.md`
+- `data/README.md`
 - `reports/database_health/database_health_report.md`
 - `data/maintenance/maintenance.sqlite`
+
+Historical scheduler task breakdowns live under `docs/archive/tasks/`; they do not define current operations.
 
 ## Review Rules
 
@@ -39,4 +43,3 @@ Use this skill when the task concerns local database health, data quality gates,
 - For A-share research, prefer `cn` scope unless the task truly depends on HK/US data.
 - Trading-day staleness should use the maintained `trading_calendar`, not calendar-day arithmetic.
 - Runtime artifacts such as `maintenance.sqlite`, logs, and generated reports normally should not be committed.
-

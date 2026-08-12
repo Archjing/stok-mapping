@@ -10,13 +10,15 @@ Use this skill when the task concerns investment strategy intelligence collectio
 ## Scope
 
 - Preserve source URLs and distinguish external facts from project interpretation.
-- Keep raw notes in `refdocs/` and task plans in `docs/tasks/research/`.
+- Keep raw notes, source records and repeatable research ledgers in `refdocs/` or `knowledge/`.
+- Put stable strategy-governance conclusions in `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md` or `docs/DEVELOPMENT_PLAN.md`; do not create a parallel permanent task tree.
 - Prefer structured ledgers for repeatable intelligence tracking.
 - Do not mix unverifiable market rumors with validated strategy design evidence.
 
 ## Key Files
 
-- `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
+- `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
+- `docs/DEVELOPMENT_PLAN.md`
 - `refdocs/intelligence/README.md`
 - `refdocs/intelligence/strategy_intelligence_ledger.csv`
 - `refdocs/intelligence/monthly/strategy_intelligence_scan_YYYY-MM.md`

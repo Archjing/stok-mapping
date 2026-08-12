@@ -38,5 +38,5 @@
 
 ## 迁移说明
 
-- 计划与任务类文档已迁移到 [`docs/tasks/`](../docs/tasks/)，旧入口说明见 [`todo/README.md`](./todo/README.md)。
+- 当前项目规则与开发优先级从 [`docs/README.md`](../docs/README.md) 进入；历史计划和任务拆解已归档至 [`docs/archive/`](../docs/archive/)，不再作为当前状态来源。
 - 已删除旧备份和 `Zone.Identifier` 系统标记文件；PDF、HTML、JPEG、CSV、JSON 等实际资料或生成物保留。

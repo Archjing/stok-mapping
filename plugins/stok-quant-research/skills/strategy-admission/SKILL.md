@@ -29,9 +29,12 @@ Add task-specific strategy names, date bounds, output directory, and trace flags
 - `phase0/strategy_admission.py`
 - `phase0/walk_forward.py`
 - `config.yaml`
-- `docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md`
-- `docs/EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md`
+- `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
+- `docs/DEVELOPMENT_PLAN.md`
+- `docs/PROJECT_ARCHITECTURE_OVERVIEW.md`
 - `reports/strategy_admission_*/`
+
+Historical task breakdowns and the 2026-06 research plan live under `docs/archive/`; they are not current admission criteria.
 
 ## Review Rules
 
@@ -39,4 +42,3 @@ Add task-specific strategy names, date bounds, output directory, and trace flags
 - Check coverage diagnostics before interpreting performance.
 - Compare annualized return, Sharpe, drawdown, turnover, trade count, live days, holdings, and overfit risk together.
 - If a report fails during writing, inspect partial CSV outputs before claiming the backtest is unusable.
-

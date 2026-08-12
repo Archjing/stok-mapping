@@ -473,7 +473,7 @@ data_ingestion
 | [Chinese stock anomalies and investor sentiment](https://www.sciencedirect.com/science/article/abs/pii/S0927538X22000348) | 学术论文摘要 | 交易摩擦类 anomalies 更明显，散户情绪重要 | ScienceDirect 全文可能受限 | A 股策略应重视交易结构、情绪和流动性约束 |
 | [Replicating and Digesting Anomalies in the Chinese A-share Market](https://papers.ssrn.com/sol3/papers.cfm?abstract_id=4365416) | 学术论文 | 大量 anomaly 复制后并不显著，需可靠检验流程 | SSRN 论文版本需关注更新 | 不应把“论文里有效”直接视为本项目有效 |
 | [本项目策略开发 Guideline](../docs/STRATEGY_DEVELOPMENT_GUIDELINES.md) | 项目文档 | smoke test、walk-forward、gate、KISS、归档规则 | 本地规则会随项目演进 | 本报告应作为该文档的方法论补充 |
-| [本项目策略开发 Checklist](../docs/STRATEGY_DEV_CHECKLIST.md) | 项目文档 | 策略任务单、数据准备、回测设计、gate 和输出物 | 偏执行清单，不展开外部规则 | 可直接复用为每个候选策略的立项模板 |
+| [本项目策略研发规范](../docs/STRATEGY_DEVELOPMENT_GUIDELINES.md) | 项目文档 | 研究假设、数据准备、回测设计、admission 与模拟账户边界 | 当前维护规范；已替代旧 checklist | 可直接复用为每个候选策略的立项与验证模板 |
 | [规避脏数据与回测污染备忘](./dirty_data_avoidance_for_quant_2026-06-03.md) | 项目 refdoc | 数据验收、交叉校验、异常标记、未来函数防控 | 不是正式代码规范 | 应转化为数据 pipeline 的验收规则 |
 | [A 股个人交易滑点假设来源整理](./slippage_assumption_sources.md) | 项目 refdoc | `0.001` 基础、`0.00246` 主模拟、`0.003/0.005` 压力测试 | 滑点与股票、时段、下单方式强相关 | 回测必须做成本敏感性，不使用单点滑点结论 |
 

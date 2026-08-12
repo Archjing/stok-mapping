@@ -2,7 +2,7 @@
 
 ## Summary
 
-本页基于当前已归档的中文策略情报 `INT-CN-001` 到 `INT-CN-010`、`docs/tasks/research/STRATEGY_SUMMARY.md` 和 `refdocs/papers/cn/cn_INDEX.md` 精炼而成。核心结论是：中文 A 股策略资料主要集中在多因子、机器学习、资产特征组合、量价增强、文本情绪、网络因子和技术规则 baseline。对 `stok-mapping` 当前阶段最有价值的不是直接照搬论文收益，而是抽取可验证假设、数据字段、偏差风险和回测治理要求。
+本页基于已归档的中文策略情报 `INT-CN-001` 到 `INT-CN-010`、[历史策略摘要](../../../docs/archive/tasks/research/STRATEGY_SUMMARY.md) 和 `refdocs/papers/cn/cn_INDEX.md` 精炼而成。核心结论是：中文 A 股策略资料主要集中在多因子、机器学习、资产特征组合、量价增强、文本情绪、网络因子和技术规则 baseline。对 `stok-mapping` 当前阶段最有价值的不是直接照搬论文收益，而是抽取可验证假设、数据字段、偏差风险和回测治理要求。
 
 ## Key takeaways
 
@@ -73,6 +73,6 @@
 - Date: 2026-06-09
 - Sources:
   - `knowledge/intelligence/strategy_intelligence_ledger.csv`
-  - `docs/tasks/research/STRATEGY_SUMMARY.md`
+  - [历史策略摘要](../../../docs/archive/tasks/research/STRATEGY_SUMMARY.md)
   - `refdocs/papers/cn/cn_INDEX.md`
   - `refdocs/papers/cn/markdown/*.md`

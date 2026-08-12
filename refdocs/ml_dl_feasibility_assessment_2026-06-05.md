@@ -18,8 +18,8 @@
 项目已具备 ML 的前置基础：
 
 - 已有 `factor-effectiveness`，并在 `qfq_asof / PIT` 口径下找出 6 个可用因子：`low_pb`、`low_vol60`、`low_turnover_rate`、`low_vol20`、`ep`、`cash_flow_quality`。见 [factor_effectiveness.md](/home/zj/workspace/stok-mapping/reports/factor_effectiveness/factor_effectiveness.md)。
-- 当前计划已明确 ML 只能作为二阶段 rerank，不直接生成交易信号。见 [EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md](/home/zj/workspace/stok-mapping/docs/EFFECTIVE_QUANT_STRATEGY_RESEARCH_PLAN_2026-06-04.md)。
-- 当前任务清单中 `T2.9` 的启动条件尚未完全满足：`T2.6/T2.7` baseline 和 `T2.8 strategy-admission` 还没完成。见 [EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md](/home/zj/workspace/stok-mapping/docs/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)。
+- 本文写作时的计划曾明确 ML 只能作为二阶段 rerank，不直接生成交易信号；该历史计划已归档。当前规则见 [策略研发规范](../docs/STRATEGY_DEVELOPMENT_GUIDELINES.md)。
+- 本文提到的 `T2.6/T2.7/T2.8/T2.9` 是 2026-06 历史任务编号，不再反映当前完成状态；保留的原任务单见 [归档](../docs/archive/tasks/strategy/EFFECTIVE_QUANT_STRATEGY_RESEARCH_TASKS.md)。
 - 当前依赖栈没有 `scikit-learn`、`xgboost`、`lightgbm`、`torch`、`jax`，所以第一版 ML 应优先控制依赖，不直接上深度学习框架。见 [pyproject.toml](/home/zj/workspace/stok-mapping/pyproject.toml)。
 
 **论文转化判断**

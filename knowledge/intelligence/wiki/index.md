@@ -37,5 +37,7 @@
 
 - `knowledge/intelligence/strategy_intelligence_ledger.csv`
 - `knowledge/intelligence/monthly/index.md`
-- `docs/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`
-- `docs/tasks/research/STRATEGY_SUMMARY.md`
+- `docs/STRATEGY_DEVELOPMENT_GUIDELINES.md`
+- `docs/DEVELOPMENT_PLAN.md`
+- `docs/archive/tasks/research/STRATEGY_INTELLIGENCE_WORKFLOW_TASKS.md`（历史工作流）
+- `docs/archive/tasks/research/STRATEGY_SUMMARY.md`（历史摘要）

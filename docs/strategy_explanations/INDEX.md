@@ -1,6 +1,6 @@
 # 候选策略解释索引
 
-本目录按“一个策略一个文档”整理当前 Phase 0 候选策略说明。所有内容都以当前项目代码实现和最新回测结果为准。
+本目录按“一个策略一个文档”说明已注册策略的逻辑与数据边界。策略是否通过准入，以 [开发计划](../DEVELOPMENT_PLAN.md) 和对应的最新 admission / 账户验证产物为准；说明页本身不构成业绩承诺或准入结论。
 
 上级入口：[`docs 索引`](../README.md)
 
@@ -16,3 +16,4 @@
 - [core_selection_quality_momentum_v1（核心选股质量动量）](./core_selection_quality_momentum_v1.md)
 - [theme_exposure_momentum_v1（主题暴露动量）](./theme_exposure_momentum_v1.md)
 - [sleeve_composite_low_churn_v2（低换手慢因子 V2）](./sleeve_composite_low_churn_v2.md)
+- [cross_market_semiconductor_timing_etf_v1（半导体 ETF 美股情绪映射）](./cross_market_semiconductor_timing_etf_v1.md)
