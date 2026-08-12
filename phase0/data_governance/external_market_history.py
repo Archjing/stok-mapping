@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -29,6 +29,7 @@ class MarketHistorySettings:
     min_symbol_coverage: float = 1.0
     runtime_yfinance_fallback: bool = False
     market_name: str = "us_market"
+    fetch_start_date: date | None = None
 
 
 @dataclass
@@ -284,9 +285,24 @@ def _update_market_history(
         fetched_rows = 0
         inserted_rows = 0
         updated_rows = 0
+        latest_dates = _latest_symbol_dates(conn, settings)
         for symbol in symbols:
+            # Existing data only needs a short overlap for late corrections.
+            # The initial load still uses the configured full history, while
+            # routine runs avoid repeatedly downloading years of identical
+            # Yahoo bars and triggering its rate limit.
+            latest_symbol_date = latest_dates.get(symbol)
+            fetch_settings = (
+                replace(
+                    settings,
+                    years=1,
+                    fetch_start_date=latest_symbol_date - timedelta(days=7),
+                )
+                if latest_symbol_date
+                else settings
+            )
             try:
-                raw = fetch_external_market_daily(symbol, settings)
+                raw = fetch_external_market_daily(symbol, fetch_settings)
             except Exception as exc:
                 warnings.append(f"{settings.provider} {symbol} failed: {exc}")
                 continue
@@ -328,7 +344,13 @@ def _update_market_history(
                     inserted_rows += 1
 
         latest, covered, coverage = _coverage(conn, settings, symbols)
-        if coverage >= settings.min_symbol_coverage and fetched_rows == 0:
+        # Existing data can still satisfy the staleness grace window while the
+        # provider has rejected every request.  That is not an up-to-date
+        # update: surface it as a failed source run so schedulers and reports
+        # do not claim freshness that was never verified in this invocation.
+        if symbols and fetched_rows == 0:
+            status = "source_failed"
+        elif coverage >= settings.min_symbol_coverage and fetched_rows == 0:
             status = "up_to_date"
         elif coverage >= settings.min_symbol_coverage:
             status = "updated"

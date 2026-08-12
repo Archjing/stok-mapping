@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import os
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import akshare as ak
 import pandas as pd
@@ -82,6 +83,66 @@ def fetch_yf_daily(symbol: str, years: int) -> pd.DataFrame:
     )
     keep = ["date", "open", "high", "low", "close", "adjusted_close", "volume"]
     return df[[c for c in keep if c in df.columns]].copy()
+
+
+def fetch_yahoo_chart_daily(
+    symbol: str,
+    years: int,
+    *,
+    start: date | None = None,
+    end: date | None = None,
+) -> pd.DataFrame:
+    """Fetch Yahoo's daily chart payload without yfinance's crumb/session flow.
+
+    This is a same-source fallback for temporary yfinance rate limits.  Callers
+    must still treat an empty frame as a source failure rather than fresh data.
+    """
+    end = end or date.today()
+    start = start or (end - timedelta(days=365 * years + 20))
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{quote(symbol, safe='')}"
+    resp = requests.get(
+        url,
+        params={
+            "period1": int(pd.Timestamp(start).timestamp()),
+            "period2": int(pd.Timestamp(end + timedelta(days=1)).timestamp()),
+            "interval": "1d",
+            "events": "history",
+            "includeAdjustedClose": "true",
+        },
+        headers={"User-Agent": "stok-mapping/1.0 market-history-updater"},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    chart = resp.json().get("chart", {})
+    if chart.get("error"):
+        raise RuntimeError(f"yahoo_chart_error:{chart['error']}")
+    result = (chart.get("result") or [None])[0]
+    if not result:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    timestamps = result.get("timestamp") or []
+    quote_data = (result.get("indicators", {}).get("quote") or [{}])[0]
+    adjclose_data = (result.get("indicators", {}).get("adjclose") or [{}])[0]
+    if not timestamps or not quote_data:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    out = pd.DataFrame(
+        {
+            "date": (
+                pd.to_datetime(timestamps, unit="s", utc=True)
+                .tz_convert("America/New_York")
+                .normalize()
+                .tz_localize(None)
+            ),
+            "open": quote_data.get("open"),
+            "high": quote_data.get("high"),
+            "low": quote_data.get("low"),
+            "close": quote_data.get("close"),
+            "adjusted_close": adjclose_data.get("adjclose", quote_data.get("close")),
+            "volume": quote_data.get("volume"),
+        }
+    )
+    for column in ["open", "high", "low", "close", "adjusted_close", "volume"]:
+        out[column] = pd.to_numeric(out[column], errors="coerce")
+    return out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(drop=True)
 
 
 def fetch_fred_series(

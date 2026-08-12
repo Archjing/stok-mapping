@@ -43,7 +43,7 @@ def fetch_bars(beg: str, end: str) -> list[dict]:
     url = EM_URL.format(secid=SECID, beg=beg.replace("-", ""), end=end.replace("-", ""))
     for attempt in range(3):
         result = subprocess.run(
-            ["curl", "-s", "--noproxy", "*", "--connect-timeout", "10",
+            ["curl", "-4", "-s", "--noproxy", "*", "--connect-timeout", "10",
              "-H", "User-Agent: Mozilla/5.0",
              "-H", "Referer: https://quote.eastmoney.com/",
              url],

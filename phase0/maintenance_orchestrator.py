@@ -149,6 +149,19 @@ def _env_value(name: str, default: str) -> str:
     return value or default
 
 
+def _has_enabled_single_etf_intraday_account(config_path: Path) -> bool:
+    """Return whether an intraday ETF account has a configured target to snapshot."""
+    config = load_config(config_path)
+    for account in config.get("accounts", {}).get("simulated", []):
+        if not account.get("enabled", False):
+            continue
+        if account.get("execution_model") != "single_etf_intraday":
+            continue
+        if (account.get("strategy_params") or {}).get("target_symbol"):
+            return True
+    return False
+
+
 def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
     root = config_path.parent
     python_bin = root / ".venv" / "bin" / "python"
@@ -164,6 +177,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         command: list[str],
         health_scope: str,
         health_fail_on: str | None = None,
+        enabled: bool = True,
         monday_only: bool = False,
         weekdays_only: bool = True,
         description: str,
@@ -183,6 +197,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             lock_dir=str(lock_dir / f"{name}.lock"),
             health_scope=health_scope,
             health_fail_on=health_fail_on or _env_value("SCHEDULER_HEALTH_FAIL_ON", "warning"),
+            enabled=enabled,
             monday_only=monday_only,
             weekdays_only=weekdays_only,
             description=description,
@@ -309,6 +324,26 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             description="Premarket watchlist and brief pipeline",
             tags=["scheduler", "brief"],
             market_calendar="cn",
+        ),
+        make_spec(
+            name="etf_opening_snapshot",
+            schedule_value=_env_value("ETF_OPENING_SNAPSHOT_TIME", "09:25"),
+            log_path="logs/etf_opening_snapshot.log",
+            command=[
+                str(python_bin),
+                "scripts/fetch_etf_opening_snapshots.py",
+                "--config",
+                config_arg,
+            ],
+            health_scope=_env_value("ETF_OPENING_SNAPSHOT_HEALTH_SCOPE", "cn"),
+            health_fail_on=_env_value("ETF_OPENING_SNAPSHOT_HEALTH_FAIL_ON", "error"),
+            enabled=_has_enabled_single_etf_intraday_account(config_path),
+            description="Post-auction ETF quote snapshot with official opening price",
+            tags=["scheduler", "cn", "etf", "intraday"],
+            market_calendar="cn",
+            retry_window_minutes="10",
+            retry_interval_minutes="1",
+            max_retries="5",
         ),
         make_spec(
             name="hk_market_history",

@@ -14,6 +14,10 @@ import pandas as pd
 
 from phase0.reporting.account_bill import export_account_bill_html, format_money, format_num, format_pct
 from phase0.reporting.paths import latest_dir, report_root, slug
+from phase0.reporting.semiconductor_timing_watchlist import (
+    supports_semiconductor_timing_watchlist,
+    write_semiconductor_timing_watchlist,
+)
 
 
 DEFAULT_QUANT_SITE_DIR = "static_site/quant"
@@ -717,13 +721,21 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
             }
         )
         accounts_meta.append(meta)
-        _copy_bundle(
-            latest_watchlist_dir,
-            account_dir / "latest" / "watchlist",
-            back_href="../../index.html",
-            missing_title="暂无最新盘前观察池",
-            missing_message="未找到账户级 latest watchlist。请先运行 ./runit brief watchlist --config config.yaml --all-accounts。",
-        )
+        if supports_semiconductor_timing_watchlist(account):
+            write_semiconductor_timing_watchlist(
+                root=root,
+                config=config,
+                account=account,
+                target_dir=account_dir / "latest" / "watchlist",
+            )
+        else:
+            _copy_bundle(
+                latest_watchlist_dir,
+                account_dir / "latest" / "watchlist",
+                back_href="../../index.html",
+                missing_title="暂无最新盘前观察池",
+                missing_message="未找到账户级 latest watchlist。请先运行 ./runit brief watchlist --config config.yaml --all-accounts。",
+            )
         _copy_bundle(
             latest_bill_dir,
             account_dir / "latest" / "account-bill",

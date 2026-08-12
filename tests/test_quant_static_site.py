@@ -470,3 +470,109 @@ def test_sync_quant_static_site_rejects_spidermanread_root(tmp_path: Path) -> No
 
     with pytest.raises(ValueError, match="quant"):
         sync_quant_static_site(root=tmp_path, site_root=site_root, remote="deploy@example", remote_dir="/var/www/spidermanread/")
+
+
+def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchlist(tmp_path: Path) -> None:
+    account_db = tmp_path / "data" / "simulated_accounts.sqlite"
+    _write_account_db(account_db, account_id="semiconductor_timing", name="半导体ETF美股情绪映射择时_v1", with_trade=False)
+    us_db = tmp_path / "data" / "us_market_history.sqlite"
+    us_db.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(us_db) as conn:
+        conn.execute(
+            """
+            CREATE TABLE us_daily_bars (
+                market TEXT NOT NULL,
+                symbol TEXT NOT NULL,
+                date TEXT NOT NULL,
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                adjusted_close REAL,
+                volume REAL,
+                source TEXT NOT NULL,
+                fetched_at TEXT NOT NULL,
+                PRIMARY KEY (symbol, date)
+            )
+            """
+        )
+        conn.executemany(
+            """
+            INSERT INTO us_daily_bars
+            (market, symbol, date, open, high, low, close, adjusted_close, volume, source, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                ("US", "^SOX", "2026-08-10", 11800.0, 12100.0, 11700.0, 12000.0, 12000.0, 0.0, "test", "2026-08-11T08:00:00+08:00"),
+                ("US", "^SOX", "2026-08-09", 11700.0, 11900.0, 11600.0, 11800.0, 11800.0, 0.0, "test", "2026-08-10T08:00:00+08:00"),
+                ("US", "^VIX", "2026-08-10", 15.0, 16.0, 14.0, 15.46, 15.46, 0.0, "test", "2026-08-11T08:00:00+08:00"),
+            ],
+        )
+    corpus_db = tmp_path / "data" / "ai_corpus" / "ai_corpus.sqlite"
+    corpus_db.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(corpus_db) as conn:
+        conn.execute(
+            """
+            CREATE TABLE ai_corpus_documents (
+                document_id TEXT PRIMARY KEY,
+                corpus_type TEXT,
+                provider TEXT,
+                source TEXT,
+                published_at TEXT,
+                ingested_at TEXT,
+                title TEXT,
+                url TEXT
+            )
+            """
+        )
+        conn.execute(
+            """
+            INSERT INTO ai_corpus_documents
+            (document_id, corpus_type, provider, source, published_at, ingested_at, title, url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "news-1",
+                "us_market_news",
+                "us_market_news",
+                "CNBC Technology",
+                "2026-08-11T22:15:30+00:00",
+                "2026-08-12T11:18:49+08:00",
+                "Nvidia lines up $500 billion in financing",
+                "https://www.cnbc.com/example/nvidia-financing.html",
+            ),
+        )
+
+    account = SimpleNamespace(
+        account_id="semiconductor_timing",
+        name="半导体ETF美股情绪映射择时_v1",
+        database_path=account_db,
+        initial_cash=200_000.0,
+        simulation_start_date="2026-08-12",
+        strategy_id="cross_market_semiconductor_timing_etf_v1",
+        execution_model="single_etf_intraday",
+    )
+    build_quant_static_site(
+        root=tmp_path,
+        config={
+            "reporting": {},
+            "us_market_history": {"path": "data/us_market_history.sqlite", "daily_table": "us_daily_bars"},
+            "ai_corpus": {"database_path": "data/ai_corpus/ai_corpus.sqlite"},
+        },
+        accounts=[account],
+    )
+
+    watchlist_html = (
+        tmp_path / "reports" / "static_site" / "quant" / "accounts" / "semiconductor_timing" / "latest" / "watchlist" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "半导体ETF美股情绪映射择时_v1｜盘前观察池" in watchlist_html
+    assert "^SOX" in watchlist_html
+    assert "12,000.00" in watchlist_html
+    assert "2026-08-10" in watchlist_html
+    assert "15.46" in watchlist_html
+    assert "SOX &gt; 0.5%" in watchlist_html
+    assert "VIX &lt; 19" in watchlist_html
+    assert "CNBC Technology" in watchlist_html
+    assert "Nvidia lines up $500 billion in financing" in watchlist_html
+    assert "https://www.cnbc.com/example/nvidia-financing.html" in watchlist_html
+    assert "新闻仅供人工研判，不参与当前自动交易信号" in watchlist_html

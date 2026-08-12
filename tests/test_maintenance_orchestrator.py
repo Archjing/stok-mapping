@@ -53,6 +53,42 @@ def test_daily_brief_runs_all_enabled_simulated_accounts() -> None:
     ]
 
 
+def test_etf_opening_snapshot_runs_after_opening_auction_on_cn_trading_days() -> None:
+    specs = _default_registry(Path("config.yaml"))
+    snapshot = next(item for item in specs if item.name == "etf_opening_snapshot")
+
+    assert snapshot.schedule_value == "09:25"
+    assert snapshot.market_calendar == "cn"
+    assert snapshot.health_scope == "cn"
+    assert snapshot.command == [
+        ".venv/bin/python",
+        "scripts/fetch_etf_opening_snapshots.py",
+        "--config",
+        "config.yaml",
+    ]
+    assert snapshot.enabled is True
+
+
+def test_etf_opening_snapshot_is_disabled_without_an_enabled_intraday_account(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "phase0:\n"
+        "  accounts:\n"
+        "    simulated:\n"
+        "      - account_id: semiconductor_timing\n"
+        "        enabled: false\n"
+        "        execution_model: single_etf_intraday\n"
+        "        strategy_params:\n"
+        "          target_symbol: SH.512480\n",
+        encoding="utf-8",
+    )
+
+    specs = _default_registry(config_path)
+    snapshot = next(item for item in specs if item.name == "etf_opening_snapshot")
+
+    assert snapshot.enabled is False
+
+
 def test_gov_policy_fetch_runs_with_prefetch_probe_before_daily_brief(monkeypatch) -> None:
     for name in [
         "GOV_POLICY_TIME",
