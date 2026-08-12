@@ -90,6 +90,7 @@ from phase0.execution.single_etf_intraday import (
     SingleEtfIntradayPolicy,
     run_single_etf_intraday_account_execution,
 )
+from phase0.data_governance.us_market_features import load_common_market_daily_features
 from phase0.strategies.base import BaseStrategy, StrategyOutput
 from phase0.strategies.registry import register
 
@@ -237,36 +238,18 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
     ) -> pd.DataFrame:
         end = as_of_date or date.today()
         start = end - timedelta(days=365 * years + 30)
-        with sqlite3.connect(database_path) as conn:
-            sox = pd.read_sql_query(
-                "SELECT date, close FROM us_daily_bars "
-                "WHERE symbol = ? AND date >= ? AND date <= ? ORDER BY date",
-                conn,
-                params=[US_SOX_SYMBOL, start.isoformat(), end.isoformat()],
-            )
-            vix = pd.read_sql_query(
-                "SELECT date, close FROM us_daily_bars "
-                "WHERE symbol = ? AND date >= ? AND date <= ? ORDER BY date",
-                conn,
-                params=[US_VIX_SYMBOL, start.isoformat(), end.isoformat()],
-            )
-        if sox.empty or vix.empty:
+        features = load_common_market_daily_features(
+            database_path,
+            "us_daily_bars",
+            [US_SOX_SYMBOL, US_VIX_SYMBOL],
+            start=start,
+            end=end,
+        )
+        if features.empty:
             return pd.DataFrame(columns=["date", "sox_ret", "vix_close"])
-
-        sox = sox.copy()
-        sox["date"] = pd.to_datetime(sox["date"]).dt.normalize()
-        sox["close"] = pd.to_numeric(sox["close"], errors="coerce")
-        sox["sox_ret"] = sox["close"].pct_change()
-
-        vix = vix.copy()
-        vix["date"] = pd.to_datetime(vix["date"]).dt.normalize()
-        vix["vix_close"] = pd.to_numeric(vix["close"], errors="coerce")
-
-        # Both values belong to the same completed US session.  Do not forward
-        # fill a missing VIX/SOX observation into a later US session.
-        merged = sox[["date", "sox_ret"]].merge(
-            vix[["date", "vix_close"]], on="date", how="inner"
-        ).dropna(subset=["sox_ret", "vix_close"])
+        merged = features.rename(
+            columns={f"{US_SOX_SYMBOL}_return": "sox_ret", US_VIX_SYMBOL: "vix_close"}
+        )[["date", "sox_ret", "vix_close"]].dropna(subset=["sox_ret", "vix_close"])
         return map_us_features_to_next_cn_trading_day(merged, cn_trading_dates)
 
     @staticmethod

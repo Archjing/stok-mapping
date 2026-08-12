@@ -833,7 +833,7 @@ Phase 0 已完成基础闭环验证：
 - [ ] 可交易信号与调仓建议单输出
 - [x] `07:30` 日报流水线强化
 - [ ] 更稳定的本土主策略正式化
-- [ ] 跨市场 overlay 与盘前解释层完善
+- [x] 跨市场 overlay 与盘前解释层完善（本会话已完成：21 个美股/汇率标的按业务类别维护、标的级 source audit、OHLC 写入保护、同一已完成交易日读取，以及静态盘前页的研究背景展示；只有 `^SOX/^VIX` 仍参与当前自动信号，其余类别明确不参与自动交易。）
 - [x] 当前持仓 / 现金 / 目标权重到模拟订单的转换链路
 - [ ] 主源与 fallback 的长期运行治理
 
@@ -1432,7 +1432,7 @@ announce_date_coverage
 
 - A 股本地库：表结构、最新交易日、覆盖率、滞后、OHLC、非正价格、负成交量/成交额、daily_basic 覆盖、复权因子
 - 财务因子：表结构、`announce_date` 覆盖、不可能时间线、核心因子覆盖、Tushare backfill task 状态
-- 跨市场：US/HK 数据库、配置标的 freshness、OHLC、source audit
+- 跨市场：US/HK 数据库、配置标的 freshness、OHLC、source audit；US 库额外维护类别目录、标的级更新审计和组内共同完成交易日，防止跨日期拼接信号。
 - 调度状态：`logs/scheduler/*.last` 与 source audit 最新运行记录
 
 当前验收（2026-06-05）：

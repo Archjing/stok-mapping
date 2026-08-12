@@ -547,6 +547,10 @@ QUANT_SITE_SYNC_REMOTE_DIR=/var/www/spidermanread/quant/
 ./.venv/bin/python -m phase0.cli update-us-market-history --config config.yaml --check-only
 ```
 
+配置中的 `instrument_groups` 将标的按业务用途维护。命令会输出每组的最新共同完成交易日、覆盖情况和状态，并把每个标的的抓取窗口、写入行数、异常或空响应记录到 `us_data_source_symbol_runs`。OHLC 不合法的行不会覆盖已存在的有效日线。
+
+`core_signal` 是当前半导体 ETF 映射策略的唯一自动交易输入（`^SOX`、`^VIX`）。其余分组仅用于研究背景和盘前人工观察；它们不会改变下单信号、仓位或执行规则。
+
 `update-hk-market-history`：港股本地库增量更新。
 
 ```bash

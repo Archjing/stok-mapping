@@ -506,6 +506,8 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
                 ("US", "^SOX", "2026-08-10", 11800.0, 12100.0, 11700.0, 12000.0, 12000.0, 0.0, "test", "2026-08-11T08:00:00+08:00"),
                 ("US", "^SOX", "2026-08-09", 11700.0, 11900.0, 11600.0, 11800.0, 11800.0, 0.0, "test", "2026-08-10T08:00:00+08:00"),
                 ("US", "^VIX", "2026-08-10", 15.0, 16.0, 14.0, 15.46, 15.46, 0.0, "test", "2026-08-11T08:00:00+08:00"),
+                ("US", "AMD", "2026-08-10", 180.0, 184.0, 179.0, 182.0, 182.0, 1.0, "test", "2026-08-11T08:00:00+08:00"),
+                ("US", "AMD", "2026-08-09", 178.0, 181.0, 177.0, 180.0, 180.0, 1.0, "test", "2026-08-10T08:00:00+08:00"),
             ],
         )
     corpus_db = tmp_path / "data" / "ai_corpus" / "ai_corpus.sqlite"
@@ -556,7 +558,14 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
         root=tmp_path,
         config={
             "reporting": {},
-            "us_market_history": {"path": "data/us_market_history.sqlite", "daily_table": "us_daily_bars"},
+            "us_market_history": {
+                "path": "data/us_market_history.sqlite",
+                "daily_table": "us_daily_bars",
+                "instrument_groups": {
+                    "core_signal": {"symbols": ["^SOX", "^VIX"], "critical": True},
+                    "semiconductor_breadth": {"symbols": ["AMD"], "purpose": "半导体广度"},
+                },
+            },
             "ai_corpus": {"database_path": "data/ai_corpus/ai_corpus.sqlite"},
         },
         accounts=[account],
@@ -572,6 +581,10 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
     assert "15.46" in watchlist_html
     assert "SOX &gt; 0.5%" in watchlist_html
     assert "VIX &lt; 19" in watchlist_html
+    assert "研究市场背景" in watchlist_html
+    assert "半导体广度" in watchlist_html
+    assert "AMD" in watchlist_html
+    assert "仅供研究观察，不参与当前自动交易信号" in watchlist_html
     assert "CNBC Technology" in watchlist_html
     assert "Nvidia lines up $500 billion in financing" in watchlist_html
     assert "https://www.cnbc.com/example/nvidia-financing.html" in watchlist_html

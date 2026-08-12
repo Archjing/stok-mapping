@@ -8,6 +8,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+from datetime import timedelta
+
+import pandas as pd
+
+from phase0.data_governance.external_market_history import configured_us_market_groups
+from phase0.data_governance.us_market_features import load_common_market_daily_features, load_completed_market_snapshot
 
 
 SEMICONDUCTOR_TIMING_STRATEGY_ID = "cross_market_semiconductor_timing_etf_v1"
@@ -42,36 +48,25 @@ def _load_market_snapshot(root: Path, config: dict[str, Any]) -> tuple[dict[str,
         return None, "美股历史库不存在，无法读取 SOX/VIX 行情。"
     try:
         table = _safe_table_name(history_cfg.get("daily_table"), "us_daily_bars")
+        snapshot = load_completed_market_snapshot(db_path, table, [SOX_SYMBOL, VIX_SYMBOL])
+        if snapshot is None:
+            return None, "SOX 与 VIX 没有共同的已完成交易日，无法生成当前信号观察。"
         with sqlite3.connect(db_path) as conn:
-            exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (table,)).fetchone()
-            if not exists:
-                return None, f"美股日线表 {table} 不存在。"
-            row = conn.execute(
-                f"""
-                SELECT sox.date, sox.close, previous_sox.close, vix.close
-                FROM {table} AS sox
-                JOIN {table} AS vix
-                  ON vix.date = sox.date AND vix.symbol = ? AND vix.close IS NOT NULL
-                LEFT JOIN {table} AS previous_sox
-                  ON previous_sox.symbol = ?
-                 AND previous_sox.date = (
-                    SELECT MAX(prior.date)
-                    FROM {table} AS prior
-                    WHERE prior.symbol = ? AND prior.date < sox.date AND prior.close IS NOT NULL
-                 )
-                WHERE sox.symbol = ? AND sox.close IS NOT NULL
-                ORDER BY sox.date DESC
-                LIMIT 1
-                """,
-                (VIX_SYMBOL, SOX_SYMBOL, SOX_SYMBOL, SOX_SYMBOL),
+            previous_row = conn.execute(
+                f"SELECT close FROM {table} WHERE symbol = ? AND date < ? AND close IS NOT NULL ORDER BY date DESC LIMIT 1",
+                (SOX_SYMBOL, snapshot.as_of_date),
             ).fetchone()
     except sqlite3.Error as exc:
         return None, f"读取 SOX/VIX 行情失败：{exc}"
     except ValueError as exc:
         return None, str(exc)
-    if row is None:
+    bars = snapshot.bars.set_index("symbol")
+    if SOX_SYMBOL not in bars.index or VIX_SYMBOL not in bars.index:
         return None, "SOX 与 VIX 没有共同的已完成交易日，无法生成当前信号观察。"
-    date_value, sox_close, previous_sox_close, vix_close = row
+    date_value = snapshot.as_of_date
+    sox_close = bars.loc[SOX_SYMBOL, "close"]
+    vix_close = bars.loc[VIX_SYMBOL, "close"]
+    previous_sox_close = previous_row[0] if previous_row else None
     change_pct = None
     if previous_sox_close not in (None, 0):
         change_pct = (float(sox_close) / float(previous_sox_close) - 1.0) * 100.0
@@ -81,6 +76,61 @@ def _load_market_snapshot(root: Path, config: dict[str, Any]) -> tuple[dict[str,
         "sox_change_pct": "—" if change_pct is None else f"{change_pct:+.2f}%",
         "vix_close": f"{float(vix_close):.2f}",
     }, ""
+
+
+def _load_research_market_context(root: Path, config: dict[str, Any]) -> tuple[list[dict[str, str]], str]:
+    history_cfg = config.get("us_market_history", {}) or {}
+    db_path = _resolve_path(root, str(history_cfg.get("path", "")), "data/us_market_history.sqlite")
+    table = str(history_cfg.get("daily_table") or "us_daily_bars")
+    try:
+        groups = configured_us_market_groups(history_cfg)
+    except ValueError as exc:
+        return [], f"美股类别配置无效：{exc}"
+    rows: list[dict[str, str]] = []
+    for group in groups.values():
+        if group.name == "core_signal":
+            continue
+        snapshot = load_completed_market_snapshot(db_path, table, group.symbols)
+        if snapshot is None:
+            rows.append({"group": group.name, "purpose": group.purpose, "as_of": "无共同完成交易日", "symbol": "—", "close": "—", "change": "—", "source": "—"})
+            continue
+        day_rows = load_common_market_daily_features(
+            db_path,
+            table,
+            group.symbols,
+            start=pd.Timestamp(snapshot.as_of_date).date() - timedelta(days=10),
+            end=pd.Timestamp(snapshot.as_of_date).date(),
+        )
+        latest_features = day_rows.iloc[-1] if not day_rows.empty else None
+        for bar in snapshot.bars.itertuples(index=False):
+            change = None if latest_features is None else latest_features.get(f"{bar.symbol}_return")
+            rows.append({
+                "group": group.name,
+                "purpose": group.purpose,
+                "as_of": snapshot.as_of_date,
+                "symbol": str(bar.symbol),
+                "close": "—" if pd.isna(bar.close) else f"{float(bar.close):,.2f}",
+                "change": "—" if change is None or pd.isna(change) else f"{float(change):+.2%}",
+                "source": str(bar.source or "—"),
+            })
+    return rows, ""
+
+
+def _research_context_rows_html(rows: list[dict[str, str]]) -> str:
+    if not rows:
+        return '<tr><td colspan="7" class="empty">暂无配置的研究市场背景。</td></tr>'
+    return "\n".join(
+        "<tr>"
+        f"<td>{html.escape(item['group'])}</td>"
+        f"<td>{html.escape(item['purpose'])}</td>"
+        f"<td>{html.escape(item['as_of'])}</td>"
+        f"<td>{html.escape(item['symbol'])}</td>"
+        f"<td>{html.escape(item['close'])}</td>"
+        f"<td>{html.escape(item['change'])}</td>"
+        f"<td>{html.escape(item['source'])}</td>"
+        "</tr>"
+        for item in rows
+    )
 
 
 def _safe_http_url(value: object) -> str:
@@ -151,6 +201,7 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
     if not supports_semiconductor_timing_watchlist(account):
         raise ValueError("account does not use the semiconductor timing execution model")
     snapshot, market_error = _load_market_snapshot(root, config)
+    research_context, research_context_error = _load_research_market_context(root, config)
     news, latest_ingested_at, news_error = _load_us_market_news(root, config)
     account_name = str(getattr(account, "name", "半导体ETF美股情绪映射择时_v1"))
     title = f"{account_name}｜盘前观察池"
@@ -189,6 +240,13 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
     <h2>SOX / VIX 已完成交易日行情</h2>
     {market_html}
     <p>当前执行信号：SOX &gt; 0.5% 且 VIX &lt; 19；SOX &gt; 1.0% 为强信号。</p>
+  </section>
+  <section class="bill-section">
+    <h2>研究市场背景</h2>
+    <p><strong>仅供研究观察，不参与当前自动交易信号。</strong>{html.escape((' ' + research_context_error) if research_context_error else '')}</p>
+    <div class="table-wrap"><table class="watchlist-table"><thead><tr><th>类别</th><th>用途</th><th>共同交易日</th><th>标的</th><th>收盘</th><th>单日涨跌</th><th>来源</th></tr></thead><tbody>
+    {_research_context_rows_html(research_context)}
+    </tbody></table></div>
   </section>
   <section class="bill-section">
     <h2>美股市场新闻</h2>

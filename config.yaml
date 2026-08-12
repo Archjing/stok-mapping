@@ -192,7 +192,27 @@ phase0:
     min_symbol_coverage: 1.0
     run_before_phase0: true
     runtime_yfinance_fallback: false
-    symbols: ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
+    instrument_groups:
+      core_signal:
+        symbols: ["^SOX", "^VIX"]
+        purpose: "半导体ETF美股情绪映射择时的现有执行信号"
+        required_for: ["cross_market_semiconductor_timing_etf_v1"]
+        critical: true
+      semiconductor_breadth:
+        symbols: ["AMD", "TSM", "ASML", "AMAT", "LRCX", "INTC", "SMH"]
+        purpose: "拆解SOX的半导体产业链广度与共振"
+      mega_tech_beta:
+        symbols: ["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
+        purpose: "区分半导体需求与大型科技股贝塔"
+      rates:
+        symbols: ["^TNX"]
+        purpose: "观察10年期美债收益率对科技估值的压力"
+      china_tech_sentiment:
+        symbols: ["BABA", "JD", "KWEB"]
+        purpose: "观察中概及中国科技风险偏好"
+      reference_and_fx:
+        symbols: ["^NDX", "NVDA", "CNY=X"]
+        purpose: "纳指、英伟达和人民币汇率的参考背景"
   cross_market_reference_history:
     enabled: true
     path: "data/cross_market_reference_history.sqlite"

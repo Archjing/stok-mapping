@@ -652,6 +652,14 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         update_console.print(f"Inserted rows: {result.inserted_rows}")
         update_console.print(f"Updated rows: {result.updated_rows}")
         update_console.print(f"Source: {result.source or 'N/A'}")
+        if getattr(result, "group_health", None):
+            update_console.print("Instrument groups:")
+            for group in result.group_health:
+                missing = f"; missing={','.join(group.missing_symbols)}" if group.missing_symbols else ""
+                update_console.print(
+                    f"- {group.name}: {group.status}; common date={group.latest_common_date or 'N/A'}; "
+                    f"coverage={group.covered_symbols}/{len(group.symbols)}{missing}"
+                )
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")
