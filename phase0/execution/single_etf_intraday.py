@@ -301,6 +301,8 @@ def run_single_etf_intraday_account_execution(
     account: SimulatedAccountConfig,
     policy: SingleEtfIntradayPolicy,
     intraday_bars: pd.DataFrame | None = None,
+    live_session: bool = False,
+    session_complete: bool = True,
 ) -> SignalAccountExecutionResult:
     """Replay an executable single-ETF strategy without mutating account state."""
     required = {"date", "symbol", "open", "close", "sox_ret", "vix_close"}
@@ -340,6 +342,7 @@ def run_single_etf_intraday_account_execution(
     trade_rows: list[dict[str, Any]] = []
     daily_rows: list[dict[str, Any]] = []
     position_rows: list[dict[str, Any]] = []
+    order_event_rows: list[dict[str, Any]] = []
     unfilled_orders = 0
     missing_days: set[str] = set()
     pending_exit_count = 0
@@ -448,13 +451,35 @@ def run_single_etf_intraday_account_execution(
                     policy=policy,
                     price_tick=account.price_tick,
                 )
+            is_current_live_session = live_session and session_date == pd.Timestamp(daily["date"].max())
+            if entry.status == "cancelled" and is_current_live_session and not session_complete:
+                entry = EntryDecision(
+                    "pending",
+                    entry.order_type,
+                    None,
+                    None,
+                    "limit_waiting_for_session_close",
+                    entry.limit_price,
+                )
+
+            entry_position_size = policy.position_size_for(signal_return)
+            entry_budget = cash * entry_position_size
+            if exited_today:
+                entry_budget = min(cash, previous_total_asset * entry_position_size)
+            requested_price = entry.limit_price if entry.order_type == "limit" else entry_open
+            requested_shares = (
+                affordable_buy_shares(
+                    cash_asset=entry_budget,
+                    price=float(requested_price),
+                    requested_shares=1e18,
+                    account=account,
+                )
+                if requested_price is not None and float(requested_price) > 0
+                else 0.0
+            )
             if entry.status == "filled" and entry.price is not None:
-                entry_position_size = policy.position_size_for(signal_return)
-                budget = cash * entry_position_size
-                if exited_today:
-                    budget = min(cash, previous_total_asset * entry_position_size)
                 bought_shares = affordable_buy_shares(
-                    cash_asset=budget,
+                    cash_asset=entry_budget,
                     price=entry.price,
                     requested_shares=1e18,
                     account=account,
@@ -488,8 +513,63 @@ def run_single_etf_intraday_account_execution(
                     )
                     day_trade_amount += amount
                     day_trade_volume += shares
+                    order_event_rows.append(
+                        {
+                            "date": session_date.date().isoformat(),
+                            "signal_date": pd.Timestamp(signal_date).date().isoformat(),
+                            "symbol": policy.target_symbol,
+                            "side": "buy",
+                            "order_type": entry.order_type,
+                            "status": "filled",
+                            "trade_time": entry.time.isoformat(sep=" ") if entry.time is not None else "",
+                            "reference_open_price": float(entry_open),
+                            "limit_price": entry.limit_price,
+                            "requested_shares": float(requested_shares),
+                            "filled_shares": float(bought_shares),
+                            "price": float(entry.price),
+                            "reason": entry.reason,
+                        }
+                    )
                 else:
                     unfilled_orders += 1
+                    order_event_rows.append(
+                        {
+                            "date": session_date.date().isoformat(),
+                            "signal_date": pd.Timestamp(row.get("signal_us_date", session_date)).date().isoformat(),
+                            "symbol": policy.target_symbol,
+                            "side": "buy",
+                            "order_type": entry.order_type,
+                            "status": "cancelled",
+                            "trade_time": "",
+                            "reference_open_price": float(entry_open),
+                            "limit_price": entry.limit_price,
+                            "requested_shares": float(requested_shares),
+                            "filled_shares": 0.0,
+                            "price": None,
+                            "reason": "insufficient_cash_after_cost",
+                        }
+                    )
+            elif entry.status in {"cancelled", "pending"}:
+                event_status = "pending" if entry.status == "pending" else "cancelled"
+                if event_status == "cancelled":
+                    unfilled_orders += 1
+                order_event_rows.append(
+                    {
+                        "date": session_date.date().isoformat(),
+                        "signal_date": pd.Timestamp(row.get("signal_us_date", session_date)).date().isoformat(),
+                        "symbol": policy.target_symbol,
+                        "side": "buy",
+                        "order_type": entry.order_type,
+                        "status": event_status,
+                        "trade_time": "",
+                        "reference_open_price": float(entry_open),
+                        "limit_price": entry.limit_price,
+                        "requested_shares": float(requested_shares),
+                        "filled_shares": 0.0,
+                        "price": None,
+                        "reason": entry.reason,
+                    }
+                )
             elif entry.status == "cancelled":
                 unfilled_orders += 1
             else:
@@ -511,7 +591,10 @@ def run_single_etf_intraday_account_execution(
                 "exposure": float(exposure),
                 "estimated_trade_amount": float(day_trade_amount),
                 "estimated_volume": float(day_trade_volume),
-                "unfilled_orders": 0,
+                "unfilled_orders": 1 if any(
+                    event["date"] == session_date.date().isoformat() and event["status"] == "cancelled"
+                    for event in order_event_rows
+                ) else 0,
                 "partial_fill_orders": 0,
                 "block_reason_counts": "{}",
                 "stale_valuation_positions": 0,
@@ -538,6 +621,7 @@ def run_single_etf_intraday_account_execution(
     daily_result = pd.DataFrame(daily_rows)
     trades_result = pd.DataFrame(trade_rows)
     positions_result = pd.DataFrame(position_rows)
+    order_events_result = pd.DataFrame(order_event_rows)
     metrics = build_signal_execution_metrics(daily_result, trades_result, unfilled_orders, 0)
     side_counts = trades_result["side"].value_counts().to_dict() if not trades_result.empty else {}
     reason_counts = trades_result["reason"].value_counts().to_dict() if not trades_result.empty else {}
@@ -565,7 +649,7 @@ def run_single_etf_intraday_account_execution(
             "account_planned_exit_date": pd.Timestamp(planned_exit_date).date().isoformat() if pd.notna(planned_exit_date) else "",
         }
     )
-    return SignalAccountExecutionResult(daily_result, trades_result, positions_result, metrics)
+    return SignalAccountExecutionResult(daily_result, trades_result, positions_result, metrics, order_events_result)
 
 
 def ensure_single_etf_intraday_tables(conn: sqlite3.Connection) -> None:
@@ -608,6 +692,24 @@ def ensure_single_etf_intraday_tables(conn: sqlite3.Connection) -> None:
             cost REAL NOT NULL,
             PRIMARY KEY (account_id, trade_date, symbol, side, signal_date)
         );
+
+        CREATE TABLE IF NOT EXISTS single_etf_intraday_order_events (
+            account_id TEXT NOT NULL,
+            trade_date TEXT NOT NULL,
+            signal_date TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            side TEXT NOT NULL,
+            order_type TEXT NOT NULL,
+            status TEXT NOT NULL,
+            trade_time TEXT NOT NULL DEFAULT '',
+            reference_open_price REAL,
+            limit_price REAL,
+            requested_shares REAL NOT NULL,
+            filled_shares REAL NOT NULL,
+            price REAL,
+            reason TEXT NOT NULL,
+            PRIMARY KEY (account_id, trade_date, symbol, side, signal_date, order_type)
+        );
         """
     )
 
@@ -625,6 +727,7 @@ def write_single_etf_intraday_account_state(
         ensure_single_etf_intraday_tables(conn)
         conn.execute("DELETE FROM single_etf_intraday_daily_assets WHERE account_id = ?", (account.account_id,))
         conn.execute("DELETE FROM single_etf_intraday_trades WHERE account_id = ?", (account.account_id,))
+        conn.execute("DELETE FROM single_etf_intraday_order_events WHERE account_id = ?", (account.account_id,))
         conn.execute(
             """
             INSERT OR REPLACE INTO single_etf_intraday_accounts
@@ -689,11 +792,40 @@ def write_single_etf_intraday_account_state(
                     for row in result.trades.itertuples(index=False)
                 ],
             )
+        if not result.order_events.empty:
+            conn.executemany(
+                """
+                INSERT INTO single_etf_intraday_order_events
+                (account_id, trade_date, signal_date, symbol, side, order_type, status,
+                 trade_time, reference_open_price, limit_price, requested_shares,
+                 filled_shares, price, reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        account.account_id,
+                        str(row.date),
+                        str(row.signal_date),
+                        str(row.symbol),
+                        str(row.side),
+                        str(row.order_type),
+                        str(row.status),
+                        str(row.trade_time or ""),
+                        None if pd.isna(row.reference_open_price) else float(row.reference_open_price),
+                        None if pd.isna(row.limit_price) else float(row.limit_price),
+                        float(row.requested_shares),
+                        float(row.filled_shares),
+                        None if pd.isna(row.price) else float(row.price),
+                        str(row.reason),
+                    )
+                    for row in result.order_events.itertuples(index=False)
+                ],
+            )
 
 
 def load_single_etf_intraday_state(database_path: Path, account_id: str) -> dict[str, Any]:
     if not Path(database_path).exists():
-        return {"account": {}, "daily_assets": [], "trades": []}
+        return {"account": {}, "daily_assets": [], "trades": [], "order_events": []}
     with sqlite3.connect(database_path) as conn:
         ensure_single_etf_intraday_tables(conn)
         conn.row_factory = sqlite3.Row
@@ -709,8 +841,14 @@ def load_single_etf_intraday_state(database_path: Path, account_id: str) -> dict
             "SELECT * FROM single_etf_intraday_trades WHERE account_id = ? ORDER BY trade_time, side",
             (account_id,),
         ).fetchall()
+        order_event_rows = conn.execute(
+            "SELECT * FROM single_etf_intraday_order_events WHERE account_id = ? "
+            "ORDER BY trade_date, trade_time, side, symbol",
+            (account_id,),
+        ).fetchall()
     return {
         "account": dict(account_row) if account_row is not None else {},
         "daily_assets": [dict(row) for row in daily_rows],
         "trades": [dict(row) for row in trade_rows],
+        "order_events": [dict(row) for row in order_event_rows],
     }

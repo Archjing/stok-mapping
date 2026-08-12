@@ -124,6 +124,41 @@ def test_weak_signal_limit_fill_and_unfilled_cancel_are_executable(tmp_path: Pat
     assert cancelled.metrics["account_execution_complete"] is True
 
 
+def test_live_weak_limit_order_remains_pending_until_session_close(tmp_path: Path) -> None:
+    daily = _daily([0.007, 0.0, 0.0]).iloc[[0]].copy()
+    bars = _bars()[_bars()["time"].dt.date == pd.Timestamp("2024-06-10").date()].copy()
+    bars["low"] = 0.995  # The 0.990 limit is not touched.
+
+    pending = run_single_etf_intraday_account_execution(
+        signal_frame=daily,
+        intraday_bars=bars,
+        account=_account(tmp_path),
+        policy=_policy(),
+        live_session=True,
+        session_complete=False,
+    )
+
+    assert pending.trades.empty
+    assert pending.daily_assets.iloc[0]["cash_asset"] == 100_000
+    assert pending.metrics["account_unfilled_order_count"] == 0
+    assert pending.order_events.iloc[0]["status"] == "pending"
+    assert pending.order_events.iloc[0]["limit_price"] == 0.99
+
+    cancelled = run_single_etf_intraday_account_execution(
+        signal_frame=daily,
+        intraday_bars=bars,
+        account=_account(tmp_path),
+        policy=_policy(),
+        live_session=True,
+        session_complete=True,
+    )
+
+    assert cancelled.trades.empty
+    assert cancelled.metrics["account_unfilled_order_count"] == 1
+    assert cancelled.order_events.iloc[0]["status"] == "cancelled"
+    assert cancelled.order_events.iloc[0]["reason"] == "limit_not_touched"
+
+
 def test_strong_and_weak_signals_use_separate_position_sizes(tmp_path: Path) -> None:
     strong = run_single_etf_intraday_account_execution(
         signal_frame=_daily([0.02, 0.0, 0.0]),
@@ -259,3 +294,39 @@ def test_state_write_is_idempotent(tmp_path: Path) -> None:
             (account.account_id,),
         ).fetchone()[0]
     assert count == 2
+
+
+def test_state_write_persists_cancelled_limit_order_event(tmp_path: Path) -> None:
+    account = _account(tmp_path)
+    bars = _bars()
+    bars.loc[bars["time"].dt.date == pd.Timestamp("2024-06-10").date(), "low"] = 0.995
+    result = run_single_etf_intraday_account_execution(
+        signal_frame=_daily([0.007, 0.0, 0.0]).iloc[[0]],
+        intraday_bars=bars,
+        account=account,
+        policy=_policy(),
+        live_session=True,
+        session_complete=True,
+    )
+
+    write_single_etf_intraday_account_state(account=account, policy=_policy(), result=result)
+
+    state = load_single_etf_intraday_state(account.database_path, account.account_id)
+    assert state["order_events"] == [
+        {
+            "account_id": "single-etf",
+            "trade_date": "2024-06-10",
+            "signal_date": "2024-06-07",
+            "symbol": "SH.512480",
+            "side": "buy",
+            "order_type": "limit",
+            "status": "cancelled",
+            "trade_time": "",
+            "reference_open_price": 1.0,
+            "limit_price": 0.99,
+            "requested_shares": 100900.0,
+            "filled_shares": 0.0,
+            "price": None,
+            "reason": "limit_not_touched",
+        }
+    ]

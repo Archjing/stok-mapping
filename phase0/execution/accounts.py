@@ -63,6 +63,7 @@ class SignalAccountExecutionResult:
     trades: pd.DataFrame
     positions: pd.DataFrame
     metrics: dict[str, Any]
+    order_events: pd.DataFrame = field(default_factory=pd.DataFrame)
 
 
 def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[SimulatedAccountConfig]:
