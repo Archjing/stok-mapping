@@ -645,11 +645,11 @@ def test_signal_account_execution_uses_trading_day_age_for_new_stock_limit_exemp
 
 
 def test_default_walk_forward_account_execution_uses_live_like_rules() -> None:
-    phase0_cfg = load_config(Path("config.yaml"))
-    wcfg = phase0_cfg["walk_forward"]
+    quant_cfg = load_config(Path("config.yaml"))
+    wcfg = quant_cfg["walk_forward"]
     strategy_cfg = wcfg["strategy_v2"]
 
-    account = _build_account_execution_config(phase0_cfg, wcfg, strategy_cfg)
+    account = _build_account_execution_config(quant_cfg, wcfg, strategy_cfg)
 
     assert account is not None
     assert account.execution_price_mode == "next_open"

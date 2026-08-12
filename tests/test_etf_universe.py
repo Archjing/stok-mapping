@@ -35,7 +35,7 @@ def conn():
 
 
 def _resolve(conn, cfg, sectors=None):
-    return resolve_etf_universe(conn, phase0_cfg=cfg, universe_name="sector_core_v1", requested_sectors=sectors, start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11))
+    return resolve_etf_universe(conn, quant_cfg=cfg, universe_name="sector_core_v1", requested_sectors=sectors, start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11))
 
 
 def test_resolver_returns_only_three_configured_symbols(conn, cfg):
@@ -80,7 +80,7 @@ def test_delisted_without_date_and_invalid_range_fail(conn, cfg):
     with pytest.raises(ETFUniverseError, match="delist_date"):
         _resolve(conn, cfg)
     with pytest.raises(ETFUniverseError, match="start_date"):
-        resolve_etf_universe(conn, phase0_cfg=cfg, universe_name="sector_core_v1", requested_sectors=None, start_date=date(2026, 8, 12), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11))
+        resolve_etf_universe(conn, quant_cfg=cfg, universe_name="sector_core_v1", requested_sectors=None, start_date=date(2026, 8, 12), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11))
 
 
 def test_digest_is_stable_for_key_order_and_changes_for_membership(cfg):
@@ -146,7 +146,7 @@ def test_single_etf_manual_config_resolves_without_catalog_snapshot() -> None:
         ensure_etf_schema(conn)
         manifest = resolve_etf_universe(
             conn,
-            phase0_cfg=cfg,
+            quant_cfg=cfg,
             universe_name="single_etf",
             requested_sectors=None,
             start_date=date(2010, 1, 1),
@@ -203,7 +203,7 @@ def test_single_etf_manual_config_fails_closed_for_ambiguous_or_invalid_metadata
         })
         with pytest.raises(ETFUniverseError, match="exactly one ETF"):
             resolve_etf_universe(
-                conn, phase0_cfg=duplicate, universe_name="single_etf", requested_sectors=None,
+                conn, quant_cfg=duplicate, universe_name="single_etf", requested_sectors=None,
                 start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11),
             )
 
@@ -211,7 +211,7 @@ def test_single_etf_manual_config_fails_closed_for_ambiguous_or_invalid_metadata
         mismatched["etf_history"]["universes"]["single_etf"]["sectors"]["semiconductor"][0]["ts_code"] = "512480.SZ"
         with pytest.raises(ETFUniverseError, match="exchange mismatch"):
             resolve_etf_universe(
-                conn, phase0_cfg=mismatched, universe_name="single_etf", requested_sectors=None,
+                conn, quant_cfg=mismatched, universe_name="single_etf", requested_sectors=None,
                 start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11),
             )
 
@@ -240,7 +240,7 @@ def test_named_manual_etf_universe_allows_multiple_explicit_members() -> None:
         ensure_etf_schema(conn)
         manifest = resolve_etf_universe(
             conn,
-            phase0_cfg=cfg,
+            quant_cfg=cfg,
             universe_name="semiconductor_timing_etfs",
             requested_sectors=None,
             start_date=date(2010, 1, 1),

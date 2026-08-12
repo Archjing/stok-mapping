@@ -135,8 +135,8 @@ def _resolve_path(root: Path, value: str | Path) -> Path:
 
 
 def _load_maintenance_cfg(config_path: Path) -> tuple[Path, dict[str, Any]]:
-    phase0_cfg = load_config(config_path)
-    orchestrator_cfg = dict(phase0_cfg.get("maintenance_orchestrator", {}) or {})
+    quant_cfg = load_config(config_path)
+    orchestrator_cfg = dict(quant_cfg.get("maintenance_orchestrator", {}) or {})
     root = config_path.parent
     return root, orchestrator_cfg
 

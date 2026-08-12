@@ -389,8 +389,8 @@ def audit_etf_history(db_path: Path, run_id: str, *, report_dir: Path) -> ETFAud
 def audit_etf_history_from_config(config_path: Path, run_id: str) -> ETFAuditResult:
     """Resolve local-only ETF audit paths from config and audit a persisted run."""
     config_path = Path(config_path).resolve()
-    phase0_cfg = load_config(config_path)
-    history_cfg = phase0_cfg.get("etf_history")
+    quant_cfg = load_config(config_path)
+    history_cfg = quant_cfg.get("etf_history")
     if not isinstance(history_cfg, dict):
         raise ValueError("quant.etf_history configuration must be a mapping")
     db_path = Path(str(history_cfg.get("path", "data/etf_history.sqlite")))

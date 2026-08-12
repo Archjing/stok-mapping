@@ -102,7 +102,7 @@ def test_resume_contract_and_task_selection():
     conn.execute("UPDATE etf_backfill_tasks SET status='succeeded' WHERE run_id=? AND dataset=? AND chunk_start=?", (run_id, *keys[0]))
     conn.execute("UPDATE etf_backfill_tasks SET status='failed' WHERE run_id=? AND dataset=? AND chunk_start=?", (run_id, *keys[1]))
     conn.execute("UPDATE etf_backfill_tasks SET status='running',updated_at=? WHERE run_id=? AND dataset=? AND chunk_start=?", ((datetime(2026, 8, 11, 8)).isoformat(), run_id, *keys[2]))
-    assert validate_resume_contract(conn, run_id, phase0_cfg=cfg).catalog_snapshot_id == "snap"
+    assert validate_resume_contract(conn, run_id, quant_cfg=cfg).catalog_snapshot_id == "snap"
     resumable = load_resumable_tasks(conn, run_id, stale_running_minutes=30, now=datetime(2026, 8, 11, 10))
     assert "succeeded" not in [task.status for task in resumable]
     assert {task.status for task in resumable} <= {"failed", "pending"}
@@ -115,10 +115,10 @@ def test_resume_rejects_config_and_persisted_manifest_drift():
     changed = _cfg()
     changed["etf_history"]["universes"]["u"]["sectors"]["semi"] = []
     with pytest.raises(ETFResumeMismatchError, match="config_digest"):
-        validate_resume_contract(conn, run_id, phase0_cfg=changed)
+        validate_resume_contract(conn, run_id, quant_cfg=changed)
     conn.execute("UPDATE etf_backfill_manifest_members SET catalog_snapshot_id='wrong' WHERE rowid=(SELECT rowid FROM etf_backfill_manifest_members WHERE run_id=? LIMIT 1)", (run_id,))
     with pytest.raises(ETFResumeMismatchError, match="manifest"):
-        validate_resume_contract(conn, run_id, phase0_cfg=cfg)
+        validate_resume_contract(conn, run_id, quant_cfg=cfg)
 
 
 class FakeProvider:

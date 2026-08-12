@@ -45,15 +45,15 @@ class ETFUniverseError(RuntimeError):
     """The requested ETF acquisition universe is invalid or non-reproducible."""
 
 
-def _history_cfg(phase0_cfg: dict[str, object]) -> dict[str, object]:
-    value = phase0_cfg.get("etf_history")
+def _history_cfg(quant_cfg: dict[str, object]) -> dict[str, object]:
+    value = quant_cfg.get("etf_history")
     if not isinstance(value, dict):
         raise ETFUniverseError("quant.etf_history configuration is required")
     return value
 
 
-def _universe_cfg(phase0_cfg: dict[str, object], universe_name: str) -> dict[str, object]:
-    history = _history_cfg(phase0_cfg)
+def _universe_cfg(quant_cfg: dict[str, object], universe_name: str) -> dict[str, object]:
+    history = _history_cfg(quant_cfg)
     universes = history.get("universes")
     if not isinstance(universes, dict) or universe_name not in universes or not isinstance(universes[universe_name], dict):
         raise ETFUniverseError(f"unknown ETF universe: {universe_name}")
@@ -61,12 +61,12 @@ def _universe_cfg(phase0_cfg: dict[str, object], universe_name: str) -> dict[str
 
 
 def history_config_digest(
-    phase0_cfg: dict[str, object],
+    quant_cfg: dict[str, object],
     universe_name: str,
     requested_sectors: list[str] | tuple[str, ...] | None = None,
 ) -> str:
-    history = _history_cfg(phase0_cfg)
-    universe = _universe_cfg(phase0_cfg, universe_name)
+    history = _history_cfg(quant_cfg)
+    universe = _universe_cfg(quant_cfg, universe_name)
     settings = {key: value for key, value in history.items() if key not in {"path", "report_dir", "universes", "enabled"}}
     payload = {"universe_name": universe_name, "universe": universe, "settings": settings, "requested_sectors": sorted(requested_sectors) if requested_sectors is not None else None}
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
@@ -88,7 +88,7 @@ def _tracking_symbol(value: object) -> str | None:
 def resolve_etf_universe(
     conn: sqlite3.Connection,
     *,
-    phase0_cfg: dict[str, object],
+    quant_cfg: dict[str, object],
     universe_name: str,
     requested_sectors: list[str] | None,
     start_date: date,
@@ -97,8 +97,8 @@ def resolve_etf_universe(
 ) -> ETFUniverseManifest:
     if start_date > end_date:
         raise ETFUniverseError("start_date must be on or before end_date")
-    history = _history_cfg(phase0_cfg)
-    universe = _universe_cfg(phase0_cfg, universe_name)
+    history = _history_cfg(quant_cfg)
+    universe = _universe_cfg(quant_cfg, universe_name)
     if not set(universe).issubset({"sectors", "manifest_source"}):
         raise ETFUniverseError("ETF universe keys must be sectors and optional manifest_source")
     manifest_source = str(universe.get("manifest_source", "catalog"))
@@ -165,7 +165,7 @@ def resolve_etf_universe(
         except RuntimeError as exc:
             raise ETFUniverseError(str(exc)) from exc
     else:
-        snapshot = f"manual-config:{history_config_digest(phase0_cfg, universe_name, tuple(selected))}"
+        snapshot = f"manual-config:{history_config_digest(quant_cfg, universe_name, tuple(selected))}"
     members: list[ETFManifestMember] = []
     for sector in selected:
         for entry in sorted(parsed[sector], key=lambda value: str(value["symbol"])):
@@ -217,7 +217,7 @@ def resolve_etf_universe(
     requested_tuple = tuple(selected)
     return ETFUniverseManifest(
         universe_name, requested_tuple, start_date, end_date,
-        history_config_digest(phase0_cfg, universe_name, requested_tuple), snapshot, tuple(members), manifest_source,
+        history_config_digest(quant_cfg, universe_name, requested_tuple), snapshot, tuple(members), manifest_source,
     )
 
 
@@ -231,8 +231,8 @@ def resolve_etf_universe_from_config(
 ) -> ETFUniverseManifest:
     """Resolve a named ETF universe against the configured catalog store."""
     config_path = Path(config_path).resolve()
-    phase0_cfg = load_config(config_path)
-    history_cfg = _history_cfg(phase0_cfg)
+    quant_cfg = load_config(config_path)
+    history_cfg = _history_cfg(quant_cfg)
     try:
         requested_start = date.fromisoformat(start_date)
         requested_end = date.fromisoformat(end_date)
@@ -246,7 +246,7 @@ def resolve_etf_universe_from_config(
         ensure_etf_schema(conn)
         return resolve_etf_universe(
             conn,
-            phase0_cfg=phase0_cfg,
+            quant_cfg=quant_cfg,
             universe_name=universe_name,
             requested_sectors=requested_sectors,
             start_date=requested_start,

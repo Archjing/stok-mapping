@@ -114,9 +114,9 @@ def sync_etf_catalog(
 def sync_etf_catalog_from_config(config_path: Path) -> ETFCatalogSyncResult:
     """Resolve the dedicated ETF store and Tushare settings from config."""
     config_path = Path(config_path).resolve()
-    phase0_cfg = load_config(config_path)
-    history_cfg = _mapping(phase0_cfg.get("etf_history"), name="quant.etf_history")
-    data_sources_cfg = _mapping(phase0_cfg.get("data_sources", {}), name="quant.data_sources")
+    quant_cfg = load_config(config_path)
+    history_cfg = _mapping(quant_cfg.get("etf_history"), name="quant.etf_history")
+    data_sources_cfg = _mapping(quant_cfg.get("data_sources", {}), name="quant.data_sources")
     provider_raw = _mapping(data_sources_cfg.get("tushare", {}), name="quant.data_sources.tushare")
     db_path = Path(str(history_cfg.get("path", "data/etf_history.sqlite")))
     if not db_path.is_absolute():

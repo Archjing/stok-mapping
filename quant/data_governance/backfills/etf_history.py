@@ -281,7 +281,7 @@ def load_resumable_tasks(
     return [ETFBackfillTask(row[0], row[1], row[2], row[3], row[4], date.fromisoformat(row[5]), date.fromisoformat(row[6]), row[7]) for row in rows]
 
 
-def validate_resume_contract(conn: sqlite3.Connection, run_id: str, *, phase0_cfg: dict[str, object]) -> ETFUniverseManifest:
+def validate_resume_contract(conn: sqlite3.Connection, run_id: str, *, quant_cfg: dict[str, object]) -> ETFUniverseManifest:
     manifest = load_persisted_manifest(conn, run_id)
     if manifest.manifest_source == "catalog":
         status = conn.execute("SELECT status FROM etf_catalog_sync_runs WHERE snapshot_id=?", (manifest.catalog_snapshot_id,)).fetchone()
@@ -292,7 +292,7 @@ def validate_resume_contract(conn: sqlite3.Connection, run_id: str, *, phase0_cf
             raise ETFResumeMismatchError("manual_config manifest source reference is invalid")
     else:
         raise ETFResumeMismatchError(f"unknown persisted manifest_source: {manifest.manifest_source}")
-    current_digest = history_config_digest(phase0_cfg, manifest.universe_name, manifest.requested_sectors)
+    current_digest = history_config_digest(quant_cfg, manifest.universe_name, manifest.requested_sectors)
     if current_digest != manifest.config_digest:
         raise ETFResumeMismatchError("config_digest does not match current history configuration")
     return manifest
@@ -522,9 +522,9 @@ def backfill_etf_history_from_config(
 ) -> ETFBackfillResult | ETFBackfillDryRunResult:
     """Resolve a dry-run, create a new persisted run, or resume an immutable run."""
     config_path = Path(config_path)
-    phase0_cfg = load_config(config_path)
-    history_cfg = _mapping(phase0_cfg.get("etf_history"), name="quant.etf_history")
-    data_sources_cfg = _mapping(phase0_cfg.get("data_sources", {}), name="quant.data_sources")
+    quant_cfg = load_config(config_path)
+    history_cfg = _mapping(quant_cfg.get("etf_history"), name="quant.etf_history")
+    data_sources_cfg = _mapping(quant_cfg.get("data_sources", {}), name="quant.data_sources")
     configured_limits = ETFBackfillLimits(
         max_symbols=int(history_cfg.get("max_symbols_per_run", 50)),
         max_tasks=int(history_cfg.get("max_tasks_per_run", 1000)),
@@ -551,7 +551,7 @@ def backfill_etf_history_from_config(
             raise ETFBackfillPlanError("resume rejects universe, sector, dates, limits, and dry-run")
         with sqlite3.connect(db_path) as conn:
             ensure_etf_schema(conn)
-            validate_resume_contract(conn, resume_run_id, phase0_cfg=phase0_cfg)
+            validate_resume_contract(conn, resume_run_id, quant_cfg=quant_cfg)
         return execute_etf_backfill_run(db_path, resume_run_id, provider=provider, **runner_settings)
 
     if universe_name is None or start_date is None or end_date is None:
@@ -569,7 +569,7 @@ def backfill_etf_history_from_config(
         ensure_etf_schema(conn)
         manifest = resolve_etf_universe(
             conn,
-            phase0_cfg=phase0_cfg,
+            quant_cfg=quant_cfg,
             universe_name=universe_name,
             requested_sectors=sectors,
             start_date=requested_start,
