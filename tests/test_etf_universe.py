@@ -214,3 +214,38 @@ def test_single_etf_manual_config_fails_closed_for_ambiguous_or_invalid_metadata
                 conn, phase0_cfg=mismatched, universe_name="single_etf", requested_sectors=None,
                 start_date=date(2010, 1, 1), end_date=date(2026, 8, 11), now=datetime(2026, 8, 11),
             )
+
+
+def test_named_manual_etf_universe_allows_multiple_explicit_members() -> None:
+    cfg = {
+        "etf_history": {
+            "catalog_max_age_days": 7,
+            "chunk_years": 1,
+            "max_symbols_per_run": 50,
+            "max_tasks_per_run": 1000,
+            "universes": {
+                "semiconductor_timing_etfs": {
+                    "manifest_source": "manual_config",
+                    "sectors": {
+                        "semiconductor": [
+                            {"symbol": "SH.512480", "ts_code": "512480.SH", "listed_from": "2019-06-12"},
+                            {"symbol": "SH.512760", "ts_code": "512760.SH", "listed_from": "2019-06-12"},
+                        ],
+                    },
+                },
+            },
+        },
+    }
+    with sqlite3.connect(":memory:") as conn:
+        ensure_etf_schema(conn)
+        manifest = resolve_etf_universe(
+            conn,
+            phase0_cfg=cfg,
+            universe_name="semiconductor_timing_etfs",
+            requested_sectors=None,
+            start_date=date(2010, 1, 1),
+            end_date=date(2026, 8, 11),
+            now=datetime(2026, 8, 11),
+        )
+
+    assert [member.symbol for member in manifest.members] == ["SH.512480", "SH.512760"]

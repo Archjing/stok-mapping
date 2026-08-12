@@ -157,7 +157,7 @@ def resolve_etf_universe(
                     raise ETFUniverseError(f"manual ETF listed_from must be an ISO date for {symbol}") from exc
                 parsed[sector].append({"symbol": symbol, "ts_code": ts_code, "listed_from": listed_from})
 
-    if manifest_source == "manual_config" and len(seen) != 1:
+    if universe_name == "single_etf" and manifest_source == "manual_config" and len(seen) != 1:
         raise ETFUniverseError("manual_config ETF universe must declare exactly one ETF")
     if manifest_source == "catalog":
         try:

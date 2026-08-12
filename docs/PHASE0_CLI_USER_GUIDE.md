@@ -51,6 +51,7 @@ uv sync
 - `overfit-diagnostic`
 - `financial-pti`
 - `factor-effectiveness`
+- `intraday-account`
 - `db-health`
 - `ai-corpus`
 - `daily-brief`
@@ -122,6 +123,72 @@ profile JSON 会记录 cache manifest，包括数据源 mtime/size、复权口�
 启用磁盘缓存后需要重建时可加 `--refresh-wf-cache`。
 
 ### 3.2 AI 语料库命令
+
+### 3.2 5 分钟单 ETF 模拟账户
+
+`intraday-account`：按配置重放“外部市场信号 → 下一 A 股交易日 → 单只 ETF 入场 →
+T+1 日内退出”的 5 分钟级账户。默认只读，不写模拟账户数据库。
+
+`cross_market_semiconductor_timing_etf_v1` 是可复用的策略 ID。每个账户通过
+`strategy_params.target_symbol` 独立指定交易标的，因此可以创建多个账户来分别模拟不同
+ETF；账户 ID、现金、持仓、成交、净值和 SQLite 状态彼此隔离。现有账户仍配置为
+`SH.512480`。
+
+允许的标的仅限：`SH.512480`、`SH.512760`、`SH.516920`、`SH.516640`、
+`SZ.159995`、`SZ.159813`、`SZ.159801`、`SH.588200`。策略会拒绝清单外的代码。
+新增账户前必须分别确认该 ETF 的日线和 5 分钟线覆盖，并完成独立回测、walk-forward 与
+admission；512480 的历史结果不能外推到其它 ETF。缺失关键分钟数据时命令会以退出码
+`2` 结束，且 `--write-state` 不会写入不完整账户状态。
+
+以下是账户配置模板，仅供复制后按实际资金、账户名称和已验证标的填写；它不会自动创建或
+启用新账户：
+
+```yaml
+- account_id: "semiconductor_512760"
+  name: "半导体ETF美股情绪映射择时_512760_v1"
+  enabled: false
+  initial_cash: 100000
+  strategy_id: "cross_market_semiconductor_timing_etf_v1"
+  strategy_params:
+    target_symbol: "SH.512760"
+  execution_model: "single_etf_intraday"
+  intraday_data_path: "data/etf_history.sqlite"
+  ledger_path: "data/simulated_trading/phase0_daily_account_ledger_512760.csv"
+  database_path: "data/simulated_trading/simulated_accounts.sqlite"
+  price_tick: 0.001
+  lot_size: 100
+  commission: 0.00025
+  min_commission: 5.0
+  slippage: 0.0001
+  stamp_duty_sell: 0.0
+```
+
+```bash
+# 固定 as-of 的可复现 dry-run
+./.venv/bin/python -m phase0.cli intraday-account \
+  --account-id semiconductor_timing \
+  --as-of 2026-08-11 \
+  --json
+
+# 仅在执行数据完整时，替换该账户的本地 SQLite 重放快照
+./.venv/bin/python -m phase0.cli intraday-account \
+  --account-id semiconductor_timing \
+  --as-of 2026-08-11 \
+  --write-state
+```
+
+执行口径：
+
+- 强信号按交易日开盘价成交；弱信号使用限价单，未触及即撤单。
+- T+1 使用 5 分钟 OHLC 完成 bar 做追踪止损；当前 bar 的 high 不能反向触发同一 bar 的 low。
+- 跳空跌破止损线时按 bar 开盘价成交，不按不可获得的止损价成交。
+- 未触发止损时要求存在配置的 `14:55` bar，并按该 bar 收盘价退出。
+- 缺失关键 5 分钟数据时返回退出码 `2`，且 `--write-state` 拒绝写入不完整状态。
+- 样本末日刚入场且未来 T+1 尚未发生时，状态为 `open_position_pending_exit`，不属于数据缺失。
+
+边界：该命令是盘后确定性重放和模拟账户状态生成器，不是盘中实时行情订阅器、订单调度器或券商交易接口。
+
+### 3.3 AI 语料库命令
 
 `ai-corpus`：抓取、入库、查询和导出本地 AI 语料库文档。当前用于政策法规、CCTV 新闻联播公开文稿、后续公告 / 央行报告 / 研报元数据等文本材料的可追溯归档；不直接生成交易信号，不直接接入主 ranker。
 

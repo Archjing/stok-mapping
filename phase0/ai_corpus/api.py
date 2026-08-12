@@ -12,6 +12,7 @@ from phase0.ai_corpus.providers.gov_policy import (
     fetch_national_policy_repository,
     npr,
 )
+from phase0.ai_corpus.providers.us_market_news import fetch_us_market_news
 from phase0.ai_corpus.registry import canonical_provider_name, get_provider_spec
 from phase0.ai_corpus.storage import query_ai_corpus_documents
 
@@ -65,6 +66,7 @@ def fetch_ai_corpus(
     refresh_reference: bool = False,
     database_path: str | Path | None = None,
     timeout: int = 20,
+    provider_config: dict | None = None,
 ) -> pd.DataFrame:
     canonical = canonical_provider_name(provider)
     spec = get_provider_spec(canonical)
@@ -127,6 +129,20 @@ def fetch_ai_corpus(
             limit=limit,
             fixture_dir=fixture_dir,
             raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+        )
+    if canonical == "us_market_news":
+        return fetch_us_market_news(
+            root=root,
+            provider_config=provider_config,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+            include_content=include_content,
         )
     if database_path:
         rows = query_ai_corpus_documents(

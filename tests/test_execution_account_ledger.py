@@ -130,6 +130,35 @@ def test_load_simulated_accounts_keeps_account_strategy_id(tmp_path: Path) -> No
     assert accounts[1].strategy_id == "low_vol_low_turnover_quality_v1"
 
 
+def test_load_simulated_accounts_keeps_account_local_strategy_params_isolated(tmp_path: Path) -> None:
+    accounts = load_simulated_accounts(
+        {
+            "accounts": {
+                "simulated": [
+                    {
+                        "account_id": "semiconductor_512480",
+                        "name": "512480",
+                        "initial_cash": 100000.0,
+                        "strategy_id": "cross_market_semiconductor_timing_etf_v1",
+                        "strategy_params": {"target_symbol": "SH.512480"},
+                    },
+                    {
+                        "account_id": "semiconductor_512760",
+                        "name": "512760",
+                        "initial_cash": 100000.0,
+                        "strategy_id": "cross_market_semiconductor_timing_etf_v1",
+                        "strategy_params": {"target_symbol": "SH.512760"},
+                    },
+                ]
+            }
+        },
+        tmp_path,
+    )
+
+    assert accounts[0].strategy_params == {"target_symbol": "SH.512480"}
+    assert accounts[1].strategy_params == {"target_symbol": "SH.512760"}
+
+
 def test_collect_watchlist_frames_filters_by_account_and_strategy(tmp_path: Path) -> None:
     run_root = tmp_path / "reports" / "runs" / "2026-06-30"
     default_path = run_root / "20260630_080000__premarket__default" / "premarket__watchlist.csv"

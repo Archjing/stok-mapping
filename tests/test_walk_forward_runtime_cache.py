@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
 
+from phase0.data_access import local_history
 import phase0.walk_forward as wf
 
 
@@ -107,10 +109,10 @@ def test_walk_forward_profile_writes_json_and_csv(tmp_path: Path) -> None:
 
 
 def test_fold_panel_cache_reuses_same_asof_input(monkeypatch, tmp_path: Path) -> None:
-    calls: list[tuple[str, str]] = []
+    calls: list[tuple[str, str, str]] = []
 
     def fake_load_symbol_map(symbols, years, as_of_date=None, price_adjustment=None):
-        calls.append(("load", str(as_of_date)))
+        calls.append(("load", str(as_of_date), str(price_adjustment)))
         return {
             "SH.600000": pd.DataFrame(
                 {
@@ -149,13 +151,112 @@ def test_fold_panel_cache_reuses_same_asof_input(monkeypatch, tmp_path: Path) ->
     finally:
         wf._WALK_FORWARD_RUNTIME.reset(token)
 
-    assert len(calls) == 2
+    assert calls == [
+        ("load", "2024-01-03", "qfq_asof"),
+        ("load", "2024-01-04", "qfq_asof"),
+    ]
     assert runtime.cache_stats["fold_panel_misses"] == 1
     assert runtime.cache_stats["fold_panel_memory_hits"] == 1
     assert first_train["close"].tolist() == [10.0, 11.0]
     assert second_train["close"].tolist() == [10.0, 11.0]
     assert first_valid["close"].tolist() == [12.0]
     assert second_valid["close"].tolist() == [12.0]
+
+
+def test_symbol_ma_features_use_qfq_asof_prices_without_future_factor(tmp_path: Path) -> None:
+    db_path = tmp_path / "history.sqlite"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            """
+            CREATE TABLE market_daily_bars (
+                market TEXT,
+                symbol TEXT,
+                date TEXT,
+                adjust_type TEXT,
+                open REAL,
+                high REAL,
+                low REAL,
+                close REAL,
+                volume REAL,
+                amount REAL,
+                adjusted_close REAL,
+                change_pct REAL,
+                change_amount REAL,
+                amplitude REAL,
+                turnover_rate REAL
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE market_adj_factors (
+                market TEXT,
+                symbol TEXT,
+                date TEXT,
+                adj_factor REAL,
+                source TEXT,
+                updated_at TEXT
+            )
+            """
+        )
+        dates = pd.date_range("2023-10-06", "2024-01-04", freq="D")
+        closes = [10.0] * (len(dates) - 3) + [10.0, 20.0, 30.0]
+        bars = [
+            (
+                "CN",
+                "SH.600000",
+                day.date().isoformat(),
+                "bfq",
+                close,
+                close,
+                close,
+                close,
+                100.0,
+                close * 100.0,
+                close,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            )
+            for day, close in zip(dates, closes, strict=True)
+        ]
+        conn.executemany(
+            "INSERT INTO market_daily_bars VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            bars,
+        )
+        factors = [
+            ("CN", "SH.600000", "2024-01-02", 1.0, "fixture", "2024-01-02T00:00:00"),
+            ("CN", "SH.600000", "2024-01-03", 1.0, "fixture", "2024-01-03T00:00:00"),
+            ("CN", "SH.600000", "2024-01-04", 2.0, "fixture", "2024-01-04T00:00:00"),
+            ("CN", "SH.600000", "2024-01-05", 10.0, "future_fixture", "2024-01-05T00:00:00"),
+        ]
+        conn.executemany("INSERT INTO market_adj_factors VALUES (?, ?, ?, ?, ?, ?)", factors)
+
+    original_settings = vars(local_history._settings).copy()
+    wf._load_symbol_cached.cache_clear()
+    try:
+        local_history.configure_local_history(
+            {
+                **original_settings,
+                "path": str(db_path),
+                "prefer_daily_for_backtest": True,
+                "price_adjustment_for_backtest": "qfq_asof",
+            }
+        )
+        out = wf._load_symbol(
+            "SH.600000",
+            years=3,
+            as_of_date="2024-01-04",
+            price_adjustment="qfq_asof",
+        )
+    finally:
+        wf._load_symbol_cached.cache_clear()
+        local_history.configure_local_history(original_settings)
+
+    row = out.loc[out["date"].eq(pd.Timestamp("2024-01-04"))].iloc[0]
+    assert row["close"] == 30.0
+    assert row["ma3"] == 15.0
 
 
 def test_symbol_cache_reuses_same_source_signature(tmp_path: Path) -> None:

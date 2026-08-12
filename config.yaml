@@ -1,4 +1,36 @@
 phase0:
+  ai_corpus:
+    database_path: "data/ai_corpus/ai_corpus.sqlite"
+    us_market_news:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/us_market_news"
+      keywords:
+        - "semiconductor"
+        - "semiconductors"
+        - "chip"
+        - "chips"
+        - "SOX"
+        - "VIX"
+        - "Nasdaq"
+        - "Federal Reserve"
+        - "interest rate"
+        - "NVIDIA"
+        - "NVDA"
+        - "AMD"
+        - "Intel"
+        - "TSMC"
+        - "Taiwan Semiconductor"
+      feeds:
+        - name: "cnbc_markets"
+          source: "CNBC Markets"
+          url: "https://www.cnbc.com/id/10000664/device/rss/rss.html"
+          topics: ["us_market"]
+          language: "en-US"
+        - name: "cnbc_technology"
+          source: "CNBC Technology"
+          url: "https://www.cnbc.com/id/19854910/device/rss/rss.html"
+          topics: ["technology", "semiconductor"]
+          language: "en-US"
   benchmark_symbol: "SH.000300"
   years: 7
   symbols:
@@ -98,6 +130,35 @@ phase0:
             - symbol: "SH.512480"
               ts_code: "512480.SH"
               listed_from: "2019-06-12"
+      semiconductor_timing_etfs:
+        # 受控的回填范围；声明在此不代表全部标的已完成分钟数据审计或可启用账户。
+        manifest_source: "manual_config"
+        sectors:
+          semiconductor:
+            - symbol: "SH.512480"
+              ts_code: "512480.SH"
+              listed_from: "2019-06-12"
+            - symbol: "SH.512760"
+              ts_code: "512760.SH"
+              listed_from: "2019-06-12"
+            - symbol: "SH.516920"
+              ts_code: "516920.SH"
+              listed_from: "2021-08-16"
+            - symbol: "SH.516640"
+              ts_code: "516640.SH"
+              listed_from: "2021-08-27"
+            - symbol: "SZ.159995"
+              ts_code: "159995.SZ"
+              listed_from: "2020-02-10"
+            - symbol: "SZ.159813"
+              ts_code: "159813.SZ"
+              listed_from: "2020-05-25"
+            - symbol: "SZ.159801"
+              ts_code: "159801.SZ"
+              listed_from: "2020-02-18"
+            - symbol: "SH.588200"
+              ts_code: "588200.SH"
+              listed_from: "2022-10-26"
   reporting:
     root_dir: "reports"
     categories:
@@ -424,7 +485,7 @@ phase0:
             - "theme_exposure_momentum_v1"
             - "sleeve_composite_v1"
             - "sleeve_composite_low_churn_v1"
-            - "cross_market_semiconductor_timing_v1"
+            - "cross_market_semiconductor_timing_etf_v1"
         quality_research_v1:
           description: "质量/低换手策略专项研究集合。"
           strategies:
@@ -477,7 +538,7 @@ phase0:
         - "theme_exposure_momentum_v1"
         - "sleeve_composite_v1"
         - "sleeve_composite_low_churn_v1"
-        - "cross_market_semiconductor_timing_v1"
+        - "cross_market_semiconductor_timing_etf_v1"
       candidate_governance:
         enabled: true
         selection_panel_scope: "portfolio"
@@ -596,11 +657,18 @@ phase0:
           SH.600030: financial
       cross_market_semiconductor_timing:
         enabled: true
+        # 默认标的；每个模拟账户可通过 strategy_params.target_symbol 覆盖。
+        target_symbol: "SH.512480"
         years: 7
-        sox_thresholds: [0.005, 0.008, 0.01, 0.012, 0.015, 0.02]
-        vix_thresholds: [19, 20, 21, 22, 23, 24, 25]
-        position_sizes: [0.50, 0.55, 0.60]
+        sox_thresholds: [0.005]
+        vix_thresholds: [19]
+        position_sizes: [1.0]
         train_min_signals: 3
+        strong_signal_threshold: 0.01
+        limit_order_discount: 0.01
+        trailing_stop_ratio: 0.98
+        weak_unfilled_action: "cancel"
+        fallback_time: "14:55"
       price_volume_features:
         amount_ma_window: 20
         breakout_window: 20
@@ -721,16 +789,27 @@ phase0:
         max_participation_rate: 0.05
         lot_size: 100
       - account_id: "semiconductor_timing"
-        name: "半导体SOX+VIX择时账户"
+        name: "半导体ETF美股情绪映射择时_v1"
         enabled: true
         initial_cash: 200000
-        strategy_id: "cross_market_semiconductor_timing_v1"
-        simulation_start_date: "2021-06-01"
+        strategy_id: "cross_market_semiconductor_timing_etf_v1"
+        strategy_params:
+          target_symbol: "SH.512480"
+        simulation_start_date: "2026-08-12"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger_semiconductor.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
+        execution_model: "single_etf_intraday"
+        intraday_data_path: "data/etf_history.sqlite"
         execution_price_mode: "next_open"
         max_participation_rate: 0.05
+        price_tick: 0.001
         lot_size: 100
+        commission: 0.00025
+        min_commission: 5.0
+        slippage: 0.0001
+        stamp_duty_sell: 0.0
+        transfer_fee_rate: 0.0
+        min_trade_amount: 0.0
   execution:
     price_mode: "next_open"
     conservative_price_buffer: 0.001

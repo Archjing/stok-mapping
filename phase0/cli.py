@@ -10,6 +10,11 @@ from phase0.cli_commands.data_governance import (
 )
 from phase0.cli_commands.dashboard import handle_dashboard_command, register_dashboard_commands
 from phase0.cli_commands.intelligence import handle_intelligence_command, register_intelligence_commands
+from phase0.cli_commands.intraday_account import (
+    INTRADAY_ACCOUNT_COMMANDS,
+    handle_intraday_account_command,
+    register_intraday_account_commands,
+)
 from phase0.cli_commands.maintenance import handle_maintenance_command, register_maintenance_commands
 from phase0.cli_commands.output import print_manual_history_update_result
 from phase0.cli_commands.phase0_run import (
@@ -122,6 +127,7 @@ def main() -> int:
         ],
         "Operations": [
             "dashboard",
+            "intraday-account",
             "maintain",
             "site",
             "system",
@@ -161,6 +167,7 @@ def main() -> int:
     register_site_commands(sub)
     register_delivery_commands(sub)
     register_data_update_commands(sub)
+    register_intraday_account_commands(sub)
 
     args = parser.parse_args()
     if args.cmd in REPORT_EXPORT_COMMANDS:
@@ -189,6 +196,8 @@ def main() -> int:
         return handle_data_update_command(args, parser=parser)
     if args.cmd in PHASE0_RUN_COMMANDS:
         return handle_phase0_run_command(args, parser=parser)
+    if args.cmd in INTRADAY_ACCOUNT_COMMANDS:
+        return handle_intraday_account_command(args, parser=parser)
     parser.print_help()
     return 1
 

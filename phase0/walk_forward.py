@@ -44,6 +44,10 @@ from phase0.research.metrics import (
     sharpe as _sharpe,
 )
 from phase0.execution.accounts import SimulatedAccountConfig, run_signal_account_execution
+from phase0.execution.single_etf_intraday import (
+    SingleEtfIntradayPolicy,
+    run_single_etf_intraday_account_execution,
+)
 from phase0.strategies import available_strategies, get_strategy
 from phase0.strategies.base import StrategyOutput
 from phase0.strategies.constraints import apply_strategy_constraints
@@ -292,6 +296,7 @@ def _fold_panel_cache_key(
     valid_dates: set[pd.Timestamp],
     train_as_of_date: date,
     valid_as_of_date: date,
+    price_adjustment: str,
     strategy_cfg: dict[str, Any],
 ) -> str:
     runtime = _runtime()
@@ -304,6 +309,7 @@ def _fold_panel_cache_key(
             "valid_dates": _date_set_signature(valid_dates),
             "train_as_of_date": str(train_as_of_date),
             "valid_as_of_date": str(valid_as_of_date),
+            "price_adjustment": str(price_adjustment),
             "strategy_cfg": strategy_cfg,
             "source_signature": runtime.source_signature if runtime is not None else {},
         }
@@ -2284,6 +2290,32 @@ def _account_execution_metrics(output: StrategyOutput, account: SimulatedAccount
         return {"account_execution_status": "not_enabled", "account_execution_enabled": False}
     if panel_scope != "portfolio":
         return {"account_execution_status": "not_applicable", "account_execution_enabled": False}
+    strategy_id = str(output.metadata.get("strategy_id", ""))
+    strategy = get_strategy(strategy_id) if strategy_id else None
+    execution_model = str(
+        output.metadata.get("account_execution_model")
+        or getattr(strategy, "account_execution_model", "")
+        or account.execution_model
+        or "daily_target_weight"
+    )
+    if execution_model == "single_etf_intraday":
+        policy_metadata = output.metadata
+        if "account_execution_policy" not in policy_metadata and strategy is not None:
+            policy_metadata = strategy.build_metadata({})
+        policy = SingleEtfIntradayPolicy.from_metadata(policy_metadata)
+        result = run_single_etf_intraday_account_execution(
+            signal_frame=output.signal_frame,
+            account=account,
+            policy=policy,
+        )
+        status = "enabled" if bool(result.metrics.get("account_execution_complete", False)) else "data_incomplete"
+        return {"account_execution_status": status, **result.metrics}
+    if strategy is not None and not strategy.supports_paper_trade:
+        return {
+            "account_execution_status": "not_supported",
+            "account_execution_enabled": False,
+            "account_execution_reason": "strategy_requires_intraday_order_lifecycle",
+        }
     result = run_signal_account_execution(signal_frame=output.signal_frame, account=account)
     return {"account_execution_status": "enabled", **result.metrics}
 
@@ -2357,6 +2389,7 @@ def _build_panel_for_fold_asof(
     xfeatures: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     runtime = _runtime()
+    price_adjustment = "qfq_asof"
     cache_key = _fold_panel_cache_key(
         symbols=symbols,
         years=years,
@@ -2364,6 +2397,7 @@ def _build_panel_for_fold_asof(
         valid_dates=valid_dates,
         train_as_of_date=train_as_of_date,
         valid_as_of_date=valid_as_of_date,
+        price_adjustment=price_adjustment,
         strategy_cfg=strategy_cfg,
     )
     if runtime is not None and runtime.cache_enabled and runtime.fold_panel_cache_enabled and not runtime.refresh_cache:
@@ -2397,9 +2431,24 @@ def _build_panel_for_fold_asof(
         years=int(years),
         train_as_of_date=str(train_as_of_date),
         valid_as_of_date=str(valid_as_of_date),
+        price_adjustment=price_adjustment,
     ):
-        train_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=train_as_of_date))
-        valid_panel = _align_symbol_map(_load_symbol_map(symbols, years=years, as_of_date=valid_as_of_date))
+        train_panel = _align_symbol_map(
+            _load_symbol_map(
+                symbols,
+                years=years,
+                as_of_date=train_as_of_date,
+                price_adjustment=price_adjustment,
+            )
+        )
+        valid_panel = _align_symbol_map(
+            _load_symbol_map(
+                symbols,
+                years=years,
+                as_of_date=valid_as_of_date,
+                price_adjustment=price_adjustment,
+            )
+        )
         if train_panel.empty or valid_panel.empty:
             return _store_fold_panel_cache(cache_key, pd.DataFrame(), pd.DataFrame())
         train_panel["date"] = pd.to_datetime(train_panel["date"]).dt.normalize()
@@ -2898,7 +2947,28 @@ def _run_compare(
             continue
         strategy_rows: list[dict[str, Any]] = []
         strategy = get_strategy(strategy_name)
-        if strategy.panel_scope == "symbol":
+        if getattr(strategy, 'skip_stock_panel', False):
+            # Strategy provides its own data via prepare_panel();
+            # skip the heavy A-share stock loading.
+            strategy_rows.extend(
+                _run_strategy_on_symbol_panel(
+                    config,
+                    strategy_name,
+                    pd.DataFrame(),
+                    years=years,
+                    train_years=train_years,
+                    validate_years=validate_years,
+                    min_samples=min_samples,
+                    slippage=slippage,
+                    commission=commission,
+                    stamp_duty_sell=stamp_duty_sell,
+                    strategy_cfg=strategy_cfg,
+                    account_execution=account_execution,
+                    window_cfg=window_cfg,
+                    trace_callback=trace_callback,
+                )
+            )
+        elif strategy.panel_scope == "symbol":
             for sym in symbols:
                 panel = _load_symbol(sym, years=years)
                 if panel.empty:

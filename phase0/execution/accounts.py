@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, ROUND_CEILING, ROUND_FLOOR
 import json
 from pathlib import Path
@@ -32,8 +32,11 @@ class SimulatedAccountConfig:
     ledger_path: Path
     database_path: Path
     strategy_id: str = "legacy_momentum_low_turnover_v1"
+    strategy_params: dict[str, Any] = field(default_factory=dict)
     simulation_start_date: str = ""
     enabled: bool = True
+    execution_model: str = "daily_target_weight"
+    intraday_data_path: Path | None = None
     execution_price_mode: str = "next_open"
     price_tick: float = 0.01
     max_participation_rate: float = 0.05
@@ -90,6 +93,12 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
         database_path = Path(str(raw.get("database_path", "data/simulated_trading/simulated_accounts.sqlite")))
         if not database_path.is_absolute():
             database_path = root / database_path
+        intraday_data_path_value = raw.get("intraday_data_path")
+        intraday_data_path = None
+        if intraday_data_path_value:
+            intraday_data_path = Path(str(intraday_data_path_value))
+            if not intraday_data_path.is_absolute():
+                intraday_data_path = root / intraday_data_path
         accounts.append(
             SimulatedAccountConfig(
                 account_id=str(raw.get("account_id", "default")),
@@ -98,8 +107,11 @@ def load_simulated_accounts(config: dict[str, Any], root: Path) -> list[Simulate
                 ledger_path=ledger_path,
                 database_path=database_path,
                 strategy_id=str(raw.get("strategy_id", default_strategy_id) or default_strategy_id),
+                strategy_params=dict(raw.get("strategy_params", {}) or {}),
                 simulation_start_date=str(raw.get("simulation_start_date", raw.get("start_date", "")) or ""),
                 enabled=True,
+                execution_model=str(raw.get("execution_model", "daily_target_weight") or "daily_target_weight"),
+                intraday_data_path=intraday_data_path,
                 execution_price_mode=str(raw.get("execution_price_mode", execution.get("price_mode", "next_open"))),
                 price_tick=float(raw.get("price_tick", execution.get("price_tick", 0.01))),
                 max_participation_rate=float(raw.get("max_participation_rate", execution.get("max_participation_rate", 0.05))),
@@ -234,7 +246,7 @@ def _limit_pct(symbol: str, account: SimulatedAccountConfig, price_row: dict[str
     return float(limits.get("default", 0.10))
 
 
-def _trade_cost(trade_amount: float, side: str, account: SimulatedAccountConfig) -> float:
+def calculate_trade_cost(trade_amount: float, side: str, account: SimulatedAccountConfig) -> float:
     amount = max(0.0, float(trade_amount))
     if amount <= 0:
         return 0.0
@@ -247,24 +259,31 @@ def _trade_cost(trade_amount: float, side: str, account: SimulatedAccountConfig)
     return float(slippage_cost + commission_cost + transfer_fee + stamp)
 
 
-def _affordable_buy_shares(*, cash_asset: float, price: float, requested_shares: float, account: SimulatedAccountConfig) -> float:
+def affordable_buy_shares(*, cash_asset: float, price: float, requested_shares: float, account: SimulatedAccountConfig) -> float:
     shares = min(float(requested_shares), round_lot_floor(float(cash_asset) / float(price), account.lot_size))
     step = max(int(account.lot_size), 1)
     while shares > 0:
         amount = shares * float(price)
-        if amount + _trade_cost(amount, "buy", account) <= float(cash_asset) + 1e-9:
+        if amount + calculate_trade_cost(amount, "buy", account) <= float(cash_asset) + 1e-9:
             return float(shares)
         shares = round_lot_floor(shares - step, account.lot_size)
     return 0.0
 
 
-def _round_price_to_tick(price: float, side: str, tick: float) -> float:
+def round_price_to_tick(price: float, side: str, tick: float) -> float:
     if not pd.notna(price) or float(price) <= 0 or float(tick) <= 0:
         return float(price)
     rounding = ROUND_CEILING if side == "buy" else ROUND_FLOOR
     units = (Decimal(str(float(price))) / Decimal(str(float(tick)))).to_integral_value(rounding=rounding)
     rounded = units * Decimal(str(float(tick)))
     return float(rounded)
+
+
+# Compatibility aliases for existing account-ledger code and external research
+# scripts. New execution models should import the public names above.
+_trade_cost = calculate_trade_cost
+_affordable_buy_shares = affordable_buy_shares
+_round_price_to_tick = round_price_to_tick
 
 
 def _load_execution_prices(
@@ -1312,7 +1331,7 @@ def _price_rows_from_signal_day(frame: pd.DataFrame) -> dict[str, dict[str, floa
     return out
 
 
-def _signal_execution_metrics(
+def build_signal_execution_metrics(
     daily: pd.DataFrame,
     trades: pd.DataFrame,
     unfilled_orders_total: int,
@@ -1344,6 +1363,9 @@ def _signal_execution_metrics(
         "account_stale_valuation_positions_total": int(pd.to_numeric(daily.get("stale_valuation_positions", 0), errors="coerce").fillna(0).sum()),
         "account_lot_size": int(trades["lot_size"].dropna().iloc[0]) if not trades.empty and "lot_size" in trades.columns else 0,
     }
+
+
+_signal_execution_metrics = build_signal_execution_metrics
 
 
 def _annualized_return_from_returns(returns: pd.Series) -> float:

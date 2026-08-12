@@ -5,6 +5,7 @@ from phase0.ai_corpus.schema import AiCorpusProviderSpec
 GOV_POLICY_PARSER_VERSION = "gov_policy_v1"
 CCTV_NEWS_PARSER_VERSION = "cctv_news_v1"
 CNINFO_PARSER_VERSION = "cninfo_announcement_v1"
+US_MARKET_NEWS_PARSER_VERSION = "us_market_news_rss_v1"
 
 PROVIDER_ALIASES = {
     "gov-policy": "gov_policy",
@@ -18,6 +19,11 @@ PROVIDER_ALIASES = {
     "cn_info": "cninfo",
     "announcement": "cninfo",
     "announcements": "cninfo",
+    "us-market-news": "us_market_news",
+    "us_news": "us_market_news",
+    "us-news": "us_market_news",
+    "market-news": "us_market_news",
+    "us-market": "us_market_news",
 }
 
 PROVIDER_REGISTRY = {
@@ -67,6 +73,18 @@ PROVIDER_REGISTRY = {
         supported_parameters=("event_type", "start_date", "end_date", "keyword", "symbols", "limit"),
         status="implemented_mvp",
         notes="Supports AkShare/CNInfo announcement list fetch, risk_events filters, fixture regression, raw archive, and SQLite upsert.",
+    ),
+    "us_market_news": AiCorpusProviderSpec(
+        name="us_market_news",
+        canonical_name="us_market_news",
+        corpus_types=("us_market_news",),
+        source="Public US market RSS feeds",
+        base_url="configurable RSS feeds",
+        parser_version=US_MARKET_NEWS_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/us_market_news",
+        supported_parameters=("keyword", "start_date", "end_date", "limit", "feeds", "keywords"),
+        status="implemented_mvp",
+        notes="Configurable RSS metadata fetch for US market and semiconductor context; explanation layer only.",
     ),
 }
 

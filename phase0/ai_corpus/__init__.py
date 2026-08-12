@@ -21,6 +21,7 @@ from phase0.ai_corpus.providers.gov_policy import (
     parse_gov_policy_topic_reference,
     probe_gov_policy_source,
 )
+from phase0.ai_corpus.providers.us_market_news import fetch_us_market_news
 from phase0.ai_corpus.registry import (
     PROVIDER_REGISTRY,
     canonical_provider_name,
@@ -52,6 +53,7 @@ __all__ = [
     "fetch_cctv_news",
     "fetch_cninfo_announcements",
     "fetch_national_policy_repository",
+    "fetch_us_market_news",
     "get_provider_spec",
     "load_gov_policy_references",
     "npr",

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>CNBC Markets</title>
+    <item>
+      <guid>fixture-sox-1</guid>
+      <title>Semiconductor stocks rise as SOX index advances</title>
+      <description>Chip shares gained while the Nasdaq moved higher.</description>
+      <link>https://example.test/news/sox-1</link>
+      <pubDate>Tue, 11 Aug 2026 21:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <guid>fixture-unrelated-1</guid>
+      <title>Retail earnings update</title>
+      <description>Consumer companies reported quarterly results.</description>
+      <link>https://example.test/news/retail-1</link>
+      <pubDate>Tue, 11 Aug 2026 20:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

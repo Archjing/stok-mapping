@@ -40,6 +40,11 @@ def _default_archive_dir(cfg: dict[str, Any], *, provider_default: str, override
     return override or _ai_corpus_config(cfg).get("raw_archive_dir") or provider_default
 
 
+def _provider_config(cfg: dict[str, Any], provider: str) -> dict[str, Any]:
+    value = _ai_corpus_config(cfg).get(provider, {})
+    return value if isinstance(value, dict) else {}
+
+
 def _parse_fields(raw: str | None) -> list[str] | None:
     return [item.strip() for item in raw.split(",") if item.strip()] if raw else None
 
@@ -151,7 +156,7 @@ def register_ai_corpus_commands(subparsers: argparse._SubParsersAction) -> None:
 
     fetch_parser = ai_sub.add_parser("fetch", help="Fetch provider rows and upsert them into the local AI corpus database")
     fetch_parser.add_argument("--config", default="config.yaml", help="Path to config file")
-    fetch_parser.add_argument("--provider", default="gov-policy", help="Provider name, for example gov-policy/npr/cctv-news/cninfo")
+    fetch_parser.add_argument("--provider", default="gov-policy", help="Provider name, for example gov-policy/npr/cctv-news/cninfo/us-market-news")
     fetch_parser.add_argument("--event-type", default=None, help="Event type for event providers, for example risk_events/abnormal_trading")
     fetch_parser.add_argument("--org", default=None, help="Publishing organization, for example 国务院 or 工业和信息化部")
     fetch_parser.add_argument("--ptype", default=None, help="Policy topic, for example 科技")
@@ -278,6 +283,7 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
                 start_date = today
                 end_date = today
         db_path = _default_db_path(root, cfg, args.database_path)
+        configured_archive_dir = _provider_config(cfg, provider).get("raw_archive_dir")
         refresh_reference = bool(getattr(args, "refresh_reference", False))
         if provider == "gov_policy" and bool(getattr(args, "probe_before_fetch", False)):
             report = probe_gov_policy_source(
@@ -324,10 +330,15 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
             fields=None,
             limit=args.limit,
             fixture_dir=args.fixture_dir,
-            raw_archive_dir=_default_archive_dir(cfg, provider_default=spec.raw_archive_dir, override=args.raw_archive_dir),
+            raw_archive_dir=_default_archive_dir(
+                cfg,
+                provider_default=spec.raw_archive_dir,
+                override=args.raw_archive_dir or configured_archive_dir,
+            ),
             reference_dir=getattr(args, "reference_dir", None),
             refresh_reference=refresh_reference,
             timeout=getattr(args, "timeout", 20),
+            provider_config=_provider_config(cfg, provider),
         )
         min_rows = int(getattr(args, "min_rows", 0) or 0)
         if min_rows > 0 and len(frame) < min_rows:
