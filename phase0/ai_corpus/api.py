@@ -144,6 +144,42 @@ def fetch_ai_corpus(
             timeout=timeout,
             include_content=include_content,
         )
+    if canonical == "sia_sales":
+        from phase0.ai_corpus.providers.sia_sales import fetch_sia_sales
+
+        return fetch_sia_sales(
+            root=root,
+            provider_config=provider_config,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+            include_content=include_content,
+        )
+    if canonical == "semi_supply_chain":
+        from phase0.ai_corpus.providers.semi_supply_chain import (
+            fetch_semiconductor_supply_chain,
+        )
+
+        source_urls = list(provider_config.get("source_urls") or []) if provider_config else []
+        return fetch_semiconductor_supply_chain(
+            root=root,
+            provider_config=provider_config,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+            include_content=include_content,
+            source_urls=source_urls,
+        )
     if database_path:
         rows = query_ai_corpus_documents(
             Path(database_path),

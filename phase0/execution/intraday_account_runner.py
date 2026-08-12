@@ -14,8 +14,8 @@ from phase0.execution.accounts import (
 )
 from phase0.execution.single_etf_intraday import (
     SingleEtfIntradayPolicy,
+    reconcile_single_etf_intraday_post_close_session,
     run_single_etf_intraday_account_execution,
-    write_single_etf_intraday_account_state,
 )
 from phase0.strategies import get_strategy
 
@@ -33,6 +33,8 @@ class ConfiguredIntradayAccountRun:
     result: SignalAccountExecutionResult
     as_of_date: str
     state_written: bool
+    reconciliation_status: str = "not_requested"
+    reconciliation_differences: tuple[str, ...] = ()
 
     def summary(self) -> dict[str, Any]:
         metrics = self.result.metrics
@@ -67,6 +69,8 @@ class ConfiguredIntradayAccountRun:
             "final_assets": float(metrics.get("account_final_assets", 0.0)),
             "trade_reason_counts": dict(metrics.get("account_trade_reason_counts", {})),
             "state_written": self.state_written,
+            "reconciliation_status": self.reconciliation_status,
+            "reconciliation_differences": list(self.reconciliation_differences),
             "state_database_path": str(self.account.database_path),
             "intraday_database_path": str(self.account.intraday_data_path or ""),
         }
@@ -98,12 +102,13 @@ def run_configured_intraday_account(
     config_path: Path,
     account_id: str,
     as_of_date: str | None = None,
-    write_state: bool = False,
+    recover_missing: bool = False,
 ) -> ConfiguredIntradayAccountRun:
     """Replay one configured single-ETF intraday account.
 
-    The replay is read-only unless ``write_state`` is explicitly enabled. A
-    write replaces only the selected account's deterministic intraday snapshot.
+    The replay is read-only unless ``recover_missing`` is explicitly enabled.
+    Recovery writes only missing or incomplete rows for the as-of session; an
+    existing result that differs from the replay is reported, never replaced.
     """
     resolved_config = Path(config_path).resolve()
     config = load_config(resolved_config)
@@ -157,6 +162,24 @@ def run_configured_intraday_account(
         start = pd.Timestamp(account.simulation_start_date).normalize()
         panel = panel[panel["date"] >= start].copy()
     panel = panel.sort_values("date").reset_index(drop=True)
+    prepare_session = getattr(strategy, "prepare_intraday_account_session", None)
+    if callable(prepare_session) and as_of not in set(panel["date"]):
+        current_session = prepare_session(strategy_cfg)
+        if current_session is not None and not current_session.empty:
+            current_session = current_session.copy()
+            current_session["date"] = pd.to_datetime(
+                current_session["date"], errors="coerce"
+            ).dt.normalize()
+            current_session = current_session[current_session["date"] == as_of].copy()
+            if account.simulation_start_date:
+                current_session = current_session[current_session["date"] >= start].copy()
+            if not current_session.empty:
+                panel = (
+                    pd.concat([panel, current_session], ignore_index=True)
+                    .sort_values("date")
+                    .drop_duplicates("date", keep="last")
+                    .reset_index(drop=True)
+                )
     if panel.empty:
         raise IntradayAccountRunError("strategy panel is empty after account date filters")
 
@@ -167,15 +190,30 @@ def run_configured_intraday_account(
     )
     execution_complete = bool(result.metrics.get("account_execution_complete", False))
     state_written = False
-    if write_state:
+    reconciliation_status = "not_requested"
+    reconciliation_differences: tuple[str, ...] = ()
+    if recover_missing:
         if not execution_complete:
             missing = result.metrics.get("account_intraday_data_missing_dates", [])
             raise IntradayAccountRunError(
-                "refusing to write incomplete account state; missing intraday dates: "
+                "refusing to recover from an incomplete replay; missing intraday dates: "
                 + (", ".join(str(value) for value in missing) or "unknown")
             )
-        write_single_etf_intraday_account_state(account=account, policy=policy, result=result)
-        state_written = True
+        reconciliation = reconcile_single_etf_intraday_post_close_session(
+            account=account,
+            policy=policy,
+            result=result,
+            trade_date=as_of.date().isoformat(),
+            recover_missing=True,
+        )
+        reconciliation_status = reconciliation.status
+        reconciliation_differences = reconciliation.differences
+        state_written = reconciliation.state_written
+        if reconciliation.status == "mismatch":
+            raise IntradayAccountRunError(
+                "post-close replay differs from existing real-time state: "
+                + ", ".join(reconciliation.differences)
+            )
 
     return ConfiguredIntradayAccountRun(
         config_path=resolved_config,
@@ -185,4 +223,6 @@ def run_configured_intraday_account(
         result=result,
         as_of_date=as_of.date().isoformat(),
         state_written=state_written,
+        reconciliation_status=reconciliation_status,
+        reconciliation_differences=reconciliation_differences,
     )

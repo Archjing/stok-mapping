@@ -6,13 +6,20 @@ import os
 import shutil
 import sqlite3
 import subprocess
-from datetime import datetime
+import tempfile
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 from phase0.reporting.account_bill import export_account_bill_html, format_money, format_num, format_pct
+from phase0.reporting.market_comparison_chart import (
+    ComparisonChartConfig,
+    ComparisonSeriesConfig,
+    build_comparison_chart_data,
+    render_comparison_chart_fragment,
+)
 from phase0.reporting.paths import latest_dir, report_root, slug
 from phase0.reporting.semiconductor_timing_watchlist import (
     supports_semiconductor_timing_watchlist,
@@ -23,7 +30,29 @@ from phase0.reporting.semiconductor_timing_watchlist import (
 DEFAULT_QUANT_SITE_DIR = "static_site/quant"
 DEFAULT_QUANT_REMOTE = "linuxuser@108.61.182.91"
 DEFAULT_QUANT_REMOTE_DIR = "/var/www/share/quant/"
+QUANT_SITE_SYNC_PASSWORD_ENV = "QUANT_SITE_SYNC_PASSWORD"
 STATIC_ASSETS = ("style.css",)
+VIX_512480_RESEARCH_PATH = "research/vix-vs-512480/index.html"
+SOX_512480_RESEARCH_PATH = "research/sox-vs-512480/index.html"
+SOX_512480_COMPARISON_CONFIG = ComparisonChartConfig(
+    slug="sox-vs-512480",
+    title="^SOX 与半导体 ETF（512480）对照图",
+    source=ComparisonSeriesConfig(
+        symbol="^SOX",
+        label="^SOX（费城半导体指数）",
+        storage="us_daily_bars",
+    ),
+    target=ComparisonSeriesConfig(
+        symbol="SH.512480",
+        label="SH.512480 前复权收盘价（实际交易标的）",
+        storage="etf_qfq",
+    ),
+    start_date=date(2025, 11, 3),
+    observation_band=(8_000.0, 12_000.0),
+    daily_mapping_pct=0.5,
+    consecutive_days=3,
+    consecutive_daily_change_pct=0.0,
+)
 
 
 def quant_site_root(*, root: Path, config: dict[str, Any] | None = None) -> Path:
@@ -32,6 +61,138 @@ def quant_site_root(*, root: Path, config: dict[str, Any] | None = None) -> Path
 
 def _source_css_path() -> Path:
     return Path(__file__).with_name("static") / "style.css"
+
+
+def _vix_512480_research_source_path() -> Path:
+    return Path(__file__).with_name("static") / "research" / "vix-vs-512480.html"
+
+
+def _write_vix_512480_research_page(*, site_root: Path) -> str:
+    source_path = _vix_512480_research_source_path()
+    if not source_path.is_file():
+        raise FileNotFoundError(source_path)
+    chart_html = source_path.read_text(encoding="utf-8")
+    destination = site_root / VIX_512480_RESEARCH_PATH
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="^VIX 与 A 股半导体 ETF 512480 的历史对照研究图。">
+  <title>^VIX 与半导体 ETF（512480）对照图</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    #vix-vs-512480 {{
+      --foreground: var(--text);
+      --muted-foreground: var(--text-muted);
+      --viz-series-1: var(--accent);
+      --viz-series-2: var(--focus-strong);
+      --red: var(--red-text);
+      --green: #4e8b57;
+      --background: var(--bg);
+      --popover: var(--bg-card);
+      --popover-foreground: var(--text);
+      --font-size-base: 12px;
+    }}
+    .research-chart-page {{ max-width: 1340px; }}
+    .research-chart-page .research-meta {{ margin-bottom: 14px; }}
+    .research-chart-page .research-meta strong {{ color: var(--text); }}
+    @media (max-width: 680px) {{
+      body {{ padding: 14px; }}
+      .research-chart-page .vix-chart-legend {{ font-size: 11px; }}
+      .research-chart-page .vix-tooltip {{ max-width: calc(100vw - 32px); white-space: normal; }}
+    }}
+  </style>
+</head>
+<body>
+{_theme_bar_html(back_href="../../index.html")}<main class="page account-bill-page research-chart-page">
+  <div class="title-row"><h1>^VIX 与半导体 ETF（512480）对照图</h1><span class="generated-at">静态研究快照</span></div>
+  <p class="research-meta"><strong>数据区间：</strong>2025-11-03 至 2026-08-11。^VIX 使用日收盘，SH.512480 使用前复权日收盘；两者按首日归一化为 100。本图用于历史对照，不构成交易信号或投资建议。</p>
+  <section class="bill-section">
+{chart_html}
+  </section>
+</main>
+{_theme_script_html()}
+</body>
+</html>
+""",
+        encoding="utf-8",
+    )
+    return VIX_512480_RESEARCH_PATH
+
+
+def _write_market_comparison_research_page(
+    *,
+    site_root: Path,
+    root: Path,
+    config: ComparisonChartConfig,
+    research_path: str,
+) -> str:
+    """Write one reusable two-series market-comparison research page."""
+    chart_data = build_comparison_chart_data(root=root, config=config)
+    chart_html = render_comparison_chart_fragment(data=chart_data)
+    destination = site_root / research_path
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{html.escape(config.title)}。">
+  <title>{html.escape(config.title)}</title>
+  <link rel="stylesheet" href="../../assets/style.css">
+  <style>
+    #market-comparison {{
+      --foreground: var(--text);
+      --muted-foreground: var(--text-muted);
+      --viz-series-1: var(--accent);
+      --viz-series-2: var(--focus-strong);
+      --red: var(--red-text);
+      --green: #4e8b57;
+      --background: var(--bg);
+      --popover: var(--bg-card);
+      --popover-foreground: var(--text);
+      --font-size-base: 12px;
+    }}
+    .research-chart-page {{ max-width: 1340px; }}
+    .research-chart-page .research-meta {{ margin-bottom: 14px; }}
+    .research-chart-page .research-meta strong {{ color: var(--text); }}
+    @media (max-width: 680px) {{
+      body {{ padding: 14px; }}
+      .research-chart-page .market-comparison-legend {{ font-size: 11px; }}
+      .research-chart-page .market-comparison-tooltip {{ max-width: calc(100vw - 32px); white-space: normal; }}
+    }}
+  </style>
+</head>
+<body>
+{_theme_bar_html(back_href="../../index.html")}<main class="page account-bill-page research-chart-page">
+  <div class="title-row"><h1>{html.escape(config.title)}</h1><span class="generated-at">静态研究快照</span></div>
+  <p class="research-meta">{_comparison_research_meta_html(chart_data)}</p>
+  <section class="bill-section">
+{chart_html}
+  </section>
+</main>
+{_theme_script_html()}
+</body>
+</html>
+""",
+        encoding="utf-8",
+    )
+    return research_path
+
+
+def _comparison_research_meta_html(chart_data: dict[str, Any] | None) -> str:
+    if chart_data is None:
+        return "本次构建未找到同时覆盖源序列与目标序列的本地历史数据；页面保留，但暂不展示图表。"
+    return (
+        f"<strong>数据区间：</strong>{chart_data['startDate']} 至 {chart_data['endDate']}。"
+        f"{html.escape(str(chart_data['source']['label']))} 与 {html.escape(str(chart_data['target']['label']))}使用日收盘；"
+        "仅保留双方均有收盘价的共同交易日，并按首日归一化为 100。"
+        "本图用于历史对照，不构成交易信号或投资建议。"
+    )
 
 
 def _wiki_index_source(config: dict[str, Any]) -> Path | None:
@@ -510,6 +671,8 @@ def _account_index_html(*, account: Any, meta: dict[str, str], generated_at: str
     <div><span>账户 ID</span><strong>{html.escape(str(account.account_id))}</strong></div>
     <div><span>最新账单日</span><strong>{html.escape(meta.get("latest_bill_date") or "暂无")}</strong></div>
     <div><span>总资产</span><strong>{html.escape(meta.get("total_asset") or "暂无")}</strong></div>
+    <div><span>现金资产</span><strong>{html.escape(meta.get("cash_asset") or "暂无")}</strong></div>
+    <div><span>股票资产</span><strong>{html.escape(meta.get("stock_asset") or "暂无")}</strong></div>
     <div><span>当前仓位</span><strong>{html.escape(meta.get("target_exposure") or "暂无")}</strong></div>
   </div>
   <section class="bill-section quick-section"><h2>快捷入口</h2>
@@ -543,6 +706,8 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, 
         )
     rows_html = "".join(rows) if rows else '<tr><td colspan="7">暂无启用的模拟账户</td></tr>'
     wiki_link = '<a class="quick-card" href="wiki/index.html"><span>WIKI</span><strong>A股影响因子全景图</strong></a>' if wiki_path else ""
+    research_link = """<a class="quick-card" href="research/vix-vs-512480/index.html"><span>RESEARCH</span><strong>VIX 与半导体 ETF 对照图</strong></a>
+      <a class="quick-card" href="research/sox-vs-512480/index.html"><span>RESEARCH</span><strong>SOX 与半导体 ETF 对照图</strong></a>"""
     return f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -559,6 +724,7 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, 
     <div class="quick-links">
       <a class="quick-card" href="brief/index.html"><span>BRIEF</span><strong>每日简报</strong></a>
       {wiki_link}
+      {research_link}
     </div>
   </section>
   <section class="bill-section"><div class="section-title-frame"><h2>账户总览</h2></div>
@@ -676,14 +842,34 @@ def _meta_for_account(account: Any, frames: dict[str, pd.DataFrame]) -> dict[str
     latest = assets.iloc[0] if not assets.empty else {}
     latest_bill_date = "" if assets.empty else str(latest.get("brief_date", ""))
     position_start_date = str(getattr(account, "simulation_start_date", "") or "")
-    total_asset = "" if assets.empty else format_money(latest.get("total_asset"))
-    target_exposure = "" if assets.empty else format_pct(latest.get("target_exposure"))
+    if assets.empty:
+        try:
+            initial_cash = float(getattr(account, "initial_cash"))
+        except (TypeError, ValueError):
+            initial_cash = None
+        if initial_cash is not None and initial_cash >= 0:
+            total_asset = format_money(initial_cash)
+            cash_asset = format_money(initial_cash)
+            stock_asset = format_money(0.0)
+            target_exposure = format_pct(0.0)
+        else:
+            total_asset = ""
+            cash_asset = ""
+            stock_asset = ""
+            target_exposure = ""
+    else:
+        total_asset = format_money(latest.get("total_asset"))
+        cash_asset = format_money(latest.get("cash_asset"))
+        stock_asset = format_money(latest.get("stock_asset"))
+        target_exposure = format_pct(latest.get("target_exposure"))
     return {
         "account_id": str(account.account_id),
         "name": str(account.name),
         "latest_bill_date": latest_bill_date,
         "position_start_date": position_start_date,
         "total_asset": total_asset,
+        "cash_asset": cash_asset,
+        "stock_asset": stock_asset,
         "target_exposure": target_exposure,
     }
 
@@ -757,12 +943,21 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
         _write_csvs(account_dir, frames)
 
     wiki_path = _copy_wiki_index(site_root=site_root, config=config)
+    research_path = _write_vix_512480_research_page(site_root=site_root)
+    sox_research_path = _write_market_comparison_research_page(
+        site_root=site_root,
+        root=root,
+        config=SOX_512480_COMPARISON_CONFIG,
+        research_path=SOX_512480_RESEARCH_PATH,
+    )
     manifest = {
         "generated_at": generated_at,
         "entry": "/quant/",
         "brief_path": "brief/index.html",
         "accounts": accounts_meta,
         "wiki_path": wiki_path,
+        "research_path": research_path,
+        "sox_research_path": sox_research_path,
     }
     (site_root / "data").mkdir(parents=True, exist_ok=True)
     (site_root / "data" / "site_manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -783,5 +978,31 @@ def sync_quant_static_site(*, root: Path, site_root: Path, remote: str | None = 
         raise ValueError("quant static site sync target must end with /quant/")
     if not (site_root / "index.html").is_file():
         raise FileNotFoundError(site_root / "index.html")
-    subprocess.run(["rsync", "-avz", "--delete", f"{site_root}/", f"{remote}:{remote_dir}"], check=True)
+    command = ["rsync", "-avz", "--delete", f"{site_root}/", f"{remote}:{remote_dir}"]
+    password = os.environ.get(QUANT_SITE_SYNC_PASSWORD_ENV)
+    if not password:
+        subprocess.run(command, check=True)
+        return {"remote": remote, "remote_dir": remote_dir}
+
+    askpass_fd, askpass_name = tempfile.mkstemp(prefix="quant-site-askpass-")
+    askpass_path = Path(askpass_name)
+    try:
+        with os.fdopen(askpass_fd, "w", encoding="utf-8") as askpass_file:
+            askpass_file.write('#!/bin/sh\nprintf "%s\\n" "$QUANT_SITE_SYNC_PASSWORD"\n')
+        askpass_path.chmod(0o700)
+        environment = os.environ.copy()
+        environment.update(
+            {
+                "SSH_ASKPASS": str(askpass_path),
+                "SSH_ASKPASS_REQUIRE": "force",
+            }
+        )
+        ssh_command = (
+            "ssh -o BatchMode=no -o PasswordAuthentication=yes "
+            "-o PreferredAuthentications=password,keyboard-interactive -o NumberOfPasswordPrompts=1"
+        )
+        command[1:1] = ["-e", ssh_command]
+        subprocess.run(command, check=True, env=environment)
+    finally:
+        askpass_path.unlink(missing_ok=True)
     return {"remote": remote, "remote_dir": remote_dir}

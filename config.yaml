@@ -31,6 +31,14 @@ phase0:
           url: "https://www.cnbc.com/id/19854910/device/rss/rss.html"
           topics: ["technology", "semiconductor"]
           language: "en-US"
+    sia_sales:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/sia_sales"
+    semi_supply_chain:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/semi_supply_chain"
+      # 转载页 URL 由每月定时检索填入 (官方源 Cloudflare/DNS 不可达)
+      source_urls: []
   benchmark_symbol: "SH.000300"
   years: 7
   symbols:
@@ -685,7 +693,7 @@ phase0:
         position_sizes: [1.0]
         train_min_signals: 3
         strong_signal_threshold: 0.01
-        limit_order_discount: 0.01
+        limit_order_discount: 0.012
         trailing_stop_ratio: 0.98
         weak_unfilled_action: "cancel"
         fallback_time: "14:55"

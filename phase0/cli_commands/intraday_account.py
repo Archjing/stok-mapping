@@ -19,7 +19,7 @@ INTRADAY_ACCOUNT_COMMANDS = {"intraday-account"}
 def register_intraday_account_commands(subparsers: argparse._SubParsersAction) -> None:
     command = subparsers.add_parser(
         "intraday-account",
-        help="Replay one configured 5-minute single-ETF simulated account",
+        help="Replay and verify one configured 5-minute single-ETF simulated account",
     )
     command.add_argument("--account-id", required=True, help="Configured simulated account id")
     command.add_argument("--config", default="config.yaml", help="Path to config file")
@@ -29,9 +29,9 @@ def register_intraday_account_commands(subparsers: argparse._SubParsersAction) -
         help="Replay data visible through YYYY-MM-DD. Defaults to the current date.",
     )
     command.add_argument(
-        "--write-state",
+        "--recover-missing",
         action="store_true",
-        help="Replace this account's local SQLite replay snapshot after a complete run",
+        help="Recover only missing or incomplete as-of session artifacts after a complete replay",
     )
     command.add_argument("--json", action="store_true", help="Print the summary as JSON")
 
@@ -52,7 +52,7 @@ def handle_intraday_account_command(
             config_path=Path(args.config),
             account_id=str(args.account_id),
             as_of_date=str(args.as_of) if args.as_of else None,
-            write_state=bool(args.write_state),
+            recover_missing=bool(args.recover_missing),
         )
     except (IntradayAccountRunError, ValueError) as exc:
         output.print(f"[red]Intraday account replay failed:[/red] {exc}")
@@ -83,8 +83,9 @@ def handle_intraday_account_command(
             f"State: {summary['state_status']}; missing 5-minute days: "
             f"{summary['intraday_data_missing_days']}; SQLite written: {summary['state_written']}"
         )
+        output.print(f"Post-close reconciliation: {summary.get('reconciliation_status', 'not_requested')}")
         output.print(
-            "Execution boundary: completed-bar, post-close replay. "
-            "This command is not a live intraday order scheduler."
+            "Execution boundary: completed-bar, post-close verification/recovery. "
+            "This command does not schedule or replace live intraday execution."
         )
     return 0 if summary["execution_complete"] else 2

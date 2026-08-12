@@ -519,6 +519,7 @@ def _update_market_history(
     settings: MarketHistorySettings,
     *,
     check_only: bool,
+    force_start_date: date | None = None,
 ) -> MarketHistoryUpdateResult:
     if not settings.enabled:
         return MarketHistoryUpdateResult(settings.path, "disabled", "", 0, 0, 0.0, 0, 0, 0)
@@ -596,15 +597,21 @@ def _update_market_history(
             # routine runs avoid repeatedly downloading years of identical
             # Yahoo bars and triggering its rate limit.
             latest_symbol_date = latest_dates.get(symbol)
-            fetch_settings = (
-                replace(
+            if force_start_date is not None:
+                # Explicit full-history backfill request: override the
+                # incremental window even when local data already exists.
+                fetch_settings = replace(
+                    settings,
+                    fetch_start_date=force_start_date,
+                )
+            elif latest_symbol_date:
+                fetch_settings = replace(
                     settings,
                     years=1,
                     fetch_start_date=latest_symbol_date - timedelta(days=7),
                 )
-                if latest_symbol_date
-                else settings
-            )
+            else:
+                fetch_settings = settings
             request_start = fetch_settings.fetch_start_date or (date.today() - timedelta(days=365 * fetch_settings.years))
             event: dict[str, Any] = {
                 "symbol": symbol,
@@ -747,9 +754,10 @@ def update_us_market_history_from_config(
     root: Path,
     *,
     check_only: bool = False,
+    force_start_date: date | None = None,
 ) -> MarketHistoryUpdateResult:
     configure_us_market_history(cfg.get("us_market_history", {}), root)
-    return _update_market_history(_us_settings, check_only=check_only)
+    return _update_market_history(_us_settings, check_only=check_only, force_start_date=force_start_date)
 
 
 def update_hk_market_history_from_config(

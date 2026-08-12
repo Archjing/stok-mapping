@@ -1,0 +1,150 @@
+<div id="market-comparison" class="market-comparison-root">
+  <h2 id="market-comparison-title"></h2>
+  <div class="market-comparison-legend" aria-label="图例"></div>
+  <div class="market-comparison-wrap">
+    <svg class="market-comparison-chart" role="img" aria-labelledby="market-comparison-svg-title market-comparison-svg-desc"></svg>
+    <div class="market-comparison-tooltip" role="tooltip" hidden></div>
+  </div>
+  <p class="text-small text-muted market-comparison-note"></p>
+</div>
+<style>
+  #market-comparison { color:var(--foreground); }
+  #market-comparison .market-comparison-legend { display:flex; flex-wrap:wrap; gap:.5rem 1rem; margin:.5rem 0 .25rem; color:var(--muted-foreground); }
+  #market-comparison .market-comparison-swatch { display:inline-block; vertical-align:middle; }
+  #market-comparison .market-comparison-line { width:1.4rem; height:.7rem; margin-right:.35rem; border-top:2px solid currentColor; }
+  #market-comparison .market-comparison-source-line { color:var(--viz-series-1); }
+  #market-comparison .market-comparison-target-line { color:var(--viz-series-2); }
+  #market-comparison .market-comparison-band { width:1.15rem; height:.75rem; margin-right:.35rem; background:var(--viz-series-1); opacity:.13; }
+  #market-comparison .market-comparison-daily-up, #market-comparison .market-comparison-daily-down { width:.25rem; height:.85rem; margin:0 .55rem 0 .35rem; }
+  #market-comparison .market-comparison-daily-up { background:var(--red); }
+  #market-comparison .market-comparison-daily-down { background:var(--green); }
+  #market-comparison .market-comparison-run-up { width:1.15rem; height:.75rem; margin-right:.35rem; background:var(--red); opacity:.32; }
+  #market-comparison .market-comparison-run-down { width:1.15rem; height:.75rem; margin-right:.35rem; background:var(--green); opacity:.32; }
+  #market-comparison .market-comparison-wrap { position:relative; width:100%; }
+  #market-comparison .market-comparison-chart { display:block; width:100%; height:auto; overflow:visible; }
+  #market-comparison .market-comparison-tooltip { position:absolute; pointer-events:none; z-index:2; padding:.45rem .55rem; background:var(--popover); color:var(--popover-foreground); border:1px solid var(--border); font-size:var(--font-size-base); white-space:nowrap; }
+  #market-comparison .market-comparison-note { margin:.4rem 0 0; }
+  #market-comparison .market-comparison-axis { fill:var(--muted-foreground); font-size:12px; }
+  #market-comparison .market-comparison-grid { stroke:var(--border); stroke-width:1; }
+  #market-comparison .market-comparison-observation-band { fill:var(--viz-series-1); opacity:.12; }
+  #market-comparison .market-comparison-observation-band-edge { stroke:var(--viz-series-1); stroke-width:1; stroke-dasharray:4 3; opacity:.75; }
+  #market-comparison .market-comparison-observation-band-label { fill:var(--viz-series-1); font-size:12px; }
+  #market-comparison .market-comparison-source-path { fill:none; stroke:var(--viz-series-1); stroke-width:2; }
+  #market-comparison .market-comparison-target-path { fill:none; stroke:var(--viz-series-2); stroke-width:2; }
+  #market-comparison .market-comparison-up-run { fill:var(--red); }
+  #market-comparison .market-comparison-down-run { fill:var(--green); }
+  #market-comparison .market-comparison-daily-up-tick { stroke:var(--red); stroke-width:2; }
+  #market-comparison .market-comparison-daily-down-tick { stroke:var(--green); stroke-width:2; }
+  #market-comparison .market-comparison-run-label { fill:var(--muted-foreground); font-size:11px; }
+  #market-comparison .market-comparison-hover-line { stroke:var(--muted-foreground); stroke-width:1; stroke-dasharray:3 3; }
+  #market-comparison .market-comparison-hover-dot { stroke:var(--background); stroke-width:2; }
+  @media (max-width:420px) { #market-comparison .market-comparison-legend { gap:.35rem .75rem; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('market-comparison');
+  const source = __MARKET_COMPARISON_CHART_DATA__;
+  const values = source.data.map(([rawDate, sourceValue, targetValue, sourceClose, targetClose]) => ({ rawDate, date:new Date(`${rawDate}T00:00:00`), sourceValue, targetValue, sourceClose, targetClose }));
+  const note = root.querySelector('.market-comparison-note');
+  const tooltip = root.querySelector('.market-comparison-tooltip');
+  const title = root.querySelector('#market-comparison-title');
+  const legend = root.querySelector('.market-comparison-legend');
+  const fmtPct = value => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const tickDate = value => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2, '0')}`;
+  if (!values.length) {
+    title.textContent = source.title || '市场对照图';
+    root.querySelector('.market-comparison-wrap').hidden = true;
+    note.textContent = '数据暂不可用：需要两条配置序列的本地日线数据。';
+    return;
+  }
+  const mappingEnabled = source.dailyMappingPct !== null && source.dailyMappingPct !== undefined;
+  title.textContent = source.title;
+  legend.innerHTML = [
+    `<span><i class="market-comparison-swatch market-comparison-line market-comparison-source-line" aria-hidden="true"></i>${source.source.label}</span>`,
+    `<span><i class="market-comparison-swatch market-comparison-line market-comparison-target-line" aria-hidden="true"></i>${source.target.label}</span>`,
+    source.observationBand ? `<span><i class="market-comparison-swatch market-comparison-band" aria-hidden="true"></i>${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')} 观察区间</span>` : '',
+    mappingEnabled ? `<span><i class="market-comparison-swatch market-comparison-daily-up" aria-hidden="true"></i>${source.source.label} 日涨 ≥${source.dailyMappingPct.toFixed(1)}%（红刻度）</span>` : '',
+    mappingEnabled ? `<span><i class="market-comparison-swatch market-comparison-daily-down" aria-hidden="true"></i>${source.source.label} 日跌 ≤−${source.dailyMappingPct.toFixed(1)}%（绿刻度）</span>` : '',
+    `<span><i class="market-comparison-swatch market-comparison-run-up" aria-hidden="true"></i>连续上涨（红，深浅按累计涨幅）</span>`,
+    `<span><i class="market-comparison-swatch market-comparison-run-down" aria-hidden="true"></i>连续下跌（绿，深浅按累计跌幅）</span>`,
+  ].filter(Boolean).join('');
+  const render = () => {
+    const svg = root.querySelector('.market-comparison-chart');
+    const width = Math.max(320, Math.floor(root.getBoundingClientRect().width));
+    const height = width < 560 ? 310 : 390;
+    const pad = { top:30, right:20, bottom:42, left:48 };
+    const innerW = width - pad.left - pad.right, innerH = height - pad.top - pad.bottom;
+    const all = values.flatMap(value => [value.sourceValue, value.targetValue]);
+    const floor = Math.floor((Math.min(...all) - 4) / 10) * 10;
+    const ceiling = Math.ceil((Math.max(...all) + 4) / 10) * 10;
+    const y = value => pad.top + (ceiling - value) / (ceiling - floor || 1) * innerH;
+    const startT = values[0].date.getTime(), endT = values.at(-1).date.getTime();
+    const x = value => pad.left + (value.getTime() - startT) / (endT - startT || 1) * innerW;
+    const line = field => values.map((value, index) => `${index ? 'L' : 'M'}${x(value.date).toFixed(2)},${y(value[field]).toFixed(2)}`).join('');
+    const yTicks = Array.from({ length:6 }, (_, i) => floor + (ceiling - floor) * i / 5);
+    const xTickCount = width < 560 ? 4 : 7;
+    const xTicks = Array.from({ length:xTickCount }, (_, i) => values[Math.round((values.length - 1) * i / (xTickCount - 1))]);
+    const sourceReturn = values.at(-1).sourceValue - 100, targetReturn = values.at(-1).targetValue - 100;
+    const rawToNormalized = rawValue => rawValue / values[0].sourceClose * 100;
+    const band = source.observationBand ? (() => ({ top:y(rawToNormalized(source.observationBand.high)), bottom:y(rawToNormalized(source.observationBand.low)) }))() : null;
+    const runRects = (runs, className, labelY, prefix) => runs.map(run => {
+      const left = x(new Date(`${run.start}T00:00:00`)), right = x(new Date(`${run.end}T00:00:00`));
+      const opacity = (0.10 + Math.min(0.24, Math.abs(run.change) / 90)).toFixed(2);
+      const label = right - left > 42 ? `<text class="market-comparison-run-label" x="${((left + right) / 2).toFixed(2)}" y="${labelY}" text-anchor="middle">${prefix}${run.change.toFixed(0)}%</text>` : '';
+      return `<rect class="${className}" x="${left.toFixed(2)}" y="${pad.top}" width="${Math.max(2, right-left).toFixed(2)}" height="${innerH}" opacity="${opacity}"/>${label}`;
+    }).join('');
+    const upRunRects = runRects(source.upRuns || [], 'market-comparison-up-run', pad.top + 14, '+');
+    const downRunRects = runRects(source.downRuns || [], 'market-comparison-down-run', height - pad.bottom - 6, '');
+    const dailySignalTicks = (source.dailyMappingSignals || []).map(signal => {
+      const signalX = x(new Date(`${signal.targetDate}T00:00:00`));
+      const opacity = (0.35 + Math.min(0.60, Math.abs(signal.change) / 8)).toFixed(2);
+      const isUp = signal.direction === 'up';
+      return `<line class="${isUp ? 'market-comparison-daily-up-tick' : 'market-comparison-daily-down-tick'}" x1="${signalX.toFixed(2)}" x2="${signalX.toFixed(2)}" y1="${isUp ? pad.top + 2 : height - pad.bottom - 2}" y2="${isUp ? pad.top + 12 : height - pad.bottom - 12}" opacity="${opacity}"/>`;
+    }).join('');
+    const bandNote = source.observationBand ? `观察带为 ${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')}，不是交易阈值。` : '';
+    const mappingNote = mappingEnabled ? `红/绿刻度：${source.source.label} 单日涨跌绝对值至少 ${source.dailyMappingPct.toFixed(1)}%，投影至下一可对照目标交易日；未叠加其他过滤条件。` : '';
+    note.textContent = `共同交易日：${source.tradingDays} 个；${source.source.label} 最新：${source.sourceLastDate}，${source.target.label} 最新：${source.targetLastDate}。区间累计：${source.source.label} ${fmtPct(sourceReturn)}，${source.target.label} ${fmtPct(targetReturn)}。${bandNote}${mappingNote} 红色阴影为连续上涨，绿色阴影为连续下跌：至少 ${source.consecutiveMove.days} 个相邻源市场交易日，单日同方向变动至少 ${source.consecutiveMove.dailyPct.toFixed(1)}%；深浅按累计幅度表示。`;
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.innerHTML = `
+      <title id="market-comparison-svg-title">${source.title} 的归一化走势</title>
+      <desc id="market-comparison-svg-desc">${source.source.label} 与 ${source.target.label} 的共同交易日归一化收盘走势。红绿刻度标出源市场单日变动，红绿背景标出连续上涨和下跌区间。</desc>
+      ${band ? `<rect class="market-comparison-observation-band" x="${pad.left}" y="${band.top}" width="${innerW}" height="${band.bottom-band.top}"/><line class="market-comparison-observation-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${band.top}" y2="${band.top}"/><line class="market-comparison-observation-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${band.bottom}" y2="${band.bottom}"/><text class="market-comparison-observation-band-label" x="${pad.left+6}" y="${band.top+15}">${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')} 观察区间</text>` : ''}
+      ${upRunRects}${downRunRects}${dailySignalTicks}
+      ${yTicks.map(value => `<line class="market-comparison-grid" x1="${pad.left}" x2="${width-pad.right}" y1="${y(value)}" y2="${y(value)}"/><text class="market-comparison-axis" x="${pad.left-8}" y="${y(value)+4}" text-anchor="end">${value.toFixed(0)}</text>`).join('')}
+      ${xTicks.map(value => `<text class="market-comparison-axis" x="${x(value.date)}" y="${height-15}" text-anchor="middle">${tickDate(value.date)}</text>`).join('')}
+      <line class="market-comparison-grid" x1="${pad.left}" x2="${pad.left}" y1="${pad.top}" y2="${height-pad.bottom}"/><line class="market-comparison-grid" x1="${pad.left}" x2="${width-pad.right}" y1="${height-pad.bottom}" y2="${height-pad.bottom}"/>
+      <text class="market-comparison-axis" x="${pad.left}" y="15">归一化收盘价（首日=100）</text>
+      <path class="market-comparison-source-path" d="${line('sourceValue')}"/><path class="market-comparison-target-path" d="${line('targetValue')}"/>
+      <text x="${width-pad.right}" y="${y(values.at(-1).sourceValue)-18}" text-anchor="end" fill="var(--viz-series-1)" font-size="12">${source.source.label} ${values.at(-1).sourceValue.toFixed(1)}（${fmtPct(sourceReturn)}）</text>
+      <text x="${width-pad.right}" y="${y(values.at(-1).targetValue)+18}" text-anchor="end" fill="var(--viz-series-2)" font-size="12">${source.target.label} ${values.at(-1).targetValue.toFixed(1)}（${fmtPct(targetReturn)}）</text>
+      <line class="market-comparison-hover-line" hidden/><circle class="market-comparison-hover-dot market-comparison-hover-source" r="4" fill="var(--viz-series-1)" hidden/><circle class="market-comparison-hover-dot market-comparison-hover-target" r="4" fill="var(--viz-series-2)" hidden/><rect class="market-comparison-hit" x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}" fill="transparent"/>
+    `;
+    const hit = svg.querySelector('.market-comparison-hit'), hoverLine = svg.querySelector('.market-comparison-hover-line');
+    const sourceDot = svg.querySelector('.market-comparison-hover-source'), targetDot = svg.querySelector('.market-comparison-hover-target');
+    const show = event => {
+      const rect = svg.getBoundingClientRect();
+      const targetTime = startT + Math.max(0, Math.min(1, ((event.clientX - rect.left) / rect.width * width - pad.left) / innerW)) * (endT - startT);
+      let low = 0, high = values.length - 1;
+      while (low < high) { const mid = Math.floor((low + high) / 2); if (values[mid].date.getTime() < targetTime) low = mid + 1; else high = mid; }
+      const right = values[low], left = values[Math.max(0, low - 1)];
+      const selected = Math.abs(right.date.getTime() - targetTime) < Math.abs(left.date.getTime() - targetTime) ? right : left;
+      const cx = x(selected.date);
+      hoverLine.setAttribute('x1', cx); hoverLine.setAttribute('x2', cx); hoverLine.setAttribute('y1', pad.top); hoverLine.setAttribute('y2', height-pad.bottom); hoverLine.hidden = false;
+      [[sourceDot, selected.sourceValue], [targetDot, selected.targetValue]].forEach(([dot, value]) => { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(value)); dot.hidden = false; });
+      const signal = (source.dailyMappingSignals || []).find(item => selected.rawDate === item.targetDate);
+      const upRun = (source.upRuns || []).find(item => selected.rawDate >= item.start && selected.rawDate <= item.end);
+      const downRun = (source.downRuns || []).find(item => selected.rawDate >= item.start && selected.rawDate <= item.end);
+      const signalText = signal ? `<br><span>日度映射观察：${source.source.label} ${signal.sourceDate} ${fmtPct(signal.change)}，投影至本目标交易日</span>` : '';
+      const run = upRun || downRun;
+      const runText = run ? `<br><span>连续${upRun ? '上涨' : '下跌'}：${run.start} → ${run.end}<br>连续 ${run.moveDays} 日；累计：${fmtPct(run.change)}</span>` : '';
+      tooltip.innerHTML = `<strong>${selected.rawDate}</strong><br>${source.source.label}：${selected.sourceClose.toLocaleString('en-US', { maximumFractionDigits:2 })}<br>${source.target.label}：${selected.targetClose.toLocaleString('en-US', { maximumFractionDigits:3 })}<br><span>归一化：${source.source.label} ${selected.sourceValue.toFixed(1)}；${source.target.label} ${selected.targetValue.toFixed(1)}</span>${signalText}${runText}`;
+      tooltip.hidden = false;
+      tooltip.style.left = `${Math.min(width - tooltip.offsetWidth, Math.max(0, event.clientX - rect.left + 12))}px`;
+      tooltip.style.top = `${Math.max(0, event.clientY - rect.top - tooltip.offsetHeight - 8)}px`;
+    };
+    const hide = () => { tooltip.hidden = true; hoverLine.hidden = true; sourceDot.hidden = true; targetDot.hidden = true; };
+    hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', hide);
+  };
+  new ResizeObserver(render).observe(root); render();
+})();
+</script>

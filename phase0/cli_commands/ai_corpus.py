@@ -45,6 +45,15 @@ def _provider_config(cfg: dict[str, Any], provider: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def _merge_source_urls(provider_config: dict[str, Any], cli_urls: list[str] | None) -> dict[str, Any]:
+    """Merge --source-url CLI values into the provider config."""
+    merged = dict(provider_config or {})
+    if cli_urls:
+        existing = list(merged.get("source_urls") or [])
+        merged["source_urls"] = existing + [url for url in cli_urls if url not in existing]
+    return merged
+
+
 def _parse_fields(raw: str | None) -> list[str] | None:
     return [item.strip() for item in raw.split(",") if item.strip()] if raw else None
 
@@ -173,6 +182,13 @@ def register_ai_corpus_commands(subparsers: argparse._SubParsersAction) -> None:
     fetch_parser.add_argument("--database-path", default=None, help="Override local AI corpus SQLite path")
     fetch_parser.add_argument("--raw-archive-dir", default=None, help="Override raw archive directory")
     fetch_parser.add_argument("--reference-dir", default=None, help="Override provider reference cache directory")
+    fetch_parser.add_argument(
+        "--source-url",
+        action="append",
+        default=None,
+        dest="source_urls",
+        help="Source page URL (repeatable); for URL-driven providers such as semi-supply-chain",
+    )
     fetch_parser.add_argument(
         "--refresh-reference",
         action="store_true",
@@ -338,7 +354,7 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
             reference_dir=getattr(args, "reference_dir", None),
             refresh_reference=refresh_reference,
             timeout=getattr(args, "timeout", 20),
-            provider_config=_provider_config(cfg, provider),
+            provider_config=_merge_source_urls(_provider_config(cfg, provider), getattr(args, "source_urls", None)),
         )
         min_rows = int(getattr(args, "min_rows", 0) or 0)
         if min_rows > 0 and len(frame) < min_rows:

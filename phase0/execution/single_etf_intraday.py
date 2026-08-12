@@ -121,6 +121,29 @@ class ExitDecision:
     running_high: float
 
 
+@dataclass(frozen=True)
+class SingleEtfIntradayExecutionState:
+    """Confirmed account state supplied by the live runner before a new tick."""
+
+    cash: float
+    shares: float = 0.0
+    entry_price: float = 0.0
+    running_high: float = 0.0
+    signal_date: str = ""
+    planned_exit_date: str = ""
+    position_size: float = 0.0
+    previous_total_asset: float | None = None
+
+
+@dataclass(frozen=True)
+class SingleEtfIntradayPostCloseReconciliation:
+    """Result of checking one real-time session against a complete-bar replay."""
+
+    status: str
+    state_written: bool
+    differences: tuple[str, ...] = ()
+
+
 def _normalize_intraday_bars(bars: pd.DataFrame) -> pd.DataFrame:
     required = {"time", "open", "high", "low", "close"}
     if bars is None or bars.empty or not required.issubset(bars.columns):
@@ -303,6 +326,8 @@ def run_single_etf_intraday_account_execution(
     intraday_bars: pd.DataFrame | None = None,
     live_session: bool = False,
     session_complete: bool = True,
+    initial_state: SingleEtfIntradayExecutionState | None = None,
+    next_session_date: str | pd.Timestamp | None = None,
 ) -> SignalAccountExecutionResult:
     """Replay an executable single-ETF strategy without mutating account state."""
     required = {"date", "symbol", "open", "close", "sox_ret", "vix_close"}
@@ -330,15 +355,20 @@ def run_single_etf_intraday_account_execution(
         end_date=daily["date"].max(),
     )
 
-    cash = float(account.initial_cash)
-    shares = 0.0
-    entry_price = 0.0
-    running_high = 0.0
-    signal_date = pd.NaT
-    planned_exit_date = pd.NaT
-    active_position_size = 0.0
+    state = initial_state or SingleEtfIntradayExecutionState(cash=float(account.initial_cash))
+    cash = float(state.cash)
+    shares = float(state.shares)
+    entry_price = float(state.entry_price)
+    running_high = float(state.running_high)
+    signal_date = pd.Timestamp(state.signal_date) if state.signal_date else pd.NaT
+    planned_exit_date = pd.Timestamp(state.planned_exit_date) if state.planned_exit_date else pd.NaT
+    active_position_size = float(state.position_size)
     blocked_by_missing_exit = False
-    previous_total_asset = float(account.initial_cash)
+    previous_total_asset = float(
+        state.previous_total_asset
+        if state.previous_total_asset is not None
+        else cash + shares * entry_price
+    )
     trade_rows: list[dict[str, Any]] = []
     daily_rows: list[dict[str, Any]] = []
     position_rows: list[dict[str, Any]] = []
@@ -354,9 +384,36 @@ def run_single_etf_intraday_account_execution(
     )
     raw_signal_count = int(raw_signal_mask.fillna(False).sum())
 
+    previous_adj_factor: float | None = None
     for index, row in daily.iterrows():
         session_date = pd.Timestamp(row["date"])
         day_bars = _bars_for_date(bars, session_date)
+
+        # ── 份额折算调整 (模拟券商行为) ─────────────────────────────
+        # ETF 份额折算(拆分/合并)只改份额和名义价格, 总资产不变。持仓跨
+        # 折算日时按因子比例调整份额和成本基准, 避免 ±50% 假收益。
+        if "adj_factor" in daily.columns:
+            current_adj_factor = pd.to_numeric(row.get("adj_factor"), errors="coerce")
+            current_adj_factor = (
+                float(current_adj_factor) if pd.notna(current_adj_factor) and current_adj_factor > 0 else 1.0
+            )
+            if (
+                shares > 0
+                and previous_adj_factor is not None
+                and previous_adj_factor > 0
+                and abs(current_adj_factor - previous_adj_factor) > 1e-12
+            ):
+                ratio = current_adj_factor / previous_adj_factor
+                # 总资产守恒: S_new × P_new = S_old × P_old, 且 P_new = P_old × ratio
+                # → S_new = S_old / ratio, 成本基准同比例缩放
+                if ratio > 0:
+                    shares = shares / ratio
+                    entry_price = entry_price * ratio
+                    running_high = running_high * ratio
+            previous_adj_factor = current_adj_factor
+        elif previous_adj_factor is not None:
+            previous_adj_factor = None
+
         held_at_open = shares > 0
         held_position_size = active_position_size if held_at_open else 0.0
         exited_today = False
@@ -402,6 +459,11 @@ def run_single_etf_intraday_account_execution(
                 planned_exit_date = pd.NaT
                 exited_today = True
                 exit_time = pd.Timestamp(exit_decision.time) if exit_decision.time is not None else None
+            elif live_session and not session_complete:
+                # During the regular live path the 14:55 fallback bar has not
+                # necessarily arrived yet.  Keep the T+1 position open rather
+                # than labelling an unfinished session as missing data.
+                pending_exit_count = 1
             else:
                 missing_days.add(session_date.date().isoformat())
                 blocked_by_missing_exit = True
@@ -418,6 +480,13 @@ def run_single_etf_intraday_account_execution(
         if shares <= 0 and not blocked_by_missing_exit and has_signal:
             exit_index = index + policy.holding_sessions
             next_exit_date = pd.Timestamp(dates[exit_index]) if exit_index < len(dates) else pd.NaT
+            if (
+                live_session
+                and pd.isna(next_exit_date)
+                and next_session_date is not None
+                and session_date == pd.Timestamp(daily["date"].max())
+            ):
+                next_exit_date = pd.Timestamp(next_session_date).normalize()
             entry_bars = day_bars
             entry_open = float(row["open"])
             if exited_today:
@@ -663,7 +732,8 @@ def ensure_single_etf_intraday_tables(conn: sqlite3.Connection) -> None:
             execution_complete INTEGER NOT NULL,
             open_position_shares REAL NOT NULL,
             planned_exit_date TEXT,
-            as_of_date TEXT NOT NULL
+            as_of_date TEXT NOT NULL,
+            runtime_state_json TEXT NOT NULL DEFAULT '{}'
         );
 
         CREATE TABLE IF NOT EXISTS single_etf_intraday_daily_assets (
@@ -712,115 +782,238 @@ def ensure_single_etf_intraday_tables(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    account_columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(single_etf_intraday_accounts)")}
+    if "runtime_state_json" not in account_columns:
+        conn.execute(
+            "ALTER TABLE single_etf_intraday_accounts ADD COLUMN runtime_state_json TEXT NOT NULL DEFAULT '{}'"
+        )
+
+
+def _insert_single_etf_intraday_result(
+    conn: sqlite3.Connection,
+    *,
+    account: SimulatedAccountConfig,
+    result: SignalAccountExecutionResult,
+    trade_date: str | None = None,
+) -> None:
+    """Insert replay rows, optionally restricted to one live trading session."""
+    def current(frame: pd.DataFrame) -> pd.DataFrame:
+        if frame.empty or trade_date is None:
+            return frame
+        return frame[frame["date"].astype(str) == trade_date]
+
+    assets = current(result.daily_assets)
+    if not assets.empty:
+        conn.executemany(
+            """INSERT INTO single_etf_intraday_daily_assets
+            (account_id, trade_date, total_asset, stock_asset, cash_asset, daily_return, exposure)
+            VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            [(account.account_id, str(row.date), float(row.total_asset), float(row.stock_asset),
+              float(row.cash_asset), float(row.daily_return), float(row.exposure))
+             for row in assets.itertuples(index=False)],
+        )
+    trades = current(result.trades)
+    if not trades.empty:
+        conn.executemany(
+            """INSERT INTO single_etf_intraday_trades
+            (account_id, trade_date, signal_date, symbol, side, trade_time, order_type, reason,
+             price, shares, amount, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [(account.account_id, str(row.date), str(row.signal_date), str(row.symbol), str(row.side),
+              str(row.trade_time), str(row.order_type), str(row.reason), float(row.price),
+              float(row.shares), float(row.amount), float(row.cost))
+             for row in trades.itertuples(index=False)],
+        )
+    events = current(result.order_events)
+    if not events.empty:
+        conn.executemany(
+            """INSERT INTO single_etf_intraday_order_events
+            (account_id, trade_date, signal_date, symbol, side, order_type, status, trade_time,
+             reference_open_price, limit_price, requested_shares, filled_shares, price, reason)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            [(account.account_id, str(row.date), str(row.signal_date), str(row.symbol), str(row.side),
+              str(row.order_type), str(row.status), str(row.trade_time or ""),
+              None if pd.isna(row.reference_open_price) else float(row.reference_open_price),
+              None if pd.isna(row.limit_price) else float(row.limit_price),
+              float(row.requested_shares), float(row.filled_shares),
+              None if pd.isna(row.price) else float(row.price), str(row.reason))
+             for row in events.itertuples(index=False)],
+        )
 
 
 def write_single_etf_intraday_account_state(
-    *,
-    account: SimulatedAccountConfig,
-    policy: SingleEtfIntradayPolicy,
-    result: SignalAccountExecutionResult,
+    *, account: SimulatedAccountConfig, policy: SingleEtfIntradayPolicy, result: SignalAccountExecutionResult
 ) -> None:
-    """Replace one account's deterministic replay snapshot in one transaction."""
+    """Replace one account's deterministic post-close replay snapshot."""
     account.database_path.parent.mkdir(parents=True, exist_ok=True)
     as_of_date = str(result.daily_assets["date"].max()) if not result.daily_assets.empty else ""
     with sqlite3.connect(account.database_path) as conn:
         ensure_single_etf_intraday_tables(conn)
-        conn.execute("DELETE FROM single_etf_intraday_daily_assets WHERE account_id = ?", (account.account_id,))
-        conn.execute("DELETE FROM single_etf_intraday_trades WHERE account_id = ?", (account.account_id,))
-        conn.execute("DELETE FROM single_etf_intraday_order_events WHERE account_id = ?", (account.account_id,))
+        for table in ("single_etf_intraday_daily_assets", "single_etf_intraday_trades", "single_etf_intraday_order_events"):
+            conn.execute(f"DELETE FROM {table} WHERE account_id = ?", (account.account_id,))
         conn.execute(
-            """
-            INSERT OR REPLACE INTO single_etf_intraday_accounts
-            (account_id, strategy_id, symbol, policy_json, execution_complete,
-             open_position_shares, planned_exit_date, as_of_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                account.account_id,
-                account.strategy_id,
-                policy.target_symbol,
-                json.dumps(asdict(policy), ensure_ascii=False, sort_keys=True),
-                int(bool(result.metrics.get("account_execution_complete", False))),
-                float(result.metrics.get("account_open_position_shares", 0.0)),
-                str(result.metrics.get("account_planned_exit_date", "")),
-                as_of_date,
-            ),
+            """INSERT OR REPLACE INTO single_etf_intraday_accounts
+            (account_id, strategy_id, symbol, policy_json, execution_complete, open_position_shares,
+             planned_exit_date, as_of_date, runtime_state_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (account.account_id, account.strategy_id, policy.target_symbol,
+             json.dumps(asdict(policy), ensure_ascii=False, sort_keys=True),
+             int(bool(result.metrics.get("account_execution_complete", False))),
+             float(result.metrics.get("account_open_position_shares", 0.0)),
+             str(result.metrics.get("account_planned_exit_date", "")), as_of_date, "{}"),
         )
-        if not result.daily_assets.empty:
-            conn.executemany(
-                """
-                INSERT INTO single_etf_intraday_daily_assets
-                (account_id, trade_date, total_asset, stock_asset, cash_asset, daily_return, exposure)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    (
-                        account.account_id,
-                        str(row.date),
-                        float(row.total_asset),
-                        float(row.stock_asset),
-                        float(row.cash_asset),
-                        float(row.daily_return),
-                        float(row.exposure),
-                    )
-                    for row in result.daily_assets.itertuples(index=False)
-                ],
-            )
-        if not result.trades.empty:
-            conn.executemany(
-                """
-                INSERT INTO single_etf_intraday_trades
-                (account_id, trade_date, signal_date, symbol, side, trade_time,
-                 order_type, reason, price, shares, amount, cost)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    (
-                        account.account_id,
-                        str(row.date),
-                        str(row.signal_date),
-                        str(row.symbol),
-                        str(row.side),
-                        str(row.trade_time),
-                        str(row.order_type),
-                        str(row.reason),
-                        float(row.price),
-                        float(row.shares),
-                        float(row.amount),
-                        float(row.cost),
-                    )
-                    for row in result.trades.itertuples(index=False)
-                ],
-            )
-        if not result.order_events.empty:
-            conn.executemany(
-                """
-                INSERT INTO single_etf_intraday_order_events
-                (account_id, trade_date, signal_date, symbol, side, order_type, status,
-                 trade_time, reference_open_price, limit_price, requested_shares,
-                 filled_shares, price, reason)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                [
-                    (
-                        account.account_id,
-                        str(row.date),
-                        str(row.signal_date),
-                        str(row.symbol),
-                        str(row.side),
-                        str(row.order_type),
-                        str(row.status),
-                        str(row.trade_time or ""),
-                        None if pd.isna(row.reference_open_price) else float(row.reference_open_price),
-                        None if pd.isna(row.limit_price) else float(row.limit_price),
-                        float(row.requested_shares),
-                        float(row.filled_shares),
-                        None if pd.isna(row.price) else float(row.price),
-                        str(row.reason),
-                    )
-                    for row in result.order_events.itertuples(index=False)
-                ],
-            )
+        _insert_single_etf_intraday_result(conn, account=account, result=result)
+
+
+def upsert_single_etf_intraday_live_state(
+    *, account: SimulatedAccountConfig, policy: SingleEtfIntradayPolicy,
+    result: SignalAccountExecutionResult, trade_date: str, runtime_state: dict[str, Any]
+) -> None:
+    """Atomically replace one live session while retaining earlier account history."""
+    session = pd.Timestamp(trade_date).date().isoformat()
+    account.database_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(account.database_path) as conn:
+        ensure_single_etf_intraday_tables(conn)
+        for table in ("single_etf_intraday_daily_assets", "single_etf_intraday_trades", "single_etf_intraday_order_events"):
+            conn.execute(f"DELETE FROM {table} WHERE account_id = ? AND trade_date = ?", (account.account_id, session))
+        conn.execute(
+            """INSERT INTO single_etf_intraday_accounts
+            (account_id, strategy_id, symbol, policy_json, execution_complete, open_position_shares,
+             planned_exit_date, as_of_date, runtime_state_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(account_id) DO UPDATE SET
+              strategy_id=excluded.strategy_id, symbol=excluded.symbol, policy_json=excluded.policy_json,
+              execution_complete=excluded.execution_complete, open_position_shares=excluded.open_position_shares,
+              planned_exit_date=excluded.planned_exit_date, as_of_date=excluded.as_of_date,
+              runtime_state_json=excluded.runtime_state_json""",
+            (account.account_id, account.strategy_id, policy.target_symbol,
+             json.dumps(asdict(policy), ensure_ascii=False, sort_keys=True),
+             int(bool(result.metrics.get("account_execution_complete", False))),
+             float(result.metrics.get("account_open_position_shares", 0.0)),
+             str(result.metrics.get("account_planned_exit_date", "")), session,
+             json.dumps(runtime_state, ensure_ascii=False, sort_keys=True)),
+        )
+        _insert_single_etf_intraday_result(conn, account=account, result=result, trade_date=session)
+
+
+def _session_records(frame: pd.DataFrame, trade_date: str, fields: tuple[str, ...]) -> list[dict[str, Any]]:
+    if frame.empty:
+        return []
+    session = frame[frame["date"].astype(str) == trade_date]
+    return [{field: row[field] for field in fields} for _, row in session.iterrows()]
+
+
+def _records_match(actual: dict[str, Any], expected: dict[str, Any]) -> bool:
+    for field, expected_value in expected.items():
+        actual_value = actual.get(field)
+        if pd.isna(actual_value) and pd.isna(expected_value):
+            continue
+        if isinstance(expected_value, (float, np.floating)):
+            if not isinstance(actual_value, (int, float, np.integer, np.floating)):
+                return False
+            if not np.isclose(float(actual_value), float(expected_value), rtol=0.0, atol=1e-8):
+                return False
+        elif str(actual_value) != str(expected_value):
+            return False
+    return True
+
+
+def _compare_post_close_session(
+    *, stored: list[dict[str, Any]], expected: list[dict[str, Any]], key_fields: tuple[str, ...], label: str
+) -> tuple[bool, list[str]]:
+    """Return whether stored rows are an exact or incomplete prefix of expected rows."""
+    stored_by_key = {tuple(str(row.get(field, "")) for field in key_fields): row for row in stored}
+    expected_by_key = {tuple(str(row.get(field, "")) for field in key_fields): row for row in expected}
+    differences: list[str] = []
+    for key, actual in stored_by_key.items():
+        expected_row = expected_by_key.get(key)
+        if expected_row is None:
+            differences.append(f"unexpected_{label}:{key}")
+        elif not _records_match(actual, expected_row):
+            differences.append(f"different_{label}:{key}")
+    if differences:
+        return False, differences
+    missing = [key for key in expected_by_key if key not in stored_by_key]
+    return not missing, [f"missing_{label}:{key}" for key in missing]
+
+
+def reconcile_single_etf_intraday_post_close_session(
+    *,
+    account: SimulatedAccountConfig,
+    policy: SingleEtfIntradayPolicy,
+    result: SignalAccountExecutionResult,
+    trade_date: str,
+    recover_missing: bool = False,
+) -> SingleEtfIntradayPostCloseReconciliation:
+    """Verify a real-time session or recover only its missing post-close artifacts.
+
+    This deliberately never replaces an existing row that disagrees with the
+    complete-bar replay. Such a difference needs an audit decision, not an
+    automatic correction.
+    """
+    session = pd.Timestamp(trade_date).date().isoformat()
+    expected_assets = _session_records(
+        result.daily_assets,
+        session,
+        ("date", "total_asset", "stock_asset", "cash_asset", "daily_return", "exposure"),
+    )
+    if len(expected_assets) != 1:
+        raise ValueError(f"replay must contain exactly one daily asset row for {session}")
+    expected_trades = _session_records(
+        result.trades,
+        session,
+        ("date", "signal_date", "symbol", "side", "trade_time", "order_type", "reason", "price", "shares", "amount", "cost"),
+    )
+    expected_events = _session_records(
+        result.order_events,
+        session,
+        ("date", "signal_date", "symbol", "side", "order_type", "status", "trade_time", "reference_open_price", "limit_price", "requested_shares", "filled_shares", "price", "reason"),
+    )
+    state = load_single_etf_intraday_state(account.database_path, account.account_id)
+    stored_assets = [row for row in state["daily_assets"] if row["trade_date"] == session]
+    stored_trades = [row for row in state["trades"] if row["trade_date"] == session]
+    stored_events = [row for row in state["order_events"] if row["trade_date"] == session]
+
+    def stored_shape(row: dict[str, Any]) -> dict[str, Any]:
+        return {key: value for key, value in row.items() if key != "date"} | {"trade_date": str(row["date"])}
+
+    assets_complete, asset_differences = _compare_post_close_session(
+        stored=stored_assets,
+        expected=[stored_shape(row) for row in expected_assets],
+        key_fields=("trade_date",),
+        label="daily_asset",
+    )
+    trades_complete, trade_differences = _compare_post_close_session(
+        stored=stored_trades,
+        expected=[stored_shape(row) for row in expected_trades],
+        key_fields=("trade_date", "symbol", "side", "signal_date"),
+        label="trade",
+    )
+    events_complete, event_differences = _compare_post_close_session(
+        stored=stored_events,
+        expected=[stored_shape(row) for row in expected_events],
+        key_fields=("trade_date", "symbol", "side", "signal_date", "order_type"),
+        label="order_event",
+    )
+    differences = asset_differences + trade_differences + event_differences
+    conflicting = [item for item in differences if item.startswith(("different_", "unexpected_"))]
+    if conflicting:
+        return SingleEtfIntradayPostCloseReconciliation("mismatch", False, tuple(conflicting))
+    if assets_complete and trades_complete and events_complete:
+        return SingleEtfIntradayPostCloseReconciliation("verified", False)
+    if not recover_missing:
+        return SingleEtfIntradayPostCloseReconciliation("missing", False, tuple(differences))
+
+    upsert_single_etf_intraday_live_state(
+        account=account,
+        policy=policy,
+        result=result,
+        trade_date=session,
+        runtime_state={
+            "post_close_recovery": True,
+            "recovered_trade_date": session,
+            "recovery_source": "post_close_5min_replay",
+        },
+    )
+    status = "recovered_missing" if not stored_assets and not stored_trades and not stored_events else "recovered_incomplete"
+    return SingleEtfIntradayPostCloseReconciliation(status, True, tuple(differences))
 
 
 def load_single_etf_intraday_state(database_path: Path, account_id: str) -> dict[str, Any]:

@@ -31,14 +31,14 @@ def test_register_intraday_account_command() -> None:
             "semiconductor_timing",
             "--as-of",
             "2026-08-11",
-            "--write-state",
+            "--recover-missing",
             "--json",
         ]
     )
 
     assert args.account_id == "semiconductor_timing"
     assert args.as_of == "2026-08-11"
-    assert args.write_state is True
+    assert args.recover_missing is True
     assert args.json is True
 
 
@@ -87,7 +87,7 @@ def test_handler_runs_replay_and_prints_machine_readable_summary(monkeypatch, tm
         account_id="semiconductor_timing",
         config=str(tmp_path / "config.yaml"),
         as_of="2026-08-11",
-        write_state=False,
+        recover_missing=False,
         json=True,
     )
 
@@ -103,7 +103,7 @@ def test_handler_runs_replay_and_prints_machine_readable_summary(monkeypatch, tm
             "config_path": Path(tmp_path / "config.yaml"),
             "account_id": "semiconductor_timing",
             "as_of_date": "2026-08-11",
-            "write_state": False,
+            "recover_missing": False,
         }
     ]
     assert json.loads(console.lines[0]) == summary
@@ -142,7 +142,7 @@ def test_handler_returns_two_for_incomplete_replay(monkeypatch, tmp_path: Path) 
             account_id="test",
             config=str(tmp_path / "config.yaml"),
             as_of=None,
-            write_state=False,
+            recover_missing=False,
             json=False,
         ),
         parser=argparse.ArgumentParser(),
@@ -234,3 +234,176 @@ def test_configured_accounts_with_shared_strategy_keep_target_symbols_isolated(m
     assert calls == ["SH.512480", "SH.512760"]
     assert first.policy.target_symbol == "SH.512480"
     assert second.policy.target_symbol == "SH.512760"
+
+
+def test_intraday_account_includes_as_of_session_when_daily_panel_lags(monkeypatch, tmp_path: Path) -> None:
+    """A first account session must not wait for the daily-bar importer."""
+    config_path = tmp_path / "config.yaml"
+    etf_db = tmp_path / "etf.sqlite"
+    us_db = tmp_path / "data" / "us_market_history.sqlite"
+    etf_db.touch()
+    us_db.parent.mkdir(parents=True)
+    us_db.touch()
+    captured: dict[str, pd.DataFrame] = {}
+
+    class Strategy:
+        account_execution_model = "single_etf_intraday"
+
+        def account_execution_params(self, _strategy_cfg):
+            return {"target_symbol": "SH.512480"}
+
+        def build_metadata(self, _params):
+            return {
+                "account_execution_policy": {
+                    "target_symbol": "SH.512480",
+                    "return_threshold": 0.005,
+                    "volatility_threshold": 19.0,
+                    "strong_signal_threshold": 0.01,
+                    "trailing_drawdown": 0.02,
+                }
+            }
+
+        def prepare_panel(self, _panel, _strategy_cfg):
+            return pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-08-11"]),
+                    "symbol": ["SH.512480"],
+                    "open": [1.07],
+                    "close": [1.07],
+                    "sox_ret": [0.0],
+                    "vix_close": [20.0],
+                }
+            )
+
+        def prepare_intraday_account_session(self, _strategy_cfg):
+            return pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-08-12"]),
+                    "symbol": ["SH.512480"],
+                    "open": [1.073],
+                    "close": [1.088],
+                    "sox_ret": [0.00872],
+                    "vix_close": [15.28],
+                }
+            )
+
+    config = {
+        "walk_forward": {"strategy_v2": {"cross_market_semiconductor_timing": {}}},
+        "accounts": {
+            "simulated": [
+                {
+                    "account_id": "semiconductor_timing",
+                    "name": "Semiconductor timing",
+                    "initial_cash": 200000,
+                    "strategy_id": "cross_market_semiconductor_timing_etf_v1",
+                    "execution_model": "single_etf_intraday",
+                    "intraday_data_path": "etf.sqlite",
+                    "simulation_start_date": "2026-08-12",
+                }
+            ]
+        },
+    }
+    monkeypatch.setattr(account_runner, "load_config", lambda _path: config)
+    monkeypatch.setattr(account_runner, "get_strategy", lambda _strategy_id: Strategy())
+
+    def fake_execute(*, signal_frame, **_kwargs):
+        captured["panel"] = signal_frame.copy()
+        return SimpleNamespace(metrics={"account_execution_complete": True})
+
+    monkeypatch.setattr(account_runner, "run_single_etf_intraday_account_execution", fake_execute)
+
+    run = account_runner.run_configured_intraday_account(
+        config_path=config_path,
+        account_id="semiconductor_timing",
+        as_of_date="2026-08-12",
+    )
+
+    assert captured["panel"]["date"].tolist() == [pd.Timestamp("2026-08-12")]
+    assert captured["panel"].iloc[0]["sox_ret"] == 0.00872
+    assert run.panel["date"].tolist() == [pd.Timestamp("2026-08-12")]
+
+
+def test_intraday_account_appends_as_of_session_when_history_already_exists(monkeypatch, tmp_path: Path) -> None:
+    config_path = tmp_path / "config.yaml"
+    etf_db = tmp_path / "etf.sqlite"
+    us_db = tmp_path / "data" / "us_market_history.sqlite"
+    etf_db.touch()
+    us_db.parent.mkdir(parents=True)
+    us_db.touch()
+    captured: dict[str, pd.DataFrame] = {}
+
+    class Strategy:
+        account_execution_model = "single_etf_intraday"
+
+        def account_execution_params(self, _strategy_cfg):
+            return {"target_symbol": "SH.512480"}
+
+        def build_metadata(self, _params):
+            return {
+                "account_execution_policy": {
+                    "target_symbol": "SH.512480",
+                    "return_threshold": 0.005,
+                    "volatility_threshold": 19.0,
+                    "strong_signal_threshold": 0.01,
+                    "trailing_drawdown": 0.02,
+                }
+            }
+
+        def prepare_panel(self, _panel, _strategy_cfg):
+            return pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-08-11"]),
+                    "symbol": ["SH.512480"],
+                    "open": [1.07],
+                    "close": [1.07],
+                    "sox_ret": [0.0],
+                    "vix_close": [20.0],
+                }
+            )
+
+        def prepare_intraday_account_session(self, _strategy_cfg):
+            return pd.DataFrame(
+                {
+                    "date": pd.to_datetime(["2026-08-12"]),
+                    "symbol": ["SH.512480"],
+                    "open": [1.073],
+                    "close": [1.088],
+                    "sox_ret": [0.00872],
+                    "vix_close": [15.28],
+                }
+            )
+
+    config = {
+        "walk_forward": {"strategy_v2": {"cross_market_semiconductor_timing": {}}},
+        "accounts": {
+            "simulated": [
+                {
+                    "account_id": "semiconductor_timing",
+                    "name": "Semiconductor timing",
+                    "initial_cash": 200000,
+                    "strategy_id": "cross_market_semiconductor_timing_etf_v1",
+                    "execution_model": "single_etf_intraday",
+                    "intraday_data_path": "etf.sqlite",
+                    "simulation_start_date": "2026-08-11",
+                }
+            ]
+        },
+    }
+    monkeypatch.setattr(account_runner, "load_config", lambda _path: config)
+    monkeypatch.setattr(account_runner, "get_strategy", lambda _strategy_id: Strategy())
+    def fake_execute(*, signal_frame, **_kwargs):
+        captured["panel"] = signal_frame.copy()
+        return SimpleNamespace(metrics={"account_execution_complete": True})
+
+    monkeypatch.setattr(account_runner, "run_single_etf_intraday_account_execution", fake_execute)
+
+    account_runner.run_configured_intraday_account(
+        config_path=config_path,
+        account_id="semiconductor_timing",
+        as_of_date="2026-08-12",
+    )
+
+    assert captured["panel"]["date"].tolist() == [
+        pd.Timestamp("2026-08-11"),
+        pd.Timestamp("2026-08-12"),
+    ]

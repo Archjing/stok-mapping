@@ -244,6 +244,11 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     us_history_parser = subparsers.add_parser("update-us-market-history", help="Incrementally update US market history database")
     us_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     us_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    us_history_parser.add_argument(
+        "--start-date",
+        default=None,
+        help="Force full backfill from YYYY-MM-DD, overriding the incremental window",
+    )
     reference_history_parser = subparsers.add_parser(
         "update-cross-market-reference-history",
         help="Incrementally update close-only cross-market reference series",
@@ -642,7 +647,17 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
     if args.cmd == "update-us-market-history":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)
-        result = update_us_market_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+        force_start = None
+        if getattr(args, "start_date", None):
+            from datetime import date as _date
+
+            force_start = _date.fromisoformat(args.start_date)
+        result = update_us_market_history_from_config(
+            cfg,
+            config_path.parent,
+            check_only=args.check_only,
+            force_start_date=force_start,
+        )
         color = "green" if result.ok else "red"
         update_console.print(f"[{color}]US market history update status: {result.status}[/{color}]")
         update_console.print(f"Database: {result.db_path}")

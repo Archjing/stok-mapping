@@ -218,11 +218,25 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
                 conn,
                 params=[symbol, start.isoformat(), end.isoformat()],
             )
+            adj = pd.read_sql_query(
+                "SELECT date, adj_factor FROM market_etf_adj_factors "
+                "WHERE symbol = ? AND date >= ? AND date <= ? ORDER BY date",
+                conn,
+                params=[symbol, start.isoformat(), end.isoformat()],
+            )
         if df.empty:
             return df
         df["date"] = pd.to_datetime(df["date"]).dt.normalize()
         for col in ["open", "high", "low", "close", "volume", "amount"]:
             df[col] = pd.to_numeric(df[col], errors="coerce")
+        if not adj.empty:
+            adj["date"] = pd.to_datetime(adj["date"]).dt.normalize()
+            adj["adj_factor"] = pd.to_numeric(adj["adj_factor"], errors="coerce")
+            adj = adj.dropna(subset=["adj_factor"]).drop_duplicates("date", keep="last")
+            df = df.merge(adj, on="date", how="left")
+        if "adj_factor" not in df.columns:
+            df["adj_factor"] = 1.0
+        df["adj_factor"] = df["adj_factor"].fillna(1.0)
         df = df.dropna(subset=["open", "close"])
         df["ret"] = df["close"].pct_change()
         df["symbol"] = symbol
@@ -239,7 +253,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         end = as_of_date or date.today()
         start = end - timedelta(days=365 * years + 30)
         features = load_common_market_daily_features(
-            database_path,
+            Path(database_path),
             "us_daily_bars",
             [US_SOX_SYMBOL, US_VIX_SYMBOL],
             start=start,
@@ -369,6 +383,101 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         return merged.dropna(
             subset=["date", "symbol", "open", "close", "sox_ret", "vix_close"]
         ).reset_index(drop=True)
+
+    def prepare_intraday_account_session(self, strategy_cfg: dict[str, Any]) -> pd.DataFrame:
+        """Build the current CN session when its daily bar is not yet available.
+
+        This is deliberately a narrow operational path.  It uses only a
+        completed US close, the current A-share opening snapshot and current
+        5-minute bars; it does not synthesize a daily bar or backfill history.
+        """
+        cfg = strategy_cfg.get("cross_market_semiconductor_timing", {})
+        target_symbol = normalize_semiconductor_timing_target(cfg.get("target_symbol"))
+        as_of = pd.Timestamp(cfg.get("as_of_date", date.today())).normalize()
+        project_root = Path(str(cfg.get("project_root", Path.cwd()))).resolve()
+        etf_database_path = Path(str(cfg.get("etf_database_path", project_root / ETF_DB_PATH)))
+        us_database_path = Path(str(cfg.get("us_database_path", project_root / US_DB_PATH)))
+        if not etf_database_path.is_absolute():
+            etf_database_path = project_root / etf_database_path
+        if not us_database_path.is_absolute():
+            us_database_path = project_root / us_database_path
+
+        try:
+            with sqlite3.connect(etf_database_path) as conn:
+                bars = pd.read_sql_query(
+                    "SELECT time, open, high, low, close FROM market_etf_5min_bars "
+                    "WHERE symbol = ? AND time >= ? AND time < ? ORDER BY time",
+                    conn,
+                    params=[
+                        target_symbol,
+                        as_of.strftime("%Y-%m-%d"),
+                        (as_of + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                    ],
+                )
+                opening = pd.read_sql_query(
+                    "SELECT open_price FROM market_etf_opening_snapshots "
+                    "WHERE symbol = ? AND observed_at >= ? AND observed_at < ? "
+                    "AND open_price IS NOT NULL ORDER BY observed_at ASC LIMIT 1",
+                    conn,
+                    params=[
+                        target_symbol,
+                        as_of.strftime("%Y-%m-%d"),
+                        (as_of + pd.Timedelta(days=1)).strftime("%Y-%m-%d"),
+                    ],
+                )
+                cn_history = pd.read_sql_query(
+                    "SELECT date FROM market_etf_daily_bars WHERE symbol = ? AND date < ? ORDER BY date",
+                    conn,
+                    params=[target_symbol, as_of.strftime("%Y-%m-%d")],
+                )
+                adj = pd.read_sql_query(
+                    "SELECT adj_factor FROM market_etf_adj_factors "
+                    "WHERE symbol = ? AND date <= ? ORDER BY date DESC LIMIT 1",
+                    conn,
+                    params=[target_symbol, as_of.strftime("%Y-%m-%d")],
+                )
+        except (sqlite3.Error, pd.errors.DatabaseError):
+            return pd.DataFrame()
+        if bars.empty or opening.empty:
+            return pd.DataFrame()
+
+        bars["time"] = pd.to_datetime(bars["time"], errors="coerce")
+        for column in ["open", "high", "low", "close"]:
+            bars[column] = pd.to_numeric(bars[column], errors="coerce")
+        bars = bars.dropna(subset=["time", "close"])
+        opening_price = pd.to_numeric(opening["open_price"], errors="coerce").iloc[0]
+        if bars.empty or not np.isfinite(opening_price):
+            return pd.DataFrame()
+
+        cn_dates = pd.DatetimeIndex(pd.to_datetime(cn_history["date"], errors="coerce").dropna())
+        cn_dates = cn_dates.append(pd.DatetimeIndex([as_of]))
+        us = self._load_us_features(
+            years=int(cfg.get("years", 7)),
+            cn_trading_dates=cn_dates,
+            as_of_date=as_of.date(),
+            database_path=us_database_path,
+        )
+        us = us[us["date"] == as_of].copy()
+        if us.empty:
+            return pd.DataFrame()
+        row = us.iloc[-1]
+        day_adj_factor = (
+            float(pd.to_numeric(adj["adj_factor"], errors="coerce").iloc[0])
+            if not adj.empty and pd.notna(pd.to_numeric(adj["adj_factor"], errors="coerce").iloc[0])
+            else 1.0
+        )
+        return pd.DataFrame(
+            {
+                "date": [as_of],
+                "symbol": [target_symbol],
+                "open": [float(opening_price)],
+                "close": [float(bars.iloc[-1]["close"])],
+                "sox_ret": [float(row["sox_ret"])],
+                "vix_close": [float(row["vix_close"])],
+                "signal_us_date": [row.get("signal_us_date", pd.NaT)],
+                "adj_factor": [day_adj_factor],
+            }
+        )
 
     def account_execution_params(self, strategy_cfg: dict[str, Any]) -> dict[str, Any]:
         cfg = strategy_cfg.get("cross_market_semiconductor_timing", {})
@@ -638,7 +747,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
 
         # Build signal frame
         signal_frame = d[[
-            c for c in ["date", "symbol", "signal_us_date", "sox_ret", "vix_close", "open", "high", "low", "close", "volume", "amount", "ret"]
+            c for c in ["date", "symbol", "signal_us_date", "sox_ret", "vix_close", "open", "high", "low", "close", "volume", "amount", "ret", "adj_factor"]
             if c in d.columns
         ]].copy()
         signal_frame["signal"] = signal.astype(float)

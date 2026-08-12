@@ -6,6 +6,9 @@ GOV_POLICY_PARSER_VERSION = "gov_policy_v1"
 CCTV_NEWS_PARSER_VERSION = "cctv_news_v1"
 CNINFO_PARSER_VERSION = "cninfo_announcement_v1"
 US_MARKET_NEWS_PARSER_VERSION = "us_market_news_rss_v1"
+SIA_SALES_PARSER_VERSION = "sia_sales_html_v1"
+SIA_NEWS_LISTING = "https://www.semiconductors.org/news-events/latest-news/"
+SEMI_SUPPLY_CHAIN_PARSER_VERSION = "semi_supply_chain_reprint_v1"
 
 PROVIDER_ALIASES = {
     "gov-policy": "gov_policy",
@@ -24,6 +27,18 @@ PROVIDER_ALIASES = {
     "us-news": "us_market_news",
     "market-news": "us_market_news",
     "us-market": "us_market_news",
+    "sia": "sia_sales",
+    "sia-sales": "sia_sales",
+    "sia_news": "sia_sales",
+    "sia-news": "sia_sales",
+    "sia-sales-news": "sia_sales",
+    "sia_sales_news": "sia_sales",
+    "semiconductor-sales": "sia_sales",
+    "semi-supply-chain": "semi_supply_chain",
+    "semi_supply_chain": "semi_supply_chain",
+    "tsmc-revenue": "semi_supply_chain",
+    "korea-exports": "semi_supply_chain",
+    "tsmc": "semi_supply_chain",
 }
 
 PROVIDER_REGISTRY = {
@@ -85,6 +100,30 @@ PROVIDER_REGISTRY = {
         supported_parameters=("keyword", "start_date", "end_date", "limit", "feeds", "keywords"),
         status="implemented_mvp",
         notes="Configurable RSS metadata fetch for US market and semiconductor context; explanation layer only.",
+    ),
+    "sia_sales": AiCorpusProviderSpec(
+        name="sia_sales",
+        canonical_name="sia_sales",
+        corpus_types=("sia_sales_news",),
+        source="SIA semiconductors.org global semiconductor sales press releases",
+        base_url=SIA_NEWS_LISTING,
+        parser_version=SIA_SALES_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/sia_sales",
+        supported_parameters=("keyword", "start_date", "end_date", "limit", "pages"),
+        status="implemented_mvp",
+        notes="Monthly WSTS/SIA global semiconductor sales releases; parses sales, MoM, YoY, report period.",
+    ),
+    "semi_supply_chain": AiCorpusProviderSpec(
+        name="semi_supply_chain",
+        canonical_name="semi_supply_chain",
+        corpus_types=("tsmc_monthly_revenue", "korea_semi_exports"),
+        source="Chinese financial media reprints of TSMC monthly revenue and Korea semiconductor exports",
+        base_url="explicit source URLs (caller locates reprints via web search)",
+        parser_version=SEMI_SUPPLY_CHAIN_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/semi_supply_chain",
+        supported_parameters=("keyword", "start_date", "end_date", "limit", "source_urls"),
+        status="implemented_mvp",
+        notes="Official TSMC/Korea sites are unreachable (Cloudflare/DNS); parses regular media reprints, tagged media_reprint_of_official_disclosure.",
     ),
 }
 

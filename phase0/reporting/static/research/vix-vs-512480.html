@@ -1,0 +1,178 @@
+<div id="vix-vs-512480" class="vix-chart-root">
+  <h2>^VIX 与半导体 ETF（512480）</h2>
+  <div class="vix-chart-legend" aria-label="图例">
+    <span><i class="vix-swatch vix-line" aria-hidden="true"></i>^VIX（美国波动率指数）</span>
+    <span><i class="vix-swatch etf-line" aria-hidden="true"></i>SH.512480 前复权收盘价（实际交易标的）</span>
+    <span><i class="vix-run-swatch" aria-hidden="true"></i>背景：^VIX 连续至少 3 个美股交易日收跌（深浅按累计跌幅）</span>
+    <span><i class="vix-rise-swatch" aria-hidden="true"></i>背景：^VIX 连续至少 3 个美股交易日收涨（深浅按累计涨幅）</span>
+  </div>
+  <div class="vix-chart-wrap">
+    <svg class="vix-chart" role="img" aria-labelledby="vix-chart-title vix-chart-desc"></svg>
+    <div class="vix-tooltip" role="tooltip" hidden></div>
+  </div>
+  <p class="text-small text-muted vix-chart-note" id="vix-chart-note"></p>
+</div>
+<style>
+  #vix-vs-512480 { color: var(--foreground); }
+  #vix-vs-512480 .vix-chart-legend { display:flex; flex-wrap:wrap; gap: 1rem; margin: .5rem 0 .25rem; color:var(--muted-foreground); }
+  #vix-vs-512480 .vix-swatch { display:inline-block; width:1.4rem; height:.7rem; margin-right:.35rem; vertical-align:middle; border-top:2px solid currentColor; }
+  #vix-vs-512480 .vix-line { color:var(--viz-series-1); }
+  #vix-vs-512480 .etf-line { color:var(--viz-series-2); }
+  #vix-vs-512480 .vix-run-swatch { display:inline-block; width:1.15rem; height:.75rem; margin-right:.35rem; vertical-align:middle; background:var(--red); opacity:.32; }
+  #vix-vs-512480 .vix-rise-swatch { display:inline-block; width:1.15rem; height:.75rem; margin-right:.35rem; vertical-align:middle; background:var(--green); opacity:.32; }
+  #vix-vs-512480 .vix-chart-wrap { position:relative; width:100%; }
+  #vix-vs-512480 .vix-chart { display:block; width:100%; height:auto; overflow:visible; }
+  #vix-vs-512480 .vix-tooltip { position:absolute; pointer-events:none; z-index:2; padding:.45rem .55rem; background:var(--popover); color:var(--popover-foreground); border:1px solid var(--border); font-size:var(--font-size-base); white-space:nowrap; }
+  #vix-vs-512480 .vix-chart-note { margin:.4rem 0 0; }
+  #vix-vs-512480 .vix-axis { fill:var(--muted-foreground); font-size:12px; }
+  #vix-vs-512480 .vix-grid { stroke:var(--border); stroke-width:1; }
+  #vix-vs-512480 .vix-vix-band { fill:var(--viz-series-1); opacity:.12; }
+  #vix-vs-512480 .vix-vix-band-edge { stroke:var(--viz-series-1); stroke-width:1; stroke-dasharray:4 3; opacity:.75; }
+  #vix-vs-512480 .vix-vix-band-label { fill:var(--viz-series-1); font-size:12px; }
+  #vix-vs-512480 .vix-vix-path { fill:none; stroke:var(--viz-series-1); stroke-width:2; }
+  #vix-vs-512480 .vix-etf-path { fill:none; stroke:var(--viz-series-2); stroke-width:2; }
+  #vix-vs-512480 .vix-down-run { fill:var(--red); }
+  #vix-vs-512480 .vix-down-run-label { fill:var(--muted-foreground); font-size:11px; }
+  #vix-vs-512480 .vix-up-run { fill:var(--green); }
+  #vix-vs-512480 .vix-up-run-label { fill:var(--muted-foreground); font-size:11px; }
+  #vix-vs-512480 .vix-hover-line { stroke:var(--muted-foreground); stroke-width:1; stroke-dasharray:3 3; }
+  #vix-vs-512480 .vix-hover-dot { stroke:var(--background); stroke-width:2; }
+  @media (max-width: 420px) { #vix-vs-512480 .vix-chart-legend { gap:.35rem .75rem; } }
+</style>
+<script>
+(() => {
+  const root = document.getElementById('vix-vs-512480');
+  const source = {"data":[["2025-11-03",100.0,100.0,100.0,0.0],["2025-11-04",110.6581,98.8981,95.9923,-4.0077],["2025-11-05",104.8923,98.0716,98.8901,3.0188],["2025-11-06",113.5702,101.9284,96.5262,-2.3905],["2025-11-07",111.1241,100.6887,95.5493,-1.0121],["2025-11-10",102.5044,100.1377,98.4318,3.0168],["2025-11-11",100.6407,98.4848,95.9941,-2.4766],["2025-11-12",101.9802,97.9339,97.4028,1.4675],["2025-11-13",116.4822,99.7245,93.7803,-3.7191],["2025-11-14",115.4921,96.4187,93.6766,-0.1106],["2025-11-17",130.3436,96.281,92.2262,-1.5483],["2025-11-18",143.7973,97.2452,90.0984,-2.3071],["2025-11-19",137.7985,96.281,91.7351,1.8165],["2025-11-20",153.873,95.0413,87.3621,-4.767],["2025-11-21",136.4589,91.0468,88.1097,0.8558],["2025-11-24",119.5108,91.8733,92.1913,4.6324],["2025-11-25",108.0955,92.8375,92.3423,0.1638],["2025-11-26",100.1165,94.3526,94.8905,2.7595],["2025-11-28",95.2242,95.8678,96.6192,1.8217],["2025-12-01",100.4077,97.5207,96.5556,-0.0658],["2025-12-02",96.622,96.1433,98.329,1.8366],["2025-12-03",93.6517,95.3168,100.1312,1.8329],["2025-12-04",91.9045,97.2452,99.2436,-0.8865],["2025-12-05",89.7496,96.832,100.3283,1.093],["2025-12-08",97.0297,99.3113,101.4338,1.1019],["2025-12-09",98.6022,98.8981,101.3965,-0.0368],["2025-12-10",91.8462,99.0358,102.7028,1.2883],["2025-12-11",86.4881,97.5207,101.9325,-0.7501],["2025-12-12",91.6715,99.1736,96.735,-5.099],["2025-12-15",96.0978,96.9697,96.1414,-0.6136],["2025-12-16",95.9814,95.1791,95.7017,-0.4573],["2025-12-17",102.6209,97.2452,92.0828,-3.7814],["2025-12-18",98.2528,96.5565,94.3977,2.514],["2025-12-19",86.8375,96.281,97.2067,2.9757],["2025-12-22",82.0035,98.8981,98.2753,1.0993],["2025-12-23",81.5376,99.8623,98.8113,0.5454],["2025-12-24",78.4508,101.3774,99.084,0.276],["2025-12-26",79.2079,100.9642,99.129,0.0454],["2025-12-29",82.7024,100.9642,98.7251,-0.4075],["2025-12-30",83.4595,102.3416,98.5989,-0.1277],["2025-12-31",87.0705,100.8264,97.4166,-1.1992],["2026-01-05",86.7793,105.3719,102.4134,5.1294],["2026-01-06",85.9056,107.7135,105.2257,2.746],["2026-01-07",89.5748,110.4683,104.1796,-0.9941],["2026-01-08",89.9825,110.7438,102.2711,-1.832],["2026-01-09",84.3914,111.4325,105.0586,2.7256],["2026-01-12",88.0606,113.3609,105.5545,0.4721],["2026-01-13",93.0693,109.7796,106.5606,0.9531],["2026-01-14",97.5539,111.4325,105.9208,-0.6004],["2026-01-15",92.2539,113.6364,107.7889,1.7637],["2026-01-16",92.3704,117.2176,109.0282,1.1498],["2026-01-20",117.0064,115.8402,107.196,-1.6805],["2026-01-21",98.4275,120.2479,110.6052,3.1803],["2026-01-22",91.0891,119.5592,110.7854,0.1629],["2026-01-23",93.71,119.697,109.448,-1.2072],["2026-01-26",94.0594,116.9421,109.0231,-0.3882],["2026-01-27",95.2242,120.1102,111.6382,2.3986],["2026-01-28",95.2242,121.4876,114.2453,2.3353],["2026-01-29",98.311,116.6667,114.433,0.1643],["2026-01-30",101.5725,117.9063,110.0055,-3.869],["2026-02-02",95.166,111.4325,111.8763,1.7006],["2026-02-03",104.834,113.0854,109.5635,-2.0672],["2026-02-04",108.5614,110.7438,104.7888,-4.358],["2026-02-05",126.7909,109.6419,104.7266,-0.0593],["2026-02-06",118.6372,108.6777,110.6953,5.6993],["2026-02-09",101.1066,112.1212,112.2626,1.4159],["2026-02-10",103.611,112.6722,111.5,-0.6793],["2026-02-11",102.7956,111.4325,114.0406,2.2786],["2026-02-12",121.258,113.7741,111.1915,-2.4984],["2026-02-13",119.9767,114.0496,111.9226,0.6575],["2026-02-24",113.8614,114.4628,114.5974,2.3898],["2026-02-25",104.4263,115.427,116.4553,1.6213],["2026-02-26",108.5032,117.0799,112.7396,-3.1907],["2026-02-27",115.6669,116.1157,111.3795,-1.2064],["2026-03-02",124.869,114.0496,111.9157,0.4815],["2026-03-03",137.2743,107.438,106.7929,-4.5774],["2026-03-04",123.18,107.438,108.8504,1.9266],["2026-03-05",138.3227,109.2287,107.5752,-1.1715],["2026-03-06",171.7531,109.2287,103.3526,-3.9252],["2026-03-09",148.5149,107.0248,107.419,3.9344],["2026-03-10",145.1951,109.9174,108.1715,0.7006],["2026-03-11",141.1182,108.6777,108.8516,0.6287],["2026-03-12",158.94,107.1625,105.119,-3.4291],["2026-03-13",158.3576,106.3361,105.1667,0.0454],["2026-03-16",136.9249,108.6777,107.2242,1.9564],["2026-03-17",130.2854,105.6474,107.7825,0.5206],["2026-03-18",146.127,107.989,107.2089,-0.5321],["2026-03-19",140.1281,105.2342,108.1465,0.8745],["2026-03-20",155.9697,103.4435,105.4964,-2.4505],["2026-03-23",152.3005,98.2094,106.9064,1.3365],["2026-03-24",156.9598,100.0,108.2759,1.2811],["2026-03-25",147.5248,102.6171,109.583,1.2072],["2026-03-26",159.8136,100.1377,104.3309,-4.7928],["2026-03-27",180.8387,101.1019,102.5677,-1.69],["2026-03-30",178.2761,101.1019,98.2308,-4.2284],["2026-03-31",147.0588,97.5207,104.363,6.2426],["2026-04-01",142.9237,100.4132,107.3077,2.8216],["2026-04-02",139.0216,97.3829,107.7351,0.3983],["2026-04-07",150.1456,99.0358,110.0798,2.1763],["2026-04-08",122.5393,105.5096,117.0534,6.3351],["2026-04-09",113.5119,105.5096,119.5099,2.0986],["2026-04-10",111.9977,107.5758,122.2647,2.3051],["2026-04-13",111.357,107.8512,124.3234,1.6838],["2026-04-14",106.9307,110.7438,126.8623,2.0422],["2026-04-15",105.8241,110.0551,127.0709,0.1645],["2026-04-16",104.4846,111.5702,128.3096,0.9747],["2026-04-17",101.8055,112.1212,131.4251,2.4281],["2026-04-20",109.901,113.9118,132.021,0.4534],["2026-04-21",113.5702,112.6722,132.6812,0.5],["2026-04-22",110.1922,115.5647,136.2854,2.7164],["2026-04-23",112.4636,113.4986,138.6138,1.7085],["2026-04-24",108.9691,115.5647,144.5978,4.317],["2026-04-27",104.9505,120.9366,143.1451,-1.0046],["2026-04-28",103.8439,119.5592,138.0226,-3.5786],["2026-04-29",109.5515,119.2837,141.2645,2.3488],["2026-04-30",98.3692,125.2066,144.4608,2.2626],["2026-05-06",101.2813,131.8182,157.7884,9.2258],["2026-05-07",99.4758,134.2975,153.5007,-2.7174],["2026-05-08",100.1165,130.9917,161.9523,5.5059],["2026-05-11",107.0472,138.9807,166.1544,2.5947],["2026-05-12",104.7758,139.5317,161.1513,-3.0112],["2026-05-13",104.0769,143.8017,165.2872,2.5665],["2026-05-14",100.5242,140.7713,166.0546,0.4643],["2026-05-15",107.3384,140.2204,159.3798,-4.0196],["2026-05-18",103.7857,141.7355,155.4472,-2.4675],["2026-05-19",105.1835,146.832,155.4882,0.0264],["2026-05-20",101.5725,153.4435,162.472,4.4915],["2026-05-21",97.6121,146.832,164.5459,1.2764],["2026-05-22",97.2627,150.8264,167.8255,1.9931],["2026-05-26",99.0681,159.9174,177.1003,5.5265],["2026-05-27",94.8748,156.0606,174.6973,-1.3568],["2026-05-28",91.6715,157.989,176.4433,0.9994],["2026-05-29",89.2254,148.7603,176.4466,0.0019],["2026-06-01",93.477,140.9091,178.3208,1.0622],["2026-06-02",91.8462,143.2507,188.7818,5.8664],["2026-06-03",93.5352,148.0716,191.4044,1.3892],["2026-06-04",89.6913,151.1019,187.2859,-2.1518],["2026-06-05",125.2766,144.0771,168.0761,-10.257],["2026-06-08",110.1922,137.4656,177.5099,5.6128],["2026-06-09",115.7251,145.3168,174.0869,-1.9283],["2026-06-10",129.4118,144.6281,167.8794,-3.5658],["2026-06-11",113.2207,146.6942,181.1511,7.9055],["2026-06-12",102.9703,145.0413,183.9021,1.5187],["2026-06-15",94.3506,153.719,193.9166,5.4456],["2026-06-16",95.5737,155.2342,182.8397,-5.7122],["2026-06-17",107.3966,164.4628,185.3545,1.3754],["2026-06-18",95.5154,170.9366,197.2471,6.4162],["2026-06-22",100.6407,175.7576,201.276,2.0426],["2026-06-23",113.5119,173.0028,185.4293,-7.8731],["2026-06-24",108.5032,182.6446,185.095,-0.1803],["2026-06-25",110.0175,191.0468,191.7333,3.5864],["2026-06-26",107.2219,189.2562,181.593,-5.2888],["2026-06-29",102.7956,200.4132,188.5534,3.833],["2026-06-30",95.8066,207.0248,195.943,3.9191],["2026-07-01",96.622,202.7548,183.652,-6.2728],["2026-07-02",94.0594,185.9504,173.6525,-5.4448],["2026-07-06",90.6814,183.7466,177.4198,2.1695],["2026-07-07",93.9429,184.022,169.173,-4.6482],["2026-07-08",98.4275,184.4353,172.9476,2.2312],["2026-07-09",92.2539,202.6171,178.2431,3.0619],["2026-07-10",87.5364,188.5675,178.3415,0.0552],["2026-07-13",99.9418,177.9614,169.823,-4.7765],["2026-07-14",96.0978,180.1653,174.1436,2.5442],["2026-07-15",91.2638,169.697,170.5259,-2.0774],["2026-07-16",97.4374,159.6419,163.2176,-4.2858],["2026-07-17",109.3186,147.3829,160.5548,-1.6314],["2026-07-20",108.6197,143.2507,161.517,0.5993],["2026-07-21",99.3011,157.5758,169.9383,5.2139],["2026-07-22",96.9132,158.6777,170.6879,0.4412],["2026-07-23",108.9109,152.3416,169.7688,-0.5385],["2026-07-24",108.212,153.3058,162.5489,-4.2528],["2026-07-27",108.7362,154.8209,158.918,-2.2337],["2026-07-28",106.0571,143.3884,151.7773,-4.4933],["2026-07-29",120.3261,141.4601,143.6877,-5.3299],["2026-07-30",99.5341,131.9559,155.4537,8.1886],["2026-07-31",93.1275,136.6391,155.5649,0.0716],["2026-08-03",92.3704,126.8595,157.2053,1.0544],["2026-08-04",96.0978,133.4711,167.5053,6.5519],["2026-08-05",92.0792,142.2865,165.162,-1.3989],["2026-08-06",88.2353,144.2149,165.7095,0.3315],["2026-08-07",86.7793,149.1736,169.9469,2.5571],["2026-08-10",90.0408,148.8981,164.9554,-2.9371],["2026-08-11",88.9924,147.3829,166.3942,0.8722]],"meta":{"start":"2025-11-03","end":"2026-08-11","vixLastDate":"2026-08-12","soxLastDate":"2026-08-11","etfLastDate":"2026-08-11","vixStart":17.170000076293945,"vixEnd":15.279999732971191,"soxStart":7270.97021484375,"soxEnd":12098.4697265625,"etfStart":0.726,"etfEnd":1.07,"vixReturn":-11.007573296008399,"soxReturn":66.39415881340523,"etfReturn":47.38292011019285,"commonDays":183,"sox3":55,"sox5":23}}
+  const svg = root.querySelector('.vix-chart');
+  const tooltip = root.querySelector('.vix-tooltip');
+  const note = root.querySelector('#vix-chart-note');
+  // The earlier three-series rendering omitted 2026-05-25 because ^SOX did not
+  // trade that day. For the two-series chart, it is a valid shared VIX/ETF date.
+  source.data.push(["2026-05-25", 96.622, 161.708]);
+  source.data.sort((a, b) => a[0].localeCompare(b[0]));
+  const values = source.data.map(([date, vix, etf]) => ({ date: new Date(`${date}T00:00:00Z`), rawDate: date, vix, etf }));
+  const m = source.meta;
+  m.commonDays = values.length;
+  m.etfReturn = (values.at(-1).etf / values[0].etf - 1) * 100;
+  const downRuns = [
+    ["2025-11-06", "2025-11-11", 3, -11.38], ["2025-11-20", "2025-11-28", 5, -38.12],
+    ["2025-12-01", "2025-12-05", 4, -10.61], ["2025-12-17", "2025-12-24", 5, -23.55],
+    ["2026-02-12", "2026-02-18", 3, -5.76], ["2026-03-06", "2026-03-11", 3, -17.84],
+    ["2026-03-12", "2026-03-17", 3, -18.03], ["2026-03-27", "2026-04-02", 4, -23.12],
+    ["2026-04-07", "2026-04-17", 8, -32.20], ["2026-04-23", "2026-04-28", 3, -7.66],
+    ["2026-05-11", "2026-05-14", 3, -6.09], ["2026-05-19", "2026-05-25", 4, -8.14],
+    ["2026-05-26", "2026-05-29", 3, -9.94], ["2026-06-10", "2026-06-15", 3, -27.09],
+    ["2026-06-25", "2026-06-30", 3, -12.92], ["2026-07-17", "2026-07-22", 3, -11.35],
+    ["2026-07-29", "2026-08-03", 3, -23.23], ["2026-08-04", "2026-08-07", 3, -9.70]
+  ].map(([start, end, downDays, change]) => ({ start, end, downDays, change }));
+  const upRuns = [
+    ["2025-12-24", "2025-12-31", 4, 10.99], ["2026-01-09", "2026-01-14", 3, 15.60],
+    ["2026-01-22", "2026-01-27", 3, 4.54], ["2026-02-02", "2026-02-05", 3, 33.23],
+    ["2026-02-25", "2026-03-03", 4, 31.46]
+  ].map(([start, end, upDays, change]) => ({ start, end, upDays, change }));
+  const fmtPct = value => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+  note.textContent = `共同可用交易日：${m.start} 至 ${m.end}（${m.commonDays} 日）。两条线均以首日收盘价归一化为 100；512480采用截至 ${m.etfLastDate} 的前复权价格。红色阴影为 ^VIX 连续至少 3 个相邻美股交易日收跌（${downRuns.length} 段），绿色阴影为连续至少 3 日收涨（${upRuns.length} 段）；深浅分别按累计跌幅和涨幅表示。`;
+  const parseColor = name => getComputedStyle(root).getPropertyValue(name).trim() || '#000';
+  const formatDate = date => date.toISOString().slice(0, 10);
+  const tickDate = date => `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  function render() {
+    const width = Math.max(320, Math.floor(root.clientWidth));
+    const height = Math.round(width < 450 ? 330 : 390);
+    const pad = { top: 24, right: 56, bottom: 44, left: 56 };
+    const innerW = width - pad.left - pad.right;
+    const innerH = height - pad.top - pad.bottom;
+    const all = values.flatMap(d => [d.vix, d.etf]);
+    const min = Math.floor((Math.min(...all) - 5) / 10) * 10;
+    const max = Math.ceil((Math.max(...all) + 5) / 10) * 10;
+    const startT = values[0].date.getTime(), endT = values.at(-1).date.getTime();
+    const x = d => pad.left + (d.getTime() - startT) / (endT - startT) * innerW;
+    const y = value => pad.top + (max - value) / (max - min) * innerH;
+    // The chart is normalized to 100 at the shared start date, so map the raw
+    // VIX thresholds into the same scale before drawing the 14–19 band.
+    const vixThreshold = rawValue => rawValue / m.vixStart * 100;
+    const vixBandTop = y(vixThreshold(19));
+    const vixBandBottom = y(vixThreshold(14));
+    const line = key => values.map((d, index) => `${index ? 'L' : 'M'}${x(d.date).toFixed(2)},${y(d[key]).toFixed(2)}`).join(' ');
+    const yTicks = Array.from({length: 5}, (_, i) => min + (max - min) * i / 4);
+    const monthTicks = [];
+    let priorMonth = -1;
+    values.forEach(d => { if (d.date.getUTCMonth() !== priorMonth) { monthTicks.push(d); priorMonth = d.date.getUTCMonth(); } });
+    const displayTicks = width < 450 ? monthTicks.filter((_, i) => i % 2 === 0) : monthTicks;
+    const downRunRects = downRuns.map(run => {
+      const start = new Date(`${run.start}T00:00:00Z`);
+      const end = new Date(`${run.end}T00:00:00Z`);
+      const left = x(start);
+      const right = x(end);
+      const opacity = (0.10 + Math.min(0.20, Math.abs(run.change) / 190)).toFixed(2);
+      const label = right - left > 42 ? `<text class="vix-down-run-label" x="${((left + right) / 2).toFixed(2)}" y="${height - pad.bottom - 6}" text-anchor="middle">${run.change.toFixed(0)}%</text>` : '';
+      return `<rect class="vix-down-run" x="${left.toFixed(2)}" y="${pad.top}" width="${Math.max(2, right-left).toFixed(2)}" height="${innerH}" opacity="${opacity}" data-run-start="${run.start}" data-run-end="${run.end}"/>${label}`;
+    }).join('');
+    const upRunRects = upRuns.map(run => {
+      const start = new Date(`${run.start}T00:00:00Z`);
+      const end = new Date(`${run.end}T00:00:00Z`);
+      const left = x(start);
+      const right = x(end);
+      const opacity = (0.10 + Math.min(0.20, Math.abs(run.change) / 165)).toFixed(2);
+      const label = right - left > 42 ? `<text class="vix-up-run-label" x="${((left + right) / 2).toFixed(2)}" y="${pad.top + 13}" text-anchor="middle">+${run.change.toFixed(0)}%</text>` : '';
+      return `<rect class="vix-up-run" x="${left.toFixed(2)}" y="${pad.top}" width="${Math.max(2, right-left).toFixed(2)}" height="${innerH}" opacity="${opacity}" data-run-start="${run.start}" data-run-end="${run.end}"/>${label}`;
+    }).join('');
+    const vixColor = parseColor('--viz-series-1');
+    const etfColor = parseColor('--viz-series-2');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('aria-label', `从 ${m.start} 到 ${m.end}，^VIX 与512480前复权价格的归一化走势。背景标出 ^VIX 连续至少三天收跌和收涨的区间。`);
+    svg.innerHTML = `
+      <title id="vix-chart-title">^VIX 与 SH.512480 的归一化走势</title>
+      <desc id="vix-chart-desc">^VIX 与实际交易标的 SH.512480 在共同可用交易日上的归一化收盘走势；红色背景标出 ^VIX 连续至少三天收跌，绿色背景标出连续至少三天收涨。</desc>
+      ${downRunRects}
+      ${upRunRects}
+      <rect class="vix-vix-band" x="${pad.left}" y="${vixBandTop}" width="${innerW}" height="${vixBandBottom-vixBandTop}"/>
+      <line class="vix-vix-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${vixBandTop}" y2="${vixBandTop}"/>
+      <line class="vix-vix-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${vixBandBottom}" y2="${vixBandBottom}"/>
+      <text class="vix-vix-band-label" x="${pad.left+6}" y="${vixBandTop+15}">^VIX 原值 14–19 区间</text>
+      ${yTicks.map(v => `<line class="vix-grid" x1="${pad.left}" x2="${width-pad.right}" y1="${y(v)}" y2="${y(v)}"/><text class="vix-axis" x="${pad.left-8}" y="${y(v)+4}" text-anchor="end">${v.toFixed(0)}</text>`).join('')}
+      ${displayTicks.map(d => `<text class="vix-axis" x="${x(d.date)}" y="${height-15}" text-anchor="middle">${tickDate(d.date)}</text>`).join('')}
+      <line class="vix-grid" x1="${pad.left}" x2="${pad.left}" y1="${pad.top}" y2="${height-pad.bottom}"/>
+      <line class="vix-grid" x1="${pad.left}" x2="${width-pad.right}" y1="${height-pad.bottom}" y2="${height-pad.bottom}"/>
+      <text class="vix-axis" x="${pad.left}" y="15">归一化收盘价（首日=100）</text>
+      <path class="vix-vix-path" d="${line('vix')}"/>
+      <path class="vix-etf-path" d="${line('etf')}"/>
+      <text x="${width-pad.right}" y="${y(values.at(-1).vix)-20}" text-anchor="end" fill="${vixColor}" font-size="12">^VIX ${values.at(-1).vix.toFixed(1)}（${fmtPct(m.vixReturn)}）</text>
+      <text x="${width-pad.right}" y="${y(values.at(-1).etf)+18}" text-anchor="end" fill="${etfColor}" font-size="12">512480 ${values.at(-1).etf.toFixed(1)}（${fmtPct(m.etfReturn)}）</text>
+      <line class="vix-hover-line" hidden/>
+      <circle class="vix-hover-dot vix-hover-vix" r="4" fill="${vixColor}" hidden/>
+      <circle class="vix-hover-dot vix-hover-etf" r="4" fill="${etfColor}" hidden/>
+      <rect class="vix-hit" x="${pad.left}" y="${pad.top}" width="${innerW}" height="${innerH}" fill="transparent"/>
+    `;
+    const hit = svg.querySelector('.vix-hit');
+    const hoverLine = svg.querySelector('.vix-hover-line');
+    const vixDot = svg.querySelector('.vix-hover-vix');
+    const etfDot = svg.querySelector('.vix-hover-etf');
+    const show = event => {
+      const rect = svg.getBoundingClientRect();
+      const pointX = (event.clientX - rect.left) / rect.width * width;
+      const targetTime = startT + Math.max(0, Math.min(1, (pointX - pad.left) / innerW)) * (endT - startT);
+      let low = 0, high = values.length - 1;
+      while (low < high) { const mid = Math.floor((low + high) / 2); if (values[mid].date.getTime() < targetTime) low = mid + 1; else high = mid; }
+      const right = values[low], left = values[Math.max(0, low - 1)];
+      const selected = Math.abs(right.date.getTime() - targetTime) < Math.abs(left.date.getTime() - targetTime) ? right : left;
+      const cx = x(selected.date);
+      hoverLine.setAttribute('x1', cx); hoverLine.setAttribute('x2', cx); hoverLine.setAttribute('y1', pad.top); hoverLine.setAttribute('y2', height-pad.bottom); hoverLine.hidden = false;
+      [[vixDot, selected.vix], [etfDot, selected.etf]].forEach(([dot, value]) => { dot.setAttribute('cx', cx); dot.setAttribute('cy', y(value)); dot.hidden = false; });
+      const downRun = downRuns.find(run => selected.rawDate >= run.start && selected.rawDate <= run.end);
+      const upRun = upRuns.find(run => selected.rawDate >= run.start && selected.rawDate <= run.end);
+      const runText = downRun
+        ? `<br><span>连跌区间：${downRun.start} → ${downRun.end}<br>连续收跌：${downRun.downDays} 个美股交易日；累计：${downRun.change.toFixed(2)}%</span>`
+        : upRun
+          ? `<br><span>连涨区间：${upRun.start} → ${upRun.end}<br>连续收涨：${upRun.upDays} 个美股交易日；累计：+${upRun.change.toFixed(2)}%</span>`
+          : '';
+      tooltip.innerHTML = `<strong>${selected.rawDate}</strong><br>^VIX：${selected.vix.toFixed(1)}<br>512480 前复权：${selected.etf.toFixed(1)}${runText}`;
+      tooltip.hidden = false;
+      tooltip.style.left = `${Math.min(width - tooltip.offsetWidth, Math.max(0, event.clientX - rect.left + 12))}px`;
+      tooltip.style.top = `${Math.max(0, event.clientY - rect.top - tooltip.offsetHeight - 8)}px`;
+    };
+    const hide = () => { tooltip.hidden = true; hoverLine.hidden = true; vixDot.hidden = true; etfDot.hidden = true; };
+    hit.addEventListener('pointermove', show); hit.addEventListener('pointerleave', hide);
+  }
+  const observer = new ResizeObserver(render); observer.observe(root); render();
+})();
+</script>

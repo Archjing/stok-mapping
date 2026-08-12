@@ -17,6 +17,8 @@ from phase0.intelligence.common import configured_path, date_tag, resolve_path, 
 from phase0.intelligence.schema import IntelligenceResult
 from phase0.reporting.paths import report_config_path
 
+SIA_NEWS_LISTING = "https://www.semiconductors.org/news-events/latest-news/"
+
 
 def _candidate_id(source_type: str, source: str, title: str, published_at: str) -> str:
     raw = "|".join([source_type, source, title, published_at])
@@ -423,6 +425,52 @@ def _fetch_crossref(query: str, limit: int | None) -> tuple[list[dict[str, str]]
     return rows, None
 
 
+def _fetch_sia_sales(source: dict[str, Any], root: Path, limit: int | None) -> tuple[list[dict[str, str]], str | None]:
+    """Collect SIA monthly global semiconductor sales releases as intelligence candidates.
+
+    Reuses the ai-corpus SIA parser so the raw article archive and the
+    structured parse are shared with the corpus pipeline; the intelligence
+    ledger keeps the review/action layer.
+    """
+    try:
+        from phase0.ai_corpus.providers.sia_sales import fetch_sia_sales
+    except ImportError as exc:
+        return [], f"sia_sales import failed: {exc}"
+    try:
+        frame = fetch_sia_sales(
+            root=root,
+            provider_config=source.get("config", {}),
+            limit=int(limit) if limit and limit > 0 else int(source.get("limit", 12)),
+            start_date=str(source.get("start_date", "")) or None,
+            end_date=str(source.get("end_date", "")) or None,
+        )
+    except Exception as exc:
+        return [], f"sia_sales fetch failed: {exc}"
+    rows: list[dict[str, str]] = []
+    for _, item in frame.iterrows():
+        title = safe_text(item.get("title"))
+        url = safe_text(item.get("url"))
+        if not title:
+            continue
+        period = safe_text(item.get("pcode"))
+        rows.append(
+            _candidate_row(
+                title=title,
+                source_type="industry_statistics",
+                source_path_or_url=url or str(source.get("listing_url", SIA_NEWS_LISTING)),
+                published_at=safe_text(item.get("published_at")),
+                market_scope="global_semiconductor",
+                evidence_type="official_monthly_sales",
+                topic_tags="semiconductor-cycle;industry-statistics;global-sales",
+                strategy_tags="cross-market-semiconductor-timing",
+            )
+        )
+        rows[-1]["source_path_or_url"] = url or rows[-1]["source_path_or_url"]
+        if period:
+            rows[-1]["title"] = f"{title} ({period})"
+    return rows, None
+
+
 def collect_intelligence(
     config_path: Path,
     *,
@@ -480,6 +528,11 @@ def collect_intelligence(
                 warnings.append(f"{name}: {warning}")
         elif kind == "crossref":
             fetched, warning = _fetch_crossref(str(source.get("query", "quantitative investment stock strategy")), limit)
+            rows.extend(fetched)
+            if warning:
+                warnings.append(f"{name}: {warning}")
+        elif kind == "sia_sales":
+            fetched, warning = _fetch_sia_sales(source, root, limit)
             rows.extend(fetched)
             if warning:
                 warnings.append(f"{name}: {warning}")

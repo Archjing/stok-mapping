@@ -7,10 +7,13 @@ import pandas as pd
 
 from phase0.execution.accounts import SimulatedAccountConfig
 from phase0.execution.single_etf_intraday import (
+    SingleEtfIntradayExecutionState,
     SingleEtfIntradayPolicy,
     evaluate_trailing_exit,
     load_single_etf_intraday_state,
+    reconcile_single_etf_intraday_post_close_session,
     run_single_etf_intraday_account_execution,
+    upsert_single_etf_intraday_live_state,
     write_single_etf_intraday_account_state,
 )
 
@@ -157,6 +160,68 @@ def test_live_weak_limit_order_remains_pending_until_session_close(tmp_path: Pat
     assert cancelled.metrics["account_unfilled_order_count"] == 1
     assert cancelled.order_events.iloc[0]["status"] == "cancelled"
     assert cancelled.order_events.iloc[0]["reason"] == "limit_not_touched"
+
+
+def test_live_entry_records_the_known_next_cn_session_when_only_entry_day_is_loaded(tmp_path: Path) -> None:
+    result = run_single_etf_intraday_account_execution(
+        signal_frame=_daily([0.02, 0.0, 0.0]).iloc[[0]],
+        intraday_bars=_bars(),
+        account=_account(tmp_path),
+        policy=_policy(),
+        live_session=True,
+        session_complete=False,
+        next_session_date="2024-06-11",
+    )
+
+    assert result.metrics["account_open_position_shares"] > 0
+    assert result.metrics["account_planned_exit_date"] == "2024-06-11"
+
+
+def test_live_exit_remains_open_until_the_session_close_bar_arrives(tmp_path: Path) -> None:
+    """A live run must not treat an unfinished T+1 session as missing data."""
+    daily = _daily([0.02, 0.0, 0.0]).iloc[:2].copy()
+    bars = _bars()[_bars()["time"] <= pd.Timestamp("2024-06-11 09:35")].copy()
+
+    result = run_single_etf_intraday_account_execution(
+        signal_frame=daily,
+        intraday_bars=bars,
+        account=_account(tmp_path),
+        policy=_policy(),
+        live_session=True,
+        session_complete=False,
+    )
+
+    assert result.trades["side"].tolist() == ["buy"]
+    assert result.metrics["account_execution_complete"] is True
+    assert result.metrics["account_intraday_data_missing_days"] == 0
+    assert result.metrics["account_state_status"] == "open_position_pending_exit"
+    assert result.metrics["account_open_position_shares"] > 0
+
+
+def test_live_execution_resumes_a_persisted_position_and_exits_at_close(tmp_path: Path) -> None:
+    daily = _daily([0.0, 0.0, 0.0]).iloc[[1]].copy()
+    bars = _bars()[_bars()["time"].dt.date == pd.Timestamp("2024-06-11").date()].copy()
+
+    result = run_single_etf_intraday_account_execution(
+        signal_frame=daily,
+        intraday_bars=bars,
+        account=_account(tmp_path),
+        policy=_policy(),
+        initial_state=SingleEtfIntradayExecutionState(
+            cash=0.0,
+            shares=100_000.0,
+            entry_price=1.0,
+            running_high=1.0,
+            signal_date="2024-06-07",
+            planned_exit_date="2024-06-11",
+            position_size=1.0,
+            previous_total_asset=100_000.0,
+        ),
+    )
+
+    assert result.trades["side"].tolist() == ["sell"]
+    assert result.metrics["account_execution_complete"] is True
+    assert result.metrics["account_open_position_shares"] == 0.0
 
 
 def test_strong_and_weak_signals_use_separate_position_sizes(tmp_path: Path) -> None:
@@ -330,3 +395,98 @@ def test_state_write_persists_cancelled_limit_order_event(tmp_path: Path) -> Non
             "reason": "limit_not_touched",
         }
     ]
+
+
+def test_live_state_upsert_replaces_only_the_current_trade_date(tmp_path: Path) -> None:
+    account = _account(tmp_path)
+    second_bars = _bars().copy()
+    second_bars.loc[
+        second_bars["time"].dt.date == pd.Timestamp("2024-06-11").date(),
+        "low",
+    ] = 1.02  # Keep the 1.009 limit pending during the live session.
+    first = run_single_etf_intraday_account_execution(
+        signal_frame=_daily([0.0, 0.007, 0.0]).iloc[[0]],
+        intraday_bars=_bars(),
+        account=account,
+        policy=_policy(),
+        live_session=True,
+        session_complete=True,
+    )
+    second = run_single_etf_intraday_account_execution(
+        signal_frame=_daily([0.0, 0.007, 0.0]).iloc[[1]],
+        intraday_bars=second_bars,
+        account=account,
+        policy=_policy(),
+        live_session=True,
+        session_complete=False,
+    )
+
+    upsert_single_etf_intraday_live_state(
+        account=account,
+        policy=_policy(),
+        result=first,
+        trade_date="2024-06-10",
+        runtime_state={"cash": 100_000.0},
+    )
+    upsert_single_etf_intraday_live_state(
+        account=account,
+        policy=_policy(),
+        result=second,
+        trade_date="2024-06-11",
+        runtime_state={"cash": 100_000.0},
+    )
+
+    state = load_single_etf_intraday_state(account.database_path, account.account_id)
+    assert [row["trade_date"] for row in state["daily_assets"]] == ["2024-06-10", "2024-06-11"]
+    assert state["order_events"][-1]["status"] == "pending"
+
+
+def test_post_close_replay_recovers_missing_session_but_never_overwrites_a_mismatch(tmp_path: Path) -> None:
+    account = _account(tmp_path)
+    policy = _policy()
+    replay = run_single_etf_intraday_account_execution(
+        signal_frame=_daily([0.02, 0.0, 0.0]),
+        intraday_bars=_bars(),
+        account=account,
+        policy=policy,
+    )
+
+    recovered = reconcile_single_etf_intraday_post_close_session(
+        account=account,
+        policy=policy,
+        result=replay,
+        trade_date="2024-06-10",
+        recover_missing=True,
+    )
+    assert recovered.status == "recovered_missing"
+    assert recovered.state_written is True
+
+    verified = reconcile_single_etf_intraday_post_close_session(
+        account=account,
+        policy=policy,
+        result=replay,
+        trade_date="2024-06-10",
+        recover_missing=True,
+    )
+    assert verified.status == "verified"
+    assert verified.state_written is False
+
+    altered = replay.daily_assets.copy()
+    altered.loc[altered["date"] == "2024-06-10", "total_asset"] += 1.0
+    mismatched_replay = type(replay)(
+        altered,
+        replay.trades,
+        replay.positions,
+        replay.metrics,
+        replay.order_events,
+    )
+    mismatch = reconcile_single_etf_intraday_post_close_session(
+        account=account,
+        policy=policy,
+        result=mismatched_replay,
+        trade_date="2024-06-10",
+        recover_missing=True,
+    )
+    assert mismatch.status == "mismatch"
+    assert mismatch.state_written is False
+    assert load_single_etf_intraday_state(account.database_path, account.account_id)["daily_assets"][0]["total_asset"] != altered.iloc[0]["total_asset"]
