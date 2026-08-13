@@ -1,3 +1,12 @@
+"""跨市场对比图数据模块.
+
+为"源市场 → 目标市场"价格对比图准备浏览器数据载荷:
+
+- 两条序列对比: 各自按起始日归一化, 内连接对齐共同交易日
+- 单日映射信号: 源市场 T 日收盘变动投影到严格晚于 T 的目标市场交易日
+- 连续趋势: 识别"连续 N 个交易日、每天至少 ±X%"的连涨/连跌段
+- 输出: 统一 SVG 图表模板 + JSON 数据载荷
+"""
 from __future__ import annotations
 
 import json
@@ -17,7 +26,12 @@ SeriesStorage = Literal["us_daily_bars", "etf_qfq"]
 
 @dataclass(frozen=True)
 class ComparisonSeriesConfig:
-    """One price series available from a supported local history store."""
+    """定义一条对比序列的代码、显示名称和本地存储类型.
+
+    ``storage`` 决定从哪个本地历史库读取:
+    - ``us_daily_bars``: data/us_market_history.sqlite (美股日线)
+    - ``etf_qfq``: data/etf_history.sqlite (ETF 前复权, as-of 口径)
+    """
 
     symbol: str
     label: str
@@ -26,7 +40,8 @@ class ComparisonSeriesConfig:
 
 @dataclass(frozen=True)
 class ComparisonChartConfig:
-    """Configuration for a source-to-target market comparison chart.
+    """传入对比图所需全部配置: 标题、起始日期、原始值观察区间、
+    单日映射阈值、连续趋势规则.
 
     ``consecutive_daily_change_pct=1.0`` means each daily change in a run must
     be at least +1.0% or at most -1.0%; ``3.0`` means at least +/-3.0%.
@@ -37,8 +52,11 @@ class ComparisonChartConfig:
     source: ComparisonSeriesConfig
     target: ComparisonSeriesConfig
     start_date: str | date
+    # 原始值观察区间 (low, high): 序列收盘价落入该区间时前端高亮观察带
     observation_band: tuple[float, float] | None = None
+    # 单日映射阈值: 源市场单日涨跌幅绝对值 >= 该值才生成映射信号
     daily_mapping_pct: float | None = 0.5
+    # 连续趋势规则: 连续 N 个交易日、每天至少 ±X%
     consecutive_days: int = 3
     consecutive_daily_change_pct: float = 0.0
 
@@ -81,11 +99,11 @@ def find_consecutive_move_runs(
     consecutive_days: int,
     daily_change_pct: float,
 ) -> list[dict[str, Any]]:
-    """Find qualifying source runs on its own trading calendar.
+    """支持"连续 N 个交易日、每天至少 ±X%"的连涨/连跌段识别.
 
-    A run contains ``consecutive_days`` or more daily moves in the given
-    direction.  Each move must meet ``daily_change_pct``; zero means any
-    strictly positive/negative close-to-close move.
+    按源市场自身交易日历扫描: 一段 run 需包含 ``consecutive_days`` 个
+    以上同向日涨跌, 每个日涨跌幅度须满足 ``daily_change_pct``
+    (0 表示任意严格同向涨跌即可). 返回每段的起止日期、天数与区间涨跌幅.
     """
     if direction not in (-1, 1):
         raise ValueError("direction must be -1 or 1")
@@ -137,10 +155,10 @@ def project_daily_mapping_signals(
     target_dates: pd.Series,
     daily_mapping_pct: float | None,
 ) -> list[dict[str, Any]]:
-    """Project source closes to the next target-market session.
+    """将源市场 T 日收盘变动投影到严格晚于 T 的下一个目标市场交易日.
 
-    The target date is strictly later than the source close, preventing an
-    unavailable US close from being displayed as an A-share same-day input.
+    目标日期严格晚于源市场收盘日, 避免把 A 股当日开盘前尚不可见的
+    美股收盘数据当作同日输入展示 (防止未来函数).
     """
     if daily_mapping_pct is None:
         return []
@@ -267,7 +285,11 @@ def _load_series(*, root: Path, series: ComparisonSeriesConfig, start_date: pd.T
 
 
 def build_comparison_chart_data(*, root: Path, config: ComparisonChartConfig) -> dict[str, Any] | None:
-    """Load configured local series and prepare a reusable chart payload."""
+    """从本地历史库读取两条序列并生成浏览器数据载荷.
+
+    按 config 指定的 storage 读取源/目标序列 (美股日线或 ETF 前复权),
+    清洗对齐后交给 build_comparison_chart_data_from_frames 组装载荷.
+    """
     source = _load_series(root=root, series=config.source, start_date=config.start_timestamp)
     source = _clean_prices(source, start_date=config.start_timestamp)
     if source.empty:
@@ -286,7 +308,7 @@ def _source_path() -> Path:
 
 
 def render_comparison_chart_fragment(*, data: dict[str, Any] | None) -> str:
-    """Render the generic SVG chart fragment with a prepared data payload."""
+    """把数据载荷填入统一 SVG 图表模板, 返回可嵌入页面的 HTML 片段."""
     source_path = _source_path()
     if not source_path.is_file():
         raise FileNotFoundError(source_path)
