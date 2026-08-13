@@ -114,6 +114,13 @@ SEMICONDUCTOR_TIMING_ETF_UNIVERSE: dict[str, dict[str, Any]] = {
 }
 
 
+def _opt_float(value: object | None) -> float | None:
+    """Parse an optional float; None/empty stays None (engine falls back to position_size)."""
+    if value is None or value == "":
+        return None
+    return float(str(value))
+
+
 def normalize_semiconductor_timing_target(value: object | None) -> str:
     """Normalize a configured target symbol and reject unapproved ETFs."""
     target = str(value or DEFAULT_TARGET_SYMBOL).strip().upper()
@@ -524,6 +531,8 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             "sox_threshold": first_value("sox_thresholds", 0.005),
             "vix_threshold": first_value("vix_thresholds", _target_default(target_symbol, "vix_threshold")),
             "position_size": first_value("position_sizes", 1.0),
+            "strong_position_size": _opt_float(cfg.get("strong_position_size")),
+            "weak_position_size": _opt_float(cfg.get("weak_position_size")),
             "strong_signal_threshold": float(cfg.get("strong_signal_threshold", STRONG_SIGNAL_THRESHOLD)),
             "limit_order_discount": float(cfg.get("limit_order_discount", LIMIT_ORDER_DISCOUNT)),
             "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
@@ -638,10 +647,12 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         )
 
     def format_params(self, params: dict[str, Any]) -> str:
+        strong_pos = params.get("strong_position_size") or params.get("position_size", 1.0)
+        weak_pos = params.get("weak_position_size") or params.get("position_size", 1.0)
         return (
             f"SOX>{params.get('sox_threshold', 0.005):.1%},"
             f"VIX<{params.get('vix_threshold', 19):.0f},"
-            f"pos={params.get('position_size', 1.0):.0%},"
+            f"pos强={float(strong_pos):.0%}/弱={float(weak_pos):.0%},"
             f"exit={params.get('exit_mode', 'trailing_stop')}"
         )
 
@@ -661,6 +672,8 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             "exit_mode": str(params.get("exit_mode", "trailing_stop")),
             "fallback_time": str(params.get("fallback_time", "14:55")),
             "position_size": float(params.get("position_size", 1.0)),
+            "strong_position_size": _opt_float(params.get("strong_position_size")),
+            "weak_position_size": _opt_float(params.get("weak_position_size")),
         }
         return metadata
 
