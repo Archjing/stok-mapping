@@ -1,11 +1,11 @@
-"""Backfill + direction-tag earnings forecasts for all missing semiconductor stocks.
+"""Backfill + direction-tag earnings forecasts for semiconductor stocks.
 
 Fetch 业绩预告 for stocks not yet in the corpus, then immediately classify the
 direction from each announcement PDF and write a ``direction=`` tag.  Idempotent:
 stocks already covered are skipped, so it can be re-run to resume after failure.
 
 Usage:
-    .venv/bin/python3 scripts/backfill_semiconductor_forecasts.py [--limit N]
+    .venv/bin/python3 scripts/backfill_semiconductor_forecasts.py [--limit N] [--industries 电气设备,汽车配件]
 """
 from __future__ import annotations
 
@@ -31,11 +31,21 @@ MARKET_DB = Path("data/a_share_history.sqlite")
 RAW_DIR = Path("data/raw_data/ai_corpus/cninfo/search")
 START, END = "20200101", "20260813"
 
+DEFAULT_INDUSTRIES = ["半导体"]
 
-def _semiconductor_codes() -> list[str]:
+
+def _connect(path: Path) -> sqlite3.Connection:
+    """Open a SQLite connection with a busy timeout so concurrent writers retry."""
+    conn = sqlite3.connect(path, timeout=30)
+    conn.execute("PRAGMA busy_timeout = 30000")
+    return conn
+
+
+def _industry_codes(industries: list[str]) -> list[str]:
+    placeholders = ",".join(f"'{i}'" for i in industries)
     with sqlite3.connect(MARKET_DB) as conn:
         rows = conn.execute(
-            "SELECT symbol FROM market_stocks WHERE industry='半导体' AND list_status='上市'"
+            f"SELECT symbol FROM market_stocks WHERE industry IN ({placeholders}) AND list_status='上市'"
         ).fetchall()
     return sorted(r[0].split(".")[1] for r in rows)
 
@@ -58,14 +68,17 @@ def _has_direction(topics: str) -> bool:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=0, help="Max new stocks to process")
+    parser.add_argument("--industries", default=",".join(DEFAULT_INDUSTRIES),
+                        help="Comma-separated industry names")
     args = parser.parse_args()
 
-    all_codes = _semiconductor_codes()
+    industries = [i.strip() for i in args.industries.split(",") if i.strip()]
+    all_codes = _industry_codes(industries)
     covered = _covered_codes()
     todo = [c for c in all_codes if c not in covered]
     if args.limit > 0:
         todo = todo[: args.limit]
-    print(f"半导体 {len(all_codes)} 只, 已覆盖 {len(covered)}, 待补 {len(todo)}")
+    print(f"行业 {industries}: {len(all_codes)} 只, 已覆盖 {len(covered)}, 待补 {len(todo)}")
 
     import akshare as ak
 
