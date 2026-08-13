@@ -12,6 +12,9 @@ RESEARCH_REPORT_PARSER_VERSION = "research_report_metadata_v1"
 SIA_NEWS_LISTING = "https://www.semiconductors.org/news-events/latest-news/"
 PBOC_LIST_URL = "https://www.pbc.gov.cn/zhengcehuobisi/125207/125227/125957/index.html"
 SEMI_SUPPLY_CHAIN_PARSER_VERSION = "semi_supply_chain_reprint_v1"
+CLS_TELEGRAPH_PARSER_VERSION = "cls_telegraph_v1"
+SINA_7X24_PARSER_VERSION = "sina_7x24_v1"
+WALLSTCN_LIVES_PARSER_VERSION = "wallstcn_lives_v1"
 
 PROVIDER_ALIASES = {
     "gov-policy": "gov_policy",
@@ -50,6 +53,18 @@ PROVIDER_ALIASES = {
     "research_report": "research_report",
     "broker-report": "research_report",
     "broker_report": "research_report",
+    "cls": "cls_telegraph",
+    "cls-telegraph": "cls_telegraph",
+    "cls_telegraph": "cls_telegraph",
+    "cailianpress": "cls_telegraph",
+    "cailianpress-telegraph": "cls_telegraph",
+    "sina-7x24": "sina_7x24",
+    "sina_7x24": "sina_7x24",
+    "sina": "sina_7x24",
+    "wallstcn": "wallstcn_lives",
+    "wallstcn-lives": "wallstcn_lives",
+    "wallstcn_lives": "wallstcn_lives",
+    "wallstreetcn": "wallstcn_lives",
 }
 
 PROVIDER_REGISTRY = {
@@ -159,6 +174,42 @@ PROVIDER_REGISTRY = {
         supported_parameters=("keyword", "start_date", "end_date", "limit", "symbols"),
         status="implemented_mvp",
         notes="Metadata + authorized summaries only; never stores unauthorized full text (content_html/raw_text left empty).",
+    ),
+    "cls_telegraph": AiCorpusProviderSpec(
+        name="cls_telegraph",
+        canonical_name="cls_telegraph",
+        corpus_types=("market_flash",),
+        source="财联社电报",
+        base_url="https://www.cls.cn/api/cache",
+        parser_version=CLS_TELEGRAPH_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/cn_finance_flash",
+        supported_parameters=("start_date", "end_date", "limit"),
+        status="implemented_mvp",
+        notes="Public CLS telegraph cache endpoint (no API key). Returns latest ~20 rows per call; endpoint ignores paging params.",
+    ),
+    "sina_7x24": AiCorpusProviderSpec(
+        name="sina_7x24",
+        canonical_name="sina_7x24",
+        corpus_types=("market_flash",),
+        source="新浪财经 7x24 全球实时快讯",
+        base_url="https://zhibo.sina.com.cn/api/zhibo/feed",
+        parser_version=SINA_7X24_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/cn_finance_flash",
+        supported_parameters=("start_date", "end_date", "limit"),
+        status="implemented_mvp",
+        notes="Public Sina 7x24 feed API. Supports true pagination via page/page_size (max 100/page); limit controls total rows fetched.",
+    ),
+    "wallstcn_lives": AiCorpusProviderSpec(
+        name="wallstcn_lives",
+        canonical_name="wallstcn_lives",
+        corpus_types=("market_flash",),
+        source="华尔街见闻实时快讯",
+        base_url="https://api-one.wallstcn.com/apiv1/content/lives",
+        parser_version=WALLSTCN_LIVES_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/cn_finance_flash",
+        supported_parameters=("start_date", "end_date", "limit"),
+        status="implemented_mvp",
+        notes="Public WallstreetCN lives API (channel=global-channel). Returns up to limit rows per call.",
     ),
 }
 

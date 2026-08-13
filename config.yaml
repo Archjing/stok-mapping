@@ -39,6 +39,15 @@ quant:
       raw_archive_dir: "data/raw_data/ai_corpus/semi_supply_chain"
       # 转载页 URL 由每月定时检索填入 (官方源 Cloudflare/DNS 不可达)
       source_urls: []
+    cls_telegraph:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/cn_finance_flash"
+    sina_7x24:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/cn_finance_flash"
+    wallstcn_lives:
+      enabled: true
+      raw_archive_dir: "data/raw_data/ai_corpus/cn_finance_flash"
   benchmark_symbol: "SH.000300"
   years: 7
   symbols:

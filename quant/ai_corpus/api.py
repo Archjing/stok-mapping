@@ -210,6 +210,45 @@ def fetch_ai_corpus(
             raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
             timeout=timeout,
         )
+    if canonical == "cls_telegraph":
+        from quant.ai_corpus.providers.cn_finance_flash import fetch_cls_telegraph
+
+        return fetch_cls_telegraph(
+            root=root,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+        )
+    if canonical == "sina_7x24":
+        from quant.ai_corpus.providers.cn_finance_flash import fetch_sina_7x24
+
+        return fetch_sina_7x24(
+            root=root,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+        )
+    if canonical == "wallstcn_lives":
+        from quant.ai_corpus.providers.cn_finance_flash import fetch_wallstcn_lives
+
+        return fetch_wallstcn_lives(
+            root=root,
+            start_date=start_date,
+            end_date=end_date,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+        )
     if database_path:
         rows = query_ai_corpus_documents(
             Path(database_path),
