@@ -234,6 +234,17 @@ def register_ai_corpus_commands(subparsers: argparse._SubParsersAction) -> None:
     export_parser.add_argument("--database-path", default=None, help="Override local AI corpus SQLite path")
     export_parser.add_argument("--output-csv", required=True, help="CSV output path")
 
+    event_parser = ai_sub.add_parser("event-study", help="Run an event study over corpus documents")
+    event_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    event_parser.add_argument("--provider", default=None, help="Provider filter (e.g. cninfo / gov_policy)")
+    event_parser.add_argument("--event-type", default=None, help="Event type filter (e.g. abnormal_trading)")
+    event_parser.add_argument("--start-date", default=None, help="Published start date")
+    event_parser.add_argument("--end-date", default=None, help="Published end date")
+    event_parser.add_argument("--benchmark", default="SH.000300", help="Market-model benchmark symbol")
+    event_parser.add_argument("--database-path", default=None, help="Override local AI corpus SQLite path")
+    event_parser.add_argument("--market-db", default=None, help="Override market history SQLite path")
+    event_parser.add_argument("--output-dir", default=None, help="Output directory for report + CSV")
+
 
 def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.ArgumentParser, console: Any | None = None) -> int:
     ai_console = console or Console()
@@ -411,5 +422,34 @@ def handle_ai_corpus_command(args: argparse.Namespace, *, parser: argparse.Argum
         ai_console.print(f"Exported rows: {len(rows)}")
         ai_console.print(f"CSV: {output}")
         return 0
-    parser.error("ai-corpus requires a subcommand: registry, probe, fetch, query, or export")
+    if args.ai_corpus_cmd == "event-study":
+        from quant.research.event_study.report import run_event_study
+
+        db_path = _default_db_path(root, cfg, args.database_path)
+        market_db = Path(args.market_db) if args.market_db else (root / "data/a_share_history.sqlite")
+        market_db = market_db if market_db.is_absolute() else root / market_db
+        output_dir = Path(args.output_dir) if args.output_dir else None
+        if output_dir and not output_dir.is_absolute():
+            output_dir = root / output_dir
+        try:
+            result = run_event_study(
+                corpus_db=db_path,
+                market_db=market_db,
+                provider=canonical_provider_name(args.provider) if args.provider else None,
+                event_type=args.event_type,
+                start_date=args.start_date,
+                end_date=args.end_date,
+                benchmark=args.benchmark,
+                output_dir=output_dir,
+            )
+        except ValueError as exc:
+            ai_console.print(f"[yellow]Event study failed: {exc}[/yellow]")
+            return 2
+        ai_console.print("[bold]Event study complete[/bold]")
+        ai_console.print(f"Events: {result.n_events}")
+        ai_console.print(f"Linked: {result.n_linked}")
+        ai_console.print(f"Report: {result.report_md_path}")
+        ai_console.print(f"Detail CSV: {result.detail_csv_path}")
+        return 0
+    parser.error("ai-corpus requires a subcommand: registry, probe, fetch, query, export, or event-study")
     return 2
