@@ -40,6 +40,13 @@ POLICY_ENTITY_KEYWORDS = [
     "SLF", "公开市场",
 ]
 
+# 排除词：其他国家的央行/货币当局，避免误召回
+NON_CN_US_ENTITY_KEYWORDS = [
+    "挪威", "乌干达", "越南", "乌克兰", "欧洲央行", "欧央行", "日本央行",
+    "英国央行", "澳洲联储", "韩国央行", "印度央行", "瑞士央行", "加拿大央行",
+    "俄罗斯央行", "巴西央行", "墨西哥央行",
+]
+
 
 @dataclass(frozen=True)
 class PolicyEventCandidate:
@@ -63,11 +70,14 @@ class PolicyEvent:
 
 
 def rule_prefilter(df: pd.DataFrame, text_col: str = "title") -> pd.DataFrame:
-    """Stage 1: keep rows whose title/body hits any policy keyword."""
+    """Stage 1: keep rows whose title/body hits any policy keyword (召回).
+
+    Excludes foreign (non CN/US) central banks to avoid mis-recall.
+    """
     if df.empty:
         return pd.DataFrame()
     text = df[text_col].astype(str)
-    mask = text.apply(_hits_any_keyword)
+    mask = text.apply(_hits_any_keyword) & ~text.apply(_is_non_cn_us)
     return df[mask].copy()
 
 
@@ -77,6 +87,11 @@ def _hits_any_keyword(text: str) -> bool:
         + US_TIGHT_KEYWORDS + POLICY_ENTITY_KEYWORDS
     )
     return any(k in text for k in all_kw)
+
+
+def _is_non_cn_us(text: str) -> bool:
+    """True if the text is about a foreign (non CN/US) central bank."""
+    return any(k in text for k in NON_CN_US_ENTITY_KEYWORDS)
 
 
 def rule_direction(title: str) -> tuple[str, str, str]:
@@ -96,6 +111,11 @@ def rule_direction(title: str) -> tuple[str, str, str]:
         return "CN", "tight", _cn_tight_type(title)
     if any(k in title for k in CN_LOOSE_KEYWORDS):
         return "CN", "loose", _cn_loose_type(title)
+    # 央行开展逆回购 = 投放流动性 = 宽松；逆回购到期/回笼 = 收紧
+    if "逆回购" in title and ("开展" in title or "投放" in title or "操作" in title) and "到期" not in title:
+        return "CN", "loose", "逆回购投放"
+    if "逆回购" in title and ("到期" in title or "回笼" in title):
+        return "CN", "tight", "逆回购回笼"
     return "CN", "neutral", "政策"
 
 

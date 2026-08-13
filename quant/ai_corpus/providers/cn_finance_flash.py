@@ -245,7 +245,8 @@ def _sina_document_from_item(item: dict[str, Any], *, ingested_at: str, raw_path
     title = raw_text[:80] if raw_text else ""
     published_at = _parse_cn_time(item.get("create_time"))
     source_id = safe_text(item.get("id"))
-    url = ""
+    # 新浪快讯无独立详情页；用 source_id 拼一个稳定 URL 满足 schema 必填约束。
+    url = f"https://zhibo.sina.com.cn/api/zhibo/feed/{source_id}" if source_id else ""
     tags = item.get("tag") or []
     topics = [safe_text(tag.get("name")) for tag in tags if isinstance(tag, dict)]
     symbols = _sina_symbols_from_ext(item.get("ext"))
