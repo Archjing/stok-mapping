@@ -180,6 +180,36 @@ def fetch_ai_corpus(
             include_content=include_content,
             source_urls=source_urls,
         )
+    if canonical == "pboc":
+        from quant.ai_corpus.providers.pboc import fetch_pboc_reports
+
+        return fetch_pboc_reports(
+            root=root,
+            start_date=start_date,
+            end_date=end_date,
+            keyword=keyword,
+            fields=fields,
+            limit=limit,
+            include_content=include_content,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+        )
+    if canonical == "research_report":
+        from quant.ai_corpus.providers.research_report import fetch_research_reports
+
+        return fetch_research_reports(
+            root=root,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            symbols=symbols,
+            fields=fields,
+            limit=limit,
+            fixture_dir=fixture_dir,
+            raw_archive_dir=raw_archive_dir or spec.raw_archive_dir,
+            timeout=timeout,
+        )
     if database_path:
         rows = query_ai_corpus_documents(
             Path(database_path),

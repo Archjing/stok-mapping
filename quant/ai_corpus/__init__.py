@@ -21,6 +21,7 @@ from quant.ai_corpus.providers.gov_policy import (
     parse_gov_policy_topic_reference,
     probe_gov_policy_source,
 )
+from quant.ai_corpus.providers.pboc import fetch_pboc_reports, parse_pboc_report_page
 from quant.ai_corpus.providers.us_market_news import fetch_us_market_news
 from quant.ai_corpus.registry import (
     PROVIDER_REGISTRY,

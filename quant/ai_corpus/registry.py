@@ -7,7 +7,10 @@ CCTV_NEWS_PARSER_VERSION = "cctv_news_v1"
 CNINFO_PARSER_VERSION = "cninfo_announcement_v1"
 US_MARKET_NEWS_PARSER_VERSION = "us_market_news_rss_v1"
 SIA_SALES_PARSER_VERSION = "sia_sales_html_v1"
+PBOC_PARSER_VERSION = "pboc_report_v1"
+RESEARCH_REPORT_PARSER_VERSION = "research_report_metadata_v1"
 SIA_NEWS_LISTING = "https://www.semiconductors.org/news-events/latest-news/"
+PBOC_LIST_URL = "https://www.pbc.gov.cn/zhengcehuobisi/125207/125227/125957/index.html"
 SEMI_SUPPLY_CHAIN_PARSER_VERSION = "semi_supply_chain_reprint_v1"
 
 PROVIDER_ALIASES = {
@@ -39,6 +42,14 @@ PROVIDER_ALIASES = {
     "tsmc-revenue": "semi_supply_chain",
     "korea-exports": "semi_supply_chain",
     "tsmc": "semi_supply_chain",
+    "pboc": "pboc",
+    "pboc-report": "pboc",
+    "pboc_report": "pboc",
+    "monetary-policy": "pboc",
+    "research-report": "research_report",
+    "research_report": "research_report",
+    "broker-report": "research_report",
+    "broker_report": "research_report",
 }
 
 PROVIDER_REGISTRY = {
@@ -124,6 +135,30 @@ PROVIDER_REGISTRY = {
         supported_parameters=("keyword", "start_date", "end_date", "limit", "source_urls"),
         status="implemented_mvp",
         notes="Official TSMC/Korea sites are unreachable (Cloudflare/DNS); parses regular media reprints, tagged media_reprint_of_official_disclosure.",
+    ),
+    "pboc": AiCorpusProviderSpec(
+        name="pboc",
+        canonical_name="pboc",
+        corpus_types=("pboc_report",),
+        source="中国人民银行货币政策司",
+        base_url=PBOC_LIST_URL,
+        parser_version=PBOC_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/pboc",
+        supported_parameters=("start_date", "end_date", "keyword", "limit", "include_content"),
+        status="implemented_mvp",
+        notes="PBOC monetary-policy implementation reports; list + detail-page text extraction, optional PDF text via pymupdf.",
+    ),
+    "research_report": AiCorpusProviderSpec(
+        name="research_report",
+        canonical_name="research_report",
+        corpus_types=("research_report",),
+        source="券商研报元数据（巨潮/AkShare 公开入口）",
+        base_url="https://www.cninfo.com.cn/",
+        parser_version=RESEARCH_REPORT_PARSER_VERSION,
+        raw_archive_dir="data/raw_data/ai_corpus/research_report",
+        supported_parameters=("keyword", "start_date", "end_date", "limit", "symbols"),
+        status="implemented_mvp",
+        notes="Metadata + authorized summaries only; never stores unauthorized full text (content_html/raw_text left empty).",
     ),
 }
 
