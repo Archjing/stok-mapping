@@ -649,3 +649,22 @@ def test_maintenance_resume_spawns_quant_cli_and_keeps_db_row_untouched(tmp_path
     # launched command is normalized.
     assert json.loads(row[0]) == legacy_command
     assert result.status == "resumed"
+
+
+def test_cn_finance_flash_schedulers_are_registered(tmp_path: Path) -> None:
+    specs = _default_registry(Path("config.yaml"))
+    by_name = {item.name: item for item in specs}
+
+    intraday = by_name["cn_finance_flash"]
+    assert intraday.schedule_type == "intraday"
+    assert intraday.market_calendar == "cn"
+    assert "--provider" in intraday.command
+    assert intraday.command[intraday.command.index("--provider") + 1] == "cls-telegraph"
+    assert "data/ai_corpus/ai_corpus.sqlite" in intraday.command
+
+    daily = by_name["cn_finance_flash_daily"]
+    assert daily.schedule_type == "time"
+    assert daily.schedule_value == "17:20"
+    assert daily.market_calendar == "all"
+    assert daily.command[daily.command.index("--provider") + 1] == "sina-7x24"
+    assert "data/ai_corpus/ai_corpus.sqlite" in daily.command
