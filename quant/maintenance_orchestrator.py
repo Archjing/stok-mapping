@@ -706,6 +706,42 @@ def _decision_kwargs(
     }
 
 
+def _market_calendar_check(
+    *,
+    database_path: Path,
+    daily_table: str,
+    scope: str,
+    day: date,
+) -> tuple[bool, str]:
+    """Check whether ``day`` is a trading day for the ``us`` / ``hk`` market.
+
+    Derives trading days from the local market database (a date has a record
+    for the anchor symbol => it was an actual trading session).  Falls back to
+    weekday logic when the database is missing/unreadable or the date is not
+    covered yet, so an unknown date is never treated as closed by mistake.
+    """
+    from quant.data_governance.market_calendar import is_market_trading_day
+
+    fallback = f"{scope}_calendar_unavailable_fallback_weekday(scope={scope}, weekday={day.isoweekday()})"
+    if not database_path.is_file():
+        return day.isoweekday() <= 5, fallback + "(reason=db_missing)"
+    table = str(daily_table).strip()
+    if not table.replace("_", "").isalnum():
+        return day.isoweekday() <= 5, fallback + "(reason=invalid_table)"
+    try:
+        open_day = is_market_trading_day(
+            database_path=database_path,
+            daily_table=table,
+            market=scope,
+            day=day,
+        )
+    except (sqlite3.Error, ValueError):
+        return day.isoweekday() <= 5, fallback + f"(reason={type(Exception).__name__})"
+    if open_day:
+        return True, f"{scope}_market_calendar(is_open=1)"
+    return False, f"{scope}_market_calendar(is_open=0)"
+
+
 def _trading_day_decision(*, root: Path, config_path: Path, spec: MaintenanceTaskSpec, now: datetime) -> tuple[bool, str]:
     scope = spec.market_calendar.strip().lower() or "weekday"
     weekday = now.isoweekday()
@@ -714,9 +750,21 @@ def _trading_day_decision(*, root: Path, config_path: Path, spec: MaintenanceTas
     if scope in {"", "weekday"}:
         return weekday in {1, 2, 3, 4, 5}, f"weekday_calendar(weekday={weekday})"
     if scope in {"hk", "us"}:
-        if weekday not in {1, 2, 3, 4, 5}:
-            return False, f"market_calendar_weekday_fallback(scope={scope}, weekday={weekday})"
-        return True, f"market_calendar_weekday_fallback(scope={scope})"
+        # 用本地行情库推导真实交易日（排除交易所假日，而不仅是周末）。
+        # 有行情记录 → 交易日；无记录但为周末 → 闭市；无记录且为工作日
+        # （库未覆盖）→ 回退工作日判断，避免把未知日期误判为闭市。
+        cfg = load_config(config_path) if config_path.exists() else {}
+        market_key = "us_market_history" if scope == "us" else "hk_market_history"
+        market_cfg = cfg.get(market_key, {}) if isinstance(cfg, dict) else {}
+        db_path = _resolve_path(root, str(market_cfg.get("path", f"data/{'us' if scope == 'us' else 'hk'}_market_history.sqlite")))
+        daily_table = str(market_cfg.get("daily_table", f"{'us' if scope == 'us' else 'hk'}_daily_bars"))
+        is_open, reason = _market_calendar_check(
+            database_path=db_path,
+            daily_table=daily_table,
+            scope=scope,
+            day=now.date(),
+        )
+        return is_open, reason
     if scope != "cn":
         return weekday in {1, 2, 3, 4, 5}, f"unknown_calendar_fallback_weekday(scope={scope}, weekday={weekday})"
 
