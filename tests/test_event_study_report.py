@@ -19,7 +19,7 @@ def _build_market_db(path: Path) -> None:
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE market_indices (symbol TEXT, name TEXT, category TEXT)")
         conn.execute("CREATE TABLE market_index_bars (symbol TEXT, date TEXT, close REAL)")
-        conn.execute("CREATE TABLE market_daily_bars (symbol TEXT, date TEXT, adjusted_close REAL)")
+        conn.execute("CREATE TABLE market_daily_bars (symbol TEXT, date TEXT, adjusted_close REAL, adjust_type TEXT)")
         conn.execute("CREATE TABLE trading_calendar (exchange TEXT, date TEXT, is_open INTEGER)")
         conn.executemany(
             "INSERT INTO market_indices VALUES (?, ?, ?)",
@@ -40,8 +40,8 @@ def _build_market_db(path: Path) -> None:
                 r = rng.normal(0.0005, 0.02) + 1.2 * market.iloc[i] + shock
                 price *= 1 + r
                 conn.execute(
-                    "INSERT INTO market_daily_bars VALUES (?, ?, ?)",
-                    (sym, d, float(price)),
+                    "INSERT INTO market_daily_bars VALUES (?, ?, ?, ?)",
+                    (sym, d, float(price), "qfq"),
                 )
         conn.executemany(
             "INSERT INTO trading_calendar VALUES ('SSE', ?, 1)",
@@ -55,15 +55,15 @@ def _build_corpus_db(path: Path) -> None:
         conn.execute(
             """CREATE TABLE ai_corpus_documents (
                 document_id TEXT, provider TEXT, event_type TEXT, published_at TEXT,
-                title TEXT, raw_text TEXT, symbols TEXT)"""
+                title TEXT, raw_text TEXT, symbols TEXT, topics TEXT)"""
         )
         conn.execute(
             "INSERT INTO ai_corpus_documents VALUES ('d1', 'cninfo', 'abnormal_trading', "
-            "'2023-06-01 20:00:00', '异常波动公告', '', '601096')"
+            "'2023-06-01 20:00:00', '异常波动公告', '', '601096', '')"
         )
         conn.execute(
             "INSERT INTO ai_corpus_documents VALUES ('d2', 'cninfo', 'abnormal_trading', "
-            "'2023-06-01 20:00:00', '异常波动公告2', '', '000062')"
+            "'2023-06-01 20:00:00', '异常波动公告2', '', '000062', '')"
         )
         conn.commit()
 
@@ -96,7 +96,7 @@ def test_run_event_study_produces_report(tmp_path: Path) -> None:
 def test_run_event_study_empty_docs_raises(tmp_path: Path) -> None:
     corpus_db = tmp_path / "empty_corpus.sqlite"
     with sqlite3.connect(corpus_db) as conn:
-        conn.execute("CREATE TABLE ai_corpus_documents (document_id TEXT, provider TEXT, event_type TEXT, published_at TEXT, title TEXT, raw_text TEXT, symbols TEXT)")
+        conn.execute("CREATE TABLE ai_corpus_documents (document_id TEXT, provider TEXT, event_type TEXT, published_at TEXT, title TEXT, raw_text TEXT, symbols TEXT, topics TEXT)")
     market_db = tmp_path / "market.sqlite"
     _build_market_db(market_db)
     with pytest.raises(ValueError):

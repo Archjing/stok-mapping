@@ -36,7 +36,12 @@ class EventStudyResult:
     summary: pd.DataFrame
 
 
-def _load_docs(corpus_db: Path, provider: str | None, event_type: str | None) -> pd.DataFrame:
+def _load_docs(
+    corpus_db: Path,
+    provider: str | None,
+    event_type: str | None,
+    direction: str | None = None,
+) -> pd.DataFrame:
     if not corpus_db.is_file():
         return pd.DataFrame()
     clauses: list[str] = []
@@ -47,9 +52,13 @@ def _load_docs(corpus_db: Path, provider: str | None, event_type: str | None) ->
     if event_type:
         clauses.append("event_type = ?")
         params.append(event_type)
+    if direction:
+        # direction is stored as a derived `direction=...` tag in the topics column
+        clauses.append("topics LIKE ?")
+        params.append(f"%direction={direction}%")
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     sql = f"""
-        SELECT document_id, provider, event_type, published_at, title, raw_text, symbols
+        SELECT document_id, provider, event_type, published_at, title, raw_text, symbols, topics
         FROM ai_corpus_documents
         {where}
         ORDER BY published_at
@@ -130,6 +139,7 @@ def run_event_study(
     market_db: str | Path,
     provider: str | None = None,
     event_type: str | None = None,
+    direction: str | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     benchmark: str = BENCHMARK_SYMBOL,
@@ -137,11 +147,15 @@ def run_event_study(
     output_dir: Path | None = None,
     embedding_model=None,
 ) -> EventStudyResult:
-    """Run a full event study over corpus documents and write report + CSV."""
+    """Run a full event study over corpus documents and write report + CSV.
+
+    ``direction`` optionally filters by the derived ``direction=...`` tag in the
+    ``topics`` column (e.g. ``预增`` / ``预减`` / ``扭亏``).
+    """
     windows = windows or DEFAULT_WINDOWS
     corpus_path = Path(corpus_db)
     market_path = Path(market_db)
-    docs = _load_docs(corpus_path, provider, event_type)
+    docs = _load_docs(corpus_path, provider, event_type, direction)
     if start_date:
         docs = docs[docs["published_at"].astype(str) >= start_date]
     if end_date:
