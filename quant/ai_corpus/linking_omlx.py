@@ -21,7 +21,7 @@ from typing import Any
 import requests
 
 DEFAULT_BASE_URL = os.environ.get("OMLX_BASE_URL", "http://172.16.10.254:8000")
-DEFAULT_MODEL = os.environ.get("OMLX_EMBEDDING_MODEL", "ng3owb/finance_embedding_8k")
+DEFAULT_MODEL = os.environ.get("OMLX_EMBEDDING_MODEL", "mlx-community/bge-m3-mlx-fp16")
 
 
 class OmlxEmbeddingLinker:

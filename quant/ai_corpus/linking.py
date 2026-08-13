@@ -113,20 +113,32 @@ def link_policy_events(
     *,
     model=None,
     top_k: int = 3,
+    min_score: float = 0.65,
 ) -> pd.DataFrame:
     """Link policy documents to industry indices (embedding or keyword fallback).
 
     When ``model`` is None (no local embedding model), falls back to keyword
     overlap.  When ``model`` is provided, it must expose ``encode(list[str])``
     returning a matrix of vectors.
+
+    ``min_score`` drops weak matches: cross-industry thematic policies (e.g.
+    "美丽中国", "体育强国") have no strong semantic affinity to any single
+    industry index and their cosine similarity clusters in a fuzzy 0.55-0.60
+    band; forcing a top-k mapping injects noise into the event study.  Only
+    policies with similarity >= ``min_score`` to an index are linked.
     """
     if docs.empty or indices.empty:
         return pd.DataFrame(columns=["document_id", "provider", "published_at", "title", "symbol", "score"])
 
     rows: list[dict[str, Any]] = []
     for _, doc in docs.iterrows():
-        text = f"{doc.get('title', '')} {doc.get('raw_text', '')}".strip()
-        if not text:
+        # Policy theme is captured by the title; the full raw_text (often 5k+ chars
+        # of policy prose) dilutes the title's semantic signal and drags cosine
+        # similarity into a flat band.  Use title + a short leading excerpt only.
+        title = str(doc.get("title", "") or "").strip()
+        excerpt = str(doc.get("raw_text", "") or "").strip()[:200]
+        text = f"{title} {excerpt}".strip()
+        if not title:
             continue
         names = indices["name"].astype(str).tolist()
         symbols = indices["symbol"].astype(str).tolist()
@@ -140,7 +152,11 @@ def link_policy_events(
                 doc_norm = np.linalg.norm(doc_vec)
                 sims = (name_vecs @ doc_vec) / (norms * doc_norm + 1e-12)
                 order = np.argsort(-sims)[:top_k]
-                best = [(symbols[i], float(sims[i])) for i in order if float(sims[i]) > 0]
+                best = [
+                    (symbols[i], float(sims[i]))
+                    for i in order
+                    if float(sims[i]) >= min_score
+                ]
             except Exception:
                 best = []
         else:
