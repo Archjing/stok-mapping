@@ -14,6 +14,8 @@ import pandas as pd
 
 from quant.data_governance.external_market_history import configured_us_market_groups
 from quant.data_governance.us_market_features import load_common_market_daily_features, load_completed_market_snapshot
+from quant.reporting.market_comparison_chart import build_comparison_chart_data, render_comparison_chart_fragment
+from quant.strategies.presentation import AccountMappingChart
 
 
 SEMICONDUCTOR_TIMING_STRATEGY_ID = "cross_market_semiconductor_timing_etf_v1"
@@ -27,26 +29,6 @@ def supports_semiconductor_timing_watchlist(account: Any) -> bool:
         str(getattr(account, "strategy_id", "")) == SEMICONDUCTOR_TIMING_STRATEGY_ID
         and str(getattr(account, "execution_model", "")) == SEMICONDUCTOR_TIMING_EXECUTION_MODEL
     )
-
-
-# Per-target signal thresholds displayed on the watchlist.  Kept in sync with
-# quant/strategies/cross_market_semiconductor_timing.py PER_TARGET_DEFAULTS.
-# - SH.512480: VIX<19 + trailing stop (validated v1.2.0).
-# - SH.588200 (科创芯片): VIX<20 + pure T+1 scheduled_close (2026-08 5-min backtest).
-_WATCHLIST_PER_TARGET: dict[str, dict[str, Any]] = {
-    "SH.512480": {"sox_pct": 0.5, "vix": 19},
-    "SH.512760": {"sox_pct": 0.5, "vix": 19},
-    "SH.588200": {"sox_pct": 0.5, "vix": 20},
-}
-
-
-def _watchlist_thresholds(account: Any) -> tuple[float, float]:
-    """Return (sox_threshold_pct, vix_threshold) for the account's target ETF."""
-    target = str((getattr(account, "strategy_params", {}) or {}).get("target_symbol", ""))
-    if target in _WATCHLIST_PER_TARGET:
-        item = _WATCHLIST_PER_TARGET[target]
-        return float(item["sox_pct"]), float(item["vix"])
-    return 0.5, 19.0
 
 
 def _resolve_path(root: Path, value: str, default: str) -> Path:
@@ -216,7 +198,45 @@ def _news_rows_html(news: list[dict[str, str]]) -> str:
     return "\n".join(rows)
 
 
-def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], account: Any, target_dir: Path) -> None:
+def _signal_rule_html(mapping_charts: list[AccountMappingChart]) -> str:
+    sox_chart = next(
+        (item.chart for item in mapping_charts if item.chart.source.symbol == SOX_SYMBOL),
+        None,
+    )
+    vix_chart = next(
+        (item.chart for item in mapping_charts if item.chart.source.symbol == VIX_SYMBOL),
+        None,
+    )
+    parts: list[str] = []
+    if sox_chart is not None and sox_chart.daily_mapping_pct is not None:
+        parts.append(f"SOX &gt; {sox_chart.daily_mapping_pct:.1f}%")
+    if vix_chart is not None and vix_chart.absolute_threshold is not None:
+        operators = {"lt": "&lt;", "lte": "&le;", "gt": "&gt;", "gte": "&ge;"}
+        operator = operators.get(str(vix_chart.absolute_threshold_operator), "")
+        parts.append(f"VIX {operator} {vix_chart.absolute_threshold:g}")
+    return " 且 ".join(parts) if parts else "策略未声明可展示的执行阈值"
+
+
+def _mapping_charts_html(*, root: Path, mapping_charts: list[AccountMappingChart]) -> str:
+    sections: list[str] = []
+    for index, item in enumerate(mapping_charts, start=1):
+        chart_data = build_comparison_chart_data(root=root, config=item.chart)
+        instance_id = f"premarket-mapping-{index}-{item.chart.slug}"
+        fragment = render_comparison_chart_fragment(data=chart_data, instance_id=instance_id)
+        sections.append(
+            f'<section class="bill-section mapping-chart-panel"><h2>{html.escape(item.chart.title)}</h2>{fragment}</section>'
+        )
+    return "\n".join(sections)
+
+
+def write_semiconductor_timing_watchlist(
+    *,
+    root: Path,
+    config: dict[str, Any],
+    account: Any,
+    target_dir: Path,
+    mapping_charts: list[AccountMappingChart] | None = None,
+) -> None:
     """Write the account-specific market/news observation page for a supported account."""
     if not supports_semiconductor_timing_watchlist(account):
         raise ValueError("account does not use the semiconductor timing execution model")
@@ -224,7 +244,9 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
     research_context, research_context_error = _load_research_market_context(root, config)
     news, latest_ingested_at, news_error = _load_us_market_news(root, config)
     account_name = str(getattr(account, "name", "半导体ETF美股情绪映射择时_v1"))
-    sox_pct, vix_th = _watchlist_thresholds(account)
+    mapping_charts = list(mapping_charts or [])
+    signal_rule_html = _signal_rule_html(mapping_charts)
+    mapping_charts_html = _mapping_charts_html(root=root, mapping_charts=mapping_charts)
     title = f"{account_name}｜盘前观察池"
     if snapshot:
         market_html = f"""
@@ -249,6 +271,24 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(title)}</title>
   <link rel="stylesheet" href="style.css">
+  <style>
+    .mapping-chart-panel .market-comparison-root {{
+      --foreground: var(--text);
+      --muted-foreground: var(--text-muted);
+      --viz-series-1: var(--accent);
+      --viz-series-2: var(--focus-strong);
+      --red: var(--red-text);
+      --green: #4e8b57;
+      --background: var(--bg);
+      --popover: var(--bg-card);
+      --popover-foreground: var(--text);
+      --font-size-base: 12px;
+    }}
+    @media (max-width: 680px) {{
+      .mapping-chart-panel .market-comparison-legend {{ font-size: 11px; }}
+      .mapping-chart-panel .market-comparison-tooltip {{ max-width: calc(100vw - 32px); white-space: normal; }}
+    }}
+  </style>
 </head>
 <body>
 <div class="theme-bar">
@@ -260,8 +300,9 @@ def write_semiconductor_timing_watchlist(*, root: Path, config: dict[str, Any], 
   <section class="bill-section">
     <h2>SOX / VIX 已完成交易日行情</h2>
     {market_html}
-    <p>当前执行信号：SOX &gt; {sox_pct:.1f}% 且 VIX &lt; {vix_th:.0f}；SOX &gt; 1.0% 为强信号。</p>
+    <p>当前执行信号：{signal_rule_html}。</p>
   </section>
+  {mapping_charts_html}
   <section class="bill-section">
     <h2>研究市场背景</h2>
     <p><strong>仅供研究观察，不参与当前自动交易信号。</strong>{html.escape((' ' + research_context_error) if research_context_error else '')}</p>

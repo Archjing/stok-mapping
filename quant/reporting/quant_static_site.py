@@ -985,12 +985,27 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
             }
         )
         accounts_meta.append(meta)
+        mapping_chart_links: list[dict[str, str]] = []
+        mapping_chart_paths: list[str] = []
+        mapping_charts = []
+        strategy_id = str(getattr(account, "strategy_id", "") or "")
+        if strategy_id:
+            try:
+                strategy = get_strategy(strategy_id)
+            except KeyError:
+                strategy = None
+            if strategy is not None:
+                mapping_charts = strategy.account_mapping_charts(
+                    global_strategy_cfg,
+                    dict(getattr(account, "strategy_params", {}) or {}),
+                )
         if supports_semiconductor_timing_watchlist(account):
             write_semiconductor_timing_watchlist(
                 root=root,
                 config=config,
                 account=account,
                 target_dir=account_dir / "latest" / "watchlist",
+                mapping_charts=mapping_charts,
             )
         else:
             _copy_bundle(
@@ -1015,37 +1030,24 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
             frames=frames,
             today=today,
         )
-        mapping_chart_links: list[dict[str, str]] = []
-        mapping_chart_paths: list[str] = []
-        strategy_id = str(getattr(account, "strategy_id", "") or "")
-        if strategy_id:
-            try:
-                strategy = get_strategy(strategy_id)
-            except KeyError:
-                strategy = None
-            if strategy is not None:
-                charts = strategy.account_mapping_charts(
-                    global_strategy_cfg,
-                    dict(getattr(account, "strategy_params", {}) or {}),
-                )
-                for item in charts:
-                    relative_path = f"research/{item.chart.slug}/index.html"
-                    _write_market_comparison_research_page(
-                        site_root=account_dir,
-                        root=root,
-                        config=item.chart,
-                        research_path=relative_path,
-                        back_href="../../index.html",
-                        stylesheet_href="../../../../assets/style.css",
-                    )
-                    mapping_chart_links.append(
-                        {
-                            "href": relative_path,
-                            "kicker": item.button_kicker,
-                            "label": item.button_label,
-                        }
-                    )
-                    mapping_chart_paths.append(f"accounts/{account_slug}/{relative_path}")
+        for item in mapping_charts:
+            relative_path = f"research/{item.chart.slug}/index.html"
+            _write_market_comparison_research_page(
+                site_root=account_dir,
+                root=root,
+                config=item.chart,
+                research_path=relative_path,
+                back_href="../../index.html",
+                stylesheet_href="../../../../assets/style.css",
+            )
+            mapping_chart_links.append(
+                {
+                    "href": relative_path,
+                    "kicker": item.button_kicker,
+                    "label": item.button_label,
+                }
+            )
+            mapping_chart_paths.append(f"accounts/{account_slug}/{relative_path}")
         if mapping_chart_paths:
             meta["mapping_chart_paths"] = mapping_chart_paths
         (account_dir / "index.html").write_text(

@@ -117,14 +117,25 @@ def _write_sox_512480_history(root: Path) -> None:
     etf_db = root / "data" / "etf_history.sqlite"
     us_db.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(us_db) as conn:
-        conn.execute("CREATE TABLE us_daily_bars (symbol TEXT, date TEXT, close REAL)")
+        conn.execute(
+            """
+            CREATE TABLE us_daily_bars (
+                market TEXT, symbol TEXT, date TEXT, open REAL, high REAL, low REAL,
+                close REAL, adjusted_close REAL, volume REAL, source TEXT, fetched_at TEXT
+            )
+            """
+        )
         conn.executemany(
-            "INSERT INTO us_daily_bars (symbol, date, close) VALUES (?, ?, ?)",
+            """
+            INSERT INTO us_daily_bars
+            (market, symbol, date, open, high, low, close, adjusted_close, volume, source, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
             [
-                ("^SOX", "2025-11-03", 7270.9702),
-                ("^SOX", "2026-08-11", 12098.4697),
-                ("^VIX", "2025-11-03", 18.0),
-                ("^VIX", "2026-08-11", 16.0),
+                ("US", "^SOX", "2025-11-03", 7270.9702, 7270.9702, 7270.9702, 7270.9702, 7270.9702, 0, "test", "2026-08-11"),
+                ("US", "^SOX", "2026-08-11", 12098.4697, 12098.4697, 12098.4697, 12098.4697, 12098.4697, 0, "test", "2026-08-12"),
+                ("US", "^VIX", "2025-11-03", 18.0, 18.0, 18.0, 18.0, 18.0, 0, "test", "2026-08-11"),
+                ("US", "^VIX", "2026-08-11", 16.0, 16.0, 16.0, 16.0, 16.0, 0, "test", "2026-08-12"),
             ],
         )
     with sqlite3.connect(etf_db) as conn:
@@ -158,6 +169,43 @@ def _write_sox_512480_history(root: Path) -> None:
                 ("SH.512480", "2026-08-11", 1.0, "test", "2026-08-11"),
                 ("SH.588200", "2025-11-03", 1.0, "test", "2026-08-11"),
                 ("SH.588200", "2026-08-11", 1.0, "test", "2026-08-11"),
+            ],
+        )
+
+
+def _write_watchlist_etf_history(root: Path) -> None:
+    etf_db = root / "data" / "etf_history.sqlite"
+    etf_db.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(etf_db) as conn:
+        conn.execute(
+            """
+            CREATE TABLE market_etf_daily_bars (
+                symbol TEXT, date TEXT, open REAL, high REAL, low REAL, close REAL,
+                pre_close REAL, change_amount REAL, change_pct REAL, volume REAL,
+                amount REAL, source TEXT, fetched_at TEXT
+            )
+            """
+        )
+        conn.execute(
+            "CREATE TABLE market_etf_adj_factors "
+            "(symbol TEXT, date TEXT, adj_factor REAL, source TEXT, fetched_at TEXT)"
+        )
+        conn.executemany(
+            """
+            INSERT INTO market_etf_daily_bars
+            (symbol, date, open, high, low, close, pre_close, change_amount, change_pct, volume, amount, source, fetched_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                ("SH.512480", "2026-08-09", 1.00, 1.00, 1.00, 1.00, 1.00, 0, 0, 0, 0, "test", "2026-08-10"),
+                ("SH.512480", "2026-08-10", 1.02, 1.02, 1.02, 1.02, 1.02, 0, 0, 0, 0, "test", "2026-08-11"),
+            ],
+        )
+        conn.executemany(
+            "INSERT INTO market_etf_adj_factors (symbol, date, adj_factor, source, fetched_at) VALUES (?, ?, ?, ?, ?)",
+            [
+                ("SH.512480", "2026-08-09", 1.0, "test", "2026-08-10"),
+                ("SH.512480", "2026-08-10", 1.0, "test", "2026-08-11"),
             ],
         )
 
@@ -771,6 +819,7 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
                 ("US", "AMD", "2026-08-09", 178.0, 181.0, 177.0, 180.0, 180.0, 1.0, "test", "2026-08-10T08:00:00+08:00"),
             ],
         )
+    _write_watchlist_etf_history(tmp_path)
     corpus_db = tmp_path / "data" / "ai_corpus" / "ai_corpus.sqlite"
     corpus_db.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(corpus_db) as conn:
@@ -842,6 +891,13 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
     assert "15.46" in watchlist_html
     assert "SOX &gt; 0.5%" in watchlist_html
     assert "VIX &lt; 19" in watchlist_html
+    assert "premarket-mapping-1-sox-vs-etf" in watchlist_html
+    assert "premarket-mapping-2-vix-vs-etf" in watchlist_html
+    assert 'id="premarket-mapping-1-sox-vs-etf-title"' in watchlist_html
+    assert "querySelector('#premarket-mapping-1-sox-vs-etf-title')" in watchlist_html
+    assert "^SOX 与国联安半导体ETF" in watchlist_html
+    assert '"observationBand":{"low":8000.0,"high":12000.0}' in watchlist_html
+    assert '"absoluteThreshold":{"value":19.0,"operator":"lt"}' in watchlist_html
     assert "研究市场背景" in watchlist_html
     assert "半导体广度" in watchlist_html
     assert "AMD" in watchlist_html
@@ -896,7 +952,7 @@ def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_
             simulation_start_date="2026-08-12",
             strategy_id="cross_market_semiconductor_timing_etf_v1",
             strategy_params={"target_symbol": "SH.512480"},
-            execution_model="daily_target_weight",
+            execution_model="single_etf_intraday",
         ),
         SimpleNamespace(
             account_id="star_chip_us_sentiment_close",
@@ -906,7 +962,7 @@ def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_
             simulation_start_date="2026-08-12",
             strategy_id="cross_market_semiconductor_timing_etf_v1",
             strategy_params={"target_symbol": "SH.588200"},
-            execution_model="daily_target_weight",
+            execution_model="single_etf_intraday",
         ),
     ]
     config = {
@@ -940,6 +996,21 @@ def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_
     assert '"absoluteThreshold":{"value":19.0,"operator":"lt"}' in star_vix
     assert 'href="../../index.html"' in star_vix
     assert 'href="../../../../assets/style.css"' in star_vix
+
+    semiconductor_watchlist = (
+        site_root / "semiconductor_timing" / "latest" / "watchlist" / "index.html"
+    ).read_text(encoding="utf-8")
+    star_watchlist = (
+        site_root / "star_chip_us_sentiment_close" / "latest" / "watchlist" / "index.html"
+    ).read_text(encoding="utf-8")
+    assert "SH.512480" in semiconductor_watchlist
+    assert "SH.588200" in star_watchlist
+    assert "SH.512480" not in star_watchlist
+    assert star_watchlist.count('class="market-comparison-root"') == 2
+    assert "premarket-mapping-1-sox-vs-etf" in star_watchlist
+    assert "premarket-mapping-2-vix-vs-etf" in star_watchlist
+    assert 'id="premarket-mapping-2-vix-vs-etf-title"' in star_watchlist
+    assert "querySelector('#premarket-mapping-2-vix-vs-etf-title')" in star_watchlist
 
 
 def test_build_quant_static_site_uses_mapping_contract_for_another_strategy_id(

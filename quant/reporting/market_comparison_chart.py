@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -257,12 +258,32 @@ def _source_path() -> Path:
     return Path(__file__).with_name("static") / "research" / "market-comparison.html"
 
 
-def render_comparison_chart_fragment(*, data: dict[str, Any] | None) -> str:
-    """把数据载荷填入统一 SVG 图表模板, 返回可嵌入页面的 HTML 片段."""
+def render_comparison_chart_fragment(
+    *,
+    data: dict[str, Any] | None,
+    instance_id: str = "market-comparison",
+) -> str:
+    """把数据载荷填入统一 SVG 图表模板, 返回可嵌入页面的 HTML 片段.
+
+    ``instance_id`` 隔离同一页面上的多个图表实例，避免 DOM id、CSS
+    选择器和 SVG accessible-name 引用互相冲突。
+    """
+    if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", instance_id):
+        raise ValueError("instance_id must be a valid simple HTML id")
     source_path = _source_path()
     if not source_path.is_file():
         raise FileNotFoundError(source_path)
-    return source_path.read_text(encoding="utf-8").replace(
+    fragment = source_path.read_text(encoding="utf-8").replace(
         "__MARKET_COMPARISON_CHART_DATA__",
         json.dumps(data or {"data": []}, ensure_ascii=False, separators=(",", ":")),
+    )
+    if instance_id == "market-comparison":
+        return fragment
+    return (
+        fragment.replace('id="market-comparison"', f'id="{instance_id}"')
+        .replace('id="market-comparison-title"', f'id="{instance_id}-title"')
+        .replace("#market-comparison", f"#{instance_id}")
+        .replace("getElementById('market-comparison')", f"getElementById('{instance_id}')")
+        .replace("market-comparison-svg-title", f"{instance_id}-svg-title")
+        .replace("market-comparison-svg-desc", f"{instance_id}-svg-desc")
     )
