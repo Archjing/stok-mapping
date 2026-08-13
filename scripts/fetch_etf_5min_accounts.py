@@ -5,14 +5,20 @@ Reads config.yaml accounts.simulated; for every account with:
   - execution_model == "single_etf_intraday"
   - strategy_params.target_symbol set
 
-it fetches today's 5-min bars for that target_symbol from Eastmoney and
-upserts into the account's intraday_data_path (default data/etf_history.sqlite).
+it fetches 5-min bars for that target_symbol from Eastmoney and upserts into
+the account's intraday_data_path (default data/etf_history.sqlite).
 
 Account disabled → symbol skipped → no data fetched. This ties the intraday
 data pipeline to the simulated-account on/off switch.
 
+Live-run boundary (P1): each invocation writes an audit row to
+``etf_5min_fetch_runs`` recording accounts touched, bars inserted/skipped,
+expected-vs-actual coverage gap for the requested window, and a status. A
+non-zero exit code signals failure so an orchestrator can retry / alert.
+This makes a fetch traceable from run row -> symbols -> inserted bars.
+
 Usage:
-  .venv/bin/python3 scripts/fetch_etf_5min_accounts.py [--dry-run] [--config config.yaml]
+  .venv/bin/python3 scripts/fetch_etf_5min_accounts.py [--dry-run] [--config config.yaml] [--since YYYY-MM-DD]
 """
 from __future__ import annotations
 
@@ -20,7 +26,7 @@ import json
 import sqlite3
 import subprocess
 import sys
-from datetime import date
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +36,7 @@ from quant.config import load_config
 
 DB_PATH = Path("data/etf_history.sqlite")
 TABLE = "market_etf_5min_bars"
+RUNS_TABLE = "etf_5min_fetch_runs"
 
 EM_URL = (
     "https://push2his.eastmoney.com/api/qt/stock/kline/get"
@@ -41,6 +48,19 @@ EM_URL = (
     "&lmt=500"
 )
 
+# A-share session: 48 five-minute bars per full trading day (09:35..11:30, 13:05..15:00).
+SESSION_BAR_TIMES = [
+    f"{h:02d}:{m:02d}:00"
+    for h, m in [
+        (9, 35), (9, 40), (9, 45), (9, 50), (9, 55),
+        (10, 0), (10, 5), (10, 10), (10, 15), (10, 20), (10, 25), (10, 30), (10, 35), (10, 40), (10, 45), (10, 50), (10, 55),
+        (11, 0), (11, 5), (11, 10), (11, 15), (11, 20), (11, 25), (11, 30),
+        (13, 5), (13, 10), (13, 15), (13, 20), (13, 25), (13, 30), (13, 35), (13, 40), (13, 45), (13, 50), (13, 55),
+        (14, 0), (14, 5), (14, 10), (14, 15), (14, 20), (14, 25), (14, 30), (14, 35), (14, 40), (14, 45), (14, 50), (14, 55),
+        (15, 0),
+    ]
+]
+
 
 def eastmoney_secid(symbol: str) -> str:
     """SH.512480 → 1.512480; SZ.159995 → 0.159995"""
@@ -51,6 +71,7 @@ def eastmoney_secid(symbol: str) -> str:
 
 def fetch_bars(secid: str, beg: str, end: str) -> list[dict]:
     url = EM_URL.format(secid=secid, beg=beg.replace("-", ""), end=end.replace("-", ""))
+    result = None
     for attempt in range(3):
         result = subprocess.run(
             ["curl", "-4", "-s", "--noproxy", "*", "--connect-timeout", "10",
@@ -136,12 +157,86 @@ def enabled_intraday_targets(config: dict[str, Any]) -> list[tuple[str, str, str
     return targets
 
 
-def main():
+def ensure_runs_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {RUNS_TABLE} (
+            run_id TEXT PRIMARY KEY,
+            invoked_at TEXT NOT NULL,
+            requested_window_start TEXT NOT NULL,
+            requested_window_end TEXT NOT NULL,
+            account_id TEXT NOT NULL,
+            symbol TEXT NOT NULL,
+            status TEXT NOT NULL,
+            inserted_bars INTEGER NOT NULL DEFAULT 0,
+            skipped_bars INTEGER NOT NULL DEFAULT 0,
+            expected_bars INTEGER NOT NULL DEFAULT 0,
+            missing_bars INTEGER NOT NULL DEFAULT 0,
+            missing_bar_times TEXT NOT NULL DEFAULT '[]',
+            error_summary TEXT NOT NULL DEFAULT '',
+            dry_run INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+
+
+def expected_bar_count(since: date, now: datetime) -> int:
+    """Number of 5-min bars expected from ``since`` 09:35 up to the current bar."""
+    now_ts = now.time()
+    session_end = time(15, 0)
+    # Single requested day; for multi-day we conservatively count only the last day's
+    # window (callers normally pass today).
+    minutes_from_open = []
+    for h, m in [(9, 35), (11, 30), (13, 5), (15, 0)]:
+        minutes_from_open.append(h * 60 + m)
+    # Bars with bar-time <= now, within session windows.
+    count = 0
+    for h, m in [(9, 35), (9, 40), (9, 45), (9, 50), (9, 55),
+                 (10, 0), (10, 5), (10, 10), (10, 15), (10, 20), (10, 25), (10, 30),
+                 (10, 35), (10, 40), (10, 45), (10, 50), (10, 55),
+                 (11, 0), (11, 5), (11, 10), (11, 15), (11, 20), (11, 25), (11, 30),
+                 (13, 5), (13, 10), (13, 15), (13, 20), (13, 25), (13, 30), (13, 35),
+                 (13, 40), (13, 45), (13, 50), (13, 55),
+                 (14, 0), (14, 5), (14, 10), (14, 15), (14, 20), (14, 25), (14, 30),
+                 (14, 35), (14, 40), (14, 45), (14, 50), (14, 55),
+                 (15, 0)]:
+        bar_ts = time(h, m)
+        if bar_ts <= now_ts:
+            count += 1
+    # For a full completed session this equals 48.
+    return count
+
+
+def missing_bar_times(conn: sqlite3.Connection, symbol: str, since: date, now: datetime) -> list[str]:
+    """Return bar times (HH:MM:SS) expected up to ``now`` but missing for the day."""
+    present = {
+        str(row[0]).split(" ")[1]  # "YYYY-MM-DD HH:MM:SS" -> "HH:MM:SS"
+        for row in conn.execute(
+            f"SELECT time FROM {TABLE} WHERE symbol=? AND time >= ? AND time <= ?",
+            (symbol, f"{since.isoformat()} 00:00:00", f"{since.isoformat()} 23:59:59"),
+        ).fetchall()
+    }
+    missing = []
+    for hm in SESSION_BAR_TIMES:
+        bar_ts = datetime.strptime(hm, "%H:%M:%S").time()
+        if bar_ts > now.time():
+            continue
+        if hm not in present:
+            missing.append(hm)
+    return missing
+
+
+def main() -> int:
     dry_run = "--dry-run" in sys.argv
     config_path = Path("config.yaml")
     for i, arg in enumerate(sys.argv):
         if arg == "--config" and i + 1 < len(sys.argv):
             config_path = Path(sys.argv[i + 1])
+
+    since = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--since" and i + 1 < len(sys.argv):
+            since = date.fromisoformat(sys.argv[i + 1])
 
     cfg = load_config(config_path)
     targets = enabled_intraday_targets(cfg)
@@ -150,27 +245,71 @@ def main():
         print("No enabled single_etf_intraday accounts — nothing to fetch.")
         return 0
 
-    today = date.today().strftime("%Y-%m-%d")
+    today = since or date.today()
+    now = datetime.now()
     total_ins = total_skp = 0
+    any_failure = False
+    run_id = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    run_rows = []
+
     for account_id, symbol, db_path in targets:
         secid = eastmoney_secid(symbol)
-        bars = fetch_bars(secid, today, today)
+        bars = fetch_bars(secid, today.isoformat(), today.isoformat())
         print(f"[{account_id}] {symbol}: {len(bars)} bars from Eastmoney")
-
-        if not bars:
-            continue
 
         db = Path(db_path)
         db.parent.mkdir(parents=True, exist_ok=True)
+        inserted = skipped = 0
+        missing = []
+        status = "ok"
+        error_summary = ""
         with sqlite3.connect(db) as conn:
-            ins, skp = upsert_bars(conn, symbol, bars, dry_run=dry_run)
-        total_ins += ins
-        total_skp += skp
-        print(f"  inserted={ins}, skipped={skp}")
+            ensure_runs_table(conn)
+            if bars:
+                inserted, skipped = upsert_bars(conn, symbol, bars, dry_run=dry_run)
+            # Expected coverage for the requested window (today).
+            expected = expected_bar_count(today, now)
+            if bars:
+                missing = missing_bar_times(conn, symbol, today, now)
+            elif expected > 0:
+                status = "failed"
+                error_summary = "fetch returned no bars"
+                any_failure = True
+            if not dry_run:
+                run_rows.append(
+                    (run_id, now.isoformat(timespec="seconds"), today.isoformat(), today.isoformat(),
+                     account_id, symbol, status, inserted, skipped, expected, len(missing),
+                     json.dumps(missing, ensure_ascii=True), error_summary, 0)
+                )
+            else:
+                run_rows.append(
+                    (run_id, now.isoformat(timespec="seconds"), today.isoformat(), today.isoformat(),
+                     account_id, symbol, status, inserted, skipped, expected, len(missing),
+                     json.dumps(missing, ensure_ascii=True), error_summary, 1)
+                )
+        total_ins += inserted
+        total_skp += skipped
+        print(f"  inserted={inserted}, skipped={skipped}, expected={expected}, missing={len(missing)}")
+        if missing:
+            print(f"  missing bar times: {', '.join(missing[:8])}{'...' if len(missing) > 8 else ''}")
+
+    # Write run rows in a single transaction (only if at least one account touched).
+    if run_rows and not dry_run:
+        first_db = Path(targets[0][2])
+        with sqlite3.connect(first_db) as conn:
+            ensure_runs_table(conn)
+            conn.executemany(
+                f"INSERT OR REPLACE INTO {RUNS_TABLE} "
+                "(run_id, invoked_at, requested_window_start, requested_window_end, account_id, symbol, "
+                "status, inserted_bars, skipped_bars, expected_bars, missing_bars, missing_bar_times, "
+                "error_summary, dry_run) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                run_rows,
+            )
 
     if dry_run:
         print("DRY RUN — no writes")
-    return 0
+    # Non-zero exit when any target failed to fetch bars.
+    return 1 if any_failure else 0
 
 
 if __name__ == "__main__":

@@ -187,10 +187,11 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         retry_window_minutes: str = "20",
         retry_interval_minutes: str = "5",
         max_retries: str = "3",
+        schedule_type: str = "time",
     ) -> MaintenanceTaskSpec:
         return MaintenanceTaskSpec(
             name=name,
-            schedule_type="time",
+            schedule_type=schedule_type,
             schedule_value=schedule_value,
             command=command,
             log_path=log_path,
@@ -343,6 +344,27 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             tags=["scheduler", "cn", "etf", "intraday"],
             market_calendar="cn",
             retry_window_minutes="10",
+            retry_interval_minutes="1",
+            max_retries="5",
+        ),
+        make_spec(
+            name="etf_intraday_5min",
+            schedule_type="intraday",
+            schedule_value=_env_value("ETF_5MIN_WINDOW", "09:35-15:00"),
+            log_path=_env_value("ETF_5MIN_LOG", "logs/etf_5min_fetch.log"),
+            command=[
+                str(python_bin),
+                "scripts/fetch_etf_5min_accounts.py",
+                "--config",
+                config_arg,
+            ],
+            health_scope=_env_value("ETF_5MIN_HEALTH_SCOPE", "cn"),
+            health_fail_on=_env_value("ETF_5MIN_HEALTH_FAIL_ON", "error"),
+            enabled=_has_enabled_single_etf_intraday_account(config_path),
+            description="Intraday 5-minute ETF bar fetch for enabled single-ETF accounts",
+            tags=["scheduler", "cn", "etf", "intraday", "5min"],
+            market_calendar="cn",
+            retry_window_minutes="15",
             retry_interval_minutes="1",
             max_retries="5",
         ),
@@ -818,6 +840,20 @@ def _in_retry_window(now: datetime, spec: MaintenanceTaskSpec, state: dict[str, 
     return minutes_since_failure >= spec.retry_interval_minutes
 
 
+def _intraday_window_reason(window_value: str, now: datetime) -> str:
+    """Return 'open' if ``now`` is inside an intraday window 'HH:MM-HH:MM'."""
+    try:
+        start_s, end_s = str(window_value).split("-", 1)
+        start = datetime.strptime(start_s.strip(), "%H:%M").time()
+        end = datetime.strptime(end_s.strip(), "%H:%M").time()
+    except (ValueError, AttributeError):
+        return "invalid_window"
+    now_t = now.time()
+    if start <= now_t <= end:
+        return "open"
+    return "outside"
+
+
 def _evaluate_task(
     *,
     spec: MaintenanceTaskSpec,
@@ -857,7 +893,23 @@ def _evaluate_task(
     if spec.weekdays_only and weekday not in {1, 2, 3, 4, 5}:
         return MaintenanceDecision(decision="skipped", reason=f"not_weekday(weekday={weekday})", **base_kwargs)
 
-    if last_success == today:
+    if spec.schedule_type == "intraday":
+        # Intraday-window task (e.g. 5-min ETF bar fetch): runs on every tick
+        # inside the configured window, without the once-per-day stamp dedup.
+        # ``schedule_value`` holds "HH:MM-HH:MM" (e.g. "09:35-15:00"); lunch
+        # break is implicit because the fetch script only receives bars that
+        # Eastmoney returns (the 11:30/13:00 gap simply yields no new bar).
+        window_reason = _intraday_window_reason(spec.schedule_value, now)
+        if lock_path.exists():
+            decision = "blocked"
+            reason = "lock_present"
+        elif window_reason == "open":
+            decision = "will_run"
+            reason = f"scheduled_intraday_run(scope={spec.health_scope}, fail_on={spec.health_fail_on}, calendar={calendar_reason})"
+        else:
+            decision = "skipped"
+            reason = f"outside_intraday_window({window_reason})"
+    elif last_success == today:
         decision = "skipped"
         reason = f"already_succeeded_today({today})"
     elif lock_path.exists():
