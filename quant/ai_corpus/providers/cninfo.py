@@ -34,6 +34,10 @@ CNINFO_EVENT_CATEGORY_MAP = {
     "earnings_forecast": "业绩预告",
     "major_contract": "日常经营",
     "shareholder_change": "股权变动",
+    "share_buyback": "",
+    "share_increase": "",
+    "share_decrease": "",
+    "dividend": "",
 }
 
 CNINFO_EVENT_KEYWORDS = {
@@ -44,6 +48,10 @@ CNINFO_EVENT_KEYWORDS = {
     "earnings_forecast": ("业绩预告",),
     "major_contract": ("重大合同", "合同"),
     "shareholder_change": ("股东", "权益变动", "持股变动"),
+    "share_buyback": ("回购",),
+    "share_increase": ("增持",),
+    "share_decrease": ("减持",),
+    "dividend": ("分红", "权益分派", "利润分配"),
 }
 
 EXCLUDED_RISK_WARNING_KEYWORDS = ("可转债", "适当性", "退市风险警示", "终止上市")

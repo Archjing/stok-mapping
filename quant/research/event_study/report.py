@@ -62,15 +62,27 @@ def _load_docs(corpus_db: Path, provider: str | None, event_type: str | None) ->
 
 
 def _load_returns(conn: sqlite3.Connection, symbol: str) -> pd.Series:
-    """Return adjusted_close returns for a stock or index symbol, date-ascending."""
+    """Return adjusted_close returns for a stock or index symbol, date-ascending.
+
+    Stocks use the forward-adjusted (``qfq``) series so returns are total-return
+    consistent across ex-dividend/ex-right dates; indices have no adjust_type.
+    """
     try:
         table = "market_index_bars" if "." in symbol and _is_index_symbol(conn, symbol) else "market_daily_bars"
         price_col = "close" if table == "market_index_bars" else "adjusted_close"
-        df = pd.read_sql_query(
-            f"SELECT date, {price_col} AS price FROM {table} WHERE symbol = ? ORDER BY date",
-            conn,
-            params=(symbol,),
-        )
+        if table == "market_daily_bars":
+            df = pd.read_sql_query(
+                f"SELECT date, {price_col} AS price FROM {table} "
+                "WHERE symbol = ? AND adjust_type = 'qfq' ORDER BY date",
+                conn,
+                params=(symbol,),
+            )
+        else:
+            df = pd.read_sql_query(
+                f"SELECT date, {price_col} AS price FROM {table} WHERE symbol = ? ORDER BY date",
+                conn,
+                params=(symbol,),
+            )
     except sqlite3.Error:
         return pd.Series(dtype=float)
     if df.empty:
