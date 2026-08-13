@@ -14,7 +14,9 @@ from pathlib import Path
 
 import pandas as pd
 
-DEFAULT_CORPUS_DB = Path("data/ai_corpus/ai_corpus.sqlite")
+from quant.paths import corpus_db as _default_corpus_db
+
+DEFAULT_CORPUS_DB = _default_corpus_db()
 
 
 def normalize_symbol(raw: str) -> str | None:

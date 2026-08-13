@@ -17,9 +17,11 @@ from pathlib import Path
 import pandas as pd
 
 from quant.ai_corpus.stock_timeline import normalize_symbol
+from quant.paths import corpus_db as _default_corpus_db
+from quant.paths import market_db as _default_market_db
 
-MARKET_DB = Path("data/a_share_history.sqlite")
-CORPUS_DB = Path("data/ai_corpus/ai_corpus.sqlite")
+MARKET_DB = _default_market_db()
+CORPUS_DB = _default_corpus_db()
 
 SHAREHOLDER_EVENT_TYPES = ("share_buyback", "share_increase", "share_decrease")
 
