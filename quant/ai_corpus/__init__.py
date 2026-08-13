@@ -26,6 +26,7 @@ from quant.ai_corpus.providers.research_report import (
     fetch_research_reports,
     parse_research_reports,
 )
+from quant.ai_corpus.linking_omlx import OmlxEmbeddingLinker
 from quant.ai_corpus.providers.us_market_news import fetch_us_market_news
 from quant.ai_corpus.registry import (
     PROVIDER_REGISTRY,
