@@ -15,7 +15,12 @@ from typing import Any
 
 import pandas as pd
 
-from quant.ai_corpus.linking import link_stock_events, load_industry_indices, link_policy_events
+from quant.ai_corpus.linking import (
+    link_stock_events,
+    load_industry_indices,
+    link_policy_events,
+    normalize_stock_symbol,
+)
 from quant.research.event_study.abnormal_returns import (
     DEFAULT_WINDOWS,
     compute_ar_car,
@@ -68,6 +73,22 @@ def _load_docs(
             return pd.read_sql_query(sql, conn, params=params)
         except sqlite3.Error:
             return pd.DataFrame()
+
+
+def _load_industry_symbols(market_db: Path, industries: list[str]) -> set[str]:
+    """Return the set of stock symbols (SH./SZ.xxxxxx) in the given industries."""
+    if not market_db.is_file() or not industries:
+        return set()
+    placeholders = ",".join("?" for _ in industries)
+    with sqlite3.connect(market_db) as conn:
+        try:
+            rows = conn.execute(
+                f"SELECT symbol FROM market_stocks WHERE industry IN ({placeholders})",
+                industries,
+            ).fetchall()
+        except sqlite3.Error:
+            return set()
+    return {r[0] for r in rows}
 
 
 def _load_returns(conn: sqlite3.Connection, symbol: str) -> pd.Series:
@@ -140,6 +161,7 @@ def run_event_study(
     provider: str | None = None,
     event_type: str | None = None,
     direction: str | None = None,
+    industries: list[str] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
     benchmark: str = BENCHMARK_SYMBOL,
@@ -151,11 +173,19 @@ def run_event_study(
 
     ``direction`` optionally filters by the derived ``direction=...`` tag in the
     ``topics`` column (e.g. ``预增`` / ``预减`` / ``扭亏``).
+    ``industries`` optionally restricts to stocks in the given market industries.
     """
     windows = windows or DEFAULT_WINDOWS
     corpus_path = Path(corpus_db)
     market_path = Path(market_db)
     docs = _load_docs(corpus_path, provider, event_type, direction)
+    if industries:
+        industry_symbols = _load_industry_symbols(market_path, industries)
+        if industry_symbols:
+            # docs carry 6-digit codes in symbols; normalize to SH./SZ. for matching
+            docs = docs[docs["symbols"].apply(
+                lambda s: normalize_stock_symbol(s) in industry_symbols
+            )]
     if start_date:
         docs = docs[docs["published_at"].astype(str) >= start_date]
     if end_date:
