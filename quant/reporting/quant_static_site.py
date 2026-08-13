@@ -410,6 +410,31 @@ def _write_latest_confirmed_account_bill(
     today: str,
 ) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
+    if getattr(account, "execution_model", "") == "single_etf_intraday":
+        # 单 ETF 账户从 single_etf_intraday_* 表渲染账单 (与通用账本渲染同模板同主题)
+        from quant.reporting.account_bill import export_single_etf_account_bill
+
+        latest_asset = frames["assets"].iloc[0]["brief_date"] if not frames["assets"].empty else ""
+        bill_date = str(latest_asset or today)
+        if latest_asset:
+            try:
+                export_single_etf_account_bill(
+                    account=account,
+                    brief_date=bill_date,
+                    output_path=target_dir / "index.html",
+                    status_message=f"当前展示最近已确认交易日 {bill_date} 的账单。",
+                )
+                return
+            except Exception:
+                pass
+        (target_dir / "index.html").write_text(
+            _placeholder_html(
+                title="暂无最新模拟交易账单",
+                message="模拟账户还没有当日账单。请先运行 intraday_bill_pipeline 执行盘中回放。",
+            ),
+            encoding="utf-8",
+        )
+        return
     latest_bill_date = _latest_confirmed_bill_date_for_today(frames=frames, today=today)
     if not latest_bill_date:
         (target_dir / "index.html").write_text(
@@ -455,6 +480,41 @@ def _read_account_frames(account: Any) -> dict[str, pd.DataFrame]:
 
         with sqlite3.connect(db_path) as conn:
             ensure_account_tables(conn)
+            # 单 ETF 日内账户: 执行数据在 single_etf_intraday_* 表, 映射列名到通用账本语义
+            if getattr(account, "execution_model", "") == "single_etf_intraday":
+                frames = {
+                    "assets": pd.read_sql_query(
+                        "SELECT trade_date AS brief_date, trade_date AS start_date, "
+                        "total_asset, stock_asset, cash_asset, "
+                        "0.0 AS daily_pnl, daily_return, "
+                        "exposure AS target_exposure, 0.0 AS estimated_trade_amount, "
+                        "0 AS unfilled_orders, '' AS block_reason_counts "
+                        "FROM single_etf_intraday_daily_assets "
+                        "WHERE account_id = ? ORDER BY trade_date DESC",
+                        conn,
+                        params=(account.account_id,),
+                    ),
+                    "trades": pd.read_sql_query(
+                        "SELECT trade_date AS brief_date, signal_date, symbol, symbol AS name, "
+                        "side, order_type, reason, trade_time, price, shares, amount, cost, "
+                        "shares / 100.0 AS lots, '全部成交' AS trade_status, reason AS block_reasons "
+                        "FROM single_etf_intraday_trades "
+                        "WHERE account_id = ? ORDER BY trade_date DESC, side, trade_time",
+                        conn,
+                        params=(account.account_id,),
+                    ),
+                    "positions": pd.DataFrame(columns=["brief_date", "symbol", "shares", "entry_price"]),
+                    "order_events": pd.read_sql_query(
+                        "SELECT trade_date AS brief_date, signal_date, symbol, symbol AS name, "
+                        "side, order_type AS event_type, 0.0 AS target_weight, "
+                        "requested_shares, filled_shares, status AS trade_status, reason "
+                        "FROM single_etf_intraday_order_events "
+                        "WHERE account_id = ? ORDER BY trade_date DESC",
+                        conn,
+                        params=(account.account_id,),
+                    ),
+                }
+                return frames
             frames = {
                 "assets": pd.read_sql_query(
                     "SELECT * FROM account_daily_assets WHERE account_id = ? ORDER BY brief_date DESC",

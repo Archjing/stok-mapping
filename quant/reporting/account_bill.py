@@ -376,3 +376,169 @@ def export_account_bill_html(*, account: Any, brief_date: str, output_path: Path
         ],
     )
     return _write_account_bill_html(output_path, html_text)
+
+
+def export_single_etf_account_bill(
+    *,
+    account: Any,
+    brief_date: str,
+    output_path: Path,
+    status_message: str = "",
+) -> Path:
+    """Render a single-ETF intraday account bill from ``single_etf_intraday_*`` tables.
+
+    Mirrors ``export_account_bill_html`` (which reads the generic portfolio
+    ledger tables) so single-ETF accounts reuse the same template, table
+    builder and theme assets instead of a parallel renderer.
+    """
+    with sqlite3.connect(account.database_path) as conn:
+        account_rows = pd.read_sql_query(
+            "SELECT account_id, strategy_id, symbol, execution_complete, "
+            "open_position_shares, planned_exit_date, as_of_date "
+            "FROM single_etf_intraday_accounts WHERE account_id = ?",
+            conn,
+            params=(account.account_id,),
+        )
+        assets = pd.read_sql_query(
+            "SELECT trade_date AS brief_date, total_asset, stock_asset, cash_asset, "
+            "daily_return, exposure AS target_exposure "
+            "FROM single_etf_intraday_daily_assets WHERE account_id = ? AND trade_date = ?",
+            conn,
+            params=(account.account_id, brief_date),
+        )
+        trades = pd.read_sql_query(
+            "SELECT signal_date, symbol, side, order_type, reason, trade_time, price, "
+            "amount, cost, shares, shares / 100.0 AS lots "
+            "FROM single_etf_intraday_trades WHERE account_id = ? AND trade_date = ? "
+            "ORDER BY trade_time",
+            conn,
+            params=(account.account_id, brief_date),
+        )
+        order_events = pd.read_sql_query(
+            "SELECT side, order_type, status, reason, requested_shares, filled_shares, price "
+            "FROM single_etf_intraday_order_events WHERE account_id = ? AND trade_date = ? "
+            "ORDER BY trade_time",
+            conn,
+            params=(account.account_id, brief_date),
+        )
+
+    if assets.empty:
+        html_text = _render_account_bill_html(
+            account_name=str(account.name),
+            brief_date=str(brief_date),
+            status_message="暂无当日资产记录。",
+            tables=[],
+        )
+        return _write_account_bill_html(output_path, html_text)
+
+    account_rows = account_rows.copy()
+    account_rows["initial_cash"] = format_money(getattr(account, "initial_cash", 0.0))
+    account_rows["execution_price_mode"] = getattr(account, "execution_price_mode", "next_open")
+    account_rows["lot_size"] = int(getattr(account, "lot_size", 100))
+
+    assets = assets.copy()
+    for col in ["total_asset", "stock_asset", "cash_asset"]:
+        assets[col] = assets[col].map(format_money)
+    assets["daily_return"] = assets["daily_return"].map(format_pct)
+    assets["target_exposure"] = assets["target_exposure"].map(format_pct)
+
+    trades = trades.copy()
+    trades["side"] = trades["side"].map({"buy": "买入", "sell": "卖出"}).fillna(trades["side"])
+    for col in ["price", "amount", "cost"]:
+        trades[col] = trades[col].map(format_money)
+    trades["shares"] = trades["shares"].map(lambda value: format_num(value, 0))
+    trades["lots"] = trades["lots"].map(lambda value: format_num(value, 2))
+
+    order_events = order_events.copy()
+    order_events["side"] = order_events["side"].map({"buy": "买入", "sell": "卖出"}).fillna(order_events["side"])
+    order_events["price"] = order_events["price"].map(format_money)
+    order_events["requested_shares"] = order_events["requested_shares"].map(lambda value: format_num(value, 0))
+    order_events["filled_shares"] = order_events["filled_shares"].map(lambda value: format_num(value, 0))
+
+    money_columns = {"initial_cash", "total_asset", "stock_asset", "cash_asset", "price", "amount", "cost"}
+    quantity_columns = {"shares", "lots", "requested_shares", "filled_shares"}
+    pct_columns = {"daily_return", "target_exposure"}
+    right_columns = money_columns | quantity_columns | pct_columns
+    html_text = _render_account_bill_html(
+        account_name=str(account.name),
+        brief_date=str(brief_date),
+        status_message=status_message,
+        tables=[
+            {
+                "title": "账户总览",
+                "data": _table_context(
+                    account_rows,
+                    [
+                        ("account_id", "账户ID"),
+                        ("strategy_id", "策略"),
+                        ("symbol", "标的"),
+                        ("initial_cash", "初始资金"),
+                        ("execution_price_mode", "成交价口径"),
+                        ("lot_size", "每手股数"),
+                        ("open_position_shares", "当前持仓(股)"),
+                        ("planned_exit_date", "计划退出日"),
+                        ("as_of_date", "数据截至"),
+                    ],
+                    right_columns=right_columns,
+                    center_columns={"account_id", "strategy_id", "symbol", "execution_price_mode"},
+                ),
+            },
+            {
+                "title": "每日资产",
+                "data": _table_context(
+                    assets,
+                    [
+                        ("brief_date", "账户日期"),
+                        ("total_asset", "总资产"),
+                        ("stock_asset", "股票资产"),
+                        ("cash_asset", "现金资产"),
+                        ("daily_return", "收益率"),
+                        ("target_exposure", "仓位暴露"),
+                    ],
+                    right_columns=right_columns,
+                    center_columns={"brief_date"},
+                ),
+            },
+            {
+                "title": "交易明细",
+                "data": _table_context(
+                    trades,
+                    [
+                        ("signal_date", "信号日期"),
+                        ("symbol", "标的"),
+                        ("side", "方向"),
+                        ("order_type", "订单类型"),
+                        ("reason", "触发原因"),
+                        ("trade_time", "交易时间"),
+                        ("price", "价格"),
+                        ("amount", "金额"),
+                        ("cost", "交易成本"),
+                        ("shares", "股数"),
+                        ("lots", "手数"),
+                    ],
+                    right_columns=right_columns,
+                    center_columns={"signal_date", "symbol", "side", "order_type", "trade_time"},
+                ),
+            },
+            {
+                "title": "订单事件",
+                "data": _table_context(
+                    order_events,
+                    [
+                        ("side", "方向"),
+                        ("order_type", "订单类型"),
+                        ("status", "状态"),
+                        ("reason", "原因"),
+                        ("requested_shares", "计划股数"),
+                        ("filled_shares", "成交股数"),
+                        ("price", "价格"),
+                    ],
+                    right_columns=right_columns,
+                    center_columns={"side", "order_type", "status"},
+                ),
+            },
+        ],
+    )
+    output_path = _write_account_bill_html(output_path, html_text)
+    _copy_account_bill_assets(output_path)
+    return output_path
