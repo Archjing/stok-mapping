@@ -62,6 +62,7 @@ def backfill_tushare_monthly(root: Path) -> int:
         ("cn_cpi", {"CN_CPI_YOY": "nt_yoy"}, "month", "M"),
         ("cn_gdp", {"CN_GDP_YOY": "gdp_yoy"}, "quarter", "Q"),
         ("sf_month", {"CN_SOCIAL_FINANCE": "inc_month"}, "month", "M"),
+        ("cn_ppi", {"CN_PPI_YOY": "ppi_yoy"}, "month", "M"),
     ]
     for api, field_map, date_col, freq in series_specs:
         print(f"抓取 tushare {api}...")
@@ -73,6 +74,27 @@ def backfill_tushare_monthly(root: Path) -> int:
                 print(f"  {api} 入库 {n} 行")
         except Exception as e:
             print(f"  {api} ERR: {str(e)[:80]}")
+
+    # PMI (制造业PMI，cn_pmi 是宽表，MONTH 列 + PMI010100)
+    print("抓取 tushare cn_pmi (制造业PMI)...")
+    try:
+        pmi_df = pro.cn_pmi()
+        pmi_rows = []
+        for _, r in pmi_df.iterrows():
+            month = str(r.get("MONTH", ""))
+            if len(month) < 6 or not month.isdigit():
+                continue
+            date = f"{month[:4]}-{month[4:6]}-01"
+            val = r.get("PMI010100")
+            if val is None or pd.isna(val):
+                continue
+            pmi_rows.append({"symbol": "CN_PMI", "date": date, "value": val})
+        if pmi_rows:
+            n = upsert_macro_series(DEFAULT_DB, pd.DataFrame(pmi_rows), source="tushare.cn_pmi", freq="M")
+            total += n
+            print(f"  cn_pmi 入库 {n} 行")
+    except Exception as e:
+        print(f"  cn_pmi ERR: {str(e)[:80]}")
 
     # SHIBOR 3M (daily)
     print("抓取 tushare shibor (3m)...")
@@ -90,11 +112,38 @@ def backfill_tushare_monthly(root: Path) -> int:
     return total
 
 
+def backfill_lpr(root: Path) -> int:
+    """Fetch China LPR (1Y/5Y) via AkShare macro_china_lpr."""
+    import akshare as ak
+    import warnings
+
+    warnings.filterwarnings("ignore")
+    print("抓取中国 LPR (AkShare macro_china_lpr)...")
+    try:
+        df = ak.macro_china_lpr()
+        rows = []
+        for _, r in df.iterrows():
+            date = str(r["TRADE_DATE"])[:10]
+            if pd.notna(r.get("LPR1Y")):
+                rows.append({"symbol": "CN_LPR_1Y", "date": date, "value": r["LPR1Y"]})
+            if pd.notna(r.get("LPR5Y")):
+                rows.append({"symbol": "CN_LPR_5Y", "date": date, "value": r["LPR5Y"]})
+        if not rows:
+            print("  LPR 无数据")
+            return 0
+        n = upsert_macro_series(DEFAULT_DB, pd.DataFrame(rows), source="akshare.macro_china_lpr", freq="M")
+        print(f"  LPR 入库 {n} 行")
+        return n
+    except Exception as e:
+        print(f"  LPR ERR: {str(e)[:80]}")
+        return 0
+
+
 def backfill_fred(root: Path, start: str) -> int:
     from quant.data_access.connectivity import fetch_fred_series
 
     total = 0
-    for symbol, series_id in [("US_10Y_YIELD", "DGS10"), ("US_FED_FUNDS", "DFF"), ("US_2Y_YIELD", "DGS2")]:
+    for symbol, series_id in [("US_10Y_YIELD", "DGS10"), ("US_FED_FUNDS", "DFF"), ("US_2Y_YIELD", "DGS2"), ("CN_USDCNY", "DEXCHUS")]:
         print(f"抓取 FRED {series_id}...")
         try:
             df = fetch_fred_series(series_id, start=pd.Timestamp(start).date())
@@ -125,6 +174,7 @@ def main() -> int:
     total = 0
     total += backfill_china_yield(root, start, end)
     total += backfill_tushare_monthly(root)
+    total += backfill_lpr(root)
     total += backfill_fred(root, start)
     print(f"\n总计入库 {total} 行 → {DEFAULT_DB}")
     return 0

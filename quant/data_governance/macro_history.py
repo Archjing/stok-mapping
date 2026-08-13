@@ -51,10 +51,18 @@ MACRO_SERIES: list[MacroSeriesSpec] = [
     MacroSeriesSpec("CN_GDP_YOY", "中国GDP同比", "CN", "Q", "tushare", "cn_gdp:gdp_yoy", "GDP YoY"),
     # China interbank rate (liquidity proxy)
     MacroSeriesSpec("CN_SHIBOR_3M", "Shibor 3个月", "CN", "D", "tushare", "shibor:3m", "3-month SHIBOR"),
+    # China PPI / PMI (value/cycle-stock profit & activity)
+    MacroSeriesSpec("CN_PPI_YOY", "中国PPI同比", "CN", "M", "tushare", "cn_ppi:ppi_yoy", "PPI YoY"),
+    MacroSeriesSpec("CN_PMI", "中国制造业PMI", "CN", "M", "tushare", "cn_pmi:PMI010100", "manufacturing PMI"),
+    # China LPR (policy rate — the direct target of 降息)
+    MacroSeriesSpec("CN_LPR_1Y", "中国1年期LPR", "CN", "M", "akshare", "macro_china_lpr:LPR1Y", "1Y LPR"),
+    MacroSeriesSpec("CN_LPR_5Y", "中国5年期LPR", "CN", "M", "akshare", "macro_china_lpr:LPR5Y", "5Y LPR"),
     # US interest rates
     MacroSeriesSpec("US_10Y_YIELD", "美国10年国债收益率", "US", "D", "fred", "DGS10", "10y Treasury yield"),
     MacroSeriesSpec("US_FED_FUNDS", "美国联邦基金利率", "US", "D", "fred", "DFF", "effective fed funds rate"),
     MacroSeriesSpec("US_2Y_YIELD", "美国2年国债收益率", "US", "D", "fred", "DGS2", "2y Treasury yield"),
+    # USD/CNY exchange rate (capital-flow & risk-appetite transmission)
+    MacroSeriesSpec("CN_USDCNY", "美元兑人民币汇率", "CN", "D", "fred", "DEXCHUS", "USD/CNY exchange rate"),
 ]
 
 
