@@ -11,68 +11,13 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from dataclasses import dataclass
-from datetime import date
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 
 from quant.data_access.etf_history import ETFHistoryReader
-
-
-SeriesStorage = Literal["us_daily_bars", "etf_qfq"]
-
-
-@dataclass(frozen=True)
-class ComparisonSeriesConfig:
-    """定义一条对比序列的代码、显示名称和本地存储类型.
-
-    ``storage`` 决定从哪个本地历史库读取:
-    - ``us_daily_bars``: data/us_market_history.sqlite (美股日线)
-    - ``etf_qfq``: data/etf_history.sqlite (ETF 前复权, as-of 口径)
-    """
-
-    symbol: str
-    label: str
-    storage: SeriesStorage = "us_daily_bars"
-
-
-@dataclass(frozen=True)
-class ComparisonChartConfig:
-    """传入对比图所需全部配置: 标题、起始日期、原始值观察区间、
-    单日映射阈值、连续趋势规则.
-
-    ``consecutive_daily_change_pct=1.0`` means each daily change in a run must
-    be at least +1.0% or at most -1.0%; ``3.0`` means at least +/-3.0%.
-    """
-
-    slug: str
-    title: str
-    source: ComparisonSeriesConfig
-    target: ComparisonSeriesConfig
-    start_date: str | date
-    # 原始值观察区间 (low, high): 序列收盘价落入该区间时前端高亮观察带
-    observation_band: tuple[float, float] | None = None
-    # 单日映射阈值: 源市场单日涨跌幅绝对值 >= 该值才生成映射信号
-    daily_mapping_pct: float | None = 0.5
-    # 连续趋势规则: 连续 N 个交易日、每天至少 ±X%
-    consecutive_days: int = 3
-    consecutive_daily_change_pct: float = 0.0
-
-    def __post_init__(self) -> None:
-        if self.consecutive_days < 2:
-            raise ValueError("consecutive_days must be at least 2")
-        if self.consecutive_daily_change_pct < 0:
-            raise ValueError("consecutive_daily_change_pct must not be negative")
-        if self.daily_mapping_pct is not None and self.daily_mapping_pct < 0:
-            raise ValueError("daily_mapping_pct must not be negative")
-        if self.observation_band is not None and self.observation_band[0] >= self.observation_band[1]:
-            raise ValueError("observation_band must be ordered low, high")
-
-    @property
-    def start_timestamp(self) -> pd.Timestamp:
-        return pd.Timestamp(self.start_date)
+from quant.strategies.presentation import ComparisonChartConfig, ComparisonSeriesConfig
 
 
 def _clean_prices(frame: pd.DataFrame, *, start_date: pd.Timestamp) -> pd.DataFrame:
@@ -231,6 +176,11 @@ def build_comparison_chart_data_from_frames(
             else None
         ),
         "dailyMappingPct": config.daily_mapping_pct,
+        "absoluteThreshold": (
+            {"value": config.absolute_threshold, "operator": config.absolute_threshold_operator}
+            if config.absolute_threshold is not None
+            else None
+        ),
         "dailyMappingSignals": project_daily_mapping_signals(
             source,
             target_dates=paired["date"],

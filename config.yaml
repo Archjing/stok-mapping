@@ -707,6 +707,9 @@ quant:
         trailing_stop_ratio: 0.98
         weak_unfilled_action: "cancel"
         fallback_time: "14:55"
+        # 账户映射对照图使用源指数原值区间；账户 strategy_params 可覆盖。
+        sox_observation_band: [8000, 12000]
+        vix_observation_band: [14, 19]
       price_volume_features:
         amount_ma_window: 20
         breakout_window: 20

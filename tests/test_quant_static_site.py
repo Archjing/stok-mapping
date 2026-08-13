@@ -18,9 +18,12 @@ from quant.reporting.market_comparison_chart import (
     project_daily_mapping_signals,
 )
 from quant.reporting.quant_static_site import (
+    _account_index_html,
     build_quant_static_site,
     sync_quant_static_site,
 )
+from quant.strategies.cross_market_semiconductor_timing import CrossMarketSemiconductorTimingStrategy
+from quant.strategies.presentation import AccountMappingChart
 
 
 def _account(account_id: str, name: str, db_path: Path) -> SimpleNamespace:
@@ -120,6 +123,8 @@ def _write_sox_512480_history(root: Path) -> None:
             [
                 ("^SOX", "2025-11-03", 7270.9702),
                 ("^SOX", "2026-08-11", 12098.4697),
+                ("^VIX", "2025-11-03", 18.0),
+                ("^VIX", "2026-08-11", 16.0),
             ],
         )
     with sqlite3.connect(etf_db) as conn:
@@ -142,6 +147,8 @@ def _write_sox_512480_history(root: Path) -> None:
             [
                 ("SH.512480", "2025-11-03", 0.726, 0.726, 0.726, 0.726, 0.726, 0, 0, 0, 0, "test", "2026-08-11"),
                 ("SH.512480", "2026-08-11", 1.07, 1.07, 1.07, 1.07, 1.07, 0, 0, 0, 0, "test", "2026-08-11"),
+                ("SH.588200", "2025-11-03", 1.10, 1.10, 1.10, 1.10, 1.10, 0, 0, 0, 0, "test", "2026-08-11"),
+                ("SH.588200", "2026-08-11", 1.47, 1.47, 1.47, 1.47, 1.47, 0, 0, 0, 0, "test", "2026-08-11"),
             ],
         )
         conn.executemany(
@@ -149,6 +156,8 @@ def _write_sox_512480_history(root: Path) -> None:
             [
                 ("SH.512480", "2025-11-03", 1.0, "test", "2026-08-11"),
                 ("SH.512480", "2026-08-11", 1.0, "test", "2026-08-11"),
+                ("SH.588200", "2025-11-03", 1.0, "test", "2026-08-11"),
+                ("SH.588200", "2026-08-11", 1.0, "test", "2026-08-11"),
             ],
         )
 
@@ -242,6 +251,58 @@ def test_generic_comparison_chart_uses_configurable_series_dates_band_and_move_r
         {"sourceDate": "2026-01-03", "targetDate": "2026-01-04", "change": 1.1, "direction": "up"},
         {"sourceDate": "2026-01-04", "targetDate": "2026-01-05", "change": 1.1, "direction": "up"},
     ]
+
+
+def test_generic_comparison_chart_exposes_absolute_source_threshold() -> None:
+    config = ComparisonChartConfig(
+        slug="vix-vs-etf",
+        title="VIX 与 ETF 对照图",
+        source=ComparisonSeriesConfig(symbol="^VIX", label="^VIX"),
+        target=ComparisonSeriesConfig(symbol="SH.588200", label="科创芯片ETF", storage="etf_qfq"),
+        start_date="2026-01-01",
+        observation_band=(14.0, 19.0),
+        daily_mapping_pct=None,
+        absolute_threshold=19.0,
+        absolute_threshold_operator="lt",
+    )
+    source = pd.DataFrame({"date": pd.to_datetime(["2026-01-01", "2026-01-02"]), "close": [18.0, 17.0]})
+    target = pd.DataFrame({"date": pd.to_datetime(["2026-01-01", "2026-01-02"]), "close": [1.0, 1.1]})
+
+    chart_data = build_comparison_chart_data_from_frames(source, target, config=config)
+
+    assert chart_data is not None
+    assert chart_data["absoluteThreshold"] == {"value": 19.0, "operator": "lt"}
+
+
+def test_semiconductor_strategy_declares_parameter_driven_account_mapping_charts() -> None:
+    charts = CrossMarketSemiconductorTimingStrategy().account_mapping_charts(
+        {
+            "cross_market_semiconductor_timing": {
+                "target_symbol": "SH.512480",
+                "sox_thresholds": [0.005],
+                "vix_thresholds": [19],
+                "sox_observation_band": [8_000, 12_000],
+                "vix_observation_band": [14, 19],
+            }
+        },
+        {
+            "target_symbol": "SH.588200",
+            "sox_thresholds": [0.007],
+            "vix_thresholds": [20],
+            "sox_observation_band": [9_000, 13_000],
+            "vix_observation_band": [15, 20],
+        },
+    )
+
+    assert [item.chart.slug for item in charts] == ["sox-vs-etf", "vix-vs-etf"]
+    assert all(item.chart.target.symbol == "SH.588200" for item in charts)
+    assert all("SH.588200" in item.chart.title for item in charts)
+    assert charts[0].chart.daily_mapping_pct == pytest.approx(0.7)
+    assert charts[0].chart.observation_band == (9_000.0, 13_000.0)
+    assert charts[1].chart.daily_mapping_pct is None
+    assert charts[1].chart.absolute_threshold == 20.0
+    assert charts[1].chart.absolute_threshold_operator == "lt"
+    assert charts[1].chart.observation_band == (15.0, 20.0)
 
 
 def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_path: Path) -> None:
@@ -798,3 +859,149 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
     assert "股票资产</span><strong>0.00" in account_html
     assert "当前仓位</span><strong>0.00%" in account_html
     assert "总资产</span><strong>暂无" not in account_html
+
+
+def test_account_home_renders_strategy_declared_market_comparison_cards() -> None:
+    account = SimpleNamespace(
+        account_id="semiconductor_timing",
+        name="半导体ETF美股情绪映射择时_v1",
+        strategy_id="cross_market_semiconductor_timing_etf_v1",
+        execution_model="single_etf_intraday",
+    )
+
+    account_html = _account_index_html(
+        account=account,
+        meta={},
+        generated_at="2026-08-13 12:00",
+        mapping_chart_links=[
+            {"href": "research/sox-vs-etf/index.html", "kicker": "MAPPING", "label": "SOX 与科创芯片ETF对照图"},
+            {"href": "research/vix-vs-etf/index.html", "kicker": "RISK", "label": "VIX 与科创芯片ETF对照图"},
+        ],
+    )
+
+    assert 'class="quick-card" href="research/sox-vs-etf/index.html"' in account_html
+    assert "SOX 与科创芯片ETF对照图" in account_html
+    assert 'class="quick-card" href="research/vix-vs-etf/index.html"' in account_html
+    assert "VIX 与科创芯片ETF对照图" in account_html
+
+
+def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_path: Path) -> None:
+    _write_sox_512480_history(tmp_path)
+    accounts = [
+        SimpleNamespace(
+            account_id="semiconductor_timing",
+            name="半导体ETF美股情绪映射择时_v1",
+            database_path=tmp_path / "data" / "missing-1.sqlite",
+            initial_cash=200_000.0,
+            simulation_start_date="2026-08-12",
+            strategy_id="cross_market_semiconductor_timing_etf_v1",
+            strategy_params={"target_symbol": "SH.512480"},
+            execution_model="daily_target_weight",
+        ),
+        SimpleNamespace(
+            account_id="star_chip_us_sentiment_close",
+            name="科创芯片美股情绪映射_收盘兑现版_v1",
+            database_path=tmp_path / "data" / "missing-2.sqlite",
+            initial_cash=200_000.0,
+            simulation_start_date="2026-08-12",
+            strategy_id="cross_market_semiconductor_timing_etf_v1",
+            strategy_params={"target_symbol": "SH.588200"},
+            execution_model="daily_target_weight",
+        ),
+    ]
+    config = {
+        "reporting": {},
+        "walk_forward": {
+            "strategy_v2": {
+                "cross_market_semiconductor_timing": {
+                    "sox_thresholds": [0.005],
+                    "vix_thresholds": [19],
+                    "sox_observation_band": [8_000, 12_000],
+                    "vix_observation_band": [14, 19],
+                }
+            }
+        },
+    }
+
+    build_quant_static_site(root=tmp_path, config=config, accounts=accounts)
+
+    site_root = tmp_path / "reports" / "static_site" / "quant" / "accounts"
+    semiconductor_home = (site_root / "semiconductor_timing" / "index.html").read_text(encoding="utf-8")
+    star_home = (site_root / "star_chip_us_sentiment_close" / "index.html").read_text(encoding="utf-8")
+    assert 'href="research/sox-vs-etf/index.html"' in semiconductor_home
+    assert 'href="research/vix-vs-etf/index.html"' in star_home
+
+    semiconductor_sox = (site_root / "semiconductor_timing" / "research" / "sox-vs-etf" / "index.html").read_text(encoding="utf-8")
+    star_sox = (site_root / "star_chip_us_sentiment_close" / "research" / "sox-vs-etf" / "index.html").read_text(encoding="utf-8")
+    star_vix = (site_root / "star_chip_us_sentiment_close" / "research" / "vix-vs-etf" / "index.html").read_text(encoding="utf-8")
+    assert "SH.512480" in semiconductor_sox
+    assert "SH.588200" in star_sox
+    assert "SH.512480" not in star_sox
+    assert '"absoluteThreshold":{"value":19.0,"operator":"lt"}' in star_vix
+    assert 'href="../../index.html"' in star_vix
+    assert 'href="../../../../assets/style.css"' in star_vix
+
+
+def test_build_quant_static_site_uses_mapping_contract_for_another_strategy_id(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _write_sox_512480_history(tmp_path)
+
+    class AnotherMappingStrategy:
+        def account_mapping_charts(
+            self,
+            strategy_cfg: dict[str, object],
+            account_params: dict[str, object],
+        ) -> list[AccountMappingChart]:
+            threshold = float(account_params["source_threshold"])
+            return [
+                AccountMappingChart(
+                    button_label="自定义海外指数与目标 ETF 对照图",
+                    button_kicker="MAPPING",
+                    chart=ComparisonChartConfig(
+                        slug="custom-source-vs-etf",
+                        title="另一映射策略的参数化对照图",
+                        source=ComparisonSeriesConfig(symbol="^SOX", label="自定义海外指数"),
+                        target=ComparisonSeriesConfig(
+                            symbol="SH.512480",
+                            label="目标 ETF",
+                            storage="etf_qfq",
+                        ),
+                        start_date="2025-11-03",
+                        observation_band=(7_000.0, 13_000.0),
+                        daily_mapping_pct=None,
+                        absolute_threshold=threshold,
+                        absolute_threshold_operator="gt",
+                    ),
+                )
+            ]
+
+    monkeypatch.setattr(
+        "quant.reporting.quant_static_site.get_strategy",
+        lambda strategy_id: AnotherMappingStrategy()
+        if strategy_id == "another_cross_market_strategy_v1"
+        else (_ for _ in ()).throw(KeyError(strategy_id)),
+    )
+    account = SimpleNamespace(
+        account_id="another_mapping_account",
+        name="另一映射策略账户",
+        database_path=tmp_path / "data" / "missing.sqlite",
+        initial_cash=100_000.0,
+        simulation_start_date="2026-08-12",
+        strategy_id="another_cross_market_strategy_v1",
+        strategy_params={"source_threshold": 9_500},
+        execution_model="daily_target_weight",
+    )
+
+    result = build_quant_static_site(root=tmp_path, config={"reporting": {}}, accounts=[account])
+
+    account_dir = tmp_path / "reports" / "static_site" / "quant" / "accounts" / "another_mapping_account"
+    account_html = (account_dir / "index.html").read_text(encoding="utf-8")
+    chart_html = (account_dir / "research" / "custom-source-vs-etf" / "index.html").read_text(encoding="utf-8")
+    assert 'class="quick-card" href="research/custom-source-vs-etf/index.html"' in account_html
+    assert "自定义海外指数与目标 ETF 对照图" in account_html
+    assert '"absoluteThreshold":{"value":9500.0,"operator":"gt"}' in chart_html
+    assert result["manifest"]["accounts"][0]["mapping_chart_paths"] == [
+        "accounts/another_mapping_account/research/custom-source-vs-etf/index.html"
+    ]

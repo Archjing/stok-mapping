@@ -6,6 +6,8 @@ from typing import Any
 
 import pandas as pd
 
+from quant.strategies.presentation import AccountMappingChart
+
 
 @dataclass
 class StrategyOutput:
@@ -43,6 +45,14 @@ class BaseStrategy(ABC):
         parameters instead of optimizing on the full replay sample.
         """
         return {}
+
+    def account_mapping_charts(
+        self,
+        strategy_cfg: dict[str, Any],
+        account_params: dict[str, Any],
+    ) -> list[AccountMappingChart]:
+        """Declare account-level mapping charts; non-mapping strategies return none."""
+        return []
 
     def build_metadata(self, params: dict[str, Any]) -> dict[str, Any]:
         return {

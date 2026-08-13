@@ -25,6 +25,7 @@ from quant.reporting.semiconductor_timing_watchlist import (
     supports_semiconductor_timing_watchlist,
     write_semiconductor_timing_watchlist,
 )
+from quant.strategies import get_strategy
 
 
 DEFAULT_QUANT_SITE_DIR = "static_site/quant"
@@ -129,6 +130,8 @@ def _write_market_comparison_research_page(
     root: Path,
     config: ComparisonChartConfig,
     research_path: str,
+    back_href: str = "../../index.html",
+    stylesheet_href: str = "../../assets/style.css",
 ) -> str:
     """Write one reusable two-series market-comparison research page."""
     chart_data = build_comparison_chart_data(root=root, config=config)
@@ -143,7 +146,7 @@ def _write_market_comparison_research_page(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="{html.escape(config.title)}。">
   <title>{html.escape(config.title)}</title>
-  <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="{html.escape(stylesheet_href)}">
   <style>
     #market-comparison {{
       --foreground: var(--text);
@@ -168,7 +171,7 @@ def _write_market_comparison_research_page(
   </style>
 </head>
 <body>
-{_theme_bar_html(back_href="../../index.html")}<main class="page account-bill-page research-chart-page">
+{_theme_bar_html(back_href=back_href)}<main class="page account-bill-page research-chart-page">
   <div class="title-row"><h1>{html.escape(config.title)}</h1><span class="generated-at">静态研究快照</span></div>
   <p class="research-meta">{_comparison_research_meta_html(chart_data)}</p>
   <section class="bill-section">
@@ -482,6 +485,9 @@ def _read_account_frames(account: Any) -> dict[str, pd.DataFrame]:
             ensure_account_tables(conn)
             # 单 ETF 日内账户: 执行数据在 single_etf_intraday_* 表, 映射列名到通用账本语义
             if getattr(account, "execution_model", "") == "single_etf_intraday":
+                from quant.execution.single_etf_intraday import ensure_single_etf_intraday_tables
+
+                ensure_single_etf_intraday_tables(conn)
                 frames = {
                     "assets": pd.read_sql_query(
                         "SELECT trade_date AS brief_date, trade_date AS start_date, "
@@ -715,7 +721,17 @@ def _ledger_html(*, account: Any, frames: dict[str, pd.DataFrame], generated_at:
 """
 
 
-def _account_index_html(*, account: Any, meta: dict[str, str], generated_at: str) -> str:
+def _account_index_html(
+    *,
+    account: Any,
+    meta: dict[str, str],
+    generated_at: str,
+    mapping_chart_links: list[dict[str, str]] | tuple[dict[str, str], ...] = (),
+) -> str:
+    mapping_links_html = "\n      ".join(
+        f'<a class="quick-card" href="{html.escape(item["href"])}"><span>{html.escape(item["kicker"])}</span><strong>{html.escape(item["label"])}</strong></a>'
+        for item in mapping_chart_links
+    )
     return f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
 <head>
@@ -740,6 +756,7 @@ def _account_index_html(*, account: Any, meta: dict[str, str], generated_at: str
       <a class="quick-card" href="latest/watchlist/index.html"><span>WATCHLIST</span><strong>最新盘前观察池</strong></a>
       <a class="quick-card" href="latest/account-bill/index.html"><span>BILL</span><strong>最新模拟交易账单</strong></a>
       <a class="quick-card" href="ledger/index.html"><span>LEDGER</span><strong>完整交易台账</strong></a>
+      {mapping_links_html}
       <a class="quick-card" href="../../index.html"><span>CONSOLE</span><strong>控制台首页</strong></a>
     </div>
   </section>
@@ -949,6 +966,7 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
         shutil.copyfile(source_css, assets_dir / "style.css")
 
     accounts_meta: list[dict[str, str]] = []
+    global_strategy_cfg = dict(config.get("walk_forward", {}).get("strategy_v2", {}) or {})
     for account in accounts:
         account_slug = slug(str(account.account_id))
         account_dir = site_root / "accounts" / account_slug
@@ -997,7 +1015,48 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
             frames=frames,
             today=today,
         )
-        (account_dir / "index.html").write_text(_account_index_html(account=account, meta=meta, generated_at=generated_at), encoding="utf-8")
+        mapping_chart_links: list[dict[str, str]] = []
+        mapping_chart_paths: list[str] = []
+        strategy_id = str(getattr(account, "strategy_id", "") or "")
+        if strategy_id:
+            try:
+                strategy = get_strategy(strategy_id)
+            except KeyError:
+                strategy = None
+            if strategy is not None:
+                charts = strategy.account_mapping_charts(
+                    global_strategy_cfg,
+                    dict(getattr(account, "strategy_params", {}) or {}),
+                )
+                for item in charts:
+                    relative_path = f"research/{item.chart.slug}/index.html"
+                    _write_market_comparison_research_page(
+                        site_root=account_dir,
+                        root=root,
+                        config=item.chart,
+                        research_path=relative_path,
+                        back_href="../../index.html",
+                        stylesheet_href="../../../../assets/style.css",
+                    )
+                    mapping_chart_links.append(
+                        {
+                            "href": relative_path,
+                            "kicker": item.button_kicker,
+                            "label": item.button_label,
+                        }
+                    )
+                    mapping_chart_paths.append(f"accounts/{account_slug}/{relative_path}")
+        if mapping_chart_paths:
+            meta["mapping_chart_paths"] = mapping_chart_paths
+        (account_dir / "index.html").write_text(
+            _account_index_html(
+                account=account,
+                meta=meta,
+                generated_at=generated_at,
+                mapping_chart_links=mapping_chart_links,
+            ),
+            encoding="utf-8",
+        )
         (account_dir / "ledger").mkdir(parents=True, exist_ok=True)
         (account_dir / "ledger" / "index.html").write_text(_ledger_html(account=account, frames=frames, generated_at=generated_at), encoding="utf-8")
         _write_csvs(account_dir, frames)

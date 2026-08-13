@@ -92,6 +92,7 @@ from quant.execution.single_etf_intraday import (
 )
 from quant.data_governance.us_market_features import load_common_market_daily_features
 from quant.strategies.base import BaseStrategy, StrategyOutput
+from quant.strategies.presentation import AccountMappingChart, ComparisonChartConfig, ComparisonSeriesConfig
 from quant.strategies.registry import register
 
 ETF_DB_PATH = "data/etf_history.sqlite"
@@ -232,6 +233,77 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
     skip_stock_panel = True  # This strategy loads its own ETF + US data via prepare_panel()
     supports_paper_trade = True
     account_execution_model = "single_etf_intraday"
+
+    def account_mapping_charts(
+        self,
+        strategy_cfg: dict[str, Any],
+        account_params: dict[str, Any],
+    ) -> list[AccountMappingChart]:
+        """Describe the SOX/VIX mapping charts using effective account parameters."""
+        cfg = dict(strategy_cfg.get("cross_market_semiconductor_timing", {}) or {})
+        cfg.update(account_params or {})
+        effective_strategy_cfg = dict(strategy_cfg)
+        effective_strategy_cfg["cross_market_semiconductor_timing"] = cfg
+        params = self.account_execution_params(effective_strategy_cfg)
+        target_symbol = str(params["target_symbol"])
+        target_name = str(SEMICONDUCTOR_TIMING_ETF_UNIVERSE[target_symbol]["display_name"])
+
+        def observation_band(key: str, default: tuple[float, float]) -> tuple[float, float]:
+            raw = cfg.get(key, default)
+            if not isinstance(raw, (list, tuple)) or len(raw) != 2:
+                raise ValueError(f"{key} must contain exactly two numeric values")
+            return float(raw[0]), float(raw[1])
+
+        start_date = str(cfg.get("comparison_start_date", "2025-11-03"))
+        consecutive_days = int(cfg.get("comparison_consecutive_days", 3))
+        consecutive_daily_pct = float(cfg.get("comparison_consecutive_daily_change_pct", 0.0))
+        target = ComparisonSeriesConfig(
+            symbol=target_symbol,
+            label=f"{target_symbol} {target_name}前复权收盘价（实际交易标的）",
+            storage="etf_qfq",
+        )
+        sox_chart = ComparisonChartConfig(
+            slug="sox-vs-etf",
+            title=f"^SOX 与{target_name}（{target_symbol}）对照图",
+            source=ComparisonSeriesConfig(
+                symbol=US_SOX_SYMBOL,
+                label="^SOX（费城半导体指数）",
+            ),
+            target=target,
+            start_date=start_date,
+            observation_band=observation_band("sox_observation_band", (8_000.0, 12_000.0)),
+            daily_mapping_pct=float(params["sox_threshold"]) * 100.0,
+            consecutive_days=consecutive_days,
+            consecutive_daily_change_pct=consecutive_daily_pct,
+        )
+        vix_chart = ComparisonChartConfig(
+            slug="vix-vs-etf",
+            title=f"^VIX 与{target_name}（{target_symbol}）对照图",
+            source=ComparisonSeriesConfig(
+                symbol=US_VIX_SYMBOL,
+                label="^VIX（波动率指数）",
+            ),
+            target=target,
+            start_date=start_date,
+            observation_band=observation_band("vix_observation_band", (14.0, 19.0)),
+            daily_mapping_pct=None,
+            absolute_threshold=float(params["vix_threshold"]),
+            absolute_threshold_operator="lt",
+            consecutive_days=consecutive_days,
+            consecutive_daily_change_pct=consecutive_daily_pct,
+        )
+        return [
+            AccountMappingChart(
+                button_label=f"SOX 与{target_name}对照图",
+                button_kicker="MAPPING",
+                chart=sox_chart,
+            ),
+            AccountMappingChart(
+                button_label=f"VIX 与{target_name}对照图",
+                button_kicker="RISK",
+                chart=vix_chart,
+            ),
+        ]
 
     # ── data loading ──────────────────────────────────────────────────
 

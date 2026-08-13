@@ -29,6 +29,9 @@
   #market-comparison .market-comparison-observation-band { fill:var(--viz-series-1); opacity:.12; }
   #market-comparison .market-comparison-observation-band-edge { stroke:var(--viz-series-1); stroke-width:1; stroke-dasharray:4 3; opacity:.75; }
   #market-comparison .market-comparison-observation-band-label { fill:var(--viz-series-1); font-size:12px; }
+  #market-comparison .market-comparison-absolute-threshold { stroke:var(--red); stroke-width:1.5; stroke-dasharray:7 4; }
+  #market-comparison .market-comparison-absolute-threshold-label { fill:var(--red); font-size:12px; }
+  #market-comparison .market-comparison-threshold-line { width:1.4rem; height:.7rem; margin-right:.35rem; border-top:2px dashed var(--red); }
   #market-comparison .market-comparison-source-path { fill:none; stroke:var(--viz-series-1); stroke-width:2; }
   #market-comparison .market-comparison-target-path { fill:none; stroke:var(--viz-series-2); stroke-width:2; }
   #market-comparison .market-comparison-up-run { fill:var(--red); }
@@ -50,6 +53,7 @@
   const title = root.querySelector('#market-comparison-title');
   const legend = root.querySelector('.market-comparison-legend');
   const fmtPct = value => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const thresholdOperatorLabel = { lt:'<', lte:'≤', gt:'>', gte:'≥' };
   const tickDate = value => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2, '0')}`;
   if (!values.length) {
     title.textContent = source.title || '市场对照图';
@@ -65,6 +69,7 @@
     source.observationBand ? `<span><i class="market-comparison-swatch market-comparison-band" aria-hidden="true"></i>${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')} 观察区间</span>` : '',
     mappingEnabled ? `<span><i class="market-comparison-swatch market-comparison-daily-up" aria-hidden="true"></i>${source.source.label} 日涨 ≥${source.dailyMappingPct.toFixed(1)}%（红刻度）</span>` : '',
     mappingEnabled ? `<span><i class="market-comparison-swatch market-comparison-daily-down" aria-hidden="true"></i>${source.source.label} 日跌 ≤−${source.dailyMappingPct.toFixed(1)}%（绿刻度）</span>` : '',
+    source.absoluteThreshold ? `<span><i class="market-comparison-swatch market-comparison-threshold-line" aria-hidden="true"></i>${source.source.label} ${thresholdOperatorLabel[source.absoluteThreshold.operator]} ${source.absoluteThreshold.value.toLocaleString('en-US')}（策略阈值）</span>` : '',
     `<span><i class="market-comparison-swatch market-comparison-run-up" aria-hidden="true"></i>连续上涨（红，深浅按累计涨幅）</span>`,
     `<span><i class="market-comparison-swatch market-comparison-run-down" aria-hidden="true"></i>连续下跌（绿，深浅按累计跌幅）</span>`,
   ].filter(Boolean).join('');
@@ -74,7 +79,12 @@
     const height = width < 560 ? 310 : 390;
     const pad = { top:30, right:20, bottom:42, left:48 };
     const innerW = width - pad.left - pad.right, innerH = height - pad.top - pad.bottom;
-    const all = values.flatMap(value => [value.sourceValue, value.targetValue]);
+    const rawToNormalized = rawValue => rawValue / values[0].sourceClose * 100;
+    const parameterLevels = [
+      ...(source.observationBand ? [source.observationBand.low, source.observationBand.high].map(rawToNormalized) : []),
+      ...(source.absoluteThreshold ? [rawToNormalized(source.absoluteThreshold.value)] : []),
+    ];
+    const all = values.flatMap(value => [value.sourceValue, value.targetValue]).concat(parameterLevels);
     const floor = Math.floor((Math.min(...all) - 4) / 10) * 10;
     const ceiling = Math.ceil((Math.max(...all) + 4) / 10) * 10;
     const y = value => pad.top + (ceiling - value) / (ceiling - floor || 1) * innerH;
@@ -85,8 +95,8 @@
     const xTickCount = width < 560 ? 4 : 7;
     const xTicks = Array.from({ length:xTickCount }, (_, i) => values[Math.round((values.length - 1) * i / (xTickCount - 1))]);
     const sourceReturn = values.at(-1).sourceValue - 100, targetReturn = values.at(-1).targetValue - 100;
-    const rawToNormalized = rawValue => rawValue / values[0].sourceClose * 100;
     const band = source.observationBand ? (() => ({ top:y(rawToNormalized(source.observationBand.high)), bottom:y(rawToNormalized(source.observationBand.low)) }))() : null;
+    const threshold = source.absoluteThreshold ? (() => ({ ...source.absoluteThreshold, y:y(rawToNormalized(source.absoluteThreshold.value)) }))() : null;
     const runRects = (runs, className, labelY, prefix) => runs.map(run => {
       const left = x(new Date(`${run.start}T00:00:00`)), right = x(new Date(`${run.end}T00:00:00`));
       const opacity = (0.10 + Math.min(0.24, Math.abs(run.change) / 90)).toFixed(2);
@@ -103,12 +113,14 @@
     }).join('');
     const bandNote = source.observationBand ? `观察带为 ${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')}，不是交易阈值。` : '';
     const mappingNote = mappingEnabled ? `红/绿刻度：${source.source.label} 单日涨跌绝对值至少 ${source.dailyMappingPct.toFixed(1)}%，投影至下一可对照目标交易日；未叠加其他过滤条件。` : '';
-    note.textContent = `共同交易日：${source.tradingDays} 个；${source.source.label} 最新：${source.sourceLastDate}，${source.target.label} 最新：${source.targetLastDate}。区间累计：${source.source.label} ${fmtPct(sourceReturn)}，${source.target.label} ${fmtPct(targetReturn)}。${bandNote}${mappingNote} 红色阴影为连续上涨，绿色阴影为连续下跌：至少 ${source.consecutiveMove.days} 个相邻源市场交易日，单日同方向变动至少 ${source.consecutiveMove.dailyPct.toFixed(1)}%；深浅按累计幅度表示。`;
+    const thresholdNote = threshold ? `策略绝对阈值：${source.source.label} ${thresholdOperatorLabel[threshold.operator]} ${threshold.value.toLocaleString('en-US')}。` : '';
+    note.textContent = `共同交易日：${source.tradingDays} 个；${source.source.label} 最新：${source.sourceLastDate}，${source.target.label} 最新：${source.targetLastDate}。区间累计：${source.source.label} ${fmtPct(sourceReturn)}，${source.target.label} ${fmtPct(targetReturn)}。${bandNote}${mappingNote}${thresholdNote} 红色阴影为连续上涨，绿色阴影为连续下跌：至少 ${source.consecutiveMove.days} 个相邻源市场交易日，单日同方向变动至少 ${source.consecutiveMove.dailyPct.toFixed(1)}%；深浅按累计幅度表示。`;
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     svg.innerHTML = `
       <title id="market-comparison-svg-title">${source.title} 的归一化走势</title>
       <desc id="market-comparison-svg-desc">${source.source.label} 与 ${source.target.label} 的共同交易日归一化收盘走势。红绿刻度标出源市场单日变动，红绿背景标出连续上涨和下跌区间。</desc>
       ${band ? `<rect class="market-comparison-observation-band" x="${pad.left}" y="${band.top}" width="${innerW}" height="${band.bottom-band.top}"/><line class="market-comparison-observation-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${band.top}" y2="${band.top}"/><line class="market-comparison-observation-band-edge" x1="${pad.left}" x2="${width-pad.right}" y1="${band.bottom}" y2="${band.bottom}"/><text class="market-comparison-observation-band-label" x="${pad.left+6}" y="${band.top+15}">${source.source.label} 原值 ${source.observationBand.low.toLocaleString('en-US')}–${source.observationBand.high.toLocaleString('en-US')} 观察区间</text>` : ''}
+      ${threshold ? `<line class="market-comparison-absolute-threshold" x1="${pad.left}" x2="${width-pad.right}" y1="${threshold.y}" y2="${threshold.y}"/><text class="market-comparison-absolute-threshold-label" x="${width-pad.right-6}" y="${threshold.y-7}" text-anchor="end">${source.source.label} ${thresholdOperatorLabel[threshold.operator]} ${threshold.value.toLocaleString('en-US')}</text>` : ''}
       ${upRunRects}${downRunRects}${dailySignalTicks}
       ${yTicks.map(value => `<line class="market-comparison-grid" x1="${pad.left}" x2="${width-pad.right}" y1="${y(value)}" y2="${y(value)}"/><text class="market-comparison-axis" x="${pad.left-8}" y="${y(value)+4}" text-anchor="end">${value.toFixed(0)}</text>`).join('')}
       ${xTicks.map(value => `<text class="market-comparison-axis" x="${x(value.date)}" y="${height-15}" text-anchor="middle">${tickDate(value.date)}</text>`).join('')}
