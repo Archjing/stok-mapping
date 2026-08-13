@@ -514,6 +514,7 @@ quant:
             - "sleeve_composite_v1"
             - "sleeve_composite_low_churn_v1"
             - "cross_market_semiconductor_timing_etf_v1"
+            - "momentum_macd_golden_cross_v1"
         quality_research_v1:
           description: "质量/低换手策略专项研究集合。"
           strategies:
@@ -803,6 +804,14 @@ quant:
           turnover_penalties: [0.02]
           max_symbol_weight: 0.10
           use_xmarket_overlay: false
+        momentum_macd_golden_cross:
+          enabled: true
+          momentum_quantiles: [0.5, 0.6, 0.7]
+          rebalance_days_values: [5, 10]
+          top_n_values: [10, 15, 20]
+          cross_modes: ["macd", "any"]
+          require_trend: true
+          max_symbol_weight: 0.10
   accounts:
     simulated:
       - account_id: "default"
@@ -823,6 +832,8 @@ quant:
         strategy_id: "cross_market_semiconductor_timing_etf_v1"
         strategy_params:
           target_symbol: "SH.512480"
+          strong_position_size: 0.6
+          weak_position_size: 0.5
         simulation_start_date: "2026-08-12"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger_semiconductor.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
@@ -845,6 +856,8 @@ quant:
         strategy_id: "cross_market_semiconductor_timing_etf_v1"
         strategy_params:
           target_symbol: "SH.588200"
+          strong_position_size: 0.6
+          weak_position_size: 0.5
         simulation_start_date: "2026-08-12"
         ledger_path: "data/simulated_trading/phase0_daily_account_ledger_star_chip_close.csv"
         database_path: "data/simulated_trading/simulated_accounts.sqlite"
