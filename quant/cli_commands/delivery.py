@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
+import sqlite3
 import subprocess
 from datetime import date
 from pathlib import Path
@@ -21,7 +22,10 @@ from quant.reporting.quant_static_site import build_quant_static_site, sync_quan
 
 
 DELIVERY_COMMANDS = frozenset({"brief", "daily-brief"})
-BRIEF_TODAY_MIRROR = Path("/mnt/d/ZJ/Dev/brief_today/index.html")
+# Legacy brief-today mirror previously pointed at a WSL-only absolute path
+# ("/mnt/d/ZJ/Dev/brief_today/index.html"); keep it under the project's own
+# reports/ tree so the watchlist bundle copy works on every host.
+BRIEF_TODAY_MIRROR = Path("reports/brief_today/index.html")
 ACCOUNT_BILL_TODAY_DIR = "reports/account_bill_today"
 WATCHLIST_STATIC_ASSETS = ("style.css",)
 ACCOUNT_BILL_STATIC_ASSETS = ("style.css",)
@@ -250,6 +254,54 @@ def _select_delivery_accounts(config: dict[str, Any], root: Path, *, account_id:
     return accounts[:1]
 
 
+def _confirm_single_etf_account_bill(
+    *,
+    console: Console,
+    root: Path,
+    account: Any,
+    account_label: str,
+    bill_date: str,
+) -> bool:
+    """Confirm a single-ETF intraday account bill directly from its DB tables.
+
+    Returns True when the account has a daily-assets row for ``bill_date`` and
+    the bill was rendered; the watchlist CSV is not part of this flow.
+    """
+    db_path = Path(getattr(account, "database_path", ""))
+    if not db_path.is_absolute():
+        db_path = root / db_path
+    if not db_path.exists():
+        console.print(f"[yellow]Warning:[/yellow] {account_label}: account database not found: {db_path}")
+        return False
+    try:
+        with sqlite3.connect(db_path) as conn:
+            row = conn.execute(
+                "SELECT COUNT(*) FROM single_etf_intraday_daily_assets WHERE account_id = ? AND trade_date = ?",
+                (account_label, bill_date),
+            ).fetchone()
+    except sqlite3.Error as exc:
+        console.print(f"[yellow]Warning:[/yellow] {account_label}: failed to read daily assets: {exc}")
+        return False
+    if not row or int(row[0]) <= 0:
+        console.print(f"[yellow]Warning:[/yellow] {account_label}: no daily assets recorded for {bill_date}")
+        return False
+    try:
+        from quant.reporting.account_bill import export_single_etf_account_bill
+
+        bill_path = export_single_etf_account_bill(
+            account=account,
+            brief_date=bill_date,
+            output_path=root / ACCOUNT_BILL_TODAY_DIR / account_label / "index.html",
+            status_message=f"当前展示最近已确认交易日 {bill_date} 的账单。",
+        )
+    except Exception as exc:  # pragma: no cover - renderer must not fail the whole confirm run.
+        console.print(f"[yellow]Warning:[/yellow] {account_label}: bill render failed: {exc}")
+        return False
+    console.print(f"{account_label}: confirmed from single_etf_intraday_daily_assets ({bill_date})")
+    console.print(f"{account_label}: account bill latest: {bill_path}")
+    return True
+
+
 def confirm_account_bills_pipeline(
     *,
     config_path: Path,
@@ -278,6 +330,21 @@ def confirm_account_bills_pipeline(
 
     for index, account in enumerate(accounts):
         account_label = str(getattr(account, "account_id", ""))
+        if str(getattr(account, "execution_model", "")) == "single_etf_intraday":
+            # Single-ETF intraday accounts confirm directly from their
+            # single_etf_intraday_* tables; no watchlist CSV is involved.
+            confirmed = _confirm_single_etf_account_bill(
+                console=console,
+                root=root,
+                account=account,
+                account_label=account_label,
+                bill_date=bill_date,
+            )
+            if confirmed:
+                confirmed_accounts.append(account_label)
+            else:
+                failed_accounts.append(account_label)
+            continue
         selected = _latest_watchlist_for_account(root, account, bill_date)
         if selected is None:
             console.print(f"[yellow]Warning:[/yellow] {account_label}: no watchlist CSV found for {bill_date}")
@@ -370,17 +437,29 @@ def run_watchlist_pipeline(
     else:
         console.print("2) Generating premarket watchlist...")
 
+    accounts = load_simulated_accounts(cfg, config_path.parent)
     selected_account_ids: list[str | None]
     if all_accounts:
-        selected_account_ids = [account.account_id for account in load_simulated_accounts(cfg, config_path.parent)]
+        selected_account_ids = [account.account_id for account in accounts]
         if not selected_account_ids:
             console.print("[yellow]Warning:[/yellow] no enabled simulated accounts configured")
             return 0
     else:
         selected_account_ids = [account_id]
 
+    # single_etf_intraday accounts render their watchlist and bill from the
+    # single_etf_intraday_* tables during site build
+    # (write_semiconductor_timing_watchlist / export_single_etf_account_bill);
+    # they do not use the stock-pool watchlist pipeline.
+    single_etf_ids = {
+        str(account.account_id)
+        for account in accounts
+        if str(getattr(account, "execution_model", "")) == "single_etf_intraday"
+    }
+    stock_account_ids = [aid for aid in selected_account_ids if aid not in single_etf_ids]
+
     results: list[dict[str, Any]] = []
-    for selected_account_id in selected_account_ids:
+    for selected_account_id in stock_account_ids:
         premarket_kwargs: dict[str, Any] = {
             "config_path": config_path,
             "refresh_cache": should_refresh_cache,
@@ -406,6 +485,13 @@ def run_watchlist_pipeline(
                 account_id=resolved_account_id,
                 include_global=False,
             )
+    if not results:
+        # Only single_etf_intraday accounts were requested; their watchlist/bill
+        # pages are rendered during site build from the single_etf_intraday_* tables.
+        console.print("[yellow]Only single-ETF intraday accounts selected; their watchlist is rendered at site build.[/yellow]")
+        _publish_quant_site(console, root=config_path.parent, config=cfg)
+        console.print("[green]Watchlist pipeline complete (single-ETF accounts via site build)[/green]")
+        return 0
     result = results[0]
     report_path = Path(result["report"])
     watchlist_today_paths = _watchlist_today_paths(root=config_path.parent, config=cfg)
