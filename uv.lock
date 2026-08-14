@@ -1751,7 +1751,7 @@ wheels = [
 [[package]]
 name = "stok-mapping"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "akshare" },
     { name = "beautifulsoup4" },
