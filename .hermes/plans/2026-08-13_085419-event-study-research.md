@@ -256,3 +256,22 @@ R_it = α_i + β_i · R_mt + ε_it
 ## 8. 落地顺序建议
 
 按 tracer-bullet：**Task 1 → Task 2 → Task 5 → Task 6**（核心价值链，先跑通出报告）；**Task 3、4** 并行补语料，不阻塞主线。
+
+## 9. 实现后已知边界（2026-08-15 补充，供后来者参考）
+
+> 以下两条是 6 个 Task 全部实现并测试通过后，在真实数据使用中发现/确认的边界，不属于未完成项，但生产使用前应知晓。
+
+### 边界 1：机构关注线（研报覆盖）数据为空
+
+- **现象**：`stock_timeline_report.py` 输出的"机构关注线"显示无研报数据。
+- **根因**：`research_report` provider 代码已完整实现（`quant/ai_corpus/providers/research_report.py`），东财接口可正常返回数据（实测格力电器单只 147 条），但**从未接入每日调度、也从未执行过一次实抓入库**——`ai_corpus_documents` 里 `provider='research_report'` 计数为 0。PBOC provider 有调度（100 条在库），研报 provider 漏了。
+- **修复路径**：① 跑一次 `fetch_research_reports` 把全市场研报抓入库；② 在 `maintenance_orchestrator.py` 加每日调度任务。
+- **生产影响**：六条线中第 6 条（机构关注线）暂时无数据，其余 5 条正常。
+
+### 边界 2：指数成分进出检测是近似算法
+
+- **现象**：`load_index_membership_changes`（`quant/ai_corpus/stock_timelines2.py`）用 `trade_date` 快照间隔 > 90 天判断"退出/再进入"。
+- **局限**：这是近似启发式——若指数成分在 90 天内调整又调回（极端情况），可能漏判一次进出；若某指数快照本身缺失超过 90 天，可能误判为"退出"。
+- **依据**：`cn_index_constituents_asof` 是 as-of 快照表，正常月度更新，90 天阈值对常规更新足够，但对极端情形不保证精确。
+- **改进方向**（如需）：接入 `cn_index_weights_asof` 交叉验证，或用成分权重从 0 到非 0 的变化判定进出，替代纯日期间隔。
+- **生产影响**：常规指数调整（月度/季度）可正确识别；极端高频进出可能失真，解读时注意。
