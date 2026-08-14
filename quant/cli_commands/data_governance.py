@@ -11,11 +11,13 @@ from quant.data_governance.adjustment import run_adjustment_audit
 from quant.config import load_config
 from quant.data_governance.db_health import run_database_health_check
 from quant.data_governance.index_asof_audit import run_index_asof_audit
+from quant.data_governance.sqlite_capacity import run_sqlite_capacity_audit
 
 
 DATA_GOVERNANCE_COMMANDS = frozenset(
     {
         "adjustment-audit",
+        "db-capacity",
         "db-health",
         "index-asof-audit",
     }
@@ -65,6 +67,23 @@ def register_data_governance_commands(subparsers: argparse._SubParsersAction) ->
         help="Exit with code 2 when result has errors, warnings, or never. Default: never.",
     )
 
+    db_capacity_parser = subparsers.add_parser(
+        "db-capacity",
+        help="Run a read-only SQLite capacity, backup, and redundant-index audit",
+    )
+    db_capacity_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    db_capacity_parser.add_argument("--output-dir", default=None, help="Output directory for capacity artifacts")
+    db_capacity_parser.add_argument(
+        "--quick-check",
+        action="store_true",
+        help="Run PRAGMA quick_check for each database; slower for large files",
+    )
+    db_capacity_parser.add_argument(
+        "--row-counts",
+        action="store_true",
+        help="Count rows in each user table; slower for large files",
+    )
+
 
 def handle_data_governance_command(args: argparse.Namespace, *, parser: argparse.ArgumentParser, console: Any | None = None) -> int:
     governance_console = console or Console()
@@ -111,6 +130,24 @@ def handle_data_governance_command(args: argparse.Namespace, *, parser: argparse
         governance_console.print(f"Markdown: {result.report_md_path}")
         governance_console.print(f"Run log: {result.run_log_md_path}")
         return 0
+    if args.cmd == "db-capacity":
+        config_path = Path(args.config).resolve()
+        governance_console.print("[bold]SQLite capacity audit started[/bold]")
+        result = run_sqlite_capacity_audit(
+            root=config_path.parent,
+            output_dir=Path(args.output_dir).resolve() if args.output_dir else None,
+            quick_check=bool(args.quick_check),
+            row_counts=bool(args.row_counts),
+        )
+        color = "green" if result.status == "pass" else ("yellow" if result.status == "warning" else "red")
+        governance_console.print(f"[{color}]SQLite capacity audit status: {result.status}[/{color}]")
+        governance_console.print(
+            f"Databases: {result.database_count}; backups: {result.backup_count}; "
+            f"warnings: {result.warning_count}; errors: {result.error_count}"
+        )
+        governance_console.print(f"JSON: {result.json_path}")
+        governance_console.print(f"Markdown: {result.markdown_path}")
+        return 2 if result.error_count else 0
     if args.cmd == "db-health":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

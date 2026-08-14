@@ -14,6 +14,7 @@ def test_data_governance_command_registration_preserves_args() -> None:
 
     adjustment_args = parser.parse_args(["adjustment-audit", "--output-csv", "out.csv", "--output-md", "out.md"])
     db_args = parser.parse_args(["db-health", "--scope", "scheduler", "--fail-on", "warning"])
+    capacity_args = parser.parse_args(["db-capacity", "--quick-check", "--row-counts", "--output-dir", "capacity"])
     index_args = parser.parse_args(
         [
             "index-asof-audit",
@@ -33,6 +34,10 @@ def test_data_governance_command_registration_preserves_args() -> None:
     assert db_args.cmd == "db-health"
     assert db_args.scope == "scheduler"
     assert db_args.fail_on == "warning"
+    assert capacity_args.cmd == "db-capacity"
+    assert capacity_args.quick_check is True
+    assert capacity_args.row_counts is True
+    assert capacity_args.output_dir == "capacity"
     assert index_args.cmd == "index-asof-audit"
     assert index_args.benchmark_symbol == "SH.000300"
     assert index_args.candidate_folds == "folds.csv"
@@ -204,3 +209,49 @@ def test_cli_main_delegates_data_governance_commands(monkeypatch, tmp_path: Path
 
     assert cli.main() == 0
     assert calls == [("db-health", tmp_path / "config.yaml", True)]
+
+
+def test_db_capacity_handler_forwards_read_only_audit_args(monkeypatch, tmp_path: Path) -> None:
+    calls: list[dict[str, object]] = []
+    lines: list[str] = []
+
+    def fake_run_sqlite_capacity_audit(**kwargs):
+        calls.append(kwargs)
+        return SimpleNamespace(
+            status="warning",
+            database_count=3,
+            backup_count=2,
+            total_primary_bytes=1024,
+            total_backup_bytes=2048,
+            warning_count=1,
+            error_count=0,
+            json_path=tmp_path / "capacity.json",
+            markdown_path=tmp_path / "capacity.md",
+        )
+
+    monkeypatch.setattr(data_governance_cli, "run_sqlite_capacity_audit", fake_run_sqlite_capacity_audit)
+    args = SimpleNamespace(
+        cmd="db-capacity",
+        config=str(tmp_path / "config.yaml"),
+        output_dir=str(tmp_path / "capacity"),
+        quick_check=True,
+        row_counts=True,
+    )
+
+    exit_code = data_governance_cli.handle_data_governance_command(
+        args,
+        parser=cli.argparse.ArgumentParser(),
+        console=SimpleNamespace(print=lambda text: lines.append(str(text))),
+    )
+
+    assert exit_code == 0
+    assert calls == [
+        {
+            "root": tmp_path,
+            "output_dir": (tmp_path / "capacity").resolve(),
+            "quick_check": True,
+            "row_counts": True,
+        }
+    ]
+    assert any("SQLite capacity audit" in line for line in lines)
+    assert any("capacity.json" in line for line in lines)

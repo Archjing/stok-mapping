@@ -62,13 +62,57 @@
 2. **更多跨市场因子**：对半导体广度、mega-tech beta、利率和中国科技情绪做解释性研究；若要进入交易逻辑，必须单独立项、消融、样本外验证。
 3. **`quant` 命名空间收尾**：迁移已完成（`quant` 是唯一应用命名空间，`phase0.cli` 为临时兼容转发）。剩余工作按迁移计划 Task 12 观察期执行：确认无外部调用后移除 `stok-phase0` 与 `phase0.cli` 转发。
 
-## 4. 策略研发与准入门槛
+## 4. 数据存储演进专项（Storage P0-P3）
 
-### 4.1 组合策略
+### 4.1 最终目标：分层混合存储
+
+项目不因单个 SQLite 文件接近 10 GiB 而执行恐慌式全库迁移，但也不再把“所有数据长期统一存入 SQLite”作为目标架构。最终目标是：
+
+```text
+原始归档 → 清洗与 PIT 门禁 → Parquet 历史事实层 → DuckDB 分析查询
+                              └→ SQLite 事务与治理层
+                                           ↓
+                              策略研究、模拟执行、报告与 Web 控制台
+```
+
+- SQLite 保留账户、订单、任务、运行索引、调度、审计、小型维度和其他低并发事务状态。
+- Parquet + DuckDB 承担大型、追加为主、横截面/区间扫描为主的行情与因子事实表。
+- PostgreSQL 不是当前默认迁移目标；只有多用户、多实例、多 writer、远程事务或高可用边界成立后再评估。
+- 原始价格、PIT 复权、研究价格和执行价格语义不得因存储迁移而改变。
+
+完整任务拆解见 [2026-08-14-hybrid-data-storage-migration.md](archive/superpowers/plans/2026-08-14-hybrid-data-storage-migration.md)，架构评估原文见 [2026-08-14-sqlite-storage-architecture-assessment.md](data_governance/logs/2026-08-14-sqlite-storage-architecture-assessment.md)。
+
+### 4.2 Storage P0：治理当前 SQLite，不迁移
+
+1. 建立只读容量审计：数据库/备份体积、页配置、表和索引占用、可选行数、可选 `quick_check`、错误与重复索引报告。
+2. 对重复索引、查询统计和代表性 query plan 在数据库副本上验证；未经独立审批不得删除索引、`VACUUM` 或修改生产库。
+3. 对 `maintenance_events.tick_decision` 同时实施写入降噪与受控保留：默认保留 90 天明细、每任务至少保留最新一条；先 dry-run，再按月归档到 local-only 压缩文件并校验行数/checksum，最后删除已验证归档的旧明细。不得处理 `maintenance_runs`、策略数据、行情、政策、新闻或回测输入。
+4. 建立备份数量、压缩、checksum、恢复演练和 local-only 策略。
+5. 定义 SQLite 连接规范：只读 URI、`busy_timeout`、事务所有权和 WAL 准入测试。
+
+验收：审计命令可在不修改数据库的情况下生成机器可读和 Markdown 证据；生产数据库未删除、重建或迁移。
+
+当前进度（2026-08-14）：Storage P0.1 决策/路线归档与 P0.2 只读 `db-capacity` 容量审计已完成；P0.3 索引副本验证、P0.4 维护事件降噪/归档保留、P0.5 备份与连接规范尚未实施。
+
+### 4.3 Storage P1：Parquet/DuckDB 有界试验
+
+以 `market_daily_bars` 的 2024-01-01 至 2026-08-14 数据为首个试验范围，比较 SQLite 与 Parquet/DuckDB 的体积、单股票读取、全市场横截面、区间面板、聚合、连接、`qfq_asof`、增量写入、峰值内存和恢复耗时。只有存储、扫描性能、PIT 正确性和可恢复性门槛同时通过，才允许进入 P2。
+
+### 4.4 Storage P2：存储适配层与影子读取
+
+建立 `HistoryStore` 边界，保留 SQLite 默认后端并新增 DuckDB/Parquet 后端。对同一请求执行双读，比较主键、日期、空值、数值、排序、策略信号、订单和报告；任何口径差异均阻断切换。
+
+### 4.5 Storage P3：逐表切换与回滚
+
+按 `market_daily_bars` → `market_daily_basic` → `market_adj_factors` → `market_index_bars` → 财务因子 → ETF 分钟线顺序迁移。每张表独立完成分区校验、影子读取、策略回归、正常维护周期、备份恢复和回滚演练，不进行整库一次性切换。
+
+## 5. 策略研发与准入门槛
+
+### 5.1 组合策略
 
 组合策略需依次通过：数据健康 → PIT 股票池 → `qfq_asof` 回测 → walk-forward → 成本/执行诊断 → 过拟合与集中度审查 → strategy-admission。核心指标至少包括年化、夏普、最大回撤、OOS 一致性、换手、交易次数、行业暴露和相对基准表现。
 
-### 4.2 单 ETF 映射策略
+### 5.2 单 ETF 映射策略
 
 单 ETF 策略需额外证明：
 
@@ -80,14 +124,14 @@
 
 单 ETF 策略可使用总账户资产、平均仓位、资金利用率和持仓资本回报率等指标，但必须明确分母，不能将不同分母的收益率混在一起比较。
 
-## 5. 运行与发布原则
+## 6. 运行与发布原则
 
 - `maintain tick` 是维护编排入口；`intraday-account --recover-missing` 只做盘后核验和恢复，不代替实时运行。
 - 开盘快照只在 enabled 的单 ETF 模拟账户存在时采集；禁用全部账户后不应继续产生无归属快照任务。
 - 站点发布只上传 HTML/CSS/JSON/CSV；数据库、新闻原文、日志和 `.env` 不上传。
 - 密钥从 `.env` 读取；禁止写入 `config.yaml`、文档、代码、报告或测试夹具。
 
-## 6. 计划治理
+## 7. 计划治理
 
 - 本文档是项目状态和优先级的唯一事实源；架构细节以 [PROJECT_ARCHITECTURE_OVERVIEW.md](PROJECT_ARCHITECTURE_OVERVIEW.md) 为准。
 - 一次性任务拆解和历史计划归档在 [archive/](archive/)；完成后只把稳定结论回写到本文或架构说明。
