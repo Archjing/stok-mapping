@@ -281,7 +281,6 @@ def render_comparison_chart_fragment(
         return fragment
     return (
         fragment.replace('id="market-comparison"', f'id="{instance_id}"')
-        .replace('id="market-comparison-title"', f'id="{instance_id}-title"')
         .replace("#market-comparison", f"#{instance_id}")
         .replace("getElementById('market-comparison')", f"getElementById('{instance_id}')")
         .replace("market-comparison-svg-title", f"{instance_id}-svg-title")

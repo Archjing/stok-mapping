@@ -1,5 +1,4 @@
 <div id="vix-vs-512480" class="vix-chart-root">
-  <h2>^VIX 与半导体 ETF（512480）</h2>
   <div class="vix-chart-legend" aria-label="图例">
     <span><i class="vix-swatch vix-line" aria-hidden="true"></i>^VIX（美国波动率指数）</span>
     <span><i class="vix-swatch etf-line" aria-hidden="true"></i>SH.512480 前复权收盘价（实际交易标的）</span>
@@ -14,7 +13,8 @@
 </div>
 <style>
   #vix-vs-512480 { color: var(--foreground); }
-  #vix-vs-512480 .vix-chart-legend { display:flex; flex-wrap:wrap; gap: 1rem; margin: .5rem 0 .25rem; color:var(--muted-foreground); }
+  #vix-vs-512480 .vix-chart-legend { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:1.5rem; row-gap:.55rem; margin:.5rem 0 .25rem; color:var(--muted-foreground); }
+  #vix-vs-512480 .vix-chart-legend > span { display:flex; align-items:flex-start; min-width:0; }
   #vix-vs-512480 .vix-swatch { display:inline-block; width:1.4rem; height:.7rem; margin-right:.35rem; vertical-align:middle; border-top:2px solid currentColor; }
   #vix-vs-512480 .vix-line { color:var(--viz-series-1); }
   #vix-vs-512480 .etf-line { color:var(--viz-series-2); }
@@ -37,7 +37,7 @@
   #vix-vs-512480 .vix-up-run-label { fill:var(--muted-foreground); font-size:11px; }
   #vix-vs-512480 .vix-hover-line { stroke:var(--muted-foreground); stroke-width:1; stroke-dasharray:3 3; }
   #vix-vs-512480 .vix-hover-dot { stroke:var(--background); stroke-width:2; }
-  @media (max-width: 420px) { #vix-vs-512480 .vix-chart-legend { gap:.35rem .75rem; } }
+  @media (max-width:640px) { #vix-vs-512480 .vix-chart-legend { grid-template-columns:1fr; row-gap:.4rem; } }
 </style>
 <script>
 (() => {

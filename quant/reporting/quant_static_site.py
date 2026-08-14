@@ -33,6 +33,7 @@ DEFAULT_QUANT_REMOTE = "linuxuser@108.61.182.91"
 DEFAULT_QUANT_REMOTE_DIR = "/var/www/share/quant/"
 QUANT_SITE_SYNC_PASSWORD_ENV = "QUANT_SITE_SYNC_PASSWORD"
 STATIC_ASSETS = ("style.css",)
+KATEX_SOURCE_DIR = Path("/usr/local/texlive/2026/texmf-dist/doc/support/ketcindy/ketcindyjs/katex")
 VIX_512480_RESEARCH_PATH = "research/vix-vs-512480/index.html"
 SOX_512480_RESEARCH_PATH = "research/sox-vs-512480/index.html"
 SOX_512480_COMPARISON_CONFIG = ComparisonChartConfig(
@@ -62,6 +63,20 @@ def quant_site_root(*, root: Path, config: dict[str, Any] | None = None) -> Path
 
 def _source_css_path() -> Path:
     return Path(__file__).with_name("static") / "style.css"
+
+
+def _copy_katex_assets(*, assets_dir: Path) -> None:
+    """Bundle the local KaTeX runtime so account-page formulas need no CDN."""
+    required = ("katex.min.css", "katex.min.js")
+    if not all((KATEX_SOURCE_DIR / name).is_file() for name in required):
+        return
+    destination = assets_dir / "katex"
+    destination.mkdir(parents=True, exist_ok=True)
+    for name in required:
+        shutil.copyfile(KATEX_SOURCE_DIR / name, destination / name)
+    fonts = KATEX_SOURCE_DIR / "fonts"
+    if fonts.is_dir():
+        shutil.copytree(fonts, destination / "fonts", dirs_exist_ok=True)
 
 
 def _vix_512480_research_source_path() -> Path:
@@ -427,6 +442,11 @@ def _write_latest_confirmed_account_bill(
                     output_path=target_dir / "index.html",
                     status_message=f"当前展示最近已确认交易日 {bill_date} 的账单。",
                 )
+                index_path = target_dir / "index.html"
+                index_path.write_text(
+                    _with_back_link(index_path.read_text(encoding="utf-8"), back_href="../../index.html"),
+                    encoding="utf-8",
+                )
                 return
             except Exception:
                 pass
@@ -727,10 +747,15 @@ def _account_index_html(
     meta: dict[str, str],
     generated_at: str,
     mapping_chart_links: list[dict[str, str]] | tuple[dict[str, str], ...] = (),
+    strategy_cfg: dict[str, Any] | None = None,
 ) -> str:
     mapping_links_html = "\n      ".join(
         f'<a class="quick-card" href="{html.escape(item["href"])}"><span>{html.escape(item["kicker"])}</span><strong>{html.escape(item["label"])}</strong></a>'
         for item in mapping_chart_links
+    )
+    strategy_html = _mapping_strategy_home_html(
+        account=account,
+        strategy_cfg=strategy_cfg or {},
     )
     return f"""<!DOCTYPE html>
 <html lang="zh-CN" data-theme="light">
@@ -739,6 +764,7 @@ def _account_index_html(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{html.escape(str(account.name))} 模拟账户</title>
   <link rel="stylesheet" href="../../assets/style.css">
+  <link rel="stylesheet" href="../../assets/katex/katex.min.css">
 </head>
 <body>
 {_theme_bar_html(back_href="../../index.html")}<div class="page account-bill-page">
@@ -760,11 +786,74 @@ def _account_index_html(
       <a class="quick-card" href="../../index.html"><span>CONSOLE</span><strong>控制台首页</strong></a>
     </div>
   </section>
+{strategy_html}
 </div>
+<script defer src="../../assets/katex/katex.min.js"></script>
+<script>
+window.addEventListener("DOMContentLoaded", function () {{
+  if (!window.katex) return;
+  document.querySelectorAll("[data-katex]").forEach(function (element) {{
+    window.katex.render(element.dataset.katex, element, {{ throwOnError: false }});
+  }});
+}});
+</script>
 {_theme_script_html()}
 </body>
 </html>
 """
+
+
+def _mapping_strategy_home_html(
+    *, account: Any, strategy_cfg: dict[str, Any]
+) -> str:
+    if str(getattr(account, "strategy_id", "")) != "cross_market_semiconductor_timing_etf_v1":
+        return ""
+    base = dict(strategy_cfg.get("cross_market_semiconductor_timing", {}) or {})
+    base.update(dict(getattr(account, "strategy_params", {}) or {}))
+    target = str(base.get("target_symbol", "SH.512480"))
+    is_scheduled_close = target == "SH.588200"
+    vix = 20 if is_scheduled_close else 19
+    target_name = "科创芯片ETF（588200）" if is_scheduled_close else "国联安半导体ETF（512480）"
+    exit_rule = "不设盘中追踪止损，在 T+1 日 14:55 清仓。" if is_scheduled_close else "从日内高点回落 2% 时卖出；未触发则 14:55 清仓。"
+    discount = float(base.get("limit_order_discount", 0.012))
+    sox_return_formula = r"r_{\mathrm{SOX}} = \frac{\mathrm{SOX}_{\mathrm{close}}(D)}{\mathrm{SOX}_{\mathrm{close}}(D-1)} - 1"
+    research_example_html = _strategy_research_example_html(target=target)
+    return f"""
+  <section class="bill-section strategy-explanation"><h2>这套策略怎么交易</h2>
+    <p class="strategy-body">它用上一交易日美股费城半导体指数（^SOX）的涨跌和恐慌指数（^VIX）筛选次日 A 股的 <strong>{target_name}（{html.escape(target)}）</strong>。美股收盘后，信号在下一次 A 股开盘时才可执行。</p>
+    <p class="strategy-body"><strong>开仓条件：</strong><span class="strategy-formula" data-katex="{html.escape(sox_return_formula, quote=True)}">r_SOX = SOX_close(D) / SOX_close(D−1) − 1</span>；当 <code>r_SOX &gt; 0.5%</code> 且 <code>VIX &lt; {vix}</code> 时才考虑买入。SOX 涨幅超过 1% 是强信号，按开盘价买入，目标仓位 60%；0.5% 至 1% 是弱信号，按 <code>开盘价 × (1 − {discount:.1%})</code> 挂限价单，目标仓位 50%。</p>
+    <p class="strategy-body"><strong>弱信号未成交：</strong>当天价格没有触及限价就撤单，不追价；因此不会使用当天未来价格来决定成交。</p>
+    <p class="strategy-body"><strong>卖出规则：</strong>{exit_rule} 买入后遵守 ETF 的 T+1 规则，不留隔夜仓位。</p>
+    <p class="strategy-body"><strong>交易口径：</strong>使用 5 分钟 K 线判断限价成交和盘中止损；按 100 份整手、账户佣金、最低佣金与滑点计算。回测和模拟账户采用同一套撮合规则。</p>
+    <p class="strategy-body"><strong>跨市场映射风险：</strong>SOX 上涨不等于 A 股半导体 ETF 必然上涨。汇率、国内政策、行业供需、开盘跳空和流动性都可能使映射失效；策略结果不构成收益承诺或投资建议。</p>
+    {research_example_html}
+  </section>"""
+
+
+def _strategy_research_example_html(*, target: str) -> str:
+    """Render fixed, independently generated research results; builds do not replay."""
+    if target == "SH.588200":
+        period = "2022-10-26 至 2026-08-07"
+        rows = (
+            ("策略：SOX + VIX 映射择时", "+53.1%", "+12.4%", "0.77", "-14.8%", "26.0%", "+204.2%"),
+            ("SH.588200 买入持有", "+256.6%", "+40.4%", "1.00", "-48.1%", "100.0%", "+256.6%"),
+            ("沪深 300 买入持有", "+28.4%", "+7.1%", "0.48", "-24.8%", "100.0%", "+28.4%"),
+        )
+    else:
+        period = "2021-05-13 至 2026-08-07"
+        rows = (
+            ("策略：SOX + VIX 映射择时", "+67.5%", "+10.8%", "0.87", "-13.6%", "23.0%", "+293.6%"),
+            ("SH.512480 买入持有", "+129.0%", "+17.5%", "0.62", "-62.5%", "100.0%", "+129.0%"),
+            ("沪深 300 买入持有", "-6.0%", "-1.2%", "0.02", "-40.9%", "100.0%", "-6.0%"),
+        )
+    table_rows = "".join(
+        "<tr>" + "".join(f"<td>{html.escape(value)}</td>" for value in row) + "</tr>" for row in rows
+    )
+    return f"""<section class="strategy-example"><h3>历史研究示例（非模拟账户账单）</h3>
+      <p class="strategy-body">区间：{period}。一次性独立研究回测，使用当前可执行规则：弱信号限价未触及即撤单、100 份整手、佣金万分之 2.5（单笔最低 5 元）和 0.01% 滑点；5 分钟 K 线用于判断成交与卖出。站点构建不会重跑回测。</p>
+      <div class="table-wrap"><table class="report-table"><thead><tr><th>对象</th><th>总收益</th><th>年化收益率</th><th>夏普比率</th><th>最大回撤</th><th>平均资金占用</th><th>已投入资本回报率</th></tr></thead><tbody>{table_rows}</tbody></table></div>
+      <p class="strategy-terms">总收益和年化收益率均以账户总资产为分母。平均资金占用是每日目标仓位的平均值，也可理解为资金利用率；已投入资本回报率 = 总收益 ÷ 平均资金占用，用于观察策略在实际占用资金上的回报。夏普比率衡量单位波动对应的历史收益；最大回撤是历史峰值至谷底的最大跌幅。历史研究结果不代表当前模拟账户业绩，也不构成未来收益承诺。</p>
+    </section>"""
 
 
 def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, wiki_path: str) -> str:
@@ -773,7 +862,7 @@ def _site_index_html(*, accounts_meta: list[dict[str, str]], generated_at: str, 
         rows.append(
             "<tr>"
             f"<td>{html.escape(item['account_id'])}</td>"
-            f"<td>{html.escape(item['name'])}</td>"
+            f"<td><a href=\"{html.escape(item['account_path'])}\">{html.escape(item['name'])}</a></td>"
             f"<td>{html.escape(item.get('latest_bill_date') or '暂无')}</td>"
             f"<td>{html.escape(item.get('position_start_date') or '暂无')}</td>"
             f"<td>{html.escape(item.get('total_asset') or '暂无')}</td>"
@@ -964,6 +1053,7 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
     source_css = _source_css_path()
     if source_css.exists():
         shutil.copyfile(source_css, assets_dir / "style.css")
+    _copy_katex_assets(assets_dir=assets_dir)
 
     accounts_meta: list[dict[str, str]] = []
     global_strategy_cfg = dict(config.get("walk_forward", {}).get("strategy_v2", {}) or {})
@@ -1056,6 +1146,7 @@ def build_quant_static_site(*, root: Path, config: dict[str, Any], accounts: lis
                 meta=meta,
                 generated_at=generated_at,
                 mapping_chart_links=mapping_chart_links,
+                strategy_cfg=global_strategy_cfg,
             ),
             encoding="utf-8",
         )

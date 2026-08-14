@@ -268,6 +268,12 @@ tr:not(.buy):not(.sell):not(.hold) td { background: var(--bg-card); }
 .bill-section { margin-top: 18px; }
 .bill-section h2 { margin-bottom: 8px; }
 .empty { padding: 10px 0; color: var(--text-dim); }
+.strategy-explanation > h2 { font-size: 22px; line-height: 1.35; margin-bottom: 14px; }
+.strategy-explanation .strategy-body { font-size: 17px; line-height: 1.8; margin: 12px 0; }
+.strategy-explanation .strategy-terms { font-size: 13px; line-height: 1.65; color: var(--text-dim); margin: 10px 0 0; }
+.strategy-explanation .strategy-formula { display: inline-block; margin: 0 3px; vertical-align: -0.15em; }
+.strategy-example { margin-top: 18px; }
+.strategy-example h3 { font-size: 19px; line-height: 1.4; margin-bottom: 8px; }
 
 .quick-section h2 {
   display: inline-flex;

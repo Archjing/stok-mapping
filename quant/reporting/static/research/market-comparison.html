@@ -1,5 +1,4 @@
 <div id="market-comparison" class="market-comparison-root">
-  <h2 id="market-comparison-title"></h2>
   <div class="market-comparison-legend" aria-label="图例"></div>
   <div class="market-comparison-wrap">
     <svg class="market-comparison-chart" role="img" aria-labelledby="market-comparison-svg-title market-comparison-svg-desc"></svg>
@@ -9,7 +8,8 @@
 </div>
 <style>
   #market-comparison { color:var(--foreground); }
-  #market-comparison .market-comparison-legend { display:flex; flex-wrap:wrap; gap:.5rem 1rem; margin:.5rem 0 .25rem; color:var(--muted-foreground); }
+  #market-comparison .market-comparison-legend { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); column-gap:1.5rem; row-gap:.55rem; margin:.5rem 0 .25rem; color:var(--muted-foreground); }
+  #market-comparison .market-comparison-legend > span { display:flex; align-items:flex-start; min-width:0; }
   #market-comparison .market-comparison-swatch { display:inline-block; vertical-align:middle; }
   #market-comparison .market-comparison-line { width:1.4rem; height:.7rem; margin-right:.35rem; border-top:2px solid currentColor; }
   #market-comparison .market-comparison-source-line { color:var(--viz-series-1); }
@@ -41,7 +41,7 @@
   #market-comparison .market-comparison-run-label { fill:var(--muted-foreground); font-size:11px; }
   #market-comparison .market-comparison-hover-line { stroke:var(--muted-foreground); stroke-width:1; stroke-dasharray:3 3; }
   #market-comparison .market-comparison-hover-dot { stroke:var(--background); stroke-width:2; }
-  @media (max-width:420px) { #market-comparison .market-comparison-legend { gap:.35rem .75rem; } }
+  @media (max-width:640px) { #market-comparison .market-comparison-legend { grid-template-columns:1fr; row-gap:.4rem; } }
 </style>
 <script>
 (() => {
@@ -50,19 +50,16 @@
   const values = source.data.map(([rawDate, sourceValue, targetValue, sourceClose, targetClose]) => ({ rawDate, date:new Date(`${rawDate}T00:00:00`), sourceValue, targetValue, sourceClose, targetClose }));
   const note = root.querySelector('.market-comparison-note');
   const tooltip = root.querySelector('.market-comparison-tooltip');
-  const title = root.querySelector('#market-comparison-title');
   const legend = root.querySelector('.market-comparison-legend');
   const fmtPct = value => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`;
   const thresholdOperatorLabel = { lt:'<', lte:'≤', gt:'>', gte:'≥' };
   const tickDate = value => `${value.getFullYear()}-${String(value.getMonth()+1).padStart(2, '0')}`;
   if (!values.length) {
-    title.textContent = source.title || '市场对照图';
     root.querySelector('.market-comparison-wrap').hidden = true;
     note.textContent = '数据暂不可用：需要两条配置序列的本地日线数据。';
     return;
   }
   const mappingEnabled = source.dailyMappingPct !== null && source.dailyMappingPct !== undefined;
-  title.textContent = source.title;
   legend.innerHTML = [
     `<span><i class="market-comparison-swatch market-comparison-line market-comparison-source-line" aria-hidden="true"></i>${source.source.label}</span>`,
     `<span><i class="market-comparison-swatch market-comparison-line market-comparison-target-line" aria-hidden="true"></i>${source.target.label}</span>`,

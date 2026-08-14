@@ -437,6 +437,7 @@ def test_build_quant_static_site_generates_multi_account_manifest_and_pages(tmp_
     assert 'href="wiki/index.html"' in site_index_html
     assert "A股影响因子全景图" in site_index_html
     assert 'href="accounts/default/index.html"' in site_index_html
+    assert '<td><a href="accounts/default/index.html">默认模拟账户</a></td>' in site_index_html
     assert 'href="accounts/default/latest/watchlist/index.html"' in site_index_html
     assert '<section class="bill-section"><div class="section-title-frame"><h2>账户总览</h2></div>' in site_index_html
     assert 'section-title-card' not in site_index_html
@@ -893,8 +894,8 @@ def test_build_quant_static_site_generates_semiconductor_timing_premarket_watchl
     assert "VIX &lt; 19" in watchlist_html
     assert "premarket-mapping-1-sox-vs-etf" in watchlist_html
     assert "premarket-mapping-2-vix-vs-etf" in watchlist_html
-    assert 'id="premarket-mapping-1-sox-vs-etf-title"' in watchlist_html
-    assert "querySelector('#premarket-mapping-1-sox-vs-etf-title')" in watchlist_html
+    assert 'id="premarket-mapping-1-sox-vs-etf-title"' not in watchlist_html
+    assert "querySelector('#premarket-mapping-1-sox-vs-etf-title')" not in watchlist_html
     assert "^SOX 与国联安半导体ETF" in watchlist_html
     assert '"observationBand":{"low":8000.0,"high":12000.0}' in watchlist_html
     assert '"absoluteThreshold":{"value":19.0,"operator":"lt"}' in watchlist_html
@@ -996,6 +997,11 @@ def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_
     assert '"absoluteThreshold":{"value":19.0,"operator":"lt"}' in star_vix
     assert 'href="../../index.html"' in star_vix
     assert 'href="../../../../assets/style.css"' in star_vix
+    assert '<h2 id="market-comparison-title">' not in semiconductor_sox
+    assert '<h2 id="market-comparison-title">' not in star_sox
+    assert '<h2>^VIX 与半导体 ETF（512480）</h2>' not in star_vix
+    assert 'grid-template-columns:repeat(2, minmax(0, 1fr))' in semiconductor_sox
+    assert 'grid-template-columns:repeat(2, minmax(0, 1fr))' in star_vix
 
     semiconductor_watchlist = (
         site_root / "semiconductor_timing" / "latest" / "watchlist" / "index.html"
@@ -1009,8 +1015,8 @@ def test_build_quant_static_site_generates_mapping_pages_per_account_target(tmp_
     assert star_watchlist.count('class="market-comparison-root"') == 2
     assert "premarket-mapping-1-sox-vs-etf" in star_watchlist
     assert "premarket-mapping-2-vix-vs-etf" in star_watchlist
-    assert 'id="premarket-mapping-2-vix-vs-etf-title"' in star_watchlist
-    assert "querySelector('#premarket-mapping-2-vix-vs-etf-title')" in star_watchlist
+    assert 'id="premarket-mapping-2-vix-vs-etf-title"' not in star_watchlist
+    assert "querySelector('#premarket-mapping-2-vix-vs-etf-title')" not in star_watchlist
 
 
 def test_build_quant_static_site_uses_mapping_contract_for_another_strategy_id(
@@ -1076,3 +1082,87 @@ def test_build_quant_static_site_uses_mapping_contract_for_another_strategy_id(
     assert result["manifest"]["accounts"][0]["mapping_chart_paths"] == [
         "accounts/another_mapping_account/research/custom-source-vs-etf/index.html"
     ]
+
+
+@pytest.mark.parametrize(
+    ("account_id", "target_symbol", "vix_threshold", "exit_text"),
+    [
+        ("semiconductor_timing", "SH.512480", 19, "从日内高点回落 2% 时卖出；未触发则 14:55 清仓"),
+        ("star_chip_us_sentiment_close", "SH.588200", 20, "不设盘中追踪止损，在 T+1 日 14:55 清仓"),
+    ],
+)
+def test_mapping_account_home_places_quick_links_before_inline_strategy_explanation(
+    account_id: str,
+    target_symbol: str,
+    vix_threshold: int,
+    exit_text: str,
+) -> None:
+    account = SimpleNamespace(
+        account_id=account_id,
+        name="测试映射账户",
+        strategy_id="cross_market_semiconductor_timing_etf_v1",
+        execution_model="single_etf_intraday",
+        strategy_params={"target_symbol": target_symbol, "strong_position_size": 0.6, "weak_position_size": 0.5},
+        commission=0.00025,
+        min_commission=5.0,
+        slippage=0.0001,
+        stamp_duty_sell=0.0,
+        transfer_fee_rate=0.0,
+        price_tick=0.001,
+        lot_size=100,
+        database_path=tmp_path / "data" / "account.sqlite" if 'tmp_path' in locals() else Path("/tmp/account.sqlite"),
+        initial_cash=200_000.0,
+        simulation_start_date="2026-08-12",
+    )
+    strategy_cfg = {
+        "cross_market_semiconductor_timing": {
+            "sox_thresholds": [0.005],
+            "vix_thresholds": [19],
+            "strong_signal_threshold": 0.01,
+            "limit_order_discount": 0.012,
+            "trailing_stop_ratio": 0.98,
+            "weak_unfilled_action": "cancel",
+            "fallback_time": "14:55",
+        }
+    }
+
+    page = _account_index_html(account=account, meta={}, generated_at="2026-08-13 12:00", strategy_cfg=strategy_cfg)
+
+    assert "快捷入口" in page
+    assert "这套策略怎么交易" in page
+    assert page.index("快捷入口") < page.index("这套策略怎么交易")
+    assert target_symbol in page
+    assert f"VIX &lt; {vix_threshold}" in page
+    assert exit_text in page
+    assert 'class="strategy-body"' in page
+
+
+def test_mapping_account_home_includes_fixed_research_example_without_running_backtest(tmp_path: Path) -> None:
+    account = SimpleNamespace(
+        account_id="semiconductor_timing",
+        name="半导体ETF美股情绪映射择时_v1",
+        strategy_id="cross_market_semiconductor_timing_etf_v1",
+        execution_model="single_etf_intraday",
+        strategy_params={"target_symbol": "SH.512480", "strong_position_size": 0.6, "weak_position_size": 0.5},
+        commission=0.00025,
+        min_commission=5.0,
+        slippage=0.0001,
+        stamp_duty_sell=0.0,
+        transfer_fee_rate=0.0,
+        price_tick=0.001,
+        lot_size=100,
+        database_path=tmp_path / "data" / "account.sqlite",
+        initial_cash=200_000.0,
+        simulation_start_date="2026-08-12",
+    )
+    strategy_cfg = {"cross_market_semiconductor_timing": {"sox_thresholds": [0.005], "vix_thresholds": [19]}}
+    build_quant_static_site(root=tmp_path, config={"reporting": {}, "walk_forward": {"strategy_v2": strategy_cfg}}, accounts=[account])
+    page = (tmp_path / "reports" / "static_site" / "quant" / "accounts" / account.account_id / "index.html").read_text(encoding="utf-8")
+
+    assert "历史研究示例（非模拟账户账单）" in page
+    assert "2021-05-13 至 2026-08-07" in page
+    assert "平均资金占用" in page
+    assert "已投入资本回报率" in page
+    assert "+67.5%" in page
+    assert "+293.6%" in page
+    assert "站点构建不会重跑回测" in page
