@@ -96,6 +96,30 @@ def _fetch_live_text(url: str, *, timeout: int) -> str:
     return response.text
 
 
+def _fetch_day_with_fallback(compact: str, *, timeout: int, max_fallback_days: int = 7) -> tuple[str, str]:
+    """Fetch a CCTV day page, falling back to prior days when 404.
+
+    The current day's page is published only after the 19:00 broadcast, so a
+    same-day fetch (scheduler at morning/afternoon ticks) 404s.  Return
+    ``(day_text, actual_compact_date)`` where ``actual_compact_date`` is the
+    first available date at or before the requested one.
+    """
+    from datetime import date as _date, timedelta
+
+    requested = _date.fromisoformat(f"{compact[:4]}-{compact[4:6]}-{compact[6:8]}")
+    for offset in range(max_fallback_days + 1):
+        candidate = requested - timedelta(days=offset)
+        compact_candidate = candidate.strftime("%Y%m%d")
+        url = CCTV_DAY_URL_TEMPLATE.format(date=compact_candidate)
+        try:
+            return _fetch_live_text(url, timeout=timeout), compact_candidate
+        except requests.exceptions.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                continue
+            raise
+    raise FileNotFoundError(f"cctv day page not found for {compact} (and {max_fallback_days} prior days)")
+
+
 def _meta_tags(soup: BeautifulSoup) -> dict[str, str]:
     tags: dict[str, str] = {}
     for meta in soup.find_all("meta"):
@@ -181,6 +205,12 @@ def _document_from_cctv_item(
     topic = "新闻联播\\完整版" if event_type == "cctv_news_full" else "新闻联播\\分段"
     published_at = _date_only(item.get("published_at"))
     dedupe_key = stable_dedupe_key(source_id, item.get("url", ""), title, published_at, content_hash)
+    # 分段条目: summary 用内容正文开头做摘要(去掉"央视网消息(新闻联播)"导语),
+    # 而不是复述标题; 全文在 raw_text。
+    summary = safe_text(content.get("summary"))
+    if event_type == "cctv_news_segment" and raw_text:
+        cleaned = re.sub(r"^\s*央视网消息\s*（?新闻联播）?[:：]?\s*", "", raw_text)
+        summary = cleaned[:200]
     return {
         "document_id": stable_document_id("cctv", source_id, content_hash),
         "corpus_type": "cctv_news",
@@ -193,7 +223,7 @@ def _document_from_cctv_item(
         "ingested_at": ingested_at,
         "as_of_time": ingested_at,
         "title": title,
-        "summary": safe_text(content.get("summary")),
+        "summary": summary,
         "content_html": content_html,
         "raw_text": raw_text,
         "url": safe_text(item.get("url") or content.get("url")),
@@ -245,17 +275,17 @@ def fetch_cctv_news(
             text=day_text,
         )
     else:
-        day_url = CCTV_DAY_URL_TEMPLATE.format(date=compact)
-        day_text = _fetch_live_text(day_url, timeout=timeout)
+        day_text, actual_compact = _fetch_day_with_fallback(compact, timeout=timeout)
         day_raw_path = _write_raw_text(
             archive_root=archive_root,
             kind="day",
             ingested_at=fetched_at,
-            stem=f"day_{compact}",
+            stem=f"day_{actual_compact}",
             suffix="html",
             text=day_text,
         )
-    items = parse_cctv_day_page(day_text, date=date)
+        compact = actual_compact
+    items = parse_cctv_day_page(day_text, date=compact)
     if not include_segments:
         items = [item for item in items if item.get("item_type") == "full_program"]
 
@@ -295,6 +325,26 @@ def fetch_cctv_news(
                 "parse_status": "failed",
             }
         documents.append(_document_from_cctv_item(item, content=content, ingested_at=fetched_at, raw_path=raw_path))
+
+    # 全片文档: raw_text 拼接当天全部段落全文, 使"当天新闻联播全文"可直接阅读;
+    # summary 保留节目目录摘要。拼接内容在去重上稳定(同一天段落相同)。
+    full_documents = [doc for doc in documents if doc.get("event_type") == "cctv_news_full"]
+    segment_documents = [doc for doc in documents if doc.get("event_type") == "cctv_news_segment"]
+    if full_documents and segment_documents:
+        full_text_parts = []
+        for segment in segment_documents:
+            full_text_parts.append(f"{segment.get('title', '')}\n{segment.get('raw_text', '')}")
+        joined_text = "\n\n".join(full_text_parts)
+        full_document = full_documents[0]
+        full_document["raw_text"] = joined_text
+        full_document["content_hash"] = content_sha256(joined_text)
+        full_document["dedupe_key"] = stable_dedupe_key(
+            full_document.get("source_id", ""),
+            full_document.get("url", ""),
+            full_document.get("title", ""),
+            full_document.get("published_at", ""),
+            full_document["content_hash"],
+        )
 
     output_rows = select_fields(documents, fields)
     return pd.DataFrame(output_rows, columns=fields or AI_CORPUS_DOCUMENT_COLUMNS)

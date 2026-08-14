@@ -8,6 +8,8 @@ __pycache__/
 worktrees/
 .env
 .claude/settings.local.json
+*.egg-info/
+data/cache/fred/
 .codex/claude_agent.local.json
 data/raw_data/
 data/features/
