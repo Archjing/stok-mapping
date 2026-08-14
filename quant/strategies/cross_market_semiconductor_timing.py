@@ -90,6 +90,7 @@ from quant.execution.single_etf_intraday import (
     SingleEtfIntradayPolicy,
     run_single_etf_intraday_account_execution,
 )
+from quant.market_schedule import CN_CLOSE_BAR_TIME
 from quant.data_governance.us_market_features import load_common_market_daily_features
 from quant.strategies.base import BaseStrategy, StrategyOutput
 from quant.strategies.presentation import AccountMappingChart, ComparisonChartConfig, ComparisonSeriesConfig
@@ -610,7 +611,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
             "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
             "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
-            "fallback_time": str(cfg.get("fallback_time", "14:55")),
+            "fallback_time": str(cfg.get("fallback_time", CN_CLOSE_BAR_TIME)),
         }
 
     def select_params(
@@ -644,7 +645,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
                         "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
                         "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
                         "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
-                        "fallback_time": str(cfg.get("fallback_time", "14:55")),
+                        "fallback_time": str(cfg.get("fallback_time", CN_CLOSE_BAR_TIME)),
                     }
                     output = self._simulate_daily(
                         train, params,
@@ -678,7 +679,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
                 "trailing_stop_ratio": float(cfg.get("trailing_stop_ratio", _target_default(target_symbol, "trailing_stop_ratio"))),
                 "exit_mode": str(cfg.get("exit_mode", _target_default(target_symbol, "exit_mode"))),
                 "weak_unfilled_action": str(cfg.get("weak_unfilled_action", "cancel")),
-                "fallback_time": str(cfg.get("fallback_time", "14:55")),
+                "fallback_time": str(cfg.get("fallback_time", CN_CLOSE_BAR_TIME)),
                 "train_score": 0.0,
                 "train_sharpe": 0.0,
                 "train_trades": 0,
@@ -742,7 +743,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             "holding_sessions": 1,
             "trailing_drawdown": 1.0 - float(params.get("trailing_stop_ratio", TRAILING_STOP_RATIO)),
             "exit_mode": str(params.get("exit_mode", "trailing_stop")),
-            "fallback_time": str(params.get("fallback_time", "14:55")),
+            "fallback_time": str(params.get("fallback_time", CN_CLOSE_BAR_TIME)),
             "position_size": float(params.get("position_size", 1.0)),
             "strong_position_size": _opt_float(params.get("strong_position_size")),
             "weak_position_size": _opt_float(params.get("weak_position_size")),
@@ -853,7 +854,7 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
             weak_unfilled_action=str(params.get("weak_unfilled_action", "cancel")),
             holding_sessions=1,
             trailing_drawdown=1.0 - trailing_stop_ratio,
-            fallback_time=str(params.get("fallback_time", "14:55")),
+            fallback_time=str(params.get("fallback_time", CN_CLOSE_BAR_TIME)),
             exit_mode=str(params.get("exit_mode", "trailing_stop")),
             position_size=position_size,
         )

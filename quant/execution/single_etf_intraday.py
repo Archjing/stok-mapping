@@ -17,6 +17,7 @@ from quant.execution.accounts import (
     calculate_trade_cost,
     round_price_to_tick,
 )
+from quant.market_schedule import CN_CLOSE_BAR_TIME, CN_OPEN_TIME
 
 
 @dataclass(frozen=True)
@@ -38,7 +39,7 @@ class SingleEtfIntradayPolicy:
     weak_unfilled_action: str = "cancel"
     holding_sessions: int = 1
     trailing_drawdown: float = 0.02
-    fallback_time: str = "14:55"
+    fallback_time: str = CN_CLOSE_BAR_TIME
     exit_mode: str = "trailing_stop"  # "trailing_stop" | "scheduled_close"
     position_size: float = 1.0
     strong_position_size: float | None = None
@@ -84,7 +85,7 @@ class SingleEtfIntradayPolicy:
             weak_unfilled_action=str(raw.get("weak_unfilled_action", "cancel")),
             holding_sessions=int(raw.get("holding_sessions", 1)),
             trailing_drawdown=float(raw.get("trailing_drawdown", 0.02)),
-            fallback_time=str(raw.get("fallback_time", "14:55")),
+            fallback_time=str(raw.get("fallback_time", CN_CLOSE_BAR_TIME)),
             exit_mode=str(raw.get("exit_mode", "trailing_stop")),
             position_size=float(raw.get("position_size", 1.0)),
             strong_position_size=(
@@ -316,7 +317,7 @@ def _trade_row(
         "symbol": symbol,
         "name": symbol,
         "side": side,
-        "trade_time": trade_time.isoformat(sep=" ") if trade_time is not None else f"{pd.Timestamp(trade_date).date()} 09:30:00",
+        "trade_time": trade_time.isoformat(sep=" ") if trade_time is not None else f"{pd.Timestamp(trade_date).date()} {CN_OPEN_TIME}",
         "order_type": order_type,
         "reason": reason,
         "price": float(price),

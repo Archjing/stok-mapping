@@ -170,6 +170,21 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
     lock_dir = state_dir / "locks"
     config_arg = str(config_path)
 
+    # 调度时间默认值：环境变量优先（既有 .env 部署不变），其次
+    # config.yaml 的 market_schedules.scheduler，最后才是代码字面量。
+    cfg_for_schedule = load_config(config_path) if config_path.exists() else {}
+
+    def scheduled_time(env_name: str, scheduler_key: str, fallback: str) -> str:
+        env_value = _env_value(env_name, "")
+        if env_value:
+            return env_value
+        try:
+            from quant.market_schedule import scheduler_time as _scheduler_time
+
+            return _scheduler_time(cfg_for_schedule, scheduler_key)
+        except Exception:
+            return fallback
+
     def make_spec(
         *,
         name: str,
@@ -214,7 +229,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
     return [
         make_spec(
             name="financial_factors",
-            schedule_value=_env_value("FINANCIAL_FACTORS_TIME", "03:30"),
+            schedule_value=scheduled_time("FINANCIAL_FACTORS_TIME", "financial_factors", "03:30"),
             log_path="logs/financial_factors_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-financials", "--config", config_arg],
             health_scope=_env_value("FINANCIAL_FACTORS_HEALTH_SCOPE", "scheduler"),
@@ -227,7 +242,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="gov_policy_fetch",
-            schedule_value=_env_value("GOV_POLICY_TIME", "06:50"),
+            schedule_value=scheduled_time("GOV_POLICY_TIME", "gov_policy", "06:50"),
             log_path="logs/gov_policy_update.log",
             command=[
                 str(python_bin),
@@ -285,7 +300,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="us_market_news",
-            schedule_value=_env_value("US_MARKET_NEWS_TIME", "06:30"),
+            schedule_value=scheduled_time("US_MARKET_NEWS_TIME", "us_market_news", "06:30"),
             log_path="logs/us_market_news_update.log",
             command=[
                 str(python_bin),
@@ -319,7 +334,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         make_spec(
             name="cn_finance_flash",
             schedule_type="intraday",
-            schedule_value=_env_value("CN_FINANCE_FLASH_WINDOW", "09:15-15:05"),
+            schedule_value=scheduled_time("CN_FINANCE_FLASH_WINDOW", "cn_finance_flash_window", "09:15-15:05"),
             log_path="logs/cn_finance_flash.log",
             command=[
                 str(python_bin),
@@ -351,7 +366,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="cn_finance_flash_daily",
-            schedule_value=_env_value("CN_FINANCE_FLASH_DAILY_TIME", "17:20"),
+            schedule_value=scheduled_time("CN_FINANCE_FLASH_DAILY_TIME", "cn_finance_flash_daily", "17:20"),
             log_path="logs/cn_finance_flash_daily.log",
             command=[
                 str(python_bin),
@@ -383,7 +398,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="policy_event_extract",
-            schedule_value=_env_value("POLICY_EVENT_EXTRACT_TIME", "17:40"),
+            schedule_value=scheduled_time("POLICY_EVENT_EXTRACT_TIME", "policy_event_extract", "17:40"),
             log_path="logs/policy_event_extract.log",
             command=[
                 str(python_bin),
@@ -401,7 +416,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="daily_brief",
-            schedule_value=_env_value("DAILY_BRIEF_TIME", "07:20"),
+            schedule_value=scheduled_time("DAILY_BRIEF_TIME", "daily_brief", "07:20"),
             log_path="logs/daily_brief_pipeline.log",
             command=[str(python_bin), "-m", "quant.cli", "brief", "watchlist", "--config", config_arg, "--all-accounts"],
             health_scope=_env_value("DAILY_BRIEF_HEALTH_SCOPE", "cn"),
@@ -412,7 +427,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="etf_opening_snapshot",
-            schedule_value=_env_value("ETF_OPENING_SNAPSHOT_TIME", "09:25"),
+            schedule_value=scheduled_time("ETF_OPENING_SNAPSHOT_TIME", "etf_opening_snapshot", "09:25"),
             log_path="logs/etf_opening_snapshot.log",
             command=[
                 str(python_bin),
@@ -433,7 +448,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         make_spec(
             name="etf_intraday_5min",
             schedule_type="intraday",
-            schedule_value=_env_value("ETF_5MIN_WINDOW", "09:35-15:00"),
+            schedule_value=scheduled_time("ETF_5MIN_WINDOW", "etf_5min_window", "09:35-15:00"),
             log_path=_env_value("ETF_5MIN_LOG", "logs/etf_5min_fetch.log"),
             command=[
                 str(python_bin),
@@ -454,7 +469,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         make_spec(
             name="intraday_bill_publish",
             schedule_type="intraday",
-            schedule_value=_env_value("INTRADAY_BILL_WINDOW", "09:35-15:00"),
+            schedule_value=scheduled_time("INTRADAY_BILL_WINDOW", "intraday_bill_window", "09:35-15:00"),
             log_path="logs/intraday_bill_publish.log",
             command=[
                 str(python_bin),
@@ -474,7 +489,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="hk_market_history",
-            schedule_value=_env_value("HK_MARKET_HISTORY_TIME", "16:20"),
+            schedule_value=scheduled_time("HK_MARKET_HISTORY_TIME", "hk_market_history", "16:20"),
             log_path="logs/hk_market_history_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-hk-market-history", "--config", config_arg],
             health_scope=_env_value("HK_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
@@ -485,7 +500,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="a_share_history",
-            schedule_value=_env_value("A_SHARE_HISTORY_TIME", "16:30"),
+            schedule_value=scheduled_time("A_SHARE_HISTORY_TIME", "a_share_history", "16:30"),
             log_path="logs/manual_history_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-history", "--config", config_arg],
             health_scope=_env_value("A_SHARE_HISTORY_HEALTH_SCOPE", "scheduler"),
@@ -496,7 +511,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="account_bill_confirm",
-            schedule_value=_env_value("ACCOUNT_BILL_CONFIRM_TIME", "16:45"),
+            schedule_value=scheduled_time("ACCOUNT_BILL_CONFIRM_TIME", "account_bill_confirm", "16:45"),
             log_path="logs/account_bill_confirm.log",
             command=[
                 str(python_bin),
@@ -516,7 +531,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="us_market_history",
-            schedule_value=_env_value("US_MARKET_HISTORY_TIME", "17:10"),
+            schedule_value=scheduled_time("US_MARKET_HISTORY_TIME", "us_market_history", "17:10"),
             log_path="logs/us_market_history_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-us-market-history", "--config", config_arg],
             health_scope=_env_value("US_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
@@ -527,7 +542,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="cninfo_risk_events",
-            schedule_value=_env_value("CNINFO_RISK_EVENTS_TIME", "20:20"),
+            schedule_value=scheduled_time("CNINFO_RISK_EVENTS_TIME", "cninfo_risk_events", "20:20"),
             log_path="logs/cninfo_risk_events_update.log",
             command=[
                 str(python_bin),
@@ -565,7 +580,7 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="cctv_news",
-            schedule_value=_env_value("CCTV_NEWS_TIME", "20:45"),
+            schedule_value=scheduled_time("CCTV_NEWS_TIME", "cctv_news", "20:45"),
             log_path="logs/cctv_news_update.log",
             command=[
                 str(python_bin),
@@ -1641,7 +1656,17 @@ def maintenance_tick(
 ) -> MaintenanceTickResult:
     root, orchestrator_cfg = _load_maintenance_cfg(config_path)
     state_db = _configured_state_db(root, orchestrator_cfg)
-    now = datetime.strptime(as_of, "%Y-%m-%d %H:%M") if as_of else datetime.now()
+    if as_of:
+        # 测试/回放路径：显式时间按 default_timezone 解释为 aware。
+        quant_cfg = load_config(config_path)
+        from quant.market_schedule import default_timezone as _default_tz
+
+        now = datetime.strptime(as_of, "%Y-%m-%d %H:%M").replace(tzinfo=_default_tz(quant_cfg))
+    else:
+        quant_cfg = load_config(config_path)
+        from quant.market_schedule import aware_now
+
+        now = aware_now(quant_cfg)
     now_iso = now.isoformat(timespec="seconds")
     specs = _default_registry(config_path)
     executed_runs = 0

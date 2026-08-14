@@ -48,18 +48,15 @@ EM_URL = (
     "&lmt=500"
 )
 
-# A-share session: 48 five-minute bars per full trading day (09:35..11:30, 13:05..15:00).
-SESSION_BAR_TIMES = [
-    f"{h:02d}:{m:02d}:00"
-    for h, m in [
-        (9, 35), (9, 40), (9, 45), (9, 50), (9, 55),
-        (10, 0), (10, 5), (10, 10), (10, 15), (10, 20), (10, 25), (10, 30), (10, 35), (10, 40), (10, 45), (10, 50), (10, 55),
-        (11, 0), (11, 5), (11, 10), (11, 15), (11, 20), (11, 25), (11, 30),
-        (13, 5), (13, 10), (13, 15), (13, 20), (13, 25), (13, 30), (13, 35), (13, 40), (13, 45), (13, 50), (13, 55),
-        (14, 0), (14, 5), (14, 10), (14, 15), (14, 20), (14, 25), (14, 30), (14, 35), (14, 40), (14, 45), (14, 50), (14, 55),
-        (15, 0),
-    ]
-]
+# A-share session: 48 five-minute bars per full trading day, derived from
+# market_schedules (09:35..11:30, 13:05..15:00) instead of hardcoded tuples.
+def _session_bar_times() -> list[str]:
+    from quant.market_schedule import session_bar_times
+
+    return session_bar_times({}, "cn", 5)
+
+
+SESSION_BAR_TIMES = _session_bar_times()
 
 
 def eastmoney_secid(symbol: str) -> str:
@@ -183,25 +180,11 @@ def ensure_runs_table(conn: sqlite3.Connection) -> None:
 def expected_bar_count(since: date, now: datetime) -> int:
     """Number of 5-min bars expected from ``since`` 09:35 up to the current bar."""
     now_ts = now.time()
-    session_end = time(15, 0)
-    # Single requested day; for multi-day we conservatively count only the last day's
-    # window (callers normally pass today).
-    minutes_from_open = []
-    for h, m in [(9, 35), (11, 30), (13, 5), (15, 0)]:
-        minutes_from_open.append(h * 60 + m)
-    # Bars with bar-time <= now, within session windows.
+    # Bars with bar-time <= now, within session windows (derived from market_schedules).
     count = 0
-    for h, m in [(9, 35), (9, 40), (9, 45), (9, 50), (9, 55),
-                 (10, 0), (10, 5), (10, 10), (10, 15), (10, 20), (10, 25), (10, 30),
-                 (10, 35), (10, 40), (10, 45), (10, 50), (10, 55),
-                 (11, 0), (11, 5), (11, 10), (11, 15), (11, 20), (11, 25), (11, 30),
-                 (13, 5), (13, 10), (13, 15), (13, 20), (13, 25), (13, 30), (13, 35),
-                 (13, 40), (13, 45), (13, 50), (13, 55),
-                 (14, 0), (14, 5), (14, 10), (14, 15), (14, 20), (14, 25), (14, 30),
-                 (14, 35), (14, 40), (14, 45), (14, 50), (14, 55),
-                 (15, 0)]:
-        bar_ts = time(h, m)
-        if bar_ts <= now_ts:
+    for bar_str in SESSION_BAR_TIMES:
+        hh, mm, _ss = bar_str.split(":")
+        if time(int(hh), int(mm)) <= now_ts:
             count += 1
     # For a full completed session this equals 48.
     return count

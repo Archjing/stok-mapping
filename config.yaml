@@ -424,6 +424,78 @@ quant:
         type: "rss"
         enabled: true
         url: "https://feeds.feedburner.com/Quantocracy"
+  market_schedules:
+    default_timezone: "Asia/Shanghai"
+    markets:
+      cn:
+        timezone: "Asia/Shanghai"
+        sessions:
+          call_auction: "09:15-09:25"
+          open: "09:30"
+          morning_close: "11:30"
+          afternoon_open: "13:00"
+          close: "15:00"
+        calendar:
+          source: "local_db"
+          database_path: "data/a_share_history.sqlite"
+          table: "trading_calendar"
+      us:
+        timezone: "America/New_York"
+        sessions:
+          open: "09:30"
+          close: "16:00"
+        calendar:
+          source: "local_db"
+          database_path: "data/us_market_history.sqlite"
+          table: "us_daily_bars"
+          anchor_symbol: "^SOX"
+      hk:
+        timezone: "Asia/Hong_Kong"
+        sessions:
+          open: "09:30"
+          close: "16:00"
+        calendar:
+          source: "local_db"
+          database_path: "data/hk_market_history.sqlite"
+          table: "hk_daily_bars"
+      euro_london:
+        timezone: "Europe/London"
+        sessions:
+          open: "08:00"
+          close: "16:30"
+        calendar:
+          source: "local_db"
+          database_path: "data/euro_market_history.sqlite"
+          table: "market_daily_bars"
+          anchor_symbol: "^FTSE"
+      euro_frankfurt:
+        timezone: "Europe/Berlin"
+        sessions:
+          open: "09:00"
+          close: "17:30"
+        calendar:
+          source: "local_db"
+          database_path: "data/euro_market_history.sqlite"
+          table: "market_daily_bars"
+          anchor_symbol: "^GDAXI"
+    scheduler:
+      financial_factors: "03:30"
+      us_market_news: "06:30"
+      gov_policy: "06:50"
+      us_market_history_morning: "07:00"
+      daily_brief: "07:20"
+      etf_opening_snapshot: "09:25"
+      cn_finance_flash_window: "09:15-15:05"
+      etf_5min_window: "09:35-15:00"
+      intraday_bill_window: "09:35-15:00"
+      hk_market_history: "16:20"
+      a_share_history: "16:30"
+      account_bill_confirm: "16:45"
+      us_market_history: "17:10"
+      cn_finance_flash_daily: "17:20"
+      policy_event_extract: "17:40"
+      cninfo_risk_events: "20:20"
+      cctv_news: "20:45"
   maintenance_orchestrator:
     enabled: true
     state_db: "data/maintenance/maintenance.sqlite"
@@ -706,7 +778,9 @@ quant:
         limit_order_discount: 0.012
         trailing_stop_ratio: 0.98
         weak_unfilled_action: "cancel"
-        fallback_time: "14:55"
+        # fallback_time 不再显式配置：它是 sessions.close - 5min 的派生值
+        #（见 market_schedules.markets.cn），由 close_bar_time() 推导，避免
+        # 与收盘时间产生两个真相来源。
         # 账户映射对照图使用源指数原值区间；账户 strategy_params 可覆盖。
         sox_observation_band: [8000, 12000]
         vix_observation_band: [14, 19]
