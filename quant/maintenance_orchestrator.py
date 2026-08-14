@@ -163,6 +163,12 @@ def _has_enabled_single_etf_intraday_account(config_path: Path) -> bool:
     return False
 
 
+def _china_options_enabled(config_path: Path) -> bool:
+    """Keep the scheduled HO collector aligned with its feature switch."""
+    config = load_config(config_path)
+    return bool((config.get("china_options") or {}).get("enabled", False))
+
+
 def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
     root = config_path.parent
     python_bin = root / ".venv" / "bin" / "python"
@@ -485,6 +491,21 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             market_calendar="cn",
             retry_window_minutes="15",
             retry_interval_minutes="1",
+            max_retries="5",
+        ),
+        make_spec(
+            name="china_options_ho",
+            schedule_value=scheduled_time("CHINA_OPTIONS_HO_TIME", "china_options_ho", "15:10"),
+            log_path="logs/china_options_ho_update.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-ho-options", "--config", config_arg],
+            health_scope=_env_value("CHINA_OPTIONS_HO_HEALTH_SCOPE", "cn"),
+            health_fail_on=_env_value("CHINA_OPTIONS_HO_HEALTH_FAIL_ON", "error"),
+            enabled=_china_options_enabled(config_path),
+            description="Post-close HO option-chain collection and CN_PANIC_HO30 calculation",
+            tags=["scheduler", "cn", "options", "risk"],
+            market_calendar="cn",
+            retry_window_minutes="50",
+            retry_interval_minutes="10",
             max_retries="5",
         ),
         make_spec(

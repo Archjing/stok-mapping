@@ -668,3 +668,36 @@ def test_cn_finance_flash_schedulers_are_registered(tmp_path: Path) -> None:
     assert daily.market_calendar == "all"
     assert daily.command[daily.command.index("--provider") + 1] == "sina-7x24"
     assert "data/ai_corpus/ai_corpus.sqlite" in daily.command
+
+
+def test_china_options_ho_runs_after_cn_close_with_retries() -> None:
+    specs = _default_registry(Path("config.yaml"))
+    task = next(item for item in specs if item.name == "china_options_ho")
+
+    assert task.schedule_value == "15:10"
+    assert task.market_calendar == "cn"
+    assert task.command == [
+        ".venv/bin/python",
+        "-m",
+        "quant.cli",
+        "update-ho-options",
+        "--config",
+        "config.yaml",
+    ]
+    assert task.retry_window_minutes == 50
+    assert task.retry_interval_minutes == 10
+    assert task.max_retries == 5
+
+
+def test_china_options_ho_is_disabled_by_feature_switch(tmp_path) -> None:
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(
+        "quant:\n"
+        "  china_options:\n"
+        "    enabled: false\n",
+        encoding="utf-8",
+    )
+
+    task = next(item for item in _default_registry(config_path) if item.name == "china_options_ho")
+
+    assert task.enabled is False

@@ -76,9 +76,10 @@ See comment block above for full design rationale and parameter justification.
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -90,6 +91,7 @@ from quant.execution.single_etf_intraday import (
     SingleEtfIntradayPolicy,
     run_single_etf_intraday_account_execution,
 )
+from quant.china_options.service import load_panic_observation
 from quant.market_schedule import CN_CLOSE_BAR_TIME
 from quant.data_governance.us_market_features import load_common_market_daily_features
 from quant.strategies.base import BaseStrategy, StrategyOutput
@@ -98,6 +100,7 @@ from quant.strategies.registry import register
 
 ETF_DB_PATH = "data/etf_history.sqlite"
 US_DB_PATH = "data/us_market_history.sqlite"
+CHINA_OPTIONS_DB_PATH = "data/china_options.sqlite"
 DEFAULT_TARGET_SYMBOL = "SH.512480"
 US_SOX_SYMBOL = "^SOX"
 US_VIX_SYMBOL = "^VIX"
@@ -484,6 +487,53 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         merged["sox_ret"] = merged["sox_ret"].fillna(0.0)
         merged["vix_close"] = merged["vix_close"].fillna(999.0)
 
+        panic_cfg = dict(cfg.get("panic_filter", {}) or {})
+        panic_mode = str(panic_cfg.get("mode", "audit")).strip().lower()
+        if panic_mode not in {"off", "audit", "enforce"}:
+            raise ValueError("panic_filter.mode must be one of: off, audit, enforce")
+        if panic_mode != "off":
+            panic_database_path = Path(
+                str(panic_cfg.get("database_path", project_root / CHINA_OPTIONS_DB_PATH))
+            )
+            if not panic_database_path.is_absolute():
+                panic_database_path = project_root / panic_database_path
+            threshold = float(panic_cfg.get("threshold", 25.0))
+            max_staleness_days = int(panic_cfg.get("max_staleness_days", 3))
+            audit_rows: list[dict[str, Any]] = []
+            for session in pd.to_datetime(merged["date"]):
+                decision_at = datetime.combine(
+                    session.date(),
+                    time(9, 30),
+                    tzinfo=ZoneInfo("Asia/Shanghai"),
+                )
+                observation = load_panic_observation(
+                    panic_database_path,
+                    decision_at=decision_at,
+                    threshold=threshold,
+                    max_staleness_days=max_staleness_days,
+                )
+                audit_rows.append(
+                    {
+                        "cn_panic_value": observation.value,
+                        "cn_panic_trade_date": (
+                            observation.trade_date.isoformat() if observation.trade_date else None
+                        ),
+                        "cn_panic_available_at": (
+                            observation.available_at.isoformat() if observation.available_at else None
+                        ),
+                        "cn_panic_fresh": observation.fresh,
+                        "cn_panic_staleness_days": observation.staleness_days,
+                        "cn_panic_threshold": threshold,
+                        "cn_panic_would_block": observation.would_block,
+                        "cn_panic_mode": panic_mode,
+                        "cn_panic_unavailable_reason": observation.unavailable_reason,
+                    }
+                )
+            merged = pd.concat(
+                [merged.reset_index(drop=True), pd.DataFrame(audit_rows)],
+                axis=1,
+            )
+
         merged["timing_ret"] = (merged["close"].shift(-1) / merged["open"] - 1.0).fillna(0.0)
         merged["vol20"] = merged["ret"].rolling(20).std() * np.sqrt(252)
         for w in [3, 5, 10, 20, 60]:
@@ -772,7 +822,11 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
 
         sox_ret = pd.to_numeric(d["sox_ret"], errors="coerce").fillna(0.0)
         vix_close = pd.to_numeric(d["vix_close"], errors="coerce").fillna(999.0)
-        d["signal"] = ((sox_ret > sox_t) & (vix_close < vix_t)).astype(float)
+        signal = (sox_ret > sox_t) & (vix_close < vix_t)
+        if "cn_panic_mode" in d and "cn_panic_would_block" in d:
+            enforce = d["cn_panic_mode"].eq("enforce")
+            signal = signal & ~(enforce & d["cn_panic_would_block"].fillna(False).astype(bool))
+        d["signal"] = signal.astype(float)
         d["weight"] = d["signal"] * position_size
 
         timing_ret = pd.to_numeric(d.get("timing_ret", d["ret"]), errors="coerce").fillna(0.0)
@@ -789,6 +843,9 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
 
         signal_frame = d[[
             c for c in ["date", "symbol", "signal", "weight", "sox_ret", "vix_close",
+                         "cn_panic_value", "cn_panic_trade_date", "cn_panic_available_at",
+                         "cn_panic_fresh", "cn_panic_staleness_days", "cn_panic_threshold",
+                         "cn_panic_would_block", "cn_panic_mode", "cn_panic_unavailable_reason",
                          "open", "close", "ret", "timing_ret", "position_ret"]
             if c in d.columns
         ]].copy()
@@ -825,6 +882,9 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
         sox_ret = pd.to_numeric(d["sox_ret"], errors="coerce").fillna(0.0)
         vix_close = pd.to_numeric(d["vix_close"], errors="coerce").fillna(999.0)
         signal = (sox_ret > sox_t) & (vix_close < vix_t)
+        if "cn_panic_mode" in d and "cn_panic_would_block" in d:
+            enforce = d["cn_panic_mode"].eq("enforce")
+            signal = signal & ~(enforce & d["cn_panic_would_block"].fillna(False).astype(bool))
 
         # Load intraday data for the panel's date range
         d0 = d["date"].min()
@@ -876,7 +936,11 @@ class CrossMarketSemiconductorTimingStrategy(BaseStrategy):
 
         # Build signal frame
         signal_frame = d[[
-            c for c in ["date", "symbol", "signal_us_date", "sox_ret", "vix_close", "open", "high", "low", "close", "volume", "amount", "ret", "adj_factor"]
+            c for c in ["date", "symbol", "signal_us_date", "sox_ret", "vix_close",
+                        "cn_panic_value", "cn_panic_trade_date", "cn_panic_available_at",
+                        "cn_panic_fresh", "cn_panic_staleness_days", "cn_panic_threshold",
+                        "cn_panic_would_block", "cn_panic_mode", "cn_panic_unavailable_reason",
+                        "open", "high", "low", "close", "volume", "amount", "ret", "adj_factor"]
             if c in d.columns
         ]].copy()
         signal_frame["signal"] = signal.astype(float)

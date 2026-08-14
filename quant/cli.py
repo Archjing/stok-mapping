@@ -89,6 +89,7 @@ def main() -> int:
             "update-cross-market-reference-history",
             "update-europe-market-history",
             "update-hk-market-history",
+            "update-ho-options",
             "update-history",
             "update-us-market-history",
         ],

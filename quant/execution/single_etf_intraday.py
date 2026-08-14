@@ -402,6 +402,12 @@ def run_single_etf_intraday_account_execution(
         pd.to_numeric(daily["vix_close"], errors="coerce") < policy.volatility_threshold
     )
     raw_signal_count = int(raw_signal_mask.fillna(False).sum())
+    panic_block_mask = pd.Series(False, index=daily.index)
+    if {"cn_panic_mode", "cn_panic_would_block"}.issubset(daily.columns):
+        panic_block_mask = daily["cn_panic_mode"].astype(str).eq("enforce") & daily[
+            "cn_panic_would_block"
+        ].fillna(False).astype(bool)
+    executable_signal_count = int((raw_signal_mask.fillna(False) & ~panic_block_mask).sum())
 
     previous_adj_factor: float | None = None
     for index, row in daily.iterrows():
@@ -496,6 +502,13 @@ def run_single_etf_intraday_account_execution(
             and signal_return > policy.return_threshold
             and volatility < policy.volatility_threshold
         )
+        panic_value = row.get("cn_panic_would_block", False)
+        if (
+            str(row.get("cn_panic_mode", "audit")) == "enforce"
+            and pd.notna(panic_value)
+            and bool(panic_value)
+        ):
+            has_signal = False
         if shares <= 0 and not blocked_by_missing_exit and has_signal:
             exit_index = index + policy.holding_sessions
             next_exit_date = pd.Timestamp(dates[exit_index]) if exit_index < len(dates) else pd.NaT
@@ -725,6 +738,8 @@ def run_single_etf_intraday_account_execution(
             "account_execution_complete": not missing_days and not blocked_by_missing_exit,
             "account_state_status": state_status,
             "account_raw_signal_count": raw_signal_count,
+            "account_executable_signal_count": executable_signal_count,
+            "account_panic_blocked_signal_count": raw_signal_count - executable_signal_count,
             "account_entry_count": int(side_counts.get("buy", 0)),
             "account_exit_count": int(side_counts.get("sell", 0)),
             "account_completed_round_trip_count": int(side_counts.get("sell", 0)),

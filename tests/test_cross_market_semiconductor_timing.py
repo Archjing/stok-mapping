@@ -312,3 +312,91 @@ def test_intraday_strategy_is_routed_to_single_etf_account_execution(monkeypatch
         "account_execution_enabled": True,
         "account_execution_complete": True,
     }
+
+
+def test_prepare_panel_adds_prior_day_panic_audit_without_blocking_signal(monkeypatch, tmp_path) -> None:
+    import sqlite3
+
+    from quant.china_options.schema import initialize_china_options_database
+
+    database = tmp_path / "china_options.sqlite"
+    initialize_china_options_database(database)
+    with sqlite3.connect(database) as conn:
+        conn.execute(
+            """
+            INSERT INTO china_option_index_values (
+                index_id, trade_date, value, available_at, source, quality_flags_json,
+                calculation_json, near_expiry, next_expiry, quote_count
+            ) VALUES ('CN_PANIC_HO30', '2024-06-11', 30.0,
+                      '2024-06-11T15:10:00+08:00', 'test', '[]', '{}',
+                      '2024-06-21', '2024-07-19', 60)
+            """
+        )
+        conn.commit()
+
+    etf = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-06-12"]),
+            "symbol": ["SH.512480"],
+            "open": [1.0], "high": [1.0], "low": [1.0], "close": [1.0],
+            "volume": [1.0], "amount": [1.0], "ret": [0.0],
+        }
+    )
+    us = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-06-12"]),
+            "signal_us_date": pd.to_datetime(["2024-06-11"]),
+            "sox_ret": [0.02],
+            "vix_close": [18.0],
+        }
+    )
+    monkeypatch.setattr(CrossMarketSemiconductorTimingStrategy, "_load_etf_daily", staticmethod(lambda **_kwargs: etf))
+    monkeypatch.setattr(CrossMarketSemiconductorTimingStrategy, "_load_us_features", staticmethod(lambda **_kwargs: us))
+
+    panel = CrossMarketSemiconductorTimingStrategy().prepare_panel(
+        pd.DataFrame(),
+        {
+            "cross_market_semiconductor_timing": {
+                "as_of_date": "2024-06-12",
+                "project_root": str(tmp_path),
+                "panic_filter": {
+                    "mode": "audit",
+                    "database_path": str(database),
+                    "threshold": 25.0,
+                },
+            }
+        },
+    )
+
+    row = panel.iloc[0]
+    assert row["cn_panic_trade_date"] == "2024-06-11"
+    assert row["cn_panic_value"] == 30.0
+    assert bool(row["cn_panic_would_block"]) is True
+    output = CrossMarketSemiconductorTimingStrategy()._simulate_daily(
+        panel,
+        {"sox_threshold": 0.005, "vix_threshold": 19.0, "position_size": 1.0},
+        slippage=0.0,
+        commission=0.0,
+        stamp_duty_sell=0.0,
+    )
+    assert output.signal_frame.iloc[0]["signal"] == 1.0
+
+
+def test_enforced_panic_filter_blocks_entry_signal() -> None:
+    panel = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2024-06-12"]),
+            "symbol": ["SH.512480"],
+            "open": [1.0], "close": [1.1], "ret": [0.1], "timing_ret": [0.1],
+            "sox_ret": [0.02], "vix_close": [18.0],
+            "cn_panic_mode": ["enforce"], "cn_panic_would_block": [True],
+        }
+    )
+    output = CrossMarketSemiconductorTimingStrategy()._simulate_daily(
+        panel,
+        {"sox_threshold": 0.005, "vix_threshold": 19.0, "position_size": 1.0},
+        slippage=0.0,
+        commission=0.0,
+        stamp_duty_sell=0.0,
+    )
+    assert output.signal_frame.iloc[0]["signal"] == 0.0

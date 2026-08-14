@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,9 @@ from rich.console import Console
 
 from quant.cli_commands.output import print_manual_history_update_result
 from quant.config import load_config
+from quant.china_options import update_ho_options_from_config
+from quant.china_options.ho_provider import ChinaOptionsProviderError
+from quant.china_options.ho_vix import InsufficientOptionDataError
 from quant.data_access.providers.tushare import TushareAPIError, TusharePermissionError, TushareTokenError
 from quant.data_governance.backfills.adjustment import backfill_adjustment_factors_from_config
 from quant.data_governance.backfills.daily_bars import backfill_daily_bars_from_config
@@ -59,6 +63,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "update-financials",
         "update-europe-market-history",
         "update-hk-market-history",
+        "update-ho-options",
         "update-history",
         "update-cross-market-reference-history",
         "update-us-market-history",
@@ -269,6 +274,12 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     hk_history_parser = subparsers.add_parser("update-hk-market-history", help="Incrementally update HK market history database")
     hk_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     hk_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    ho_options_parser = subparsers.add_parser(
+        "update-ho-options",
+        help="Collect HO option chains and calculate CN_PANIC_HO30",
+    )
+    ho_options_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    ho_options_parser.add_argument("--as-of", default=None, help="Trade date override in YYYY-MM-DD format")
     financial_parser = subparsers.add_parser("update-financials", help="Update A-share quarterly financial factors")
     financial_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     financial_parser.add_argument("--periods", type=int, default=None, help="Override number of recent quarters to fetch")
@@ -739,6 +750,37 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-ho-options":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        try:
+            as_of = date.fromisoformat(args.as_of) if args.as_of else None
+        except ValueError:
+            parser.error("--as-of must use YYYY-MM-DD")
+            return 2
+        try:
+            result = update_ho_options_from_config(cfg, config_path.parent, as_of=as_of)
+        except (ChinaOptionsProviderError, InsufficientOptionDataError) as exc:
+            update_console.print(f"[red]HO options update failed:[/red] {exc}")
+            return 2
+        color = "green" if result.ok else "red"
+        update_console.print(f"[{color}]HO options update status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.database_path}")
+        update_console.print(f"Trade date: {result.trade_date.isoformat()}")
+        update_console.print(f"Fetched terms: {result.fetched_months}")
+        update_console.print(f"Fetched quotes: {result.fetched_quotes}")
+        update_console.print(
+            "CN_PANIC_HO30: " + (f"{result.index_value:.4f}" if result.index_value is not None else "N/A")
+        )
+        update_console.print(
+            "Interpolation terms: "
+            f"{result.near_expiry.isoformat() if result.near_expiry else 'N/A'} -> "
+            f"{result.next_expiry.isoformat() if result.next_expiry else 'N/A'}"
+        )
+        update_console.print(f"Source: {result.source}")
+        for warning in result.warnings:
+            update_console.print(f"[yellow]Warning:[/yellow] {warning}")
         return 0 if result.ok else 2
     if args.cmd == "import-history":
         config_path = Path(args.config).resolve()

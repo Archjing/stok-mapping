@@ -490,3 +490,21 @@ def test_post_close_replay_recovers_missing_session_but_never_overwrites_a_misma
     assert mismatch.status == "mismatch"
     assert mismatch.state_written is False
     assert load_single_etf_intraday_state(account.database_path, account.account_id)["daily_assets"][0]["total_asset"] != altered.iloc[0]["total_asset"]
+
+
+def test_enforced_panic_filter_blocks_intraday_entry(tmp_path: Path) -> None:
+    daily = _daily([0.02, 0.0, 0.0])
+    daily["cn_panic_mode"] = ["enforce", "audit", "audit"]
+    daily["cn_panic_would_block"] = [True, False, False]
+
+    result = run_single_etf_intraday_account_execution(
+        signal_frame=daily,
+        intraday_bars=_bars(),
+        account=_account(tmp_path),
+        policy=_policy(),
+    )
+
+    assert result.trades.empty
+    assert result.metrics["account_raw_signal_count"] == 1
+    assert result.metrics["account_executable_signal_count"] == 0
+    assert result.metrics["account_panic_blocked_signal_count"] == 1

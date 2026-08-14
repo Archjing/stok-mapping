@@ -764,3 +764,36 @@ def test_cli_main_delegates_data_update_commands(monkeypatch, tmp_path: Path) ->
 
     assert cli.main() == 0
     assert calls == [("update-history", True)]
+
+
+def test_update_ho_options_handler_forwards_config_and_as_of(monkeypatch, tmp_path: Path) -> None:
+    from datetime import date as _date
+
+    calls = []
+    monkeypatch.setattr(data_update_cli, "load_config", lambda _path: {"china_options": {}})
+
+    def fake_update(cfg, root, *, as_of):
+        calls.append((cfg, root, as_of))
+        return SimpleNamespace(
+            ok=True,
+            status="complete",
+            database_path=tmp_path / "china_options.sqlite",
+            trade_date=_date(2026, 8, 12),
+            fetched_months=2,
+            fetched_quotes=76,
+            index_value=18.87,
+            near_expiry=_date(2026, 8, 21),
+            next_expiry=_date(2026, 9, 18),
+            source="test",
+            warnings=(),
+        )
+
+    monkeypatch.setattr(data_update_cli, "update_ho_options_from_config", fake_update)
+    exit_code = data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="update-ho-options", config=str(tmp_path / "config.yaml"), as_of="2026-08-12"),
+        parser=argparse.ArgumentParser(),
+        console=_silent_console(),
+    )
+
+    assert exit_code == 0
+    assert calls == [({"china_options": {}}, tmp_path, _date(2026, 8, 12))]
