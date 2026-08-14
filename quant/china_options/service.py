@@ -101,9 +101,11 @@ def _resolve_cn_open_date_checker(
                 (day.isoformat(),),
             ).fetchone()
         if row is None or row[0] is None:
-            raise ChinaOptionsProviderError(
-                f"CN trading calendar has no row for HO expiry candidate {day.isoformat()}"
-            )
+            # 日历尚未覆盖的日期（通常是远月合约到期日，超出 trading_calendar
+            # 最后一条记录）。远月合约的精确假期顺延不影响 VIX 计算（只用近月
+            # 和次月），因此回退工作日判断，而不是把整个更新跑崩。
+            # 与 maintenance_orchestrator 的日历容错原则一致：未知日期不得误判为闭市。
+            return day.isoweekday() <= 5
         return int(row[0]) == 1
 
     return is_open_date
