@@ -6,6 +6,7 @@ from typing import Any
 import pandas as pd
 
 from quant.data_access.connectivity import (
+    fetch_eodhd_daily,
     fetch_hk_daily,
     fetch_tiingo_daily,
     fetch_tushare_hk_daily,
@@ -44,6 +45,11 @@ def fetch_external_market_daily(symbol: str, settings: Any) -> pd.DataFrame:
         return fetch_yf_daily(yf_symbol, years=years)
     if provider == "tiingo":
         return fetch_tiingo_daily(symbol, years=years)
+    if provider == "eodhd":
+        source_symbols = getattr(settings, "source_symbols", {}) or {}
+        source_symbol = str(source_symbols.get(symbol, symbol))
+        token_env = str(getattr(settings, "api_token_env", "EODHD_API_TOKEN") or "EODHD_API_TOKEN")
+        return fetch_eodhd_daily(source_symbol, years=years, token_env=token_env)
     if provider in {"akshare_hk", "akshare-hk"}:
         return fetch_hk_daily(symbol, years=years, adjust="qfq")
     if provider in {"tushare_hk", "tushare-hk"}:

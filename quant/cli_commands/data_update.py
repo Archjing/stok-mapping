@@ -24,7 +24,11 @@ from quant.data_governance.etf_catalog import StaleETFCatalogError, sync_etf_cat
 from quant.data_governance.etf_universe import ETFUniverseError, resolve_etf_universe_from_config
 from quant.data_governance.backfills.index_history import backfill_index_history_from_config
 from quant.data_governance.index_asof_backfill import backfill_index_asof_from_config
-from quant.data_governance.external_market_history import update_hk_market_history_from_config, update_us_market_history_from_config
+from quant.data_governance.external_market_history import (
+    update_europe_market_history_from_config,
+    update_hk_market_history_from_config,
+    update_us_market_history_from_config,
+)
 from quant.data_governance.cross_market_reference_history import update_cross_market_reference_history_from_config
 from quant.data_governance.financial_factors import update_financial_factors_from_config
 from quant.data_governance.import_history import import_from_config, import_index_history_from_config
@@ -53,6 +57,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "resolve-etf-universe",
         "sync-etf-catalog",
         "update-financials",
+        "update-europe-market-history",
         "update-hk-market-history",
         "update-history",
         "update-cross-market-reference-history",
@@ -249,6 +254,12 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
         default=None,
         help="Force full backfill from YYYY-MM-DD, overriding the incremental window",
     )
+    europe_history_parser = subparsers.add_parser(
+        "update-europe-market-history",
+        help="Incrementally update European market index history database",
+    )
+    europe_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    europe_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
     reference_history_parser = subparsers.add_parser(
         "update-cross-market-reference-history",
         help="Incrementally update close-only cross-market reference series",
@@ -675,6 +686,23 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
                     f"- {group.name}: {group.status}; common date={group.latest_common_date or 'N/A'}; "
                     f"coverage={group.covered_symbols}/{len(group.symbols)}{missing}"
                 )
+        if result.warnings:
+            for warning in result.warnings:
+                update_console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-europe-market-history":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_europe_market_history_from_config(cfg, config_path.parent, check_only=args.check_only)
+        color = "green" if result.ok else "red"
+        update_console.print(f"[{color}]Europe market history update status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Latest date: {result.latest_date or 'N/A'}")
+        update_console.print(f"Coverage: {result.coverage:.4f} ({result.covered_symbols}/{result.symbol_count})")
+        update_console.print(f"Fetched rows: {result.fetched_rows}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        update_console.print(f"Updated rows: {result.updated_rows}")
+        update_console.print(f"Source: {result.source or 'N/A'}")
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")

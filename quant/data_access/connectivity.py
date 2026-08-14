@@ -85,6 +85,80 @@ def fetch_yf_daily(symbol: str, years: int) -> pd.DataFrame:
     return df[[c for c in keep if c in df.columns]].copy()
 
 
+def fetch_eodhd_daily(
+    symbol: str,
+    years: int,
+    *,
+    token_env: str = "EODHD_API_TOKEN",
+    start: date | None = None,
+    end: date | None = None,
+) -> pd.DataFrame:
+    """Fetch daily OHLC index data from the EODHD EOD endpoint.
+
+    EODHD index series are already index levels.  In particular, an index
+    response must not be treated as an equity series requiring local dividend
+    adjustment; ``adjusted_close`` therefore falls back to ``close``.
+    """
+    ticker = str(symbol).strip().upper()
+    if not ticker:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    if end is None:
+        end = date.today()
+    if start is None:
+        start = end - timedelta(days=365 * int(years) + 20)
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        raise RuntimeError(f"missing_token_env:{token_env}")
+
+    request_failed = False
+    request_status: int | str = "unknown"
+    resp = None
+    try:
+        resp = requests.get(
+            f"https://eodhd.com/api/eod/{ticker}",
+            params={
+                "from": start.isoformat(),
+                "to": end.isoformat(),
+                "period": "d",
+                "fmt": "json",
+                "api_token": token,
+            },
+            timeout=20,
+        )
+        resp.raise_for_status()
+    except requests.RequestException:
+        request_failed = True
+        request_status = getattr(resp, "status_code", "unknown")
+    if request_failed:
+        raise RuntimeError(f"eodhd_request_failed:status={request_status}")
+    try:
+        payload = resp.json()
+    except ValueError:
+        raise RuntimeError("eodhd_invalid_json") from None
+
+    if isinstance(payload, dict):
+        message = str(payload.get("message") or payload.get("error") or "unknown_response")
+        raise RuntimeError(f"eodhd_api_error:{message}")
+    if not isinstance(payload, list) or not payload:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "adjusted_close", "volume"])
+    warnings = [str(item.get("warning", "")).strip() for item in payload if isinstance(item, dict) and item.get("warning")]
+    if warnings:
+        raise RuntimeError(f"eodhd_api_warning:{warnings[0]}")
+
+    out = pd.DataFrame(payload)
+    out.columns = [str(column).strip().lower().replace(" ", "_") for column in out.columns]
+    if "date" not in out.columns:
+        raise RuntimeError("eodhd_missing_date")
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    for column in ["open", "high", "low", "close"]:
+        out[column] = pd.to_numeric(out.get(column), errors="coerce")
+    out["adjusted_close"] = pd.to_numeric(out.get("adjusted_close", out["close"]), errors="coerce")
+    out["volume"] = pd.to_numeric(out.get("volume"), errors="coerce")
+    out = out.dropna(subset=["date", "open", "high", "low", "close"]).sort_values("date")
+    keep = ["date", "open", "high", "low", "close", "adjusted_close", "volume"]
+    return out[keep].reset_index(drop=True)
+
+
 def fetch_yahoo_chart_daily(
     symbol: str,
     years: int,

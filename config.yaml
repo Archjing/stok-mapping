@@ -287,6 +287,28 @@ quant:
       - "HK.09633"  # 农夫山泉
       - "HK.02269"  # 药明生物
       - "HK.06160"  # 百济神州
+  europe_market_history:
+    enabled: true
+    path: "data/euro_market_history.sqlite"
+    daily_table: "market_daily_bars"
+    source_audit_table: "market_data_source_runs"
+    provider: "eodhd"
+    # Keep the token only in .env, never in config.yaml or Git.
+    api_token_env: "EODHD_API_TOKEN"
+    years: 5
+    # European exchange holidays can create four consecutive non-trading days.
+    max_staleness_days: 5
+    min_symbol_coverage: 1.0
+    run_before_phase0: false
+    # Canonical research identifiers remain stable even if a provider changes.
+    # These are price-index series, not total-return indices.
+    symbols: ["^FTSE", "^GDAXI", "^FCHI", "^STOXX50E", "^STOXX"]
+    source_symbols:
+      "^FTSE": "FTSE.INDX"
+      "^GDAXI": "GDAXI.INDX"
+      "^FCHI": "FCHI.INDX"
+      "^STOXX50E": "STOXX50E.INDX"
+      "^STOXX": "STOXX.INDX"
   financial_factors:
     enabled: true
     table: "market_financial_factors"

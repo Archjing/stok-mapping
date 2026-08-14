@@ -14,6 +14,8 @@ from quant.data_access.providers.external_market import fetch_external_market_da
 
 DEFAULT_US_MARKET_SYMBOLS = ["^NDX", "^SOX", "NVDA", "KWEB", "^VIX", "CNY=X"]
 DEFAULT_HK_MARKET_SYMBOLS = ["HK.00700", "HK.09988"]
+# Price-index series only. Do not treat their close prices as total-return data.
+DEFAULT_EUROPE_MARKET_SYMBOLS = ["^FTSE", "^GDAXI", "^FCHI", "^STOXX50E", "^STOXX"]
 
 
 @dataclass(frozen=True)
@@ -55,6 +57,8 @@ class MarketHistorySettings:
     market_name: str = "us_market"
     fetch_start_date: date | None = None
     symbol_groups: dict[str, MarketInstrumentGroup] = field(default_factory=dict)
+    api_token_env: str = ""
+    source_symbols: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
@@ -84,6 +88,14 @@ _hk_settings = MarketHistorySettings(
     symbols=list(DEFAULT_HK_MARKET_SYMBOLS),
     runtime_yfinance_fallback=False,
     market_name="hk_market",
+)
+_europe_settings = MarketHistorySettings(
+    path=Path("data/euro_market_history.sqlite"),
+    provider="yfinance",
+    symbols=list(DEFAULT_EUROPE_MARKET_SYMBOLS),
+    max_staleness_days=5,
+    runtime_yfinance_fallback=False,
+    market_name="europe_market",
 )
 
 
@@ -186,6 +198,8 @@ def _build_settings(
         runtime_yfinance_fallback=bool(raw.get("runtime_yfinance_fallback", defaults.runtime_yfinance_fallback)),
         market_name=str(raw.get("market_name", defaults.market_name)),
         symbol_groups=symbol_groups,
+        api_token_env=str(raw.get("api_token_env", defaults.api_token_env)),
+        source_symbols={str(key): str(value) for key, value in (raw.get("source_symbols", defaults.source_symbols) or {}).items()},
     )
 
 
@@ -197,6 +211,16 @@ def configure_us_market_history(cfg: dict[str, Any] | None, root: Path | None = 
 def configure_hk_market_history(cfg: dict[str, Any] | None, root: Path | None = None) -> None:
     global _hk_settings
     _hk_settings = _build_settings(cfg, root=root, defaults=_hk_settings, default_symbols=DEFAULT_HK_MARKET_SYMBOLS)
+
+
+def configure_europe_market_history(cfg: dict[str, Any] | None, root: Path | None = None) -> None:
+    global _europe_settings
+    _europe_settings = _build_settings(
+        cfg,
+        root=root,
+        defaults=_europe_settings,
+        default_symbols=DEFAULT_EUROPE_MARKET_SYMBOLS,
+    )
 
 
 def configured_us_market_groups(cfg: dict[str, Any] | None) -> dict[str, MarketInstrumentGroup]:
@@ -292,6 +316,8 @@ def _ensure_tables(conn: sqlite3.Connection, settings: MarketHistorySettings) ->
 
 def _market_for_symbol(symbol: str, settings: MarketHistorySettings) -> str:
     raw = symbol.upper()
+    if settings.market_name == "europe_market":
+        return "EU_INDEX"
     if settings.market_name == "hk_market" or raw.startswith("HK."):
         return "HK"
     if raw.endswith("=X"):
@@ -770,6 +796,16 @@ def update_hk_market_history_from_config(
     return _update_market_history(_hk_settings, check_only=check_only)
 
 
+def update_europe_market_history_from_config(
+    cfg: dict[str, Any],
+    root: Path,
+    *,
+    check_only: bool = False,
+) -> MarketHistoryUpdateResult:
+    configure_europe_market_history(cfg.get("europe_market_history", {}), root)
+    return _update_market_history(_europe_settings, check_only=check_only)
+
+
 def _load_daily_from_history(settings: MarketHistorySettings, symbols: list[str], start: date, end: date) -> pd.DataFrame:
     if not (settings.enabled and settings.path.exists() and symbols):
         return pd.DataFrame()
@@ -800,3 +836,7 @@ def load_us_daily_from_history(symbols: list[str], start: date, end: date) -> pd
 
 def load_hk_daily_from_history(symbols: list[str], start: date, end: date) -> pd.DataFrame:
     return _load_daily_from_history(_hk_settings, symbols, start, end)
+
+
+def load_europe_daily_from_history(symbols: list[str], start: date, end: date) -> pd.DataFrame:
+    return _load_daily_from_history(_europe_settings, symbols, start, end)

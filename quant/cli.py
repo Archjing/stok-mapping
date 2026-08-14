@@ -87,6 +87,7 @@ def main() -> int:
             "sync-etf-catalog",
             "update-financials",
             "update-cross-market-reference-history",
+            "update-europe-market-history",
             "update-hk-market-history",
             "update-history",
             "update-us-market-history",

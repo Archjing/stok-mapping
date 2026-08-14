@@ -685,13 +685,17 @@ def test_external_market_and_import_handlers_forward_args(monkeypatch, tmp_path:
     def fake_load_config(path: Path) -> dict[str, object]:
         return {"phase0": "config"}
 
-    def fake_update_us_market_history_from_config(cfg, root, *, check_only: bool):
+    def fake_update_us_market_history_from_config(cfg, root, *, check_only: bool, force_start_date=None):
         calls.append(("us", {"cfg": cfg, "root": root, "check_only": check_only}))
         return SimpleNamespace(ok=False, status="error", db_path=tmp_path / "us.sqlite", latest_date=None, coverage=0.0, covered_symbols=0, symbol_count=1, fetched_rows=0, inserted_rows=0, updated_rows=0, source=None, warnings=[])
 
     def fake_update_hk_market_history_from_config(cfg, root, *, check_only: bool):
         calls.append(("hk", {"cfg": cfg, "root": root, "check_only": check_only}))
         return SimpleNamespace(ok=True, status="fresh", db_path=tmp_path / "hk.sqlite", latest_date="2026-06-25", coverage=1.0, covered_symbols=1, symbol_count=1, fetched_rows=0, inserted_rows=0, updated_rows=0, source="local", warnings=[])
+
+    def fake_update_europe_market_history_from_config(cfg, root, *, check_only: bool):
+        calls.append(("europe", {"cfg": cfg, "root": root, "check_only": check_only}))
+        return SimpleNamespace(ok=True, status="updated", db_path=tmp_path / "euro.sqlite", latest_date="2026-08-10", coverage=1.0, covered_symbols=2, symbol_count=2, fetched_rows=4, inserted_rows=4, updated_rows=0, source="yfinance", warnings=[])
 
     def fake_import_from_config(cfg, root):
         calls.append(("import_history", {"cfg": cfg, "root": root}))
@@ -704,6 +708,7 @@ def test_external_market_and_import_handlers_forward_args(monkeypatch, tmp_path:
     monkeypatch.setattr(data_update_cli, "load_config", fake_load_config)
     monkeypatch.setattr(data_update_cli, "update_us_market_history_from_config", fake_update_us_market_history_from_config)
     monkeypatch.setattr(data_update_cli, "update_hk_market_history_from_config", fake_update_hk_market_history_from_config)
+    monkeypatch.setattr(data_update_cli, "update_europe_market_history_from_config", fake_update_europe_market_history_from_config)
     monkeypatch.setattr(data_update_cli, "import_from_config", fake_import_from_config)
     monkeypatch.setattr(data_update_cli, "import_index_history_from_config", fake_import_index_history_from_config)
 
@@ -714,6 +719,11 @@ def test_external_market_and_import_handlers_forward_args(monkeypatch, tmp_path:
     )
     hk_exit = data_update_cli.handle_data_update_command(
         SimpleNamespace(cmd="update-hk-market-history", config=str(tmp_path / "config.yaml"), check_only=False),
+        parser=argparse.ArgumentParser(),
+        console=_silent_console(),
+    )
+    europe_exit = data_update_cli.handle_data_update_command(
+        SimpleNamespace(cmd="update-europe-market-history", config=str(tmp_path / "config.yaml"), check_only=True),
         parser=argparse.ArgumentParser(),
         console=_silent_console(),
     )
@@ -730,11 +740,13 @@ def test_external_market_and_import_handlers_forward_args(monkeypatch, tmp_path:
 
     assert us_exit == 2
     assert hk_exit == 0
+    assert europe_exit == 0
     assert import_exit == 0
     assert index_import_exit == 0
     assert calls == [
         ("us", {"cfg": {"phase0": "config"}, "root": tmp_path, "check_only": True}),
         ("hk", {"cfg": {"phase0": "config"}, "root": tmp_path, "check_only": False}),
+        ("europe", {"cfg": {"phase0": "config"}, "root": tmp_path, "check_only": True}),
         ("import_history", {"cfg": {"phase0": "config"}, "root": tmp_path}),
         ("import_index", {"cfg": {"phase0": "config"}, "root": tmp_path}),
     ]

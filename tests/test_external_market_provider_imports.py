@@ -86,3 +86,26 @@ def test_external_market_provider_falls_back_to_yfinance_after_yahoo_chart_reque
     result = external_market.fetch_external_market_daily("^SOX", SimpleNamespace(provider="yfinance", years=5))
 
     assert result.empty
+
+
+def test_external_market_provider_dispatches_eodhd_with_configured_source_symbol(monkeypatch) -> None:
+    calls: list[tuple[str, int, str]] = []
+
+    def fake_fetch_eodhd_daily(symbol: str, years: int, *, token_env: str) -> pd.DataFrame:
+        calls.append((symbol, years, token_env))
+        return pd.DataFrame({"date": ["2024-01-02"], "open": [1], "high": [1], "low": [1], "close": [1]})
+
+    monkeypatch.setattr(external_market, "fetch_eodhd_daily", fake_fetch_eodhd_daily)
+
+    result = external_market.fetch_external_market_daily(
+        "^GDAXI",
+        SimpleNamespace(
+            provider="eodhd",
+            years=5,
+            api_token_env="EODHD_API_TOKEN",
+            source_symbols={"^GDAXI": "GDAXI.INDX"},
+        ),
+    )
+
+    assert not result.empty
+    assert calls == [("GDAXI.INDX", 5, "EODHD_API_TOKEN")]
