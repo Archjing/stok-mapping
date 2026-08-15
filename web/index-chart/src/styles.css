@@ -1,27 +1,34 @@
+/* 明暗主题色板（原色系，提升层次对比） */
 [data-theme='dark'] {
-  --bg: #0b0e14;
-  --panel: #121823;
-  --panel2: #171f2c;
-  --border: #232d3d;
-  --text: #e6edf3;
-  --dim: #8b98a9;
-  --accent: #4f8ef7;
+  --bg: #0b0f17;
+  --panel: #151d2b;
+  --panel2: #1c2636;
+  --border: #2b3950;
+  --text: #eef3fa;
+  --dim: #a2b3c8;
+  --accent: #5b9cf5;
   --accent-text: #ffffff;
   --shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
-  --chip-bg: #171f2c;
+  --chip-bg: #1c2636;
+  --warn: #f2cc60;
 }
 
 [data-theme='light'] {
-  --bg: #f2f5f9;
+  --bg: #edf1f6;
   --panel: #ffffff;
-  --panel2: #f6f8fb;
-  --border: #e2e8f0;
-  --text: #1f2937;
-  --dim: #64748b;
+  --panel2: #f5f7fa;
+  --border: #c9d3df;
+  --text: #101827;
+  --dim: #56697e;
   --accent: #2563eb;
   --accent-text: #ffffff;
-  --shadow: 0 6px 28px rgba(15, 23, 42, 0.08);
-  --chip-bg: #f6f8fb;
+  --shadow: 0 6px 28px rgba(15, 23, 42, 0.1);
+  --chip-bg: #f5f7fa;
+  --warn: #b45309;
+}
+
+[hidden] {
+  display: none !important;
 }
 
 * {
@@ -69,6 +76,12 @@ body {
   color: var(--dim);
 }
 
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .icon-btn {
   appearance: none;
   border: 1px solid var(--border);
@@ -100,6 +113,10 @@ body {
   display: flex;
   align-items: center;
   gap: 9px;
+}
+
+.ctrl-wide {
+  flex: 1 1 100%;
 }
 
 .ctrl .lbl {
@@ -147,6 +164,12 @@ body {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 7px;
+}
+
+/* 看板标的池：可滚动折行 */
+.checks-wrap {
+  max-height: 92px;
+  overflow-y: auto;
 }
 
 .checks label {
@@ -256,11 +279,7 @@ body {
 }
 
 #status .warn {
-  color: #f2cc60;
-}
-
-[data-theme='light'] #status .warn {
-  color: #b45309;
+  color: var(--warn);
 }
 
 @media (max-width: 900px) {

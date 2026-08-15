@@ -15,8 +15,21 @@ import {
   TF_LABEL,
   type Timeframe,
 } from './aggregate';
+import {
+  MA_SPANS,
+  DASH_COLORS,
+  buildSharedDates,
+  dashWindowFromPct,
+  buildDashSeries,
+  dashTooltipHtml,
+  buildBarMaps,
+  sma,
+  type MaSpan,
+  type DashMode,
+  type DashInstrument,
+} from './dashboard';
 import { INDEX_DATA } from './generated/data';
-import type { IndexBar, IndexMeta } from './data-types';
+import type { IndexBar, InstrumentMeta } from './data-types';
 import './styles.css';
 
 echarts.use([
@@ -28,10 +41,9 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-const MA_SPANS = [5, 10, 20, 30, 60] as const;
-type MaSpan = (typeof MA_SPANS)[number];
 type Theme = 'dark' | 'light';
 type RangeKey = 'all' | '5y' | '3y' | '1y' | 'custom';
+type ViewMode = 'single' | 'dash';
 
 interface ThemePalette {
   bg: string;
@@ -50,15 +62,16 @@ interface ThemePalette {
 
 const THEMES: Record<Theme, ThemePalette> = {
   dark: {
-    bg: '#121823',
-    panel: '#121823',
-    border: '#232d3d',
-    text: '#e6edf3',
-    dim: '#8b98a9',
-    axisLine: '#2b3446',
-    splitLine: '#1a2230',
-    tooltipBg: '#151c28',
-    tooltipBorder: '#2b3446',
+    // 原深色系，提升层次对比：画布比页面亮、网格/坐标轴更清晰、弱文本提亮
+    bg: '#151d2b',
+    panel: '#151d2b',
+    border: '#2b3950',
+    text: '#eef3fa',
+    dim: '#a2b3c8',
+    axisLine: '#3a4a66',
+    splitLine: '#202b3d',
+    tooltipBg: '#1a2434',
+    tooltipBorder: '#33415c',
     up: '#ef232a',
     down: '#14b143',
     ma: {
@@ -70,15 +83,16 @@ const THEMES: Record<Theme, ThemePalette> = {
     },
   },
   light: {
+    // 原浅色系，提升层次对比：页面底稍深、边框/弱文本加深
     bg: '#ffffff',
     panel: '#ffffff',
-    border: '#e2e8f0',
-    text: '#1f2937',
-    dim: '#64748b',
-    axisLine: '#cbd5e1',
-    splitLine: '#eef2f7',
+    border: '#c9d3df',
+    text: '#101827',
+    dim: '#56697e',
+    axisLine: '#8fa1b8',
+    splitLine: '#e6ebf2',
     tooltipBg: '#ffffff',
-    tooltipBorder: '#dbe3ec',
+    tooltipBorder: '#c9d3df',
     up: '#dc2626',
     down: '#16a34a',
     ma: {
@@ -96,6 +110,13 @@ const THEMES: Record<Theme, ThemePalette> = {
 let indexSwitchEl: HTMLDivElement;
 let maTogglesEl: HTMLDivElement;
 let rangeButtonsEl: HTMLDivElement;
+let viewSwitchEl: HTMLDivElement;
+let controlsSingleEl: HTMLElement;
+let controlsDashEl: HTMLElement;
+let dashInstrumentsEl: HTMLDivElement;
+let dashModeEl: HTMLDivElement;
+let dashMaSpanEl: HTMLDivElement;
+let dashRangeEl: HTMLDivElement;
 let themeToggleEl: HTMLButtonElement;
 let readoutEl: HTMLDivElement;
 let statusEl: HTMLDivElement;
@@ -110,32 +131,51 @@ try {
 
 let chart: echarts.ECharts | null = null;
 const dataFile = INDEX_DATA;
-let curMeta: IndexMeta | null = null;
-let curDaily: IndexBar[] = []; // 原始日线（单一事实源）
-let curAgg: IndexBar[] = []; // 当前视图粒度的 K 线（1D/1W/1M/1Y 聚合）
-let curAggSpans: Array<[number, number]> = []; // 每个聚合 bar 的日线索引区间
-let curAggMa: Record<MaSpan, (number | null)[]> | null = null; // 聚合收盘的均线
+
+// ---- 单指数视图状态 ----
+let curMeta: InstrumentMeta | null = null;
+let curSymbol = 'SH.000001';
+let curDaily: IndexBar[] = [];
+let curAgg: IndexBar[] = [];
+let curAggSpans: Array<[number, number]> = [];
+let curAggMa: Record<MaSpan, (number | null)[]> | null = null;
 let curTf: Timeframe = '1D';
 const enabledMAs = new Set<MaSpan>([5, 10, 20, 60]);
 let activeRange: RangeKey = '1y';
 let programmaticZoom = false;
+let singleZoom: [number, number] | null = null;
+
+// ---- 对照看板状态 ----
+let viewMode: ViewMode = 'single';
+const dashSymbols = new Set<string>(['SH.000001', 'SZ.399001', 'SZ.399006']); // 三大板指默认勾选
+let dashMode: DashMode = 'close';
+let dashMaSpan: MaSpan = 20;
+let dashInsts: DashInstrument[] = [];
+let dashDates: string[] = [];
+let dashBarMaps: Array<Map<string, IndexBar>> = [];
+let dashZoom: { start: number; end: number } | null = null;
+let dashRebuildTimer: ReturnType<typeof setTimeout> | undefined;
 
 function pal(): ThemePalette {
   return THEMES[theme];
 }
 
-// ---------------------------------------------------------------- MA 计算
-
-function sma(values: number[], period: number): (number | null)[] {
-  const out: (number | null)[] = new Array(values.length).fill(null);
-  let sum = 0;
-  for (let i = 0; i < values.length; i++) {
-    sum += values[i];
-    if (i >= period) sum -= values[i - period];
-    if (i >= period - 1) out[i] = sum / period;
-  }
-  return out;
+function nameOf(symbol: string): string | undefined {
+  return dataFile.meta.instruments.find((m) => m.symbol === symbol)?.name;
 }
+
+function getDz(): { start: number; end: number } {
+  const opt = chart?.getOption() as
+    | { dataZoom?: Array<{ start?: number; end?: number }> }
+    | undefined;
+  const dz = opt?.dataZoom;
+  return {
+    start: dz && dz.length > 0 ? dz[0].start ?? 0 : 0,
+    end: dz && dz.length > 0 ? dz[0].end ?? 100 : 100,
+  };
+}
+
+// ---------------------------------------------------------------- MA 计算
 
 function computeMaBySpan(closes: number[]): Record<MaSpan, (number | null)[]> {
   const result = {} as Record<MaSpan, (number | null)[]>;
@@ -151,7 +191,6 @@ function setAggregated(tf: Timeframe): void {
   curAggMa = computeMaBySpan(curAgg.map((b) => b.c));
 }
 
-/** 日线索引 → 日期；gte=首个 >= 该日期的索引，lte=最后一个 <= 该日期的索引。 */
 function dailyIndexForDate(dateStr: string, mode: 'gte' | 'lte'): number {
   if (mode === 'gte') {
     const i = curDaily.findIndex((b) => b.d >= dateStr);
@@ -163,7 +202,7 @@ function dailyIndexForDate(dateStr: string, mode: 'gte' | 'lte'): number {
   return curDaily.length - 1;
 }
 
-// ---------------------------------------------------------------- 图表构建
+// ---------------------------------------------------------------- 单指数图表
 
 function buildSeries(): SeriesOption[] {
   const p = pal();
@@ -336,9 +375,8 @@ function formatTooltip(params: unknown): string {
   return rows.join('');
 }
 
-// ---------------------------------------------------------------- 缩放 / 粒度切换
+// ---------------------------------------------------------------- 单指数缩放 / 粒度
 
-/** 把某个聚合索引区间 [sIdx, eIdx] 转换为 dataZoom 百分比并派发。 */
 function dispatchZoomPct(sIdx: number, eIdx: number): void {
   if (!chart || curAgg.length <= 1) return;
   const n = curAgg.length;
@@ -349,7 +387,6 @@ function dispatchZoomPct(sIdx: number, eIdx: number): void {
   programmaticZoom = false;
 }
 
-/** 按日线索引区间定位当前聚合轴上的可见区间，并应用缩放。 */
 function zoomToDailyRange(startDaily: number, endDaily: number): void {
   const n = curAgg.length;
   let sIdx = curAggSpans.findIndex((sp) => sp[1] >= startDaily);
@@ -360,7 +397,6 @@ function zoomToDailyRange(startDaily: number, endDaily: number): void {
   dispatchZoomPct(sIdx, eIdx);
 }
 
-/** 重建为指定粒度，并保持同一日线日期窗口。 */
 function rebuildWithTimeframe(tf: Timeframe, startDaily: number, endDaily: number): void {
   if (!chart) return;
   setAggregated(tf);
@@ -370,7 +406,6 @@ function rebuildWithTimeframe(tf: Timeframe, startDaily: number, endDaily: numbe
   updateStatus();
 }
 
-/** 把视图窗口设为 [fromDate, toDate]，按窗口宽度决定 K 线粒度。 */
 function applyViewWindow(fromDate: string, toDate: string): void {
   if (!chart || curDaily.length === 0) return;
   const startDaily = dailyIndexForDate(fromDate, 'gte');
@@ -384,28 +419,244 @@ function applyViewWindow(fromDate: string, toDate: string): void {
   }
 }
 
-/** dataZoom 事件：按当前可见宽度决定是否切换粒度（带迟滞）。 */
 function handleZoomChange(): void {
   if (!chart || curAgg.length === 0) return;
-  const opt = chart.getOption() as {
-    dataZoom?: Array<{ start?: number; end?: number }>;
-  };
-  const dz = opt.dataZoom;
-  if (!dz || dz.length === 0) return;
+  const dz = getDz();
   const n = curAgg.length;
-  const firstIdx = Math.max(
-    0,
-    Math.min(n - 1, Math.floor(((dz[0].start ?? 0) / 100) * (n - 1))),
-  );
-  const lastIdx = Math.max(
-    0,
-    Math.min(n - 1, Math.ceil(((dz[0].end ?? 100) / 100) * (n - 1))),
-  );
+  const firstIdx = Math.max(0, Math.min(n - 1, Math.floor((dz.start / 100) * (n - 1))));
+  const lastIdx = Math.max(0, Math.min(n - 1, Math.ceil((dz.end / 100) * (n - 1))));
   const startDaily = curAggSpans[firstIdx][0];
   const endDaily = curAggSpans[lastIdx][1];
   const visibleDays = endDaily - startDaily + 1;
   const tf = timeframeForVisibleDays(visibleDays, curTf);
   if (tf !== curTf) rebuildWithTimeframe(tf, startDaily, endDaily);
+}
+
+// ---------------------------------------------------------------- 对照看板
+
+function defaultDashZoom(): { start: number; end: number } {
+  const n = dashDates.length - 1;
+  if (n <= 0) return { start: 0, end: 100 };
+  const lastDate = dashDates[dashDates.length - 1];
+  const from = new Date(`${lastDate}T00:00:00Z`);
+  from.setUTCFullYear(from.getUTCFullYear() - 3);
+  const fromStr = from.toISOString().slice(0, 10);
+  const idx = Math.max(0, dashDates.findIndex((d) => d >= fromStr));
+  return { start: (idx / n) * 100, end: 100 };
+}
+
+function dashModeLabel(): string {
+  return dashMode === 'candle' ? '归一化蜡烛' : dashMode === 'ma' ? '归一化均线' : '归一化收盘';
+}
+
+function buildDashOption(): EChartsOption {
+  const p = pal();
+  const win = dashWindowFromPct(dashDates, dashZoom!.start, dashZoom!.end);
+  const windowStart = dashDates[win.startIdx];
+  return {
+    backgroundColor: p.bg,
+    animation: false,
+    grid: { left: 72, right: 24, top: 20, bottom: 74 },
+    xAxis: {
+      type: 'category',
+      data: dashDates,
+      boundaryGap: true,
+      axisLine: { lineStyle: { color: p.axisLine } },
+      axisLabel: {
+        color: p.dim,
+        hideOverlap: true,
+        formatter: (value: string) => value.slice(0, 7),
+      },
+      axisTick: { show: false },
+      splitLine: { show: false },
+      min: 'dataMin',
+      max: 'dataMax',
+    },
+    yAxis: {
+      scale: true,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: p.dim },
+      splitLine: { lineStyle: { color: p.splitLine } },
+    },
+    dataZoom: [
+      {
+        type: 'inside',
+        start: dashZoom!.start,
+        end: dashZoom!.end,
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: false,
+      },
+      {
+        type: 'slider',
+        start: dashZoom!.start,
+        end: dashZoom!.end,
+        height: 24,
+        bottom: 12,
+        borderColor: p.border,
+        backgroundColor: p.panel,
+        fillerColor: 'rgba(79,142,247,0.16)',
+        dataBackground: {
+          lineStyle: { color: p.axisLine },
+          areaStyle: { color: p.panel },
+        },
+        selectedDataBackground: {
+          lineStyle: { color: p.dim },
+          areaStyle: { color: p.splitLine },
+        },
+        handleStyle: { color: p.dim },
+        moveHandleStyle: { color: p.dim },
+        textStyle: { color: p.dim },
+      },
+    ],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross',
+        lineStyle: { color: p.dim },
+        label: { backgroundColor: p.tooltipBg, color: p.text, borderColor: p.tooltipBorder },
+        crossStyle: { color: p.dim },
+      },
+      backgroundColor: p.tooltipBg,
+      borderColor: p.tooltipBorder,
+      borderWidth: 1,
+      textStyle: { color: p.text },
+      extraCssText: 'box-shadow:0 8px 24px rgba(0,0,0,.28);border-radius:8px;',
+      formatter: (params: unknown) => dashTooltipParams(params),
+    },
+    series: buildDashSeries(dashInsts, dashDates, {
+      mode: dashMode,
+      maSpan: dashMaSpan,
+      windowStart,
+      colors: DASH_COLORS,
+    }),
+  };
+}
+
+function dashTooltipParams(params: unknown): string {
+  const list = params as Array<{ dataIndex: number }>;
+  if (!list.length || dashDates.length === 0) return '';
+  const i = list[0].dataIndex;
+  const win = dashWindowFromPct(dashDates, dashZoom!.start, dashZoom!.end);
+  const p = pal();
+  return dashTooltipHtml(
+    dashInsts,
+    dashBarMaps,
+    dashDates,
+    i,
+    dashDates[win.startIdx],
+    DASH_COLORS,
+    { text: p.text, dim: p.dim, up: p.up, down: p.down },
+  );
+}
+
+function dashRenderFull(): void {
+  if (!chart) return;
+  dashZoom = dashZoom ?? defaultDashZoom();
+
+  const selected = [...dashSymbols].filter((s) => dataFile.series[s]);
+  dashInsts = selected.map((s) => ({
+    symbol: s,
+    name: nameOf(s) ?? s,
+    bars: dataFile.series[s],
+  }));
+  dashDates = buildSharedDates(dashInsts);
+  dashBarMaps = buildBarMaps(dashInsts);
+
+  if (dashInsts.length === 0 || dashDates.length === 0) {
+    statusEl.innerHTML = '<span class="warn">对照看板：请至少勾选一个标的。</span>';
+    chart.setOption(
+      {
+        backgroundColor: pal().bg,
+        grid: { left: 72, right: 24, top: 20, bottom: 74 },
+        xAxis: { type: 'category', data: [] },
+        yAxis: { scale: true },
+        series: [],
+      } as EChartsOption,
+      { notMerge: true },
+    );
+    return;
+  }
+
+  chart.setOption(buildDashOption(), { notMerge: true });
+  updateDashRangeButtons();
+  updateStatus();
+}
+
+function dashRenderSeries(): void {
+  if (!chart || dashDates.length === 0 || !dashZoom) return;
+  const win = dashWindowFromPct(dashDates, dashZoom.start, dashZoom.end);
+  const windowStart = dashDates[win.startIdx];
+  chart.setOption({
+    series: buildDashSeries(dashInsts, dashDates, {
+      mode: dashMode,
+      maSpan: dashMaSpan,
+      windowStart,
+      colors: DASH_COLORS,
+    }),
+  });
+}
+
+function dashZoomRange(range: RangeKey): void {
+  if (!chart || dashDates.length === 0) return;
+  if (range === 'custom') return;
+
+  const lastDate = dashDates[dashDates.length - 1];
+  let startPct = 0;
+  if (range !== 'all') {
+    const years = range === '5y' ? 5 : range === '3y' ? 3 : 1;
+    const from = new Date(`${lastDate}T00:00:00Z`);
+    from.setUTCFullYear(from.getUTCFullYear() - years);
+    const fromStr = from.toISOString().slice(0, 10);
+    const idx = Math.max(0, dashDates.findIndex((d) => d >= fromStr));
+    const n = dashDates.length - 1;
+    startPct = (idx / n) * 100;
+  }
+
+  dashZoom = { start: startPct, end: 100 };
+  programmaticZoom = true;
+  chart.dispatchAction({ type: 'dataZoom', start: startPct, end: 100 });
+  programmaticZoom = false;
+  dashRenderSeries();
+  updateDashRangeButtons(range);
+}
+
+function updateDashRangeButtons(active: RangeKey = 'custom'): void {
+  for (const btn of Array.from(dashRangeEl.querySelectorAll('button'))) {
+    btn.classList.toggle('active', btn.dataset.range === active);
+  }
+}
+
+// ---------------------------------------------------------------- 视图切换
+
+function switchToSingle(): void {
+  if (viewMode === 'single' || !chart) return;
+  dashZoom = getDz();
+  viewMode = 'single';
+  controlsSingleEl.hidden = false;
+  controlsDashEl.hidden = true;
+  readoutEl.hidden = false;
+
+  renderIndex(curSymbol);
+  if (singleZoom) {
+    programmaticZoom = true;
+    chart.dispatchAction({ type: 'dataZoom', start: singleZoom[0], end: singleZoom[1] });
+    programmaticZoom = false;
+    activeRange = 'custom';
+    updateRangeButtons();
+  }
+  updateStatus();
+}
+
+function switchToDash(): void {
+  if (viewMode === 'dash') return;
+  singleZoom = [getDz().start, getDz().end];
+  viewMode = 'dash';
+  controlsSingleEl.hidden = true;
+  controlsDashEl.hidden = false;
+  readoutEl.hidden = true;
+  dashRenderFull();
 }
 
 // ---------------------------------------------------------------- 读数条 & 状态
@@ -416,13 +667,12 @@ function renderReadout(): void {
     return;
   }
   const p = pal();
-  const bar = curDaily[curDaily.length - 1]; // 真实最新日线
+  const bar = curDaily[curDaily.length - 1];
   const prev = curDaily[curDaily.length - 2]?.c;
   const chg = prev == null ? null : ((bar.c - prev) / prev) * 100;
   const chgColor = chg == null ? p.dim : chg >= 0 ? p.up : p.down;
   const chgStr = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
 
-  // 均线取当前粒度序列的最新值
   const lastIdx = curAggMa['5'].length - 1;
   const maChips = MA_SPANS.filter((s) => enabledMAs.has(s))
     .map((s) => {
@@ -442,6 +692,13 @@ function renderReadout(): void {
 }
 
 function updateStatus(): void {
+  if (viewMode === 'dash') {
+    const modeText = dashMode === 'ma' ? `归一化均线 MA${dashMaSpan}` : dashModeLabel();
+    statusEl.innerHTML =
+      `对照看板 · ${dashInsts.length} 个标的 · 归一化基准=可见窗口起点 100 · 对比方式 ${modeText}` +
+      ` · 数据源 ${dataFile.meta.source} · 滚轮缩放 / 拖拽平移 / 双击复位`;
+    return;
+  }
   if (!curMeta) return;
   const gapNote =
     curMeta.start > '2005-01-04'
@@ -454,14 +711,15 @@ function updateStatus(): void {
     ` ${gapNote}`;
 }
 
-// ---------------------------------------------------------------- 交互
+// ---------------------------------------------------------------- 交互（单指数）
 
 function renderIndex(symbol: string): void {
-  const meta = dataFile.meta.indices.find((m) => m.symbol === symbol);
+  const meta = dataFile.meta.instruments.find((m) => m.symbol === symbol && m.kind === 'index');
   const bars = dataFile.series[symbol];
   if (!meta || !bars || !chart) return;
 
   curMeta = meta;
+  curSymbol = symbol;
   curDaily = bars;
   setAggregated('1D');
   activeRange = '1y';
@@ -482,7 +740,6 @@ function renderIndex(symbol: string): void {
 function onMaToggle(span: MaSpan, checked: boolean): void {
   if (checked) enabledMAs.add(span);
   else enabledMAs.delete(span);
-  // 仅替换 series（按 id 合并），保留当前缩放位置。
   chart?.setOption({ series: buildSeries() });
   renderReadout();
 }
@@ -510,13 +767,12 @@ function zoomRange(range: RangeKey): void {
 
 function applyTheme(): void {
   if (!chart) return;
-  const opt = chart.getOption() as {
-    dataZoom?: Array<{ start?: number; end?: number }>;
-  };
-  const dz = opt.dataZoom;
-  const start = dz && dz.length > 0 ? dz[0].start ?? 0 : 0;
-  const end = dz && dz.length > 0 ? dz[0].end ?? 100 : 100;
-
+  if (viewMode === 'dash') {
+    dashRenderFull();
+    updateThemeUI();
+    return;
+  }
+  const { start, end } = getDz();
   chart.setOption(buildOption(), { notMerge: true });
   programmaticZoom = true;
   chart.dispatchAction({ type: 'dataZoom', start, end });
@@ -548,14 +804,38 @@ function updateMaToggles(): void {
   }
 }
 
-// ---------------------------------------------------------------- UI 初始化
+// ---------------------------------------------------------------- UI 构建
+
+function buildViewSwitch(): void {
+  const options: Array<{ key: ViewMode; label: string }> = [
+    { key: 'single', label: '单指数' },
+    { key: 'dash', label: '对照看板' },
+  ];
+  for (const o of options) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = o.label;
+    btn.dataset.view = o.key;
+    btn.classList.toggle('active', viewMode === o.key);
+    btn.addEventListener('click', () => {
+      for (const b of Array.from(viewSwitchEl.querySelectorAll('button'))) {
+        b.classList.toggle('active', b === btn);
+      }
+      if (o.key === 'single') switchToSingle();
+      else switchToDash();
+    });
+    viewSwitchEl.appendChild(btn);
+  }
+}
 
 function buildIndexButtons(): void {
-  for (const meta of dataFile.meta.indices) {
+  const indices = dataFile.meta.instruments.filter((m) => m.kind === 'index');
+  for (const meta of indices) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = meta.name;
     btn.dataset.symbol = meta.symbol;
+    btn.classList.toggle('active', meta.symbol === 'SH.000001');
     btn.addEventListener('click', () => {
       for (const b of Array.from(indexSwitchEl.querySelectorAll('button'))) {
         b.classList.toggle('active', b === btn);
@@ -609,26 +889,126 @@ function buildRangeButtons(): void {
   }
 }
 
+function buildDashInstruments(): void {
+  for (const [k, meta] of dataFile.meta.instruments.entries()) {
+    const label = document.createElement('label');
+    label.dataset.symbol = meta.symbol;
+    label.classList.toggle('on', dashSymbols.has(meta.symbol));
+
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = DASH_COLORS[k % DASH_COLORS.length];
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = dashSymbols.has(meta.symbol);
+    input.addEventListener('change', () => {
+      if (input.checked) dashSymbols.add(meta.symbol);
+      else dashSymbols.delete(meta.symbol);
+      label.classList.toggle('on', input.checked);
+      dashRenderFull();
+    });
+
+    const text = document.createElement('span');
+    const code = meta.symbol.split('.')[1];
+    text.textContent = `${meta.name} ${code}`;
+
+    label.append(dot, input, text);
+    dashInstrumentsEl.appendChild(label);
+  }
+}
+
+function buildDashMode(): void {
+  const modes: Array<{ key: DashMode; label: string }> = [
+    { key: 'candle', label: '蜡烛' },
+    { key: 'close', label: '收盘' },
+    { key: 'ma', label: '均线' },
+  ];
+  for (const m of modes) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = m.label;
+    btn.dataset.mode = m.key;
+    btn.classList.toggle('active', dashMode === m.key);
+    btn.addEventListener('click', () => {
+      dashMode = m.key;
+      dashMaSpanEl.hidden = dashMode !== 'ma';
+      for (const b of Array.from(dashModeEl.querySelectorAll('button'))) {
+        b.classList.toggle('active', b === btn);
+      }
+      dashRenderFull();
+    });
+    dashModeEl.appendChild(btn);
+  }
+}
+
+function buildDashMaSpan(): void {
+  for (const span of MA_SPANS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = `MA${span}`;
+    btn.dataset.span = String(span);
+    btn.classList.toggle('active', dashMaSpan === span);
+    btn.addEventListener('click', () => {
+      dashMaSpan = span;
+      for (const b of Array.from(dashMaSpanEl.querySelectorAll('button'))) {
+        b.classList.toggle('active', b === btn);
+      }
+      dashRenderSeries();
+    });
+    dashMaSpanEl.appendChild(btn);
+  }
+}
+
+function buildDashRange(): void {
+  const ranges: Array<{ key: RangeKey; label: string }> = [
+    { key: 'all', label: '全部' },
+    { key: '5y', label: '5年' },
+    { key: '3y', label: '3年' },
+    { key: '1y', label: '1年' },
+  ];
+  for (const r of ranges) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = r.label;
+    btn.dataset.range = r.key;
+    btn.addEventListener('click', () => dashZoomRange(r.key));
+    dashRangeEl.appendChild(btn);
+  }
+}
+
 // ---------------------------------------------------------------- 启动
 
 function main(): void {
   indexSwitchEl = document.getElementById('index-switch') as HTMLDivElement;
   maTogglesEl = document.getElementById('ma-toggles') as HTMLDivElement;
   rangeButtonsEl = document.getElementById('range-buttons') as HTMLDivElement;
+  viewSwitchEl = document.getElementById('view-switch') as HTMLDivElement;
+  controlsSingleEl = document.getElementById('controls-single') as HTMLElement;
+  controlsDashEl = document.getElementById('controls-dash') as HTMLElement;
+  dashInstrumentsEl = document.getElementById('dash-instruments') as HTMLDivElement;
+  dashModeEl = document.getElementById('dash-mode') as HTMLDivElement;
+  dashMaSpanEl = document.getElementById('dash-ma-span') as HTMLDivElement;
+  dashRangeEl = document.getElementById('dash-range') as HTMLDivElement;
   themeToggleEl = document.getElementById('theme-toggle') as HTMLButtonElement;
   readoutEl = document.getElementById('readout') as HTMLDivElement;
   statusEl = document.getElementById('status') as HTMLDivElement;
   chartEl = document.getElementById('chart') as HTMLDivElement;
 
-  if (!dataFile.meta.indices.length) {
+  if (!dataFile.meta.instruments.length) {
     statusEl.innerHTML =
-      '<span class="warn">未找到目标指数数据，请先运行 npm run extract。</span>';
+      '<span class="warn">未找到目标数据，请先运行 npm run extract。</span>';
     return;
   }
 
+  buildViewSwitch();
   buildIndexButtons();
   buildMaToggles();
   buildRangeButtons();
+  buildDashInstruments();
+  buildDashMode();
+  buildDashMaSpan();
+  buildDashRange();
   updateThemeUI();
 
   themeToggleEl.addEventListener('click', () => {
@@ -643,19 +1023,27 @@ function main(): void {
 
   chart = echarts.init(chartEl);
   chart.on('datazoom', () => {
-    if (!programmaticZoom) {
-      activeRange = 'custom';
-      updateRangeButtons();
+    if (programmaticZoom) return;
+    activeRange = 'custom';
+    updateRangeButtons();
+    if (viewMode === 'single') {
       handleZoomChange();
+    } else {
+      dashZoom = getDz();
+      clearTimeout(dashRebuildTimer);
+      dashRebuildTimer = setTimeout(dashRenderSeries, 80);
     }
   });
-  chart.on('dblclick', () => zoomRange('all'));
+  chart.on('dblclick', () => {
+    if (viewMode === 'single') zoomRange('all');
+    else dashZoomRange('all');
+  });
   window.addEventListener('resize', () => chart?.resize());
 
-  // 默认展示上证指数；若库中缺失则回退到第一个可用指数。
+  // 默认展示上证指数；若缺失则回退到第一个可用指数。
   const initial =
-    dataFile.meta.indices.find((m) => m.symbol === 'SH.000001')?.symbol ??
-    dataFile.meta.indices[0].symbol;
+    dataFile.meta.instruments.find((m) => m.symbol === 'SH.000001')?.symbol ??
+    dataFile.meta.instruments[0].symbol;
   renderIndex(initial);
 }
 

@@ -10,12 +10,15 @@
       <header class="topbar">
         <div class="brand">
           <h1>A股指数走势</h1>
-          <p>上证指数 · 深证成指 · 沪深300 日线蜡烛图（2005 至今）</p>
+          <p>上证指数 · 深证成指 · 沪深300 · 创业板指 · 对照看板</p>
         </div>
-        <button id="theme-toggle" class="icon-btn" type="button" title="切换明暗主题">☀️</button>
+        <div class="topbar-right">
+          <div class="seg" id="view-switch" role="tablist"></div>
+          <button id="theme-toggle" class="icon-btn" type="button" title="切换明暗主题">☀️</button>
+        </div>
       </header>
 
-      <section class="controls">
+      <section class="controls" id="controls-single">
         <div class="ctrl">
           <span class="lbl">指数</span>
           <div class="seg" id="index-switch" role="tablist"></div>
@@ -27,6 +30,22 @@
         <div class="ctrl">
           <span class="lbl">区间</span>
           <div class="seg" id="range-buttons"></div>
+        </div>
+      </section>
+
+      <section class="controls" id="controls-dash" hidden>
+        <div class="ctrl ctrl-wide">
+          <span class="lbl">标的</span>
+          <div class="checks checks-wrap" id="dash-instruments"></div>
+        </div>
+        <div class="ctrl">
+          <span class="lbl">对比</span>
+          <div class="seg" id="dash-mode"></div>
+          <div class="seg" id="dash-ma-span" hidden></div>
+        </div>
+        <div class="ctrl">
+          <span class="lbl">区间</span>
+          <div class="seg" id="dash-range"></div>
         </div>
       </section>
 

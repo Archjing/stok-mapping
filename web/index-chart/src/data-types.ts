@@ -9,9 +9,10 @@ export interface IndexBar {
   c: number;
 }
 
-export interface IndexMeta {
+export interface InstrumentMeta {
   symbol: string;
   name: string;
+  kind: 'index' | 'stock';
   start: string;
   end: string;
   count: number;
@@ -21,7 +22,7 @@ export interface IndexDataFile {
   meta: {
     generatedAt: string;
     source: string;
-    indices: IndexMeta[];
+    instruments: InstrumentMeta[];
   };
   series: Record<string, IndexBar[]>;
 }
