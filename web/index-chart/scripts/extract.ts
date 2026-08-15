@@ -1,9 +1,13 @@
 /**
- * 从 a_share_history.sqlite 抽取三大指数日线 OHLC，输出为前端静态 JSON。
+ * 从 a_share_history.sqlite 抽取三大指数日线 OHLC，生成前端数据模块
+ * src/generated/data.ts。
+ *
+ * 数据直接内联进 bundle（不依赖运行时 fetch），因此构建产物 dist/index.html
+ * 是单文件自包含，双击即可离线打开，无需启动服务器。
  *
  * 数据口径：
- * - 上证指数  SH.000001  本库仅有 daily（2015-01-05 起）
- * - 深证成指  SZ.399001  本库仅有 daily（2015-01-05 起）
+ * - 上证指数  SH.000001  2005-01-04 起（Tushare 回补 2005–2014 后与沪深300 对齐）
+ * - 深证成指  SZ.399001  2005-01-04 起（同上）
  * - 沪深300   SH.000300  由 D（2005-01-04 ~ 2014-12-31）与 daily（2015-01-05 起）合并
  *
  * 运行：npm run extract
@@ -19,7 +23,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DB_PATH =
   process.env.DATA_SQLITE ??
   resolve(here, '../../../data/a_share_history.sqlite');
-const OUT_PATH = resolve(here, '../public/indices.json');
+const OUT_PATH = resolve(here, '../src/generated/data.ts');
 
 const TARGETS = [
   { symbol: 'SH.000001', name: '上证指数' },
@@ -116,9 +120,17 @@ function main(): void {
     series,
   };
 
+  const ts = [
+    '// 由 scripts/extract.ts 自动生成，请勿手改；重新生成：npm run extract',
+    "import type { IndexDataFile } from '../data-types';",
+    '',
+    `export const INDEX_DATA: IndexDataFile = ${JSON.stringify(payload)};`,
+    '',
+  ].join('\n');
+
   mkdirSync(dirname(OUT_PATH), { recursive: true });
-  writeFileSync(OUT_PATH, JSON.stringify(payload), 'utf8');
-  console.log(`已写入 ${OUT_PATH}`);
+  writeFileSync(OUT_PATH, ts, 'utf8');
+  console.log(`已写入 ${OUT_PATH} (${(ts.length / 1024 / 1024).toFixed(2)} MB)`);
 }
 
 main();

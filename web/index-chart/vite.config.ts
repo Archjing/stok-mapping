@@ -10,5 +10,15 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     target: 'es2020',
+    rollupOptions: {
+      output: {
+        // IIFE + 单 chunk：配合 scripts/inline-dist.mjs 把 JS/CSS 内联进
+        // dist/index.html，产出双击即用的单文件（file:// 也能打开）。
+        format: 'iife',
+        inlineDynamicImports: true,
+        entryFileNames: 'app.js',
+        assetFileNames: 'assets/[name][extname]',
+      },
+    },
   },
 });
