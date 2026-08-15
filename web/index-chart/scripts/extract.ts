@@ -114,7 +114,8 @@ function main(): void {
   const payload = {
     meta: {
       generatedAt: new Date().toISOString(),
-      source: DB_PATH,
+      // 只写通用名，避免在页面/公开部署中泄露本地绝对路径
+      source: 'a_share_history.sqlite',
       indices,
     },
     series,

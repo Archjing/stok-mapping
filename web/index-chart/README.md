@@ -44,6 +44,19 @@ npm run preview   # 预览 dist/
 
 数据源路径可用环境变量覆盖：`DATA_SQLITE=/path/to/a_share_history.sqlite npm run extract`。
 
+## 远程发布（share.spidermanread.men）
+
+单文件页已发布到 **https://share.spidermanread.men/index-chart/**（远端 `/var/www/share/index-chart/index.html`）。
+
+每次迭代后一键重新发布（抽取数据 → 构建 → rsync 单文件）：
+
+```bash
+./scripts/deploy.sh
+```
+
+复用项目 `.env` 中的 `QUANT_SITE_SYNC_PASSWORD`（SSH 密码认证），可用
+`QUANT_SITE_SYNC_REMOTE` / `QUANT_INDEX_CHART_REMOTE_DIR` 覆盖目标。
+
 ## 结构
 
 ```
@@ -51,7 +64,10 @@ web/index-chart/
 ├── index.html
 ├── scripts/extract.ts      # node:sqlite 抽取脚本（无需原生依赖）
 ├── scripts/inline-dist.mjs # 构建后把 JS/CSS 内联进单文件
+├── scripts/deploy.sh       # 一键构建 + rsync 发布到远端站点
+├── scripts/agg-test.ts     # 聚合/粒度单测（npm test）
 ├── src/main.ts             # ECharts 蜡烛图 + 均线 + dataZoom + 明暗主题
+├── src/aggregate.ts        # 按缩放级别聚合 日/周/月/年K 的纯函数
 ├── src/data-types.ts       # 数据模型
 ├── src/generated/data.ts   # 抽取产物（gitignored，可重新生成）
 └── src/styles.css
