@@ -87,7 +87,8 @@ export interface DashSeriesOpts {
   mode: DashMode;
   maSpan: MaSpan;
   windowStart: string;
-  colors: string[];
+  /** 按 symbol 稳定的取色表（checkbox / 图线 / 悬浮提示共用，保证颜色一致） */
+  colors: ReadonlyMap<string, string>;
 }
 
 export function buildDashSeries(
@@ -102,7 +103,7 @@ export function buildDashSeries(
   const out: (SeriesOption | null)[] = insts.map((inst, k) => {
     const factor = factors[k];
     if (factor <= 0) return null;
-    const color = opts.colors[k % opts.colors.length];
+    const color = opts.colors.get(inst.symbol) ?? '#8a827b';
 
     if (opts.mode === 'ma') {
       const closes = inst.bars.map((b) => b.c);
@@ -191,7 +192,7 @@ export function dashTooltipHtml(
   dates: string[],
   dataIndex: number,
   windowStartDate: string,
-  colors: string[],
+  colors: ReadonlyMap<string, string>,
   tc: DashTooltipColors,
 ): string {
   const date = dates[dataIndex];
@@ -204,7 +205,7 @@ export function dashTooltipHtml(
     const bar = barMaps[k]?.get(date);
     if (!bar || !Number.isFinite(base) || base <= 0) return;
     const pct = (bar.c / base - 1) * 100;
-    const color = colors[k % colors.length];
+    const color = colors.get(inst.symbol) ?? '#8a827b';
     const pctColor = pct >= 0 ? tc.up : tc.down;
     rows.push(
       `<div style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};margin-right:5px"></span>${inst.name} <b>${((bar.c / base) * 100).toFixed(1)}</b> <span style="color:${pctColor}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span> <span style="color:${tc.dim}">(收 ${bar.c.toFixed(2)})</span></div>`,

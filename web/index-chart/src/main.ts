@@ -132,6 +132,14 @@ try {
 let chart: echarts.ECharts | null = null;
 const dataFile = INDEX_DATA;
 
+// 看板取色表：按全标的列表顺序稳定取色，checkbox / 图线 / 悬浮提示共用同一张表
+const dashColorBySymbol = new Map<string, string>(
+  dataFile.meta.instruments.map((m, i) => [
+    m.symbol,
+    DASH_COLORS[i % DASH_COLORS.length],
+  ]),
+);
+
 // ---- 单指数视图状态 ----
 let curMeta: InstrumentMeta | null = null;
 let curSymbol = 'SH.000001';
@@ -147,6 +155,14 @@ let singleZoom: [number, number] | null = null;
 
 // ---- 对照看板状态 ----
 let viewMode: ViewMode = 'single';
+// 支持 ?view=dash 直接打开对照看板（也便于深链/调试）
+try {
+  if (new URLSearchParams(window.location.search).get('view') === 'dash') {
+    viewMode = 'dash';
+  }
+} catch {
+  /* 忽略解析失败 */
+}
 const dashSymbols = new Set<string>(['SH.000001', 'SZ.399001', 'SZ.399006']); // 三大板指默认勾选
 let dashMode: DashMode = 'close';
 let dashMaSpan: MaSpan = 20;
@@ -464,7 +480,6 @@ function buildDashOption(): EChartsOption {
       axisLine: { lineStyle: { color: p.axisLine } },
       axisLabel: {
         color: p.dim,
-        hideOverlap: true,
         formatter: (value: string) => value.slice(0, 7),
       },
       axisTick: { show: false },
@@ -529,7 +544,7 @@ function buildDashOption(): EChartsOption {
       mode: dashMode,
       maSpan: dashMaSpan,
       windowStart,
-      colors: DASH_COLORS,
+      colors: dashColorBySymbol,
     }),
   };
 }
@@ -546,7 +561,7 @@ function dashTooltipParams(params: unknown): string {
     dashDates,
     i,
     dashDates[win.startIdx],
-    DASH_COLORS,
+    dashColorBySymbol,
     { text: p.text, dim: p.dim, up: p.up, down: p.down },
   );
 }
@@ -593,7 +608,7 @@ function dashRenderSeries(): void {
       mode: dashMode,
       maSpan: dashMaSpan,
       windowStart,
-      colors: DASH_COLORS,
+      colors: dashColorBySymbol,
     }),
   });
 }
@@ -650,7 +665,8 @@ function switchToSingle(): void {
 }
 
 function switchToDash(): void {
-  if (viewMode === 'dash') return;
+  // 注意：不能因 viewMode 已是 'dash' 而提前 return——?view=dash 深链路径
+  // 需要强制完成一次看板渲染。
   singleZoom = [getDz().start, getDz().end];
   viewMode = 'dash';
   controlsSingleEl.hidden = true;
@@ -890,14 +906,14 @@ function buildRangeButtons(): void {
 }
 
 function buildDashInstruments(): void {
-  for (const [k, meta] of dataFile.meta.instruments.entries()) {
+  for (const meta of dataFile.meta.instruments) {
     const label = document.createElement('label');
     label.dataset.symbol = meta.symbol;
     label.classList.toggle('on', dashSymbols.has(meta.symbol));
 
     const dot = document.createElement('span');
     dot.className = 'dot';
-    dot.style.background = DASH_COLORS[k % DASH_COLORS.length];
+    dot.style.background = dashColorBySymbol.get(meta.symbol) ?? '#8a827b';
 
     const input = document.createElement('input');
     input.type = 'checkbox';
@@ -1040,11 +1056,15 @@ function main(): void {
   });
   window.addEventListener('resize', () => chart?.resize());
 
-  // 默认展示上证指数；若缺失则回退到第一个可用指数。
+  // 默认展示上证指数；若缺失则回退到第一个可用指数。深链 ?view=dash 直接进看板。
   const initial =
     dataFile.meta.instruments.find((m) => m.symbol === 'SH.000001')?.symbol ??
     dataFile.meta.instruments[0].symbol;
-  renderIndex(initial);
+  if (viewMode === 'dash') {
+    switchToDash();
+  } else {
+    renderIndex(initial);
+  }
 }
 
 // 构建产物可能把脚本放在 <head>（DOM 尚未就绪），因此统一等 DOM 就绪再启动。
