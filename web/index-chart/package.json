@@ -1,0 +1,23 @@
+{
+  "name": "a-share-index-chart",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "A股指数(上证指数/深证成指/沪深300)交互式蜡烛图，基于 a_share_history.sqlite",
+  "scripts": {
+    "extract": "tsx scripts/extract.ts",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "echarts": "^5.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.3.5"
+  }
+}

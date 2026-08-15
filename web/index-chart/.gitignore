@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# 由 scripts/extract.ts 从本地 SQLite 生成的数据快照，不入库
+public/indices.json

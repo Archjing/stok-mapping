@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>A股指数走势 · 上证指数 / 深证成指 / 沪深300</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="toolbar">
+        <div class="title-block">
+          <h1>A股指数走势</h1>
+          <p class="subtitle">日线蜡烛图 · 支持缩放/平移 · 可叠加移动均线</p>
+        </div>
+        <div class="controls">
+          <div class="control-group">
+            <span class="label">指数</span>
+            <div class="seg" id="index-switch" role="tablist"></div>
+          </div>
+          <div class="control-group">
+            <span class="label">均线</span>
+            <div class="checks" id="ma-toggles"></div>
+          </div>
+          <div class="control-group">
+            <span class="label">区间</span>
+            <div class="seg" id="range-buttons"></div>
+          </div>
+        </div>
+      </header>
+      <main id="chart" role="img" aria-label="指数蜡烛图"></main>
+      <footer id="status"></footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
