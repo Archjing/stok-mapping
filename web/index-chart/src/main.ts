@@ -8,6 +8,13 @@ import {
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsOption, SeriesOption } from 'echarts';
 
+import {
+  aggregateDaily,
+  tfForDays,
+  timeframeForVisibleDays,
+  TF_LABEL,
+  type Timeframe,
+} from './aggregate';
 import { INDEX_DATA } from './generated/data';
 import type { IndexBar, IndexMeta } from './data-types';
 import './styles.css';
@@ -104,8 +111,11 @@ try {
 let chart: echarts.ECharts | null = null;
 const dataFile = INDEX_DATA;
 let curMeta: IndexMeta | null = null;
-let curBars: IndexBar[] = [];
-let curMa: Record<MaSpan, (number | null)[]> | null = null;
+let curDaily: IndexBar[] = []; // 原始日线（单一事实源）
+let curAgg: IndexBar[] = []; // 当前视图粒度的 K 线（1D/1W/1M/1Y 聚合）
+let curAggSpans: Array<[number, number]> = []; // 每个聚合 bar 的日线索引区间
+let curAggMa: Record<MaSpan, (number | null)[]> | null = null; // 聚合收盘的均线
+let curTf: Timeframe = '1D';
 const enabledMAs = new Set<MaSpan>([5, 10, 20, 60]);
 let activeRange: RangeKey = '1y';
 let programmaticZoom = false;
@@ -127,11 +137,30 @@ function sma(values: number[], period: number): (number | null)[] {
   return out;
 }
 
-function computeMaBySpan(bars: IndexBar[]): Record<MaSpan, (number | null)[]> {
-  const closes = bars.map((b) => b.c);
+function computeMaBySpan(closes: number[]): Record<MaSpan, (number | null)[]> {
   const result = {} as Record<MaSpan, (number | null)[]>;
   for (const span of MA_SPANS) result[span] = sma(closes, span);
   return result;
+}
+
+function setAggregated(tf: Timeframe): void {
+  const agg = aggregateDaily(curDaily, tf);
+  curAgg = agg.bars;
+  curAggSpans = agg.spans;
+  curTf = tf;
+  curAggMa = computeMaBySpan(curAgg.map((b) => b.c));
+}
+
+/** 日线索引 → 日期；gte=首个 >= 该日期的索引，lte=最后一个 <= 该日期的索引。 */
+function dailyIndexForDate(dateStr: string, mode: 'gte' | 'lte'): number {
+  if (mode === 'gte') {
+    const i = curDaily.findIndex((b) => b.d >= dateStr);
+    return i < 0 ? 0 : i;
+  }
+  for (let i = curDaily.length - 1; i >= 0; i--) {
+    if (curDaily[i].d <= dateStr) return i;
+  }
+  return curDaily.length - 1;
 }
 
 // ---------------------------------------------------------------- 图表构建
@@ -143,7 +172,7 @@ function buildSeries(): SeriesOption[] {
       id: 'candle',
       name: curMeta?.name ?? '指数',
       type: 'candlestick',
-      data: curBars.map((b) => [b.o, b.c, b.l, b.h]),
+      data: curAgg.map((b) => [b.o, b.c, b.l, b.h]),
       itemStyle: {
         color: p.up,
         color0: p.down,
@@ -154,14 +183,14 @@ function buildSeries(): SeriesOption[] {
     },
   ];
 
-  if (curMa) {
+  if (curAggMa) {
     for (const span of MA_SPANS) {
       if (!enabledMAs.has(span)) continue;
       series.push({
         id: `MA${span}`,
         name: `MA${span}`,
         type: 'line',
-        data: curMa[span],
+        data: curAggMa[span],
         smooth: true,
         showSymbol: false,
         connectNulls: false,
@@ -184,10 +213,18 @@ function buildOption(): EChartsOption {
     grid: { left: 72, right: 24, top: 20, bottom: 74 },
     xAxis: {
       type: 'category',
-      data: curBars.map((b) => b.d),
+      data: curAgg.map((b) => b.d),
       boundaryGap: true,
       axisLine: { lineStyle: { color: p.axisLine } },
-      axisLabel: { color: p.dim, hideOverlap: true },
+      axisLabel: {
+        color: p.dim,
+        hideOverlap: true,
+        formatter: (value: string) => {
+          if (curTf === '1M') return value.slice(0, 7);
+          if (curTf === '1Y') return value.slice(0, 4);
+          return value;
+        },
+      },
       axisTick: { show: false },
       splitLine: { show: false },
       min: 'dataMin',
@@ -256,24 +293,21 @@ function buildOption(): EChartsOption {
 
 function formatTooltip(params: unknown): string {
   const p = pal();
-  const list = params as Array<{
-    dataIndex: number;
-    seriesType: string;
-  }>;
+  const list = params as Array<{ dataIndex: number; seriesType: string }>;
   const candle = list.find((x) => x.seriesType === 'candlestick');
   if (!candle) return '';
   const i = candle.dataIndex;
-  const bar = curBars[i];
+  const bar = curAgg[i];
   if (!bar) return '';
 
-  const prevClose = i > 0 ? curBars[i - 1].c : null;
+  const prevClose = i > 0 ? curAgg[i - 1].c : null;
   const chg = prevClose == null ? null : ((bar.c - prevClose) / prevClose) * 100;
   const chgColor = chg == null ? p.dim : chg >= 0 ? p.up : p.down;
   const chgStr = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
 
   const rows: string[] = [];
   rows.push(
-    `<div style="font-weight:600;margin-bottom:4px">${bar.d} · ${curMeta?.name ?? ''}</div>`,
+    `<div style="font-weight:600;margin-bottom:4px">${bar.d} · ${curMeta?.name ?? ''} · ${TF_LABEL[curTf]}</div>`,
   );
   rows.push(
     `<div style="display:flex;gap:14px"><span>开 <b>${bar.o.toFixed(2)}</b></span><span>高 <b>${bar.h.toFixed(2)}</b></span></div>`,
@@ -283,10 +317,10 @@ function formatTooltip(params: unknown): string {
   );
   rows.push(`<div style="color:${chgColor}">涨跌幅 ${chgStr}</div>`);
 
-  if (curMa) {
+  if (curAggMa) {
     const maLines = MA_SPANS.filter((s) => enabledMAs.has(s))
       .map((s) => {
-        const v = curMa![s][i];
+        const v = curAggMa![s][i];
         return v == null
           ? null
           : `<span style="color:${p.ma[s]}">MA${s} ${v.toFixed(2)}</span>`;
@@ -302,23 +336,97 @@ function formatTooltip(params: unknown): string {
   return rows.join('');
 }
 
+// ---------------------------------------------------------------- 缩放 / 粒度切换
+
+/** 把某个聚合索引区间 [sIdx, eIdx] 转换为 dataZoom 百分比并派发。 */
+function dispatchZoomPct(sIdx: number, eIdx: number): void {
+  if (!chart || curAgg.length <= 1) return;
+  const n = curAgg.length;
+  const start = (Math.max(0, sIdx) / (n - 1)) * 100;
+  const end = (Math.min(n - 1, eIdx) / (n - 1)) * 100;
+  programmaticZoom = true;
+  chart.dispatchAction({ type: 'dataZoom', start, end });
+  programmaticZoom = false;
+}
+
+/** 按日线索引区间定位当前聚合轴上的可见区间，并应用缩放。 */
+function zoomToDailyRange(startDaily: number, endDaily: number): void {
+  const n = curAgg.length;
+  let sIdx = curAggSpans.findIndex((sp) => sp[1] >= startDaily);
+  if (sIdx < 0) sIdx = 0;
+  let eIdx = -1;
+  for (let i = 0; i < n; i++) if (curAggSpans[i][0] <= endDaily) eIdx = i;
+  if (eIdx < 0) eIdx = n - 1;
+  dispatchZoomPct(sIdx, eIdx);
+}
+
+/** 重建为指定粒度，并保持同一日线日期窗口。 */
+function rebuildWithTimeframe(tf: Timeframe, startDaily: number, endDaily: number): void {
+  if (!chart) return;
+  setAggregated(tf);
+  chart.setOption(buildOption(), { notMerge: true });
+  zoomToDailyRange(startDaily, endDaily);
+  renderReadout();
+  updateStatus();
+}
+
+/** 把视图窗口设为 [fromDate, toDate]，按窗口宽度决定 K 线粒度。 */
+function applyViewWindow(fromDate: string, toDate: string): void {
+  if (!chart || curDaily.length === 0) return;
+  const startDaily = dailyIndexForDate(fromDate, 'gte');
+  const endDaily = dailyIndexForDate(toDate, 'lte');
+  const visibleDays = endDaily - startDaily + 1;
+  const tf = tfForDays(visibleDays);
+  if (tf === curTf) {
+    zoomToDailyRange(startDaily, endDaily);
+  } else {
+    rebuildWithTimeframe(tf, startDaily, endDaily);
+  }
+}
+
+/** dataZoom 事件：按当前可见宽度决定是否切换粒度（带迟滞）。 */
+function handleZoomChange(): void {
+  if (!chart || curAgg.length === 0) return;
+  const opt = chart.getOption() as {
+    dataZoom?: Array<{ start?: number; end?: number }>;
+  };
+  const dz = opt.dataZoom;
+  if (!dz || dz.length === 0) return;
+  const n = curAgg.length;
+  const firstIdx = Math.max(
+    0,
+    Math.min(n - 1, Math.floor(((dz[0].start ?? 0) / 100) * (n - 1))),
+  );
+  const lastIdx = Math.max(
+    0,
+    Math.min(n - 1, Math.ceil(((dz[0].end ?? 100) / 100) * (n - 1))),
+  );
+  const startDaily = curAggSpans[firstIdx][0];
+  const endDaily = curAggSpans[lastIdx][1];
+  const visibleDays = endDaily - startDaily + 1;
+  const tf = timeframeForVisibleDays(visibleDays, curTf);
+  if (tf !== curTf) rebuildWithTimeframe(tf, startDaily, endDaily);
+}
+
 // ---------------------------------------------------------------- 读数条 & 状态
 
 function renderReadout(): void {
-  if (!curMeta || curBars.length === 0) {
+  if (!curMeta || curDaily.length === 0 || !curAggMa) {
     readoutEl.innerHTML = '';
     return;
   }
   const p = pal();
-  const bar = curBars[curBars.length - 1];
-  const prev = curBars[curBars.length - 2]?.c;
+  const bar = curDaily[curDaily.length - 1]; // 真实最新日线
+  const prev = curDaily[curDaily.length - 2]?.c;
   const chg = prev == null ? null : ((bar.c - prev) / prev) * 100;
   const chgColor = chg == null ? p.dim : chg >= 0 ? p.up : p.down;
   const chgStr = chg == null ? '—' : `${chg >= 0 ? '+' : ''}${chg.toFixed(2)}%`;
 
+  // 均线取当前粒度序列的最新值
+  const lastIdx = curAggMa['5'].length - 1;
   const maChips = MA_SPANS.filter((s) => enabledMAs.has(s))
     .map((s) => {
-      const v = curMa?.[s][curBars.length - 1];
+      const v = curAggMa![s][lastIdx];
       return v == null
         ? ''
         : `<span class="readout-ma-item" style="color:${p.ma[s]}">MA${s} ${v.toFixed(2)}</span>`;
@@ -326,6 +434,7 @@ function renderReadout(): void {
     .join('');
 
   readoutEl.innerHTML =
+    `<span class="readout-tf">${TF_LABEL[curTf]}</span>` +
     `<div class="readout-name">${curMeta.name}<span class="readout-code">${curMeta.symbol}</span></div>` +
     `<div class="readout-price" style="color:${chgColor}">${bar.c.toFixed(2)}</div>` +
     `<div class="readout-chg" style="color:${chgColor}">${chgStr}</div>` +
@@ -339,7 +448,8 @@ function updateStatus(): void {
       ? `<span class="warn">（本库该指数最早仅到 ${curMeta.start}）</span>`
       : '';
   statusEl.innerHTML =
-    `${curMeta.name} ${curMeta.symbol}：${curMeta.start} ~ ${curMeta.end}（${curMeta.count} 根日线）` +
+    `${curMeta.name} ${curMeta.symbol}：${curMeta.start} ~ ${curMeta.end}（${curDaily.length} 根日线）` +
+    ` · 当前视图 ${TF_LABEL[curTf]}（${curAgg.length} 根）` +
     ` · 数据源 ${dataFile.meta.source} · 滚轮缩放 / 拖拽平移 / 双击复位` +
     ` ${gapNote}`;
 }
@@ -352,13 +462,19 @@ function renderIndex(symbol: string): void {
   if (!meta || !bars || !chart) return;
 
   curMeta = meta;
-  curBars = bars;
-  curMa = computeMaBySpan(bars);
+  curDaily = bars;
+  setAggregated('1D');
   activeRange = '1y';
 
   chart.setOption(buildOption(), { notMerge: true });
   updateRangeButtons();
-  zoomRange('1y');
+
+  const lastDate = curDaily[curDaily.length - 1].d;
+  const last = new Date(`${lastDate}T00:00:00Z`);
+  const from = new Date(last);
+  from.setUTCFullYear(from.getUTCFullYear() - 1);
+  applyViewWindow(from.toISOString().slice(0, 10), lastDate);
+
   renderReadout();
   updateStatus();
 }
@@ -372,31 +488,23 @@ function onMaToggle(span: MaSpan, checked: boolean): void {
 }
 
 function zoomRange(range: RangeKey): void {
-  if (!chart || curBars.length === 0) return;
+  if (!chart || curDaily.length === 0) return;
   if (range === 'custom') return;
+
+  const lastDate = curDaily[curDaily.length - 1].d;
+  let fromDate = curDaily[0].d;
+  if (range !== 'all') {
+    const years = range === '5y' ? 5 : range === '3y' ? 3 : 1;
+    const last = new Date(`${lastDate}T00:00:00Z`);
+    const from = new Date(last);
+    from.setUTCFullYear(from.getUTCFullYear() - years);
+    fromDate = from.toISOString().slice(0, 10);
+  }
 
   programmaticZoom = true;
   activeRange = range;
   updateRangeButtons();
-
-  if (range === 'all') {
-    chart.dispatchAction({ type: 'dataZoom', start: 0, end: 100 });
-    programmaticZoom = false;
-    return;
-  }
-
-  const years = range === '5y' ? 5 : range === '3y' ? 3 : 1;
-  const last = new Date(`${curBars[curBars.length - 1].d}T00:00:00`);
-  const from = new Date(last);
-  from.setFullYear(from.getFullYear() - years);
-  const fromStr = from.toISOString().slice(0, 10);
-
-  let startIdx = curBars.findIndex((b) => b.d >= fromStr);
-  if (startIdx < 0) startIdx = 0;
-
-  const total = curBars.length - 1;
-  const startPct = (startIdx / total) * 100;
-  chart.dispatchAction({ type: 'dataZoom', start: startPct, end: 100 });
+  applyViewWindow(fromDate, lastDate);
   programmaticZoom = false;
 }
 
@@ -410,7 +518,9 @@ function applyTheme(): void {
   const end = dz && dz.length > 0 ? dz[0].end ?? 100 : 100;
 
   chart.setOption(buildOption(), { notMerge: true });
+  programmaticZoom = true;
   chart.dispatchAction({ type: 'dataZoom', start, end });
+  programmaticZoom = false;
   updateThemeUI();
 }
 
@@ -536,6 +646,7 @@ function main(): void {
     if (!programmaticZoom) {
       activeRange = 'custom';
       updateRangeButtons();
+      handleZoomChange();
     }
   });
   chart.on('dblclick', () => zoomRange('all'));
