@@ -27,11 +27,22 @@ function initialTheme(): Theme {
   }
 }
 
+// 主题要挂到 <html>，这样 body 最外层背景色（var(--bg)）才能随主题生效
+function applyRootTheme(t: Theme): void {
+  document.documentElement.dataset.theme = t;
+}
+
+applyRootTheme(initialTheme());
+
 export function MarketChartPage() {
   const [symbol, setSymbol] = useState('SH.000001');
   const [bars, setBars] = useState<Bar[]>([]);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
+
+  useEffect(() => {
+    applyRootTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     setBars([]);
