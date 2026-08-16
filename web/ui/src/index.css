@@ -138,6 +138,3 @@ body {
   font-size: 12.5px; line-height: 1.65; color: var(--dim);
 }
 
-/* 搜索框与股票池同一行左右隔开 */
-.pool-row { justify-content: space-between; gap: 16px; }
-.pool-right { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }

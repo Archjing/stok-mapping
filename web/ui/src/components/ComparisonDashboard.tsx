@@ -193,39 +193,37 @@ export function ComparisonDashboard({ theme }: Props) {
   return (
     <div className="dash">
       <section className="controls">
-        {/* 搜索框在左、股票池在右，同一行左右隔开 */}
-        <div className="ctrl ctrl-wide pool-row">
+        {/* 从左至右：标的标签 → 搜索框 → 对照池 chips */}
+        <div className="ctrl ctrl-wide">
+          <span className="lbl">标的</span>
           <SearchBox onSelect={addStock} />
-          <div className="pool-right">
-            <span className="lbl">标的</span>
-            <div className="checks chips-row">
-              {CORE_INDICES.map((i) => (
-                <label key={i.symbol} className={`chip${selected.has(i.symbol) ? ' on' : ''}`}>
-                  <span className="dot" style={{ background: colorMap.get(i.symbol) }} />
-                  <input
-                    type="checkbox"
-                    checked={selected.has(i.symbol)}
-                    onChange={() => toggleIndex(i.symbol)}
-                  />
-                  <span>{i.name}</span>
-                </label>
+          <div className="checks chips-row">
+            {CORE_INDICES.map((i) => (
+              <label key={i.symbol} className={`chip${selected.has(i.symbol) ? ' on' : ''}`}>
+                <span className="dot" style={{ background: colorMap.get(i.symbol) }} />
+                <input
+                  type="checkbox"
+                  checked={selected.has(i.symbol)}
+                  onChange={() => toggleIndex(i.symbol)}
+                />
+                <span>{i.name}</span>
+              </label>
+            ))}
+            {[...selected]
+              .filter((s) => !coreIndexName(s))
+              .map((s) => (
+                <span key={s} className="chip on">
+                  <span className="dot" style={{ background: colorMap.get(s) }} />
+                  <span>{nameOf(s)}</span>
+                  <button
+                    className="chip-x"
+                    title="移除"
+                    onClick={() => removeStock(s)}
+                  >
+                    ×
+                  </button>
+                </span>
               ))}
-              {[...selected]
-                .filter((s) => !coreIndexName(s))
-                .map((s) => (
-                  <span key={s} className="chip on">
-                    <span className="dot" style={{ background: colorMap.get(s) }} />
-                    <span>{nameOf(s)}</span>
-                    <button
-                      className="chip-x"
-                      title="移除"
-                      onClick={() => removeStock(s)}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-            </div>
           </div>
         </div>
         <div className="ctrl">
