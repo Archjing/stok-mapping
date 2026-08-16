@@ -139,17 +139,15 @@ export function KLineChart({ symbol, name, bars, theme, indices, onSelectSymbol 
       <div className="controls">
         <div className="ctrl">
           <span className="lbl">指数</span>
-          <div className="seg">
-            {indices.map((i) => (
-              <button
-                key={i.symbol}
-                className={i.symbol === symbol ? 'active' : ''}
-                onClick={() => onSelectSymbol(i.symbol)}
-              >
-                {i.name}
-              </button>
-            ))}
-          </div>
+          {indices.map((i) => (
+            <button
+              key={i.symbol}
+              className={i.symbol === symbol ? 'active' : ''}
+              onClick={() => onSelectSymbol(i.symbol)}
+            >
+              {i.name}
+            </button>
+          ))}
         </div>
         <div className="ctrl">
           <span className="lbl">均线</span>
