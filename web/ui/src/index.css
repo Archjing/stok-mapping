@@ -1,0 +1,20 @@
+/* index-chart 现有明暗配色作为起步 token（视觉暂缓统一，后续再议） */
+:root {
+  --bg: #0b0f17;
+  --panel: #151d2b;
+  --border: #2b3950;
+  --text: #eef3fa;
+  --dim: #a2b3c8;
+  --accent: #5b9cf5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
