@@ -45,6 +45,24 @@ export function SearchBox({ placeholder = '搜索代码/名称', onSelect }: Pro
           if (e.key === 'Escape') {
             setOpen(false);
             setQ('');
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            // 回车确认：优先用已有候选的第一条；尚无候选则即时查询后取第一条
+            if (hits.length > 0) {
+              onSelect(hits[0]);
+              setQ('');
+              setOpen(false);
+            } else if (q.trim()) {
+              searchInstruments(q.trim())
+                .then((r) => {
+                  if (r.length > 0) {
+                    onSelect(r[0]);
+                    setQ('');
+                    setOpen(false);
+                  }
+                })
+                .catch(() => {});
+            }
           }
         }}
       />
