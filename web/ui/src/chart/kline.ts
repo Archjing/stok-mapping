@@ -255,7 +255,13 @@ export function zoomRange(chart: ECharts, ctrl: KLineCtrl, range: RangeKey, meta
 
 export function setEnabledMAs(chart: ECharts, ctrl: KLineCtrl, set: Set<MaSpan>, metaName: string, p: ThemePalette): void {
   ctrl.enabledMAs = set;
-  chart.setOption({ series: buildSeries(ctrl.agg, metaName, ctrl.enabledMAs, p) });
+  // 直接合并 {series} 不会移除被取消的均线序列（ECharts 按 id 合并时保留旧序列），
+  // 因此用 notMerge 全量重建并保留当前缩放窗口。
+  const opt = chart.getOption() as { dataZoom?: Array<{ start?: number; end?: number }> };
+  const dz = opt.dataZoom;
+  const start = dz && dz.length ? dz[0].start ?? 0 : 0;
+  const end = dz && dz.length ? dz[0].end ?? 100 : 100;
+  chart.setOption(buildOption(ctrl.agg, metaName, ctrl.enabledMAs, p, { start, end }), { notMerge: true });
 }
 
 /** 初始化/重置视图：聚合回日K + 近一年窗口。 */
