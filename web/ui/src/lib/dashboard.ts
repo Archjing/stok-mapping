@@ -54,11 +54,24 @@ export const DASH_COLORS = [
   '#b88f55',
 ];
 
+/** 核心指数固定用色（4 个互不相同，保证板指一眼可辨）。 */
+const INDEX_COLORS: Record<string, string> = {
+  'SH.000001': DASH_COLORS[0],
+  'SZ.399001': DASH_COLORS[1],
+  'SH.000300': DASH_COLORS[2],
+  'SZ.399006': DASH_COLORS[3],
+};
+
+/** 个股从剩余色中按 symbol 哈希稳定取色（避开核心指数色）。 */
+const STOCK_COLORS = DASH_COLORS.slice(4);
+
 /** 任意 symbol 的稳定取色：颜色像身份证一样跟着标的走（与加入顺序无关）。 */
 export function colorForSymbol(symbol: string): string {
+  const fixed = INDEX_COLORS[symbol];
+  if (fixed) return fixed;
   let h = 0;
   for (let i = 0; i < symbol.length; i++) h = (h * 31 + symbol.charCodeAt(i)) | 0;
-  return DASH_COLORS[Math.abs(h) % DASH_COLORS.length];
+  return STOCK_COLORS[Math.abs(h) % STOCK_COLORS.length];
 }
 
 export function colorMapForSymbols(symbols: Iterable<string>): Map<string, string> {
