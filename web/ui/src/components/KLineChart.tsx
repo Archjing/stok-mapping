@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useECharts } from '../chart/useECharts';
+import { SearchBox } from './SearchBox';
 import {
   aggregate,
   handleZoomChange,
@@ -22,7 +23,7 @@ interface Props {
   bars: IndexBar[];
   theme: Theme;
   indices: ReadonlyArray<{ symbol: string; name: string }>;
-  onSelectSymbol: (symbol: string) => void;
+  onSelectSymbol: (symbol: string, name?: string) => void;
 }
 
 const RANGES: Array<{ key: RangeKey; label: string }> = [
@@ -143,11 +144,12 @@ export function KLineChart({ symbol, name, bars, theme, indices, onSelectSymbol 
             <button
               key={i.symbol}
               className={i.symbol === symbol ? 'active' : ''}
-              onClick={() => onSelectSymbol(i.symbol)}
+              onClick={() => onSelectSymbol(i.symbol, i.name)}
             >
               {i.name}
             </button>
           ))}
+          <SearchBox onSelect={(hit) => onSelectSymbol(hit.symbol, hit.name)} />
         </div>
         <div className="ctrl">
           <span className="lbl">均线</span>

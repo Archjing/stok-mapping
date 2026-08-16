@@ -54,6 +54,19 @@ export const DASH_COLORS = [
   '#b88f55',
 ];
 
+/** 任意 symbol 的稳定取色：颜色像身份证一样跟着标的走（与加入顺序无关）。 */
+export function colorForSymbol(symbol: string): string {
+  let h = 0;
+  for (let i = 0; i < symbol.length; i++) h = (h * 31 + symbol.charCodeAt(i)) | 0;
+  return DASH_COLORS[Math.abs(h) % DASH_COLORS.length];
+}
+
+export function colorMapForSymbols(symbols: Iterable<string>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const s of symbols) map.set(s, colorForSymbol(s));
+  return map;
+}
+
 export function sma(values: number[], period: number): (number | null)[] {
   const out: (number | null)[] = new Array(values.length).fill(null);
   let sum = 0;

@@ -1,15 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KLineChart } from '../components/KLineChart';
+import { ComparisonDashboard } from '../components/ComparisonDashboard';
 import { fetchBars } from '../api/market';
 import type { Theme } from '../chart/theme';
-
-/** 核心指数切换器（固定 4 个；全量指数检索由后续 search 提供） */
-const CORE_INDICES = [
-  { symbol: 'SH.000001', name: '上证指数' },
-  { symbol: 'SZ.399001', name: '深证成指' },
-  { symbol: 'SH.000300', name: '沪深300' },
-  { symbol: 'SZ.399006', name: '创业板指' },
-] as const;
+import { CORE_INDICES } from '../lib/instruments';
 
 interface Bar {
   d: string;
@@ -18,6 +12,8 @@ interface Bar {
   l: number;
   c: number;
 }
+
+type ViewMode = 'single' | 'dash';
 
 function initialTheme(): Theme {
   try {
@@ -35,7 +31,9 @@ function applyRootTheme(t: Theme): void {
 applyRootTheme(initialTheme());
 
 export function MarketChartPage() {
+  const [view, setView] = useState<ViewMode>('single');
   const [symbol, setSymbol] = useState('SH.000001');
+  const [name, setName] = useState('上证指数');
   const [bars, setBars] = useState<Bar[]>([]);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -45,10 +43,23 @@ export function MarketChartPage() {
   }, [theme]);
 
   useEffect(() => {
+    let alive = true;
     setBars([]);
-    fetchBars(symbol)
-      .then(setBars)
-      .catch((e) => setError(`行情加载失败：${e}`));
+    (async () => {
+      try {
+        const recent = await fetchBars(symbol, { recent: '1y' });
+        if (!alive) return;
+        setBars(recent);
+        const full = await fetchBars(symbol);
+        if (!alive) return;
+        setBars(full);
+      } catch (e) {
+        if (alive) setError(`行情加载失败：${e}`);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
   }, [symbol]);
 
   const toggleTheme = useCallback(() => {
@@ -63,38 +74,58 @@ export function MarketChartPage() {
     });
   }, []);
 
-  const meta = CORE_INDICES.find((i) => i.symbol === symbol);
+  const onSelectSymbol = useCallback((s: string, n?: string) => {
+    setSymbol(s);
+    if (n) setName(n);
+  }, []);
 
   return (
     <div className="page" data-theme={theme}>
       <header className="toolbar">
         <div className="brand">
           <h1>stok-mapping 网站控制台</h1>
-          <p>A股指数走势 · 对照看板（P1b 待接入）</p>
+          <p>A股指数 / 个股走势 · 归一化对照看板</p>
         </div>
-        <button className="icon-btn" onClick={toggleTheme} title="切换明暗主题">
-          {theme === 'dark' ? '☀️' : '🌙'}
-        </button>
+        <div className="toolbar-right">
+          <div className="seg">
+            <button className={view === 'single' ? 'active' : ''} onClick={() => setView('single')}>
+              单标的
+            </button>
+            <button className={view === 'dash' ? 'active' : ''} onClick={() => setView('dash')}>
+              对照看板
+            </button>
+          </div>
+          <button className="icon-btn" onClick={toggleTheme} title="切换明暗主题">
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
 
       {error && <p className="error">{error}</p>}
 
-      {bars.length > 0 && (
-        <KLineChart
-          symbol={symbol}
-          name={meta?.name ?? symbol}
-          bars={bars}
-          theme={theme}
-          indices={CORE_INDICES}
-          onSelectSymbol={setSymbol}
-        />
+      {view === 'single' ? (
+        bars.length > 0 && (
+          <KLineChart
+            symbol={symbol}
+            name={name}
+            bars={bars}
+            theme={theme}
+            indices={CORE_INDICES}
+            onSelectSymbol={onSelectSymbol}
+          />
+        )
+      ) : (
+        <ComparisonDashboard theme={theme} />
       )}
 
-      <footer className="status">
-        {bars.length > 0
-          ? `${meta?.name ?? symbol} ${symbol}：${bars[0].d} ~ ${bars[bars.length - 1].d}（${bars.length} 根日线）`
-          : ''} · 滚轮缩放 / 拖拽平移 / 双击复位
-      </footer>
+      {view === 'single' && (
+        <footer className="status">
+          {bars.length > 0
+            ? `${name} ${symbol}：${bars[0].d} ~ ${bars[bars.length - 1].d}（${bars.length} 根日线）`
+            : ''}{' '}
+          · 滚轮缩放 / 拖拽平移 / 双击复位
+        </footer>
+      )}
     </div>
   );
 }
