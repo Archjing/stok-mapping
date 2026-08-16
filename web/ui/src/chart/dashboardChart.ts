@@ -1,6 +1,7 @@
 import type { EChartsOption } from 'echarts';
 import type { ECharts } from 'echarts/core';
 import {
+  NORM_AXIS_PCT,
   buildBarMaps,
   buildDashSeries,
   buildSharedDates,
@@ -79,7 +80,10 @@ export function buildDashOption(
       scale: true,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: p.dim },
+      axisLabel: {
+        color: p.dim,
+        formatter: (v: number) => (NORM_AXIS_PCT[ctrl.norm] ? `${v}%` : String(v)),
+      },
       splitLine: { lineStyle: { color: p.splitLine } },
     },
     dataZoom: [

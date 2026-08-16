@@ -123,13 +123,17 @@ body {
   background: var(--panel); box-shadow: var(--shadow); padding: 12px 10px; overflow-y: auto;
 }
 .norm-title { font-size: 11px; font-weight: 600; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 12px; }
-.norm-list { display: flex; flex-direction: column; gap: 12px; }
-.norm-list label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; line-height: 1.35; color: var(--dim); cursor: pointer; user-select: none; }
-.norm-list label.on { color: var(--text); }
-.norm-list input { accent-color: var(--accent); margin: 0; flex: 0 0 auto; }
+.norm-list { display: flex; flex-direction: column; gap: 4px; }
+.norm-list label {
+  display: flex; align-items: center; font-size: 12.5px; line-height: 1.35;
+  color: var(--dim); cursor: pointer; user-select: none;
+  padding: 5px 8px; border-radius: 8px; margin: 0 -8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.norm-list label:hover { color: var(--text); }
+.norm-list label.on { color: var(--text); background: var(--panel2); }
+.norm-list input { display: none; }
 .norm-help {
   margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border);
-  font-size: 11.5px; line-height: 1.6; color: var(--dim);
+  font-size: 11.5px; line-height: 1.65; color: var(--dim);
 }
-.norm-help p { margin: 6px 0 0; }
-.norm-help b { color: var(--text); font-weight: 600; }

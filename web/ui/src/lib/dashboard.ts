@@ -30,6 +30,14 @@ export const NORM_LABEL: Record<Normalization, string> = {
   zscore: 'z-score',
 };
 
+/** 纵轴是否为百分数（% 结尾的 100 基数轴）；z-score 不是百分数。 */
+export const NORM_AXIS_PCT: Record<Normalization, boolean> = {
+  window: true,
+  first: true,
+  vol: true,
+  zscore: false,
+};
+
 export interface DashInstrument {
   symbol: string;
   name: string;
