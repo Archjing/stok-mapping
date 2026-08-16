@@ -75,8 +75,24 @@ export function colorForSymbol(symbol: string): string {
 }
 
 export function colorMapForSymbols(symbols: Iterable<string>): Map<string, string> {
+  const syms = [...symbols];
+  // 稳定顺序：核心指数固定在前，个股按代码排序 → 保证去重结果确定
+  const indexOrder = ['SH.000001', 'SZ.399001', 'SH.000300', 'SZ.399006'];
+  const ordered = [
+    ...indexOrder.filter((s) => syms.includes(s)),
+    ...syms.filter((s) => !indexOrder.includes(s)).sort(),
+  ];
   const map = new Map<string, string>();
-  for (const s of symbols) map.set(s, colorForSymbol(s));
+  const used = new Set<string>();
+  for (const s of ordered) {
+    let color = colorForSymbol(s);
+    if (used.has(color)) {
+      // 撞色：顺延到下一个未占用的色（只在当前池内去重，不破坏基色稳定性）
+      color = DASH_COLORS.find((c) => !used.has(c)) ?? color;
+    }
+    used.add(color);
+    map.set(s, color);
+  }
   return map;
 }
 

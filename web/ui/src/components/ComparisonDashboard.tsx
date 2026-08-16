@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useECharts } from '../chart/useECharts';
 import { pal } from '../chart/theme';
 import type { Theme } from '../chart/theme';
@@ -15,7 +15,7 @@ import { CORE_INDICES, coreIndexName } from '../lib/instruments';
 import {
   MA_SPANS,
   NORM_LABEL,
-  colorForSymbol,
+  colorMapForSymbols,
   type DashMode,
   type MaSpan,
   type Normalization,
@@ -50,6 +50,9 @@ export function ComparisonDashboard({ theme }: Props) {
   const [mode, setMode] = useState<DashMode>('close');
   const [maSpan, setMaSpan] = useState<MaSpan>(20);
   const [norm, setNorm] = useState<Normalization>('window');
+
+  // 同池去重后的稳定取色（chips 与图线共用，保证一致且池内不撞色）
+  const colorMap = useMemo(() => colorMapForSymbols(selected), [selected]);
 
   const ctrlRef = useRef<DashCtrl | null>(null);
   const colorsRef = useRef<Map<string, string>>(new Map());
@@ -120,7 +123,7 @@ export function ComparisonDashboard({ theme }: Props) {
     ctrl.norm = normRef.current;
     if (ctrlRef.current) ctrl.zoom = ctrlRef.current.zoom;
     ctrlRef.current = ctrl;
-    colorsRef.current = new Map(insts.map((i) => [i.symbol, colorForSymbol(i.symbol)]));
+    colorsRef.current = colorMap;
 
     c.setOption(buildDashOption(ctrl, pal(themeRef.current), colorsRef.current), { notMerge: true });
     c.off('datazoom');
@@ -187,7 +190,7 @@ export function ComparisonDashboard({ theme }: Props) {
           <div className="checks chips-row">
             {CORE_INDICES.map((i) => (
               <label key={i.symbol} className={`chip${selected.has(i.symbol) ? ' on' : ''}`}>
-                <span className="dot" style={{ background: colorForSymbol(i.symbol) }} />
+                <span className="dot" style={{ background: colorMap.get(i.symbol) }} />
                 <input
                   type="checkbox"
                   checked={selected.has(i.symbol)}
@@ -200,7 +203,7 @@ export function ComparisonDashboard({ theme }: Props) {
               .filter((s) => !coreIndexName(s))
               .map((s) => (
                 <span key={s} className="chip on">
-                  <span className="dot" style={{ background: colorForSymbol(s) }} />
+                  <span className="dot" style={{ background: colorMap.get(s) }} />
                   <span>{nameOf(s)}</span>
                   <button
                     className="chip-x"
