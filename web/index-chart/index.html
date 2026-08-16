@@ -51,7 +51,14 @@
 
       <section class="readout" id="readout" aria-live="polite"></section>
 
-      <main id="chart" role="img" aria-label="指数蜡烛图"></main>
+      <main class="chart-wrap">
+        <div id="chart" role="img" aria-label="指数蜡烛图"></div>
+        <aside class="norm-panel" id="norm-panel" hidden>
+          <div class="norm-title">归一化</div>
+          <div class="norm-list" id="norm-list"></div>
+        </aside>
+        <div id="chart-loading" hidden>计算中…</div>
+      </main>
 
       <footer id="status"></footer>
     </div>

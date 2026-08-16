@@ -258,15 +258,89 @@ body {
 }
 
 /* ---------- 图表 ---------- */
-#chart {
+.chart-wrap {
+  position: relative;
   flex: 1 1 auto;
+  display: flex;
+  gap: 12px;
   min-height: 0;
   margin: 0 22px 12px;
+}
+
+#chart {
+  flex: 1 1 auto;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
   background: var(--panel);
   box-shadow: var(--shadow);
+}
+
+/* 图侧竖排归一化方式面板 */
+.norm-panel {
+  width: 128px;
+  flex: 0 0 128px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  padding: 12px 10px;
+  overflow-y: auto;
+}
+
+.norm-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--dim);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.norm-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.norm-list label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--dim);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease;
+}
+
+.norm-list label.on {
+  color: var(--text);
+}
+
+.norm-list input {
+  accent-color: var(--accent);
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+/* 重算 loading 遮罩 */
+#chart-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  z-index: 20;
+  letter-spacing: 0.1em;
 }
 
 /* ---------- 底部状态 ---------- */
@@ -290,7 +364,7 @@ body {
   .readout {
     padding: 6px 16px 10px;
   }
-  #chart {
+  .chart-wrap {
     margin: 0 16px 10px;
   }
   #status {

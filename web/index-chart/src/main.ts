@@ -18,6 +18,7 @@ import {
 import {
   MA_SPANS,
   DASH_COLORS,
+  NORM_LABEL,
   buildSharedDates,
   dashWindowFromPct,
   buildDashSeries,
@@ -27,6 +28,7 @@ import {
   type MaSpan,
   type DashMode,
   type DashInstrument,
+  type Normalization,
 } from './dashboard';
 import { INDEX_DATA } from './generated/data';
 import type { IndexBar, InstrumentMeta } from './data-types';
@@ -117,6 +119,9 @@ let dashInstrumentsEl: HTMLDivElement;
 let dashModeEl: HTMLDivElement;
 let dashMaSpanEl: HTMLDivElement;
 let dashRangeEl: HTMLDivElement;
+let normPanelEl: HTMLElement;
+let normListEl: HTMLDivElement;
+let chartLoadingEl: HTMLDivElement;
 let themeToggleEl: HTMLButtonElement;
 let readoutEl: HTMLDivElement;
 let statusEl: HTMLDivElement;
@@ -166,6 +171,8 @@ try {
 const dashSymbols = new Set<string>(['SH.000001', 'SZ.399001', 'SZ.399006']); // 三大板指默认勾选
 let dashMode: DashMode = 'close';
 let dashMaSpan: MaSpan = 20;
+let dashNorm: Normalization = 'window';
+let lastRenderMs = 0;
 let dashInsts: DashInstrument[] = [];
 let dashDates: string[] = [];
 let dashBarMaps: Array<Map<string, IndexBar>> = [];
@@ -469,6 +476,15 @@ function buildDashOption(): EChartsOption {
   const p = pal();
   const win = dashWindowFromPct(dashDates, dashZoom!.start, dashZoom!.end);
   const windowStart = dashDates[win.startIdx];
+  const windowEnd = dashDates[win.endIdx];
+  const series = buildDashSeries(dashInsts, dashDates, {
+    mode: dashMode,
+    maSpan: dashMaSpan,
+    norm: dashNorm,
+    windowStart,
+    windowEnd,
+    colors: dashColorBySymbol,
+  });
   return {
     backgroundColor: p.bg,
     animation: false,
@@ -540,12 +556,7 @@ function buildDashOption(): EChartsOption {
       extraCssText: 'box-shadow:0 8px 24px rgba(0,0,0,.28);border-radius:8px;',
       formatter: (params: unknown) => dashTooltipParams(params),
     },
-    series: buildDashSeries(dashInsts, dashDates, {
-      mode: dashMode,
-      maSpan: dashMaSpan,
-      windowStart,
-      colors: dashColorBySymbol,
-    }),
+    series,
   };
 }
 
@@ -561,6 +572,8 @@ function dashTooltipParams(params: unknown): string {
     dashDates,
     i,
     dashDates[win.startIdx],
+    dashDates[win.endIdx],
+    dashNorm,
     dashColorBySymbol,
     { text: p.text, dim: p.dim, up: p.up, down: p.down },
   );
@@ -603,11 +616,14 @@ function dashRenderSeries(): void {
   if (!chart || dashDates.length === 0 || !dashZoom) return;
   const win = dashWindowFromPct(dashDates, dashZoom.start, dashZoom.end);
   const windowStart = dashDates[win.startIdx];
+  const windowEnd = dashDates[win.endIdx];
   chart.setOption({
     series: buildDashSeries(dashInsts, dashDates, {
       mode: dashMode,
       maSpan: dashMaSpan,
+      norm: dashNorm,
       windowStart,
+      windowEnd,
       colors: dashColorBySymbol,
     }),
   });
@@ -651,6 +667,7 @@ function switchToSingle(): void {
   viewMode = 'single';
   controlsSingleEl.hidden = false;
   controlsDashEl.hidden = true;
+  normPanelEl.hidden = true;
   readoutEl.hidden = false;
 
   renderIndex(curSymbol);
@@ -671,6 +688,7 @@ function switchToDash(): void {
   viewMode = 'dash';
   controlsSingleEl.hidden = true;
   controlsDashEl.hidden = false;
+  normPanelEl.hidden = false;
   readoutEl.hidden = true;
   dashRenderFull();
 }
@@ -711,7 +729,8 @@ function updateStatus(): void {
   if (viewMode === 'dash') {
     const modeText = dashMode === 'ma' ? `归一化均线 MA${dashMaSpan}` : dashModeLabel();
     statusEl.innerHTML =
-      `对照看板 · ${dashInsts.length} 个标的 · 归一化基准=可见窗口起点 100 · 对比方式 ${modeText}` +
+      `对照看板 · ${dashInsts.length} 个标的 · 归一化 ${NORM_LABEL[dashNorm]} · 对比方式 ${modeText}` +
+      (lastRenderMs > 0 ? ` · 上次重算 ${lastRenderMs.toFixed(0)}ms` : '') +
       ` · 数据源 ${dataFile.meta.source} · 滚轮缩放 / 拖拽平移 / 双击复位`;
     return;
   }
@@ -993,6 +1012,69 @@ function buildDashRange(): void {
   }
 }
 
+/** 图侧竖排的归一化方式单选框（checkbox 视觉，单选互斥）。 */
+function buildDashNormPanel(): void {
+  const norms: Array<{ key: Normalization; label: string }> = [
+    { key: 'window', label: '窗口起点=100' },
+    { key: 'first', label: '首日=100' },
+    { key: 'vol', label: '波动率缩放' },
+    { key: 'zscore', label: 'z-score' },
+  ];
+  for (const n of norms) {
+    const label = document.createElement('label');
+    label.dataset.norm = n.key;
+    label.classList.toggle('on', dashNorm === n.key);
+
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = dashNorm === n.key;
+    input.addEventListener('change', () => {
+      if (!input.checked) return; // 单选：只允许勾选，不允许取消
+      dashNorm = n.key;
+      updateNormPanel();
+      void switchDashNorm();
+    });
+
+    const text = document.createElement('span');
+    text.textContent = n.label;
+
+    label.append(input, text);
+    normListEl.appendChild(label);
+  }
+}
+
+function updateNormPanel(): void {
+  for (const label of Array.from(normListEl.querySelectorAll('label'))) {
+    const key = label.dataset.norm as Normalization;
+    const checked = key === dashNorm;
+    label.classList.toggle('on', checked);
+    const input = label.querySelector('input') as HTMLInputElement | null;
+    if (input) input.checked = checked;
+  }
+}
+
+function showChartLoading(): void {
+  chartLoadingEl.hidden = false;
+}
+
+function hideChartLoading(): void {
+  chartLoadingEl.hidden = true;
+}
+
+/** 切换归一化方式：先让 loading 上屏（双 rAF 保证一帧），再做同步重算并计时。 */
+async function switchDashNorm(): Promise<void> {
+  showChartLoading();
+  await new Promise<void>((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+  const t0 = performance.now();
+  dashRenderFull();
+  const dt = performance.now() - t0;
+  lastRenderMs = dt;
+  hideChartLoading();
+  updateStatus();
+}
+
 // ---------------------------------------------------------------- 启动
 
 function main(): void {
@@ -1006,6 +1088,9 @@ function main(): void {
   dashModeEl = document.getElementById('dash-mode') as HTMLDivElement;
   dashMaSpanEl = document.getElementById('dash-ma-span') as HTMLDivElement;
   dashRangeEl = document.getElementById('dash-range') as HTMLDivElement;
+  normPanelEl = document.getElementById('norm-panel') as HTMLElement;
+  normListEl = document.getElementById('norm-list') as HTMLDivElement;
+  chartLoadingEl = document.getElementById('chart-loading') as HTMLDivElement;
   themeToggleEl = document.getElementById('theme-toggle') as HTMLButtonElement;
   readoutEl = document.getElementById('readout') as HTMLDivElement;
   statusEl = document.getElementById('status') as HTMLDivElement;
@@ -1025,6 +1110,7 @@ function main(): void {
   buildDashMode();
   buildDashMaSpan();
   buildDashRange();
+  buildDashNormPanel();
   updateThemeUI();
 
   themeToggleEl.addEventListener('click', () => {

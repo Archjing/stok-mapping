@@ -1,9 +1,17 @@
 /**
  * 对照看板：多标的（指数 + 个股）在同一时间轴上的归一化对比。
  *
- * 归一化口径：每个标的以「可见窗口起点」的收盘价为基准 100，
- * 之后所有 OHLC / 收盘 / 均线 都乘以同一比例，从而在同一图底上
- * 比较「谁涨跌更激烈、谁更平缓」。
+ * 归一化统一为「每标的独立的仿射变换」norm(x) = a·x + b（a>0）：
+ * - 仿射保持 OHLC 结构，因此蜡烛/收盘/均线三种对比方式都适用
+ * - MA(a·c+b) = a·MA(c)+b 严格成立，均线语义与收盘一致
+ *
+ * 四种归一化口径（computeNormTransforms）：
+ * - window 窗口起点=100：a = 100/base（base=可见窗口起点收盘）
+ * - first  首日=100：    a = 100/首日收盘（各自上市首日）
+ * - vol    波动率缩放：  a = 100/(base·vol)，b = 100 − 100/vol
+ *                        （斜率除以波动率，趋势陡峭度可比）
+ * - zscore z 分数：      a = 50/std，b = 100 − 50·mean/std
+ *                        （相对自身窗口均值/标准差的位置）
  */
 import type { SeriesOption } from 'echarts';
 import type { IndexBar } from './data-types';
@@ -12,6 +20,15 @@ export const MA_SPANS = [5, 10, 20, 30, 60] as const;
 export type MaSpan = (typeof MA_SPANS)[number];
 
 export type DashMode = 'candle' | 'close' | 'ma';
+
+export type Normalization = 'window' | 'first' | 'vol' | 'zscore';
+
+export const NORM_LABEL: Record<Normalization, string> = {
+  window: '窗口起点=100',
+  first: '首日=100',
+  vol: '波动率缩放',
+  zscore: 'z-score',
+};
 
 export interface DashInstrument {
   symbol: string;
@@ -67,14 +84,6 @@ export function dashWindowFromPct(
   return { startIdx, endIdx };
 }
 
-/** 每个标的在窗口起点的基准收盘价（归一化 base=100；窗口内无数据则为 NaN）。 */
-export function computeBaseCloses(insts: DashInstrument[], windowStartDate: string): number[] {
-  return insts.map((inst) => {
-    const b = inst.bars.find((x) => x.d >= windowStartDate);
-    return b ? b.c : NaN;
-  });
-}
-
 export function buildBarMaps(insts: DashInstrument[]): Array<Map<string, IndexBar>> {
   return insts.map((inst) => {
     const map = new Map<string, IndexBar>();
@@ -83,11 +92,75 @@ export function buildBarMaps(insts: DashInstrument[]): Array<Map<string, IndexBa
   });
 }
 
+/** 日收益率年化波动率（×√252）。样本不足返回 NaN。 */
+export function annualizedVol(closes: number[]): number {
+  const n = closes.length;
+  if (n < 3) return NaN;
+  let sum = 0;
+  let sumSq = 0;
+  for (let i = 1; i < n; i++) {
+    const r = closes[i] / closes[i - 1] - 1;
+    sum += r;
+    sumSq += r * r;
+  }
+  const m = sum / (n - 1);
+  const variance = Math.max(0, sumSq / (n - 1) - m * m);
+  return Math.sqrt(variance) * Math.sqrt(252);
+}
+
+export interface NormTransform {
+  a: number;
+  b: number;
+  /** 窗口起点收盘（window/first 模式下即基准） */
+  base: number;
+  vol: number;
+  mean: number;
+  std: number;
+}
+
+/** 计算每个标的在当前可见窗口下的归一化仿射参数。 */
+export function computeNormTransforms(
+  insts: DashInstrument[],
+  windowStart: string,
+  windowEnd: string,
+  norm: Normalization,
+): NormTransform[] {
+  return insts.map((inst) => {
+    const firstClose = inst.bars.length > 0 ? inst.bars[0].c : NaN;
+    const winBars = inst.bars.filter((b) => b.d >= windowStart && b.d <= windowEnd);
+    const base = winBars.length > 0 ? winBars[0].c : NaN;
+    const closes = winBars.map((b) => b.c);
+    const vol = annualizedVol(closes);
+    const mean = closes.length > 0 ? closes.reduce((s, c) => s + c, 0) / closes.length : NaN;
+    const std =
+      closes.length > 1
+        ? Math.sqrt(closes.reduce((s, c) => s + (c - mean) ** 2, 0) / closes.length)
+        : NaN;
+
+    let a = NaN;
+    let b = 0;
+    if (norm === 'window') {
+      a = 100 / base;
+    } else if (norm === 'first') {
+      a = 100 / firstClose;
+    } else if (norm === 'vol') {
+      a = 100 / (base * vol);
+      b = 100 - 100 / vol;
+    } else {
+      a = 50 / std;
+      b = 100 - (50 * mean) / std;
+    }
+    return { a, b, base, vol, mean, std };
+  });
+}
+
 export interface DashSeriesOpts {
   mode: DashMode;
   maSpan: MaSpan;
+  norm: Normalization;
   windowStart: string;
-  /** 按 symbol 稳定的取色表（checkbox / 图线 / 悬浮提示共用，保证颜色一致） */
+  windowEnd: string;
+  /** 按 symbol 稳定的取色表（checkbox / 图线 / 悬浮提示共用） */
   colors: ReadonlyMap<string, string>;
 }
 
@@ -96,14 +169,15 @@ export function buildDashSeries(
   dates: string[],
   opts: DashSeriesOpts,
 ): SeriesOption[] {
-  const factors = computeBaseCloses(insts, opts.windowStart).map((base) =>
-    Number.isFinite(base) && base > 0 ? 100 / base : 0,
-  );
+  const transforms = computeNormTransforms(insts, opts.windowStart, opts.windowEnd, opts.norm);
 
   const out: (SeriesOption | null)[] = insts.map((inst, k) => {
-    const factor = factors[k];
-    if (factor <= 0) return null;
+    const t = transforms[k];
+    if (!t || !Number.isFinite(t.a) || t.a <= 0) return null;
+    const tr = (x: number): number => Number((t.a * x + t.b).toFixed(2));
     const color = opts.colors.get(inst.symbol) ?? '#8a827b';
+    const map = new Map<string, IndexBar>();
+    for (const b of inst.bars) map.set(b.d, b);
 
     if (opts.mode === 'ma') {
       const closes = inst.bars.map((b) => b.c);
@@ -114,7 +188,7 @@ export function buildDashSeries(
         const i = idxByDate.get(d);
         if (i == null) return null;
         const v = mas[i];
-        return v == null ? null : Number((v * factor).toFixed(2));
+        return v == null ? null : tr(v);
       });
       return {
         id: `dash-${inst.symbol}`,
@@ -131,13 +205,10 @@ export function buildDashSeries(
       } as SeriesOption;
     }
 
-    const map = new Map<string, IndexBar>();
-    for (const b of inst.bars) map.set(b.d, b);
-
     if (opts.mode === 'close') {
       const data = dates.map((d) => {
         const b = map.get(d);
-        return b ? Number((b.c * factor).toFixed(2)) : null;
+        return b ? tr(b.c) : null;
       });
       return {
         id: `dash-${inst.symbol}`,
@@ -154,17 +225,10 @@ export function buildDashSeries(
       } as SeriesOption;
     }
 
-    // candle：同一标的用同一颜色，便于多序列区分
+    // candle：同一标的用同一颜色，便于多序列区分；仿射保持 OHLC 结构
     const data = dates.map((d) => {
       const b = map.get(d);
-      return b
-        ? [
-            Number((b.o * factor).toFixed(2)),
-            Number((b.c * factor).toFixed(2)),
-            Number((b.l * factor).toFixed(2)),
-            Number((b.h * factor).toFixed(2)),
-          ]
-        : null;
+      return b ? [tr(b.o), tr(b.c), tr(b.l), tr(b.h)] : null;
     });
     return {
       id: `dash-${inst.symbol}`,
@@ -191,24 +255,36 @@ export function dashTooltipHtml(
   barMaps: Array<Map<string, IndexBar>>,
   dates: string[],
   dataIndex: number,
-  windowStartDate: string,
+  windowStart: string,
+  windowEnd: string,
+  norm: Normalization,
   colors: ReadonlyMap<string, string>,
   tc: DashTooltipColors,
 ): string {
   const date = dates[dataIndex];
-  const bases = computeBaseCloses(insts, windowStartDate);
+  const transforms = computeNormTransforms(insts, windowStart, windowEnd, norm);
   const rows: string[] = [
-    `<div style="font-weight:600;margin-bottom:4px">${date} · 归一化对照（窗口起点=100）</div>`,
+    `<div style="font-weight:600;margin-bottom:4px">${date} · 归一化对照（${NORM_LABEL[norm]}）</div>`,
   ];
   insts.forEach((inst, k) => {
-    const base = bases[k];
+    const t = transforms[k];
     const bar = barMaps[k]?.get(date);
-    if (!bar || !Number.isFinite(base) || base <= 0) return;
-    const pct = (bar.c / base - 1) * 100;
+    if (!bar || !t || !Number.isFinite(t.a) || t.a <= 0) return;
     const color = colors.get(inst.symbol) ?? '#8a827b';
-    const pctColor = pct >= 0 ? tc.up : tc.down;
+    const normVal = t.a * bar.c + t.b;
+    let ctx: string;
+    if (norm === 'vol') {
+      const rv = ((bar.c / t.base - 1) / t.vol) * 100;
+      ctx = `回报/波动 ${rv >= 0 ? '+' : ''}${rv.toFixed(1)}`;
+    } else if (norm === 'zscore') {
+      ctx = `z ${((bar.c - t.mean) / t.std).toFixed(2)}`;
+    } else {
+      const pct = (bar.c / t.base - 1) * 100;
+      const pctColor = pct >= 0 ? tc.up : tc.down;
+      ctx = `<span style="color:${pctColor}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>`;
+    }
     rows.push(
-      `<div style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};margin-right:5px"></span>${inst.name} <b>${((bar.c / base) * 100).toFixed(1)}</b> <span style="color:${pctColor}">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span> <span style="color:${tc.dim}">(收 ${bar.c.toFixed(2)})</span></div>`,
+      `<div style="white-space:nowrap"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${color};margin-right:5px"></span>${inst.name} <b>${normVal.toFixed(1)}</b> ${ctx} <span style="color:${tc.dim}">(收 ${bar.c.toFixed(2)})</span></div>`,
     );
   });
   return rows.join('');
