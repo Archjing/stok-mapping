@@ -53,6 +53,10 @@ export function ComparisonDashboard({ theme }: Props) {
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(['SH.000001', 'SZ.399001', 'SZ.399006']),
   );
+  // 「池成员」与「是否显示线」分离：点击 chip 只切换 enabled（列表不清除），× 才从池移除
+  const [enabled, setEnabled] = useState<Set<string>>(
+    () => new Set(['SH.000001', 'SZ.399001', 'SZ.399006']),
+  );
   const [stockMeta, setStockMeta] = useState<Record<string, { name: string }>>({});
   const [barsMap, setBarsMap] = useState<Record<string, Bar[]>>({});
   const [mode, setMode] = useState<DashMode>('close');
@@ -109,6 +113,7 @@ export function ComparisonDashboard({ theme }: Props) {
     const c = chart();
     if (!c) return;
     const insts: DashInstrument[] = [...selected]
+      .filter((s) => enabled.has(s))
       .map((s) => ({ symbol: s, name: nameOf(s), bars: barsMap[s] ?? [] }))
       .filter((i) => i.bars.length > 0);
     if (insts.length === 0) {
@@ -152,7 +157,7 @@ export function ComparisonDashboard({ theme }: Props) {
       if (cc) dashZoomRange(c, cc, 'all', colorsRef.current);
     });
     setTick((n) => n + 1);
-  }, [selected, barsMap, mode, maSpan, norm, theme, nameOf, chart]);
+  }, [selected, enabled, barsMap, mode, maSpan, norm, theme, nameOf, chart]);
 
   const addStock = useCallback((hit: SearchHit) => {
     setStockMeta((m) => ({ ...m, [hit.symbol]: { name: hit.name } }));
@@ -161,11 +166,27 @@ export function ComparisonDashboard({ theme }: Props) {
       n.add(hit.symbol);
       return n;
     });
+    setEnabled((e) => {
+      const n = new Set(e);
+      n.add(hit.symbol);
+      return n;
+    });
   }, []);
 
+  // 指数 chip：仅切换显示状态（指数始终在池中）
   const toggleIndex = useCallback((symbol: string) => {
-    setSelected((s) => {
-      const n = new Set(s);
+    setEnabled((e) => {
+      const n = new Set(e);
+      if (n.has(symbol)) n.delete(symbol);
+      else n.add(symbol);
+      return n;
+    });
+  }, []);
+
+  // 个股 chip：点击同样只切换显示状态
+  const toggleStock = useCallback((symbol: string) => {
+    setEnabled((e) => {
+      const n = new Set(e);
       if (n.has(symbol)) n.delete(symbol);
       else n.add(symbol);
       return n;
@@ -175,6 +196,11 @@ export function ComparisonDashboard({ theme }: Props) {
   const removeStock = useCallback((symbol: string) => {
     setSelected((s) => {
       const n = new Set(s);
+      n.delete(symbol);
+      return n;
+    });
+    setEnabled((e) => {
+      const n = new Set(e);
       n.delete(symbol);
       return n;
     });
@@ -199,11 +225,11 @@ export function ComparisonDashboard({ theme }: Props) {
           <SearchBox onSelect={addStock} />
           <div className="checks chips-row">
             {CORE_INDICES.map((i) => (
-              <label key={i.symbol} className={`chip${selected.has(i.symbol) ? ' on' : ''}`}>
+              <label key={i.symbol} className={`chip${enabled.has(i.symbol) ? ' on' : ''}`}>
                 <span className="dot" style={{ background: colorMap.get(i.symbol) }} />
                 <input
                   type="checkbox"
-                  checked={selected.has(i.symbol)}
+                  checked={enabled.has(i.symbol)}
                   onChange={() => toggleIndex(i.symbol)}
                 />
                 <span>{i.name}</span>
@@ -212,13 +238,21 @@ export function ComparisonDashboard({ theme }: Props) {
             {[...selected]
               .filter((s) => !coreIndexName(s))
               .map((s) => (
-                <span key={s} className="chip on">
+                <span
+                  key={s}
+                  className={`chip${enabled.has(s) ? ' on' : ''}`}
+                  onClick={() => toggleStock(s)}
+                  title={enabled.has(s) ? '点击隐藏该线' : '点击显示该线'}
+                >
                   <span className="dot" style={{ background: colorMap.get(s) }} />
                   <span>{nameOf(s)}</span>
                   <button
                     className="chip-x"
-                    title="移除"
-                    onClick={() => removeStock(s)}
+                    title="从对照池移除"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeStock(s);
+                    }}
                   >
                     ×
                   </button>
