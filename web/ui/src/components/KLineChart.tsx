@@ -21,6 +21,8 @@ interface Props {
   name: string;
   bars: IndexBar[];
   theme: Theme;
+  indices: ReadonlyArray<{ symbol: string; name: string }>;
+  onSelectSymbol: (symbol: string) => void;
 }
 
 const RANGES: Array<{ key: RangeKey; label: string }> = [
@@ -30,7 +32,7 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
   { key: '1y', label: '1年' },
 ];
 
-export function KLineChart({ symbol, name, bars, theme }: Props) {
+export function KLineChart({ symbol, name, bars, theme, indices, onSelectSymbol }: Props) {
   const { ref, chart } = useECharts();
   const ctrlRef = useRef<KLineCtrl>({
     daily: bars,
@@ -135,6 +137,20 @@ export function KLineChart({ symbol, name, bars, theme }: Props) {
       </div>
 
       <div className="controls">
+        <div className="ctrl">
+          <span className="lbl">指数</span>
+          <div className="seg">
+            {indices.map((i) => (
+              <button
+                key={i.symbol}
+                className={i.symbol === symbol ? 'active' : ''}
+                onClick={() => onSelectSymbol(i.symbol)}
+              >
+                {i.name}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="ctrl">
           <span className="lbl">均线</span>
           {MA_SPANS.map((s) => (

@@ -61,28 +61,22 @@ export function MarketChartPage() {
           <h1>stok-mapping 网站控制台</h1>
           <p>A股指数走势 · 对照看板（P1b 待接入）</p>
         </div>
-        <div className="toolbar-right">
-          <div className="seg">
-            {CORE_INDICES.map((i) => (
-              <button
-                key={i.symbol}
-                className={i.symbol === symbol ? 'active' : ''}
-                onClick={() => setSymbol(i.symbol)}
-              >
-                {i.name}
-              </button>
-            ))}
-          </div>
-          <button className="icon-btn" onClick={toggleTheme} title="切换明暗主题">
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
-        </div>
+        <button className="icon-btn" onClick={toggleTheme} title="切换明暗主题">
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </header>
 
       {error && <p className="error">{error}</p>}
 
       {bars.length > 0 && (
-        <KLineChart symbol={symbol} name={meta?.name ?? symbol} bars={bars} theme={theme} />
+        <KLineChart
+          symbol={symbol}
+          name={meta?.name ?? symbol}
+          bars={bars}
+          theme={theme}
+          indices={CORE_INDICES}
+          onSelectSymbol={setSymbol}
+        />
       )}
 
       <footer className="status">
