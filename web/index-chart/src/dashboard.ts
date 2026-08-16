@@ -10,8 +10,8 @@
  * - first  首日=100：    a = 100/首日收盘（各自上市首日）
  * - vol    波动率缩放：  a = 100/(base·vol)，b = 100 − 100/vol
  *                        （斜率除以波动率，趋势陡峭度可比）
- * - zscore z 分数：      a = 50/std，b = 100 − 50·mean/std
- *                        （相对自身窗口均值/标准差的位置）
+ * - zscore z 分数：      a = 1/std，b = −mean/std
+ *                        （y 轴直接显示 z 值：0=窗口均值，±1=一个标准差）
  */
 import type { SeriesOption } from 'echarts';
 import type { IndexBar } from './data-types';
@@ -147,8 +147,9 @@ export function computeNormTransforms(
       a = 100 / (base * vol);
       b = 100 - 100 / vol;
     } else {
-      a = 50 / std;
-      b = 100 - (50 * mean) / std;
+      // z-score：y 轴直接显示 z 值（0=均值，±1=一个标准差）
+      a = 1 / std;
+      b = -mean / std;
     }
     return { a, b, base, vol, mean, std };
   });

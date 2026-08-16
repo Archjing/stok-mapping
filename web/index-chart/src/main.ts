@@ -581,7 +581,6 @@ function dashTooltipParams(params: unknown): string {
 
 function dashRenderFull(): void {
   if (!chart) return;
-  dashZoom = dashZoom ?? defaultDashZoom();
 
   const selected = [...dashSymbols].filter((s) => dataFile.series[s]);
   dashInsts = selected.map((s) => ({
@@ -606,6 +605,9 @@ function dashRenderFull(): void {
     );
     return;
   }
+
+  // 默认缩放必须在 dashDates 就绪后计算（3 年窗口），否则会落入空数据回退 0-100
+  dashZoom = dashZoom ?? defaultDashZoom();
 
   chart.setOption(buildDashOption(), { notMerge: true });
   updateDashRangeButtons();
