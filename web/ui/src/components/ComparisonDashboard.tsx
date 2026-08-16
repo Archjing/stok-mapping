@@ -51,7 +51,7 @@ interface Props {
 export function ComparisonDashboard({ theme }: Props) {
   const { ref, chart } = useECharts();
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(['SH.000001', 'SZ.399001', 'SZ.399006']),
+    () => new Set(['SH.000001', 'SZ.399001', 'SH.000300', 'SZ.399006']),
   );
   // 「池成员」与「是否显示线」分离：点击 chip 只切换 enabled（列表不清除），× 才从池移除
   const [enabled, setEnabled] = useState<Set<string>>(
