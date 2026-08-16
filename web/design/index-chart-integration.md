@@ -73,10 +73,16 @@ GET /api/market/search?q=600519|茅台                  # 代码/名称搜索（
 
 ## 6. 分阶段（在 worktree 内）
 
-- **P0 骨架**：FastAPI app 工厂 + `/api/market/*`（读写 sqlite）+ React/Vite 骨架 + Belafonte tokens + 认证 stub。
-- **P1 index-chart 迁移**：`<KLineChart>`/`<ComparisonDashboard>` 接 API，功能对等（单指数 + 看板 + 粒度 + 归一化），并接 `/api/market/search` 实现个股动态加载。
-- **P2 M1 其余**：账户/观察池/对照图只读页（复用 `quant.reporting`）。
-- **P3 M2**：任务队列（`web_jobs` + 进程池）+ 写端点 + `run_index`。
+> 状态更新于 2026-08-16。已确认决策：主题沿用 index-chart 现有明暗配色；认证 D6 只要求写端点；远端=本机动态 + 静态快照。
+
+- **P0 骨架 ✅ 完成**（commit `36bf51d4`）：FastAPI 薄 API（`/api/market/{instruments,bars,search}` 只读直查 sqlite）+ Vite+React+TS 骨架（dev 代理 /api→8010）。注：8000 被本机模型服务占用，FastAPI 开发端口用 **8010**。
+- **P1a 单指数 K线图迁移 ✅ 完成**（commits `767a4245`/`80a45f5b`/`007d023e`/`5a40a314`）：纯逻辑 `aggregate/dashboard/data-types` 原样迁入 `web/ui/src/lib`；`<KLineChart>`（蜡烛 + MA 开关 + 缩放粒度日/周/月/年K + 区间 + 读数条）接 `/api/market/bars/{symbol}`；指数切换固定 4 个核心指数；视觉照搬旧 `web/index-chart`。
+- **P1b 对照看板 + 个股搜索动态加载 ⏳ 待做**：
+  1. `<ComparisonDashboard>` 组件（多标的 checkbox + 归一化窗口/首日/波动率/z-score + 对比方式蜡烛/收盘/均线），复用 `dashboard.ts` 归一化引擎与 `/api/market/instruments|bars`；
+  2. 个股搜索：`/api/market/search` + 输入框 → 「近一年先行（`?recent=1y`）渲染 + 后台拉全量补全」+ 前端缓存；
+  3. 视图切换（单指数 / 对照看板）挂回顶栏。
+- **P2 M1 其余只读页**：账户/观察池/对照图（复用 `quant.reporting`）。
+- **P3 M2 写操作**：任务队列（`web_jobs` + 进程池）+ 写端点 + `run_index`。
 
 ## 7. 决策点 / 风险
 
