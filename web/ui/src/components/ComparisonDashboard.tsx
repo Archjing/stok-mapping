@@ -264,16 +264,20 @@ export function ComparisonDashboard({ theme }: Props) {
             {NORMS.map((n) => (
               <label key={n} className={n === norm ? 'on' : ''}>
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="norm"
                   checked={n === norm}
-                  onChange={() => {
-                    if (n === norm) return;
-                    setNorm(n);
-                  }}
+                  onChange={() => setNorm(n)}
                 />
                 <span>{NORM_LABEL[n]}</span>
               </label>
             ))}
+          </div>
+          <div className="norm-help">
+            <p><b>窗口起点=100</b>：以可见窗口首日收盘为 100，纵轴即相对窗口起点的涨跌幅（%），看同期谁涨得多。</p>
+            <p><b>首日=100</b>：以各自上市首日收盘为 100，纵轴即上市以来涨跌幅（%），看长期各自涨幅。</p>
+            <p><b>波动率缩放</b>：涨跌幅度 ÷ 该标的波动率，让趋势陡峭度可比——低波动标的的趋势显得更「陡」。</p>
+            <p><b>z-score</b>：纵轴 0=窗口均值，±1=一个标准差，看相对自身历史所处的位置。</p>
           </div>
         </aside>
       </div>
