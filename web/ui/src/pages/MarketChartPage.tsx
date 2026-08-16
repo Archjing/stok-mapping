@@ -1,7 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { KLineChart } from '../components/KLineChart';
-import { fetchBars, fetchInstruments, type Instrument } from '../api/market';
+import { fetchBars } from '../api/market';
 import type { Theme } from '../chart/theme';
+
+/** 核心指数切换器（固定 4 个；全量指数检索由后续 search 提供） */
+const CORE_INDICES = [
+  { symbol: 'SH.000001', name: '上证指数' },
+  { symbol: 'SZ.399001', name: '深证成指' },
+  { symbol: 'SH.000300', name: '沪深300' },
+  { symbol: 'SZ.399006', name: '创业板指' },
+] as const;
+
+interface Bar {
+  d: string;
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+}
 
 function initialTheme(): Theme {
   try {
@@ -12,22 +28,10 @@ function initialTheme(): Theme {
 }
 
 export function MarketChartPage() {
-  const [instruments, setInstruments] = useState<Instrument[]>([]);
   const [symbol, setSymbol] = useState('SH.000001');
-  const [bars, setBars] = useState<Array<{ d: string; o: number; h: number; l: number; c: number }>>([]);
+  const [bars, setBars] = useState<Bar[]>([]);
   const [error, setError] = useState('');
   const [theme, setTheme] = useState<Theme>(initialTheme);
-
-  useEffect(() => {
-    fetchInstruments()
-      .then((items) => {
-        setInstruments(items);
-        if (items.length > 0 && !items.some((i) => i.symbol === 'SH.000001')) {
-          setSymbol(items[0].symbol);
-        }
-      })
-      .catch((e) => setError(`指数列表加载失败：${e}`));
-  }, []);
 
   useEffect(() => {
     setBars([]);
@@ -48,7 +52,7 @@ export function MarketChartPage() {
     });
   }, []);
 
-  const meta = instruments.find((i) => i.symbol === symbol);
+  const meta = CORE_INDICES.find((i) => i.symbol === symbol);
 
   return (
     <div className="page" data-theme={theme}>
@@ -59,7 +63,7 @@ export function MarketChartPage() {
         </div>
         <div className="toolbar-right">
           <div className="seg">
-            {instruments.map((i) => (
+            {CORE_INDICES.map((i) => (
               <button
                 key={i.symbol}
                 className={i.symbol === symbol ? 'active' : ''}
@@ -82,7 +86,9 @@ export function MarketChartPage() {
       )}
 
       <footer className="status">
-        {meta ? `${meta.name} ${meta.symbol}：${meta.start} ~ ${meta.end}（${meta.count} 根日线）` : ''} · 滚轮缩放 / 拖拽平移 / 双击复位
+        {bars.length > 0
+          ? `${meta?.name ?? symbol} ${symbol}：${bars[0].d} ~ ${bars[bars.length - 1].d}（${bars.length} 根日线）`
+          : ''} · 滚轮缩放 / 拖拽平移 / 双击复位
       </footer>
     </div>
   );
