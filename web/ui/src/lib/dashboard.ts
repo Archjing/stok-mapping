@@ -277,9 +277,10 @@ export function buildDashSeries(
     }
 
     // candle：同一标的用同一颜色，便于多序列区分；仿射保持 OHLC 结构
+    // 注意：缺失日期用 '-' 空项而非 null —— ECharts candlestick 对 null 数据项会抛错
     const data = dates.map((d) => {
       const b = map.get(d);
-      return b ? [tr(b.o), tr(b.c), tr(b.l), tr(b.h)] : null;
+      return b ? [tr(b.o), tr(b.c), tr(b.l), tr(b.h)] : '-';
     });
     return {
       id: `dash-${inst.symbol}`,
