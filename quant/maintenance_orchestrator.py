@@ -531,6 +531,31 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             market_calendar="cn",
         ),
         make_spec(
+            name="index_daily_tail",
+            schedule_value=scheduled_time("INDEX_DAILY_TAIL_TIME", "index_daily_tail", "16:35"),
+            log_path="logs/index_daily_tail_update.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-index-history", "--config", config_arg],
+            health_scope=_env_value("INDEX_DAILY_TAIL_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("INDEX_DAILY_TAIL_HEALTH_FAIL_ON", "error"),
+            description="A-share index daily bars incremental tail refresh",
+            tags=["scheduler", "cn", "index"],
+            market_calendar="cn",
+        ),
+        make_spec(
+            name="data_governance_check",
+            schedule_value=scheduled_time("DATA_GOVERNANCE_CHECK_TIME", "data_governance_check", "17:50"),
+            log_path="logs/data_governance_check.log",
+            command=[str(python_bin), "-m", "quant.cli", "data-governance", "--config", config_arg],
+            health_scope=_env_value("DATA_GOVERNANCE_CHECK_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("DATA_GOVERNANCE_CHECK_HEALTH_FAIL_ON", "warning"),
+            description="Daily data governance freshness check + automatic repair + WAL migration",
+            tags=["scheduler", "governance", "cn"],
+            market_calendar="cn",
+            retry_window_minutes="60",
+            retry_interval_minutes="15",
+            max_retries="2",
+        ),
+        make_spec(
             name="account_bill_confirm",
             schedule_value=scheduled_time("ACCOUNT_BILL_CONFIRM_TIME", "account_bill_confirm", "16:45"),
             log_path="logs/account_bill_confirm.log",
@@ -976,6 +1001,12 @@ def _in_retry_window(now: datetime, spec: MaintenanceTaskSpec, state: dict[str, 
         failed_at = datetime.fromisoformat(last_failure_at)
     except ValueError:
         return False
+    # `now` 是 aware（aware_now 或 --as-of 回放路径）；state 里存的是 naive 字符串，
+    # 对齐时区后再相减，避免 naive/aware 相减抛 TypeError。
+    if failed_at.tzinfo is None and now.tzinfo is not None:
+        failed_at = failed_at.replace(tzinfo=now.tzinfo)
+    elif failed_at.tzinfo is not None and now.tzinfo is None:
+        failed_at = failed_at.replace(tzinfo=None)
     minutes_since_failure = int((now - failed_at).total_seconds() // 60)
     return minutes_since_failure >= spec.retry_interval_minutes
 

@@ -522,10 +522,12 @@ quant:
       intraday_bill_window: "09:35-15:00"
       hk_market_history: "16:20"
       a_share_history: "16:30"
+      index_daily_tail: "16:35"
       account_bill_confirm: "16:45"
       us_market_history: "17:10"
       cn_finance_flash_daily: "17:20"
       policy_event_extract: "17:40"
+      data_governance_check: "17:50"
       cninfo_risk_events: "20:20"
       cctv_news: "20:45"
   maintenance_orchestrator:

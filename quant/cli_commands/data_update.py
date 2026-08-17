@@ -26,7 +26,7 @@ from quant.data_governance.backfills.etf_history import (
 from quant.data_governance.etf_audit import audit_etf_history_from_config
 from quant.data_governance.etf_catalog import StaleETFCatalogError, sync_etf_catalog_from_config
 from quant.data_governance.etf_universe import ETFUniverseError, resolve_etf_universe_from_config
-from quant.data_governance.backfills.index_history import backfill_index_history_from_config
+from quant.data_governance.backfills.index_history import backfill_index_history_from_config, update_index_daily_tail_from_config
 from quant.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from quant.data_governance.external_market_history import (
     update_europe_market_history_from_config,
@@ -65,6 +65,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "update-hk-market-history",
         "update-ho-options",
         "update-history",
+        "update-index-history",
         "update-cross-market-reference-history",
         "update-us-market-history",
     }
@@ -215,6 +216,18 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     index_history_backfill_parser.add_argument("--end-date", required=True, help="End date in YYYY-MM-DD")
     index_history_backfill_parser.add_argument("--limit-symbols", type=int, default=None, help="Optional cap for number of indexes to fetch")
     index_history_backfill_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=120,
+        help="Client-side Tushare request throttle for index_daily",
+    )
+    index_tail_parser = subparsers.add_parser(
+        "update-index-history",
+        help="Incrementally fill each index's missing daily tail up to --end-date (post-close daily job)",
+    )
+    index_tail_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    index_tail_parser.add_argument("--end-date", default=None, help="End date in YYYY-MM-DD. Defaults to today.")
+    index_tail_parser.add_argument(
         "--max-requests-per-minute",
         type=int,
         default=120,
@@ -552,6 +565,30 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         )
         color = "green" if result.status in {"ok", "empty"} else "red"
         update_console.print(f"[{color}]Index history backfill status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Target symbols: {result.target_symbols}")
+        update_console.print(f"Fetched symbols: {result.fetched_symbols}")
+        update_console.print(f"Empty symbols: {result.empty_symbols}")
+        update_console.print(f"Failed symbols: {result.failed_symbols}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        if result.missing_symbols:
+            update_console.print(f"Missing indexes ({len(result.missing_symbols)}): {', '.join(result.missing_symbols[:20])}")
+        if result.warnings:
+            update_console.print("Warnings:")
+            for item in result.warnings[:20]:
+                update_console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "update-index-history":
+        config_path = Path(args.config).resolve()
+        end_date = str(args.end_date) if args.end_date else date.today().isoformat()
+        update_console.print(f"[bold]A-share index daily tail update started (end={end_date})[/bold]")
+        result = update_index_daily_tail_from_config(
+            config_path,
+            end_date=end_date,
+            max_requests_per_minute=int(args.max_requests_per_minute),
+        )
+        color = "green" if result.status in {"ok", "up_to_date", "empty"} else "red"
+        update_console.print(f"[{color}]Index daily tail update status: {result.status}[/{color}]")
         update_console.print(f"Database: {result.db_path}")
         update_console.print(f"Target symbols: {result.target_symbols}")
         update_console.print(f"Fetched symbols: {result.fetched_symbols}")
