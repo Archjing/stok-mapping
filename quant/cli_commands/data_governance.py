@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from rich.console import Console
 from quant.data_governance.adjustment import run_adjustment_audit
 from quant.config import load_config
 from quant.data_governance.db_health import run_database_health_check
+from quant.data_governance.governance import run_governance_pass
 from quant.data_governance.index_asof_audit import run_index_asof_audit
 from quant.data_governance.sqlite_capacity import run_sqlite_capacity_audit
 
@@ -17,6 +19,7 @@ from quant.data_governance.sqlite_capacity import run_sqlite_capacity_audit
 DATA_GOVERNANCE_COMMANDS = frozenset(
     {
         "adjustment-audit",
+        "data-governance",
         "db-capacity",
         "db-health",
         "index-asof-audit",
@@ -84,6 +87,15 @@ def register_data_governance_commands(subparsers: argparse._SubParsersAction) ->
         help="Count rows in each user table; slower for large files",
     )
 
+    governance_parser = subparsers.add_parser(
+        "data-governance",
+        help="Daily freshness check + automatic repair across local data databases",
+    )
+    governance_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    governance_parser.add_argument("--as-of", default=None, help="As-of date in YYYY-MM-DD. Defaults to today.")
+    governance_parser.add_argument("--check-only", action="store_true", help="Report staleness without running repairs")
+    governance_parser.add_argument("--no-journal-migration", action="store_true", help="Skip WAL journal-mode migration")
+
 
 def handle_data_governance_command(args: argparse.Namespace, *, parser: argparse.ArgumentParser, console: Any | None = None) -> int:
     governance_console = console or Console()
@@ -148,6 +160,35 @@ def handle_data_governance_command(args: argparse.Namespace, *, parser: argparse
         governance_console.print(f"JSON: {result.json_path}")
         governance_console.print(f"Markdown: {result.markdown_path}")
         return 2 if result.error_count else 0
+    if args.cmd == "data-governance":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        governance_console.print("[bold]Data governance freshness pass started[/bold]")
+        result = run_governance_pass(
+            root=config_path.parent,
+            cfg=cfg,
+            as_of=date.fromisoformat(args.as_of) if args.as_of else None,
+            repair=not args.check_only,
+            check_only=bool(args.check_only),
+        )
+        color = "green" if result.repair_failed == 0 else "red"
+        governance_console.print(
+            f"[{color}]Governance: checked={result.checked} fresh={result.fresh} stale={result.stale} "
+            f"empty={result.empty} errors={result.errors} repaired={result.repaired} repair_failed={result.repair_failed}[/{color}]"
+        )
+        for f in result.findings:
+            if f.status != "fresh":
+                governance_console.print(
+                    f"  - {f.target.label}: {f.status} latest={f.latest or '-'} expected={f.expected} {f.detail}".rstrip()
+                )
+        if result.journal is not None:
+            j = result.journal
+            governance_console.print(
+                f"Journal: scanned={j.scanned} migrated={len(j.migrated)} already_wal={len(j.already_wal)} failed={len(j.failed)}"
+            )
+            for rel in j.failed:
+                governance_console.print(f"[red]  WAL failed: {rel}[/red]")
+        return 2 if result.repair_failed else 0
     if args.cmd == "db-health":
         config_path = Path(args.config).resolve()
         cfg = load_config(config_path)

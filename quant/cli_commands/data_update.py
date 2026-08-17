@@ -26,11 +26,12 @@ from quant.data_governance.backfills.etf_history import (
 from quant.data_governance.etf_audit import audit_etf_history_from_config
 from quant.data_governance.etf_catalog import StaleETFCatalogError, sync_etf_catalog_from_config
 from quant.data_governance.etf_universe import ETFUniverseError, resolve_etf_universe_from_config
-from quant.data_governance.backfills.index_history import backfill_index_history_from_config
+from quant.data_governance.backfills.index_history import backfill_index_history_from_config, update_index_daily_tail_from_config
 from quant.data_governance.index_asof_backfill import backfill_index_asof_from_config
 from quant.data_governance.external_market_history import (
     update_europe_market_history_from_config,
     update_hk_market_history_from_config,
+    update_opening_snapshots_from_config,
     update_us_market_history_from_config,
 )
 from quant.data_governance.cross_market_reference_history import update_cross_market_reference_history_from_config
@@ -65,6 +66,8 @@ DATA_UPDATE_COMMANDS = frozenset(
         "update-hk-market-history",
         "update-ho-options",
         "update-history",
+        "update-index-history",
+        "update-opening-snapshot",
         "update-cross-market-reference-history",
         "update-us-market-history",
     }
@@ -220,6 +223,18 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
         default=120,
         help="Client-side Tushare request throttle for index_daily",
     )
+    index_tail_parser = subparsers.add_parser(
+        "update-index-history",
+        help="Incrementally fill each index's missing daily tail up to --end-date (post-close daily job)",
+    )
+    index_tail_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    index_tail_parser.add_argument("--end-date", default=None, help="End date in YYYY-MM-DD. Defaults to today.")
+    index_tail_parser.add_argument(
+        "--max-requests-per-minute",
+        type=int,
+        default=120,
+        help="Client-side Tushare request throttle for index_daily",
+    )
     tushare_financial_parser = subparsers.add_parser(
         "backfill-tushare-financials",
         help="Backfill Tushare financial factors by ts_code with resumable tasks",
@@ -274,6 +289,18 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     hk_history_parser = subparsers.add_parser("update-hk-market-history", help="Incrementally update HK market history database")
     hk_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     hk_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    opening_snapshot_parser = subparsers.add_parser(
+        "update-opening-snapshot",
+        help="Fetch external-market opening realtime snapshots (eodhd) for a market",
+    )
+    opening_snapshot_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    opening_snapshot_parser.add_argument(
+        "--market",
+        required=True,
+        choices=["us", "hk", "europe_london", "europe_frankfurt"],
+        help="Market to snapshot: us / hk / europe_london / europe_frankfurt",
+    )
+    opening_snapshot_parser.add_argument("--check-only", action="store_true", help="Only report targets, do not fetch or write")
     ho_options_parser = subparsers.add_parser(
         "update-ho-options",
         help="Collect HO option chains and calculate CN_PANIC_HO30",
@@ -565,6 +592,30 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
             for item in result.warnings[:20]:
                 update_console.print(f"- {item}")
         return 0 if result.status != "missing_tushare_token" else 2
+    if args.cmd == "update-index-history":
+        config_path = Path(args.config).resolve()
+        end_date = str(args.end_date) if args.end_date else date.today().isoformat()
+        update_console.print(f"[bold]A-share index daily tail update started (end={end_date})[/bold]")
+        result = update_index_daily_tail_from_config(
+            config_path,
+            end_date=end_date,
+            max_requests_per_minute=int(args.max_requests_per_minute),
+        )
+        color = "green" if result.status in {"ok", "up_to_date", "empty"} else "red"
+        update_console.print(f"[{color}]Index daily tail update status: {result.status}[/{color}]")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Target symbols: {result.target_symbols}")
+        update_console.print(f"Fetched symbols: {result.fetched_symbols}")
+        update_console.print(f"Empty symbols: {result.empty_symbols}")
+        update_console.print(f"Failed symbols: {result.failed_symbols}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        if result.missing_symbols:
+            update_console.print(f"Missing indexes ({len(result.missing_symbols)}): {', '.join(result.missing_symbols[:20])}")
+        if result.warnings:
+            update_console.print("Warnings:")
+            for item in result.warnings[:20]:
+                update_console.print(f"- {item}")
+        return 0 if result.status != "missing_tushare_token" else 2
     if args.cmd == "backfill-tushare-history":
         config_path = Path(args.config).resolve()
         update_console.print("[bold]Tushare historical backfill started[/bold]")
@@ -747,6 +798,28 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         update_console.print(f"Inserted rows: {result.inserted_rows}")
         update_console.print(f"Updated rows: {result.updated_rows}")
         update_console.print(f"Source: {result.source or 'N/A'}")
+        if result.warnings:
+            for warning in result.warnings:
+                update_console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-opening-snapshot":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_opening_snapshots_from_config(
+            cfg,
+            config_path.parent,
+            market=str(args.market),
+            check_only=bool(args.check_only),
+        )
+        color = "green" if result.ok else "red"
+        update_console.print(f"[{color}]Opening snapshot update status: {result.status}[/{color}]")
+        update_console.print(f"Market: {args.market}")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Symbols: {result.symbol_count}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        update_console.print(f"Observed at: {result.observed_at or 'N/A'}")
+        if result.skipped_symbols:
+            update_console.print(f"Skipped ({len(result.skipped_symbols)}): {', '.join(result.skipped_symbols[:20])}")
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")

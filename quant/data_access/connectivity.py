@@ -219,6 +219,35 @@ def fetch_yahoo_chart_daily(
     return out.dropna(subset=["date", "open", "high", "low", "close"]).reset_index(drop=True)
 
 
+def fetch_eodhd_realtime(
+    symbol: str,
+    *,
+    token_env: str = "EODHD_API_TOKEN",
+) -> dict[str, Any]:
+    """Fetch one symbol's real-time snapshot from the EODHD real-time endpoint.
+
+    Returns a flat dict with the raw fields (``code``/``timestamp``/``open``/
+    ``high``/``low``/``close``/``volume``/``previousClose``/``change``/
+    ``change_p``).  ``close`` here is the latest traded price, not a settled
+    daily close.  Symbols without real-time coverage (e.g. FTSE.INDX on lower
+    tiers) return the raw NA payload; callers decide whether to persist or
+    skip NA-valued snapshots.
+    """
+    token = os.getenv(token_env, "").strip()
+    if not token:
+        raise RuntimeError(f"missing_token_env:{token_env}")
+    resp = requests.get(
+        f"https://eodhd.com/api/real-time/{quote(str(symbol).strip().upper(), safe='')}",
+        params={"fmt": "json", "api_token": token},
+        timeout=20,
+    )
+    resp.raise_for_status()
+    payload = resp.json()
+    if not isinstance(payload, dict):
+        raise RuntimeError(f"eodhd_realtime_unexpected_payload:{type(payload).__name__}")
+    return payload
+
+
 def fetch_fred_series(
     series_id: str,
     years: int | None = None,

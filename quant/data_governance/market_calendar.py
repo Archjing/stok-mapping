@@ -31,9 +31,12 @@ from typing import Iterable
 
 # 每市场的锚定标的：存在该标的一行记录即视为该市场交易日。
 # US 用 ^SOX 是因为它是本项目跨市场信号的执行源，假日必然无数据。
+# 欧洲按交易所拆分：伦敦 ^FTSE、法兰克福 ^GDAXI。
 MARKET_ANCHOR_SYMBOLS: dict[str, str | None] = {
     "us": "^SOX",
     "hk": None,  # None 表示"任一标的"
+    "euro_london": "^FTSE",
+    "euro_frankfurt": "^GDAXI",
 }
 
 
