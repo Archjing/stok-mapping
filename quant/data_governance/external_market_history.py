@@ -840,3 +840,196 @@ def load_hk_daily_from_history(symbols: list[str], start: date, end: date) -> pd
 
 def load_europe_daily_from_history(symbols: list[str], start: date, end: date) -> pd.DataFrame:
     return _load_daily_from_history(_europe_settings, symbols, start, end)
+
+
+# ---------------------------------------------------------------------------
+# 开盘实时快照（盘前/刚开盘抓取）
+# ---------------------------------------------------------------------------
+
+OPENING_SNAPSHOT_TABLE = "market_opening_snapshots"
+
+
+@dataclass
+class OpeningSnapshotResult:
+    db_path: Path
+    status: str
+    symbol_count: int
+    inserted_rows: int
+    skipped_symbols: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    observed_at: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.status in {"updated", "up_to_date", "disabled"}
+
+
+def _ensure_opening_snapshot_table(conn: sqlite3.Connection) -> None:
+    conn.execute(
+        f"""
+        CREATE TABLE IF NOT EXISTS {OPENING_SNAPSHOT_TABLE} (
+            symbol TEXT NOT NULL,
+            observed_at TEXT NOT NULL,
+            source TEXT NOT NULL,
+            open REAL,
+            high REAL,
+            low REAL,
+            last_price REAL,
+            previous_close REAL,
+            change REAL,
+            change_p REAL,
+            volume REAL,
+            raw_payload TEXT,
+            PRIMARY KEY (symbol, observed_at, source)
+        )
+        """
+    )
+    conn.execute(
+        f"""
+        CREATE INDEX IF NOT EXISTS idx_opening_snapshot_symbol_time
+        ON {OPENING_SNAPSHOT_TABLE}(symbol, observed_at DESC)
+        """
+    )
+
+
+def _realtime_to_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    if parsed != parsed:  # NaN
+        return None
+    return parsed
+
+
+def _eodhd_realtime_symbol(symbol: str, market: str) -> str:
+    """Map a project symbol to its eodhd realtime ticker.
+
+    - ``^SOX``/``^NDX``/``^VIX``/``^STOXX`` → ``SOX.INDX`` …（指数后缀）
+    - ``NVDA``/``KWEB``/``AAPL`` → ``NVDA.US`` …（美股后缀）
+    - ``HK.00700`` → ``0700.HK``（港股后缀 + 前导零 4 位）
+    - ``CNY=X`` → ``CNY.FOREX``（汇率）
+    """
+    raw = str(symbol).strip().upper()
+    if raw.startswith("HK."):
+        code = raw.split(".", 1)[1]
+        return f"{str(int(code)).zfill(4)}.HK"
+    if raw.endswith("=X"):
+        return f"{raw[:-2]}.FOREX"
+    if raw.startswith("^"):
+        return f"{raw[1:]}.INDX"
+    if market in {"us", "hk"}:
+        return f"{raw}.{'US' if market == 'us' else 'HK'}"
+    # 欧洲指数默认已带 .INDX 后缀（source_symbols 或 ^ 转换）
+    return raw
+
+
+def update_opening_snapshots_from_config(
+    cfg: dict[str, Any],
+    root: Path,
+    *,
+    market: str,
+    check_only: bool = False,
+) -> OpeningSnapshotResult:
+    """抓取某外部市场各标的的实时开盘快照（eodhd realtime）。
+
+    ``market`` ∈ {"us", "hk", "europe_london", "europe_frankfurt"}。欧洲拆成
+    伦敦/法兰克福两段，各自用 config ``europe_market_history`` 的子集符号，
+    因为它们分属不同时区、开收盘时点不同。
+    """
+    from datetime import datetime as _datetime
+    from zoneinfo import ZoneInfo
+
+    if market == "us":
+        raw_cfg = cfg.get("us_market_history", {})
+        settings = _build_settings(raw_cfg, root=root, defaults=_us_settings, default_symbols=DEFAULT_US_MARKET_SYMBOLS)
+    elif market == "hk":
+        raw_cfg = cfg.get("hk_market_history", {})
+        settings = _build_settings(raw_cfg, root=root, defaults=_hk_settings, default_symbols=DEFAULT_HK_MARKET_SYMBOLS)
+    elif market in {"europe_london", "europe_frankfurt"}:
+        raw_cfg = cfg.get("europe_market_history", {})
+        settings = _build_settings(raw_cfg, root=root, defaults=_europe_settings, default_symbols=DEFAULT_EUROPE_MARKET_SYMBOLS)
+        # 按交易所拆分：伦敦=FTSE 族，法兰克福=DAX/CAC/STOXX 族
+        if market == "europe_london":
+            settings.symbols = [s for s in settings.symbols if s.upper().startswith("^FTSE")]
+        else:
+            settings.symbols = [s for s in settings.symbols if not s.upper().startswith("^FTSE")]
+    else:
+        raise ValueError(f"unsupported market for opening snapshot: {market!r}")
+
+    if not settings.enabled:
+        return OpeningSnapshotResult(db_path=settings.path, status="disabled", symbol_count=0, inserted_rows=0)
+    if check_only:
+        return OpeningSnapshotResult(db_path=settings.path, status="check_ok", symbol_count=len(settings.symbols), inserted_rows=0)
+
+    token_env = str(settings.api_token_env or "EODHD_API_TOKEN")
+    observed_at = _datetime.now(ZoneInfo("Asia/Shanghai")).isoformat(timespec="seconds")
+    inserted_rows = 0
+    skipped_symbols: list[str] = []
+    warnings: list[str] = []
+
+    from quant.data_access.connectivity import fetch_eodhd_realtime
+
+    settings.path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(settings.path) as conn:
+        _ensure_opening_snapshot_table(conn)
+        for symbol in settings.symbols:
+            # 优先用配置的 source_symbols 映射（欧洲指数），否则按市场推导 eodhd ticker
+            if settings.source_symbols and symbol in settings.source_symbols:
+                source_symbol = str(settings.source_symbols[symbol])
+            else:
+                source_symbol = _eodhd_realtime_symbol(symbol, market)
+            try:
+                payload = fetch_eodhd_realtime(source_symbol, token_env=token_env)
+            except Exception as exc:
+                warnings.append(f"{symbol}: {exc}")
+                skipped_symbols.append(symbol)
+                continue
+            open_p = _realtime_to_float(payload.get("open"))
+            last_p = _realtime_to_float(payload.get("close"))
+            if open_p is None and last_p is None:
+                # 无 realtime 覆盖（如 FTSE.INDX 低档位返回全 NA）→ 跳过而非存脏数据
+                skipped_symbols.append(symbol)
+                continue
+            conn.execute(
+                f"""
+                INSERT INTO {OPENING_SNAPSHOT_TABLE} (
+                    symbol, observed_at, source, open, high, low, last_price,
+                    previous_close, change, change_p, volume, raw_payload
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(symbol, observed_at, source) DO UPDATE SET
+                    open = excluded.open, high = excluded.high, low = excluded.low,
+                    last_price = excluded.last_price, previous_close = excluded.previous_close,
+                    change = excluded.change, change_p = excluded.change_p,
+                    volume = excluded.volume, raw_payload = excluded.raw_payload
+                """,
+                (
+                    symbol,
+                    observed_at,
+                    "eodhd_realtime",
+                    open_p,
+                    _realtime_to_float(payload.get("high")),
+                    _realtime_to_float(payload.get("low")),
+                    last_p,
+                    _realtime_to_float(payload.get("previousClose")),
+                    _realtime_to_float(payload.get("change")),
+                    _realtime_to_float(payload.get("change_p")),
+                    _realtime_to_float(payload.get("volume")),
+                    str(payload),
+                ),
+            )
+            inserted_rows += 1
+        conn.commit()
+
+    status = "updated" if inserted_rows > 0 else "up_to_date"
+    return OpeningSnapshotResult(
+        db_path=settings.path,
+        status=status,
+        symbol_count=len(settings.symbols),
+        inserted_rows=inserted_rows,
+        skipped_symbols=skipped_symbols,
+        warnings=warnings,
+        observed_at=observed_at,
+    )

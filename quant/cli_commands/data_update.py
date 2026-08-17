@@ -31,6 +31,7 @@ from quant.data_governance.index_asof_backfill import backfill_index_asof_from_c
 from quant.data_governance.external_market_history import (
     update_europe_market_history_from_config,
     update_hk_market_history_from_config,
+    update_opening_snapshots_from_config,
     update_us_market_history_from_config,
 )
 from quant.data_governance.cross_market_reference_history import update_cross_market_reference_history_from_config
@@ -66,6 +67,7 @@ DATA_UPDATE_COMMANDS = frozenset(
         "update-ho-options",
         "update-history",
         "update-index-history",
+        "update-opening-snapshot",
         "update-cross-market-reference-history",
         "update-us-market-history",
     }
@@ -287,6 +289,18 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     hk_history_parser = subparsers.add_parser("update-hk-market-history", help="Incrementally update HK market history database")
     hk_history_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     hk_history_parser.add_argument("--check-only", action="store_true", help="Only check freshness, do not fetch or write")
+    opening_snapshot_parser = subparsers.add_parser(
+        "update-opening-snapshot",
+        help="Fetch external-market opening realtime snapshots (eodhd) for a market",
+    )
+    opening_snapshot_parser.add_argument("--config", default="config.yaml", help="Path to config file")
+    opening_snapshot_parser.add_argument(
+        "--market",
+        required=True,
+        choices=["us", "hk", "europe_london", "europe_frankfurt"],
+        help="Market to snapshot: us / hk / europe_london / europe_frankfurt",
+    )
+    opening_snapshot_parser.add_argument("--check-only", action="store_true", help="Only report targets, do not fetch or write")
     ho_options_parser = subparsers.add_parser(
         "update-ho-options",
         help="Collect HO option chains and calculate CN_PANIC_HO30",
@@ -784,6 +798,28 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
         update_console.print(f"Inserted rows: {result.inserted_rows}")
         update_console.print(f"Updated rows: {result.updated_rows}")
         update_console.print(f"Source: {result.source or 'N/A'}")
+        if result.warnings:
+            for warning in result.warnings:
+                update_console.print(f"[yellow]Warning:[/yellow] {warning}")
+        return 0 if result.ok else 2
+    if args.cmd == "update-opening-snapshot":
+        config_path = Path(args.config).resolve()
+        cfg = load_config(config_path)
+        result = update_opening_snapshots_from_config(
+            cfg,
+            config_path.parent,
+            market=str(args.market),
+            check_only=bool(args.check_only),
+        )
+        color = "green" if result.ok else "red"
+        update_console.print(f"[{color}]Opening snapshot update status: {result.status}[/{color}]")
+        update_console.print(f"Market: {args.market}")
+        update_console.print(f"Database: {result.db_path}")
+        update_console.print(f"Symbols: {result.symbol_count}")
+        update_console.print(f"Inserted rows: {result.inserted_rows}")
+        update_console.print(f"Observed at: {result.observed_at or 'N/A'}")
+        if result.skipped_symbols:
+            update_console.print(f"Skipped ({len(result.skipped_symbols)}): {', '.join(result.skipped_symbols[:20])}")
         if result.warnings:
             for warning in result.warnings:
                 update_console.print(f"[yellow]Warning:[/yellow] {warning}")

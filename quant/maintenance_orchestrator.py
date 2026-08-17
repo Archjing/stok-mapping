@@ -8,7 +8,7 @@ import sqlite3
 import subprocess
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote
@@ -43,6 +43,11 @@ class MaintenanceTaskSpec:
     max_retries: int = 0
     state_path: str = ""
     market_calendar: str = "weekday"
+    # 动态时区锚点："{market}:{open|close}"（如 "us:close"），evaluate 时用
+    # zoneinfo 把该市场开/收盘会话时点换算成 default_timezone 的今天时刻，
+    # 再加 session_offset_minutes 偏移，替代固定 schedule_value 精确匹配。
+    market_session: str = ""
+    session_offset_minutes: int = 0
 
 
 @dataclass(frozen=True)
@@ -209,6 +214,8 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         retry_interval_minutes: str = "5",
         max_retries: str = "3",
         schedule_type: str = "time",
+        market_session: str = "",
+        session_offset_minutes: int = 0,
     ) -> MaintenanceTaskSpec:
         return MaintenanceTaskSpec(
             name=name,
@@ -230,6 +237,8 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             max_retries=int(_env_value(f"{name.upper()}_MAX_RETRIES", max_retries)),
             state_path=str(state_dir / f"{name}.state"),
             market_calendar=market_calendar,
+            market_session=market_session,
+            session_offset_minutes=session_offset_minutes,
         )
 
     return [
@@ -509,15 +518,33 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
             max_retries="5",
         ),
         make_spec(
+            name="hk_opening_snapshot",
+            schedule_value=scheduled_time("HK_OPENING_SNAPSHOT_TIME", "hk_opening_snapshot", "09:40"),
+            log_path="logs/hk_opening_snapshot.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-opening-snapshot", "--config", config_arg, "--market", "hk"],
+            health_scope=_env_value("HK_OPENING_SNAPSHOT_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("HK_OPENING_SNAPSHOT_HEALTH_FAIL_ON", "warning"),
+            description="HK market opening realtime snapshot (right after 09:30 open)",
+            tags=["scheduler", "hk", "opening"],
+            market_calendar="hk",
+            market_session="hk:open",
+            session_offset_minutes=10,
+            retry_window_minutes="20",
+            retry_interval_minutes="3",
+            max_retries="3",
+        ),
+        make_spec(
             name="hk_market_history",
             schedule_value=scheduled_time("HK_MARKET_HISTORY_TIME", "hk_market_history", "16:20"),
             log_path="logs/hk_market_history_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-hk-market-history", "--config", config_arg],
             health_scope=_env_value("HK_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
             health_fail_on=_env_value("HK_MARKET_HISTORY_HEALTH_FAIL_ON", "error"),
-            description="Hong Kong market history refresh",
-            tags=["scheduler", "hk"],
+            description="Hong Kong market OHLC refresh (right after 16:00 close)",
+            tags=["scheduler", "hk", "close"],
             market_calendar="hk",
+            market_session="hk:close",
+            session_offset_minutes=15,
         ),
         make_spec(
             name="a_share_history",
@@ -577,14 +604,90 @@ def _default_registry(config_path: Path) -> list[MaintenanceTaskSpec]:
         ),
         make_spec(
             name="us_market_history",
-            schedule_value=scheduled_time("US_MARKET_HISTORY_TIME", "us_market_history", "17:10"),
+            schedule_value=scheduled_time("US_MARKET_HISTORY_TIME", "us_market_history", "05:15"),
             log_path="logs/us_market_history_update.log",
             command=[str(python_bin), "-m", "quant.cli", "update-us-market-history", "--config", config_arg],
             health_scope=_env_value("US_MARKET_HISTORY_HEALTH_SCOPE", "scheduler"),
             health_fail_on=_env_value("US_MARKET_HISTORY_HEALTH_FAIL_ON", "error"),
-            description="US market history refresh",
-            tags=["scheduler", "us"],
+            description="US market OHLC refresh (right after 16:00 ET close)",
+            tags=["scheduler", "us", "close"],
             market_calendar="us",
+            market_session="us:close",
+            session_offset_minutes=15,
+        ),
+        make_spec(
+            name="us_opening_snapshot",
+            schedule_value=scheduled_time("US_OPENING_SNAPSHOT_TIME", "us_opening_snapshot", "22:40"),
+            log_path="logs/us_opening_snapshot.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-opening-snapshot", "--config", config_arg, "--market", "us"],
+            health_scope=_env_value("US_OPENING_SNAPSHOT_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("US_OPENING_SNAPSHOT_HEALTH_FAIL_ON", "warning"),
+            description="US market opening realtime snapshot (right after 09:30 ET open)",
+            tags=["scheduler", "us", "opening"],
+            market_calendar="us",
+            market_session="us:open",
+            session_offset_minutes=10,
+            retry_window_minutes="20",
+            retry_interval_minutes="3",
+            max_retries="3",
+        ),
+        make_spec(
+            name="europe_london_market_history",
+            schedule_value=scheduled_time("EUROPE_LONDON_HISTORY_TIME", "europe_london_market_history", "00:45"),
+            log_path="logs/europe_london_market_history.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-europe-market-history", "--config", config_arg],
+            health_scope=_env_value("EUROPE_LONDON_HISTORY_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("EUROPE_LONDON_HISTORY_HEALTH_FAIL_ON", "warning"),
+            description="Europe London (FTSE) OHLC refresh (right after 16:30 London close)",
+            tags=["scheduler", "europe", "london", "close"],
+            market_calendar="euro_london",
+            market_session="euro_london:close",
+            session_offset_minutes=15,
+        ),
+        make_spec(
+            name="europe_london_opening_snapshot",
+            schedule_value=scheduled_time("EUROPE_LONDON_OPENING_TIME", "europe_london_opening_snapshot", "16:10"),
+            log_path="logs/europe_london_opening_snapshot.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-opening-snapshot", "--config", config_arg, "--market", "europe_london"],
+            health_scope=_env_value("EUROPE_LONDON_OPENING_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("EUROPE_LONDON_OPENING_HEALTH_FAIL_ON", "warning"),
+            description="Europe London (FTSE) opening realtime snapshot (right after 08:00 London open)",
+            tags=["scheduler", "europe", "london", "opening"],
+            market_calendar="euro_london",
+            market_session="euro_london:open",
+            session_offset_minutes=10,
+            retry_window_minutes="20",
+            retry_interval_minutes="3",
+            max_retries="3",
+        ),
+        make_spec(
+            name="europe_frankfurt_market_history",
+            schedule_value=scheduled_time("EUROPE_FRANKFURT_HISTORY_TIME", "europe_frankfurt_market_history", "01:45"),
+            log_path="logs/europe_frankfurt_market_history.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-europe-market-history", "--config", config_arg],
+            health_scope=_env_value("EUROPE_FRANKFURT_HISTORY_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("EUROPE_FRANKFURT_HISTORY_HEALTH_FAIL_ON", "warning"),
+            description="Europe Frankfurt (DAX/CAC/STOXX) OHLC refresh (right after 17:30 Frankfurt close)",
+            tags=["scheduler", "europe", "frankfurt", "close"],
+            market_calendar="euro_frankfurt",
+            market_session="euro_frankfurt:close",
+            session_offset_minutes=15,
+        ),
+        make_spec(
+            name="europe_frankfurt_opening_snapshot",
+            schedule_value=scheduled_time("EUROPE_FRANKFURT_OPENING_TIME", "europe_frankfurt_opening_snapshot", "16:10"),
+            log_path="logs/europe_frankfurt_opening_snapshot.log",
+            command=[str(python_bin), "-m", "quant.cli", "update-opening-snapshot", "--config", config_arg, "--market", "europe_frankfurt"],
+            health_scope=_env_value("EUROPE_FRANKFURT_OPENING_HEALTH_SCOPE", "scheduler"),
+            health_fail_on=_env_value("EUROPE_FRANKFURT_OPENING_HEALTH_FAIL_ON", "warning"),
+            description="Europe Frankfurt (DAX/CAC/STOXX) opening realtime snapshot (right after 09:00 Frankfurt open)",
+            tags=["scheduler", "europe", "frankfurt", "opening"],
+            market_calendar="euro_frankfurt",
+            market_session="euro_frankfurt:open",
+            session_offset_minutes=10,
+            retry_window_minutes="20",
+            retry_interval_minutes="3",
+            max_retries="3",
         ),
         make_spec(
             name="cninfo_risk_events",
@@ -936,20 +1039,29 @@ def _trading_day_decision(*, root: Path, config_path: Path, spec: MaintenanceTas
         return True, f"natural_day_calendar(scope={scope})"
     if scope in {"", "weekday"}:
         return weekday in {1, 2, 3, 4, 5}, f"weekday_calendar(weekday={weekday})"
-    if scope in {"hk", "us"}:
+    if scope in {"hk", "us", "euro_london", "euro_frankfurt"}:
         # 用本地行情库推导真实交易日（排除交易所假日，而不仅是周末）。
         # 有行情记录 → 交易日；无记录但为周末 → 闭市；无记录且为工作日
         # （库未覆盖）→ 回退工作日判断，避免把未知日期误判为闭市。
         cfg = load_config(config_path) if config_path.exists() else {}
-        market_key = "us_market_history" if scope == "us" else "hk_market_history"
+        market_key = {
+            "us": "us_market_history",
+            "hk": "hk_market_history",
+            "euro_london": "europe_market_history",
+            "euro_frankfurt": "europe_market_history",
+        }[scope]
         market_cfg = cfg.get(market_key, {}) if isinstance(cfg, dict) else {}
-        db_path = _resolve_path(root, str(market_cfg.get("path", f"data/{'us' if scope == 'us' else 'hk'}_market_history.sqlite")))
-        daily_table = str(market_cfg.get("daily_table", f"{'us' if scope == 'us' else 'hk'}_daily_bars"))
+        db_path = _resolve_path(root, str(market_cfg.get("path", f"data/{market_key}.sqlite")))
+        daily_table = str(market_cfg.get("daily_table", "market_daily_bars"))
+        # 美股 16:00（美东）收盘 = 北京次日凌晨；早上 07:00 拉的是美东「前一交易日」
+        # 的收盘，所以判定目标日期 = 北京日期 −1 天。港股与北京同时区，判定当天。
+        # 欧股收盘（伦敦 16:30 / 法兰克福 17:30）= 北京深夜或次日凌晨，同样按前一交易日判定。
+        target_day = now.date() - timedelta(days=1) if scope in {"us", "euro_london", "euro_frankfurt"} else now.date()
         is_open, reason = _market_calendar_check(
             database_path=db_path,
             daily_table=daily_table,
             scope=scope,
-            day=now.date(),
+            day=target_day,
         )
         return is_open, reason
     if scope != "cn":
@@ -1025,6 +1137,30 @@ def _intraday_window_reason(window_value: str, now: datetime) -> str:
     return "outside"
 
 
+def _session_anchor_hhmm(config_path: Path, spec: MaintenanceTaskSpec, now: datetime) -> str:
+    """动态时区：把 ``spec.market_session``（"{market}:{open|close}"）换算成
+    default_timezone 下**今天**的 HH:MM（含 session_offset_minutes 偏移）。
+
+    注意：编排器 tick 是「每天对当天日期做一次判定」的模型，所以这里用
+    ``now.date()`` 作为会话日期。对跨午夜的市场（美股收盘=北京次日凌晨），
+    交易日判定层已把 ``now`` 前置一天（见 _trading_day_decision 的 us 分支），
+    但会话时点仍取「美东当天」——即北京次日凌晨的 HH:MM，二者一致。
+    """
+    market, _, key = spec.market_session.partition(":")
+    if not market or not key:
+        return ""
+    try:
+        from quant.market_schedule import session_aware_datetime, default_timezone
+
+        cfg = load_config(config_path) if config_path.exists() else {}
+        tz = default_timezone(cfg)
+        anchor = session_aware_datetime(cfg, market, key, now.date(), target_timezone=tz)
+        anchor = anchor + timedelta(minutes=int(spec.session_offset_minutes))
+        return anchor.strftime("%H:%M")
+    except Exception:
+        return ""
+
+
 def _evaluate_task(
     *,
     spec: MaintenanceTaskSpec,
@@ -1042,6 +1178,9 @@ def _evaluate_task(
     state = _parse_task_state(state_path)
     retry_count = int(state.get("retry_count") or 0)
     now_hm = now.strftime("%H:%M")
+    # 动态时区锚点任务：把市场开/收盘会话时点换算成北京 HH:MM，替代固定字面量。
+    expected_hm = _session_anchor_hhmm(config_path, spec, now) if spec.market_session else spec.schedule_value
+    display_schedule = expected_hm or spec.schedule_value
     base_kwargs = _decision_kwargs(
         spec=spec,
         log_path=log_path,
@@ -1051,6 +1190,7 @@ def _evaluate_task(
         last_success=last_success,
         retry_count=retry_count,
     )
+    base_kwargs["scheduled_time"] = display_schedule
 
     if not spec.enabled:
         return MaintenanceDecision(decision="skipped", reason="task_disabled", **base_kwargs)
@@ -1086,9 +1226,12 @@ def _evaluate_task(
     elif lock_path.exists():
         decision = "blocked"
         reason = "lock_present"
-    elif now_hm == spec.schedule_value:
+    elif now_hm == expected_hm:
         decision = "will_run"
-        reason = f"scheduled_run(scope={spec.health_scope}, fail_on={spec.health_fail_on}, calendar={calendar_reason})"
+        reason = (
+            f"scheduled_run(scope={spec.health_scope}, fail_on={spec.health_fail_on}, "
+            f"calendar={calendar_reason}, expected={expected_hm})"
+        )
     elif _in_retry_window(now, spec, state):
         decision = "will_run"
         reason = (
@@ -1097,7 +1240,7 @@ def _evaluate_task(
         )
     else:
         decision = "skipped"
-        reason = f"outside_schedule(now={now_hm}, expected={spec.schedule_value}, calendar={calendar_reason})"
+        reason = f"outside_schedule(now={now_hm}, expected={expected_hm}, calendar={calendar_reason})"
     if decision == "will_run" and not _env_flag("SCHEDULER_HEALTH_ENABLED", "1"):
         reason = "health_gate_disabled"
     return MaintenanceDecision(decision=decision, reason=reason, **base_kwargs)
