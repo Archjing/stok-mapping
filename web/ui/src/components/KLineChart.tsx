@@ -16,6 +16,7 @@ import type { Theme } from '../chart/theme';
 import { MA_SPANS, type MaSpan } from '../lib/dashboard';
 import { TF_LABEL } from '../lib/aggregate';
 import type { IndexBar } from '../lib/data-types';
+import type { Market } from '../api/market';
 
 interface Props {
   symbol: string;
@@ -23,6 +24,7 @@ interface Props {
   bars: IndexBar[];
   theme: Theme;
   indices: ReadonlyArray<{ symbol: string; name: string }>;
+  market: Market;
   onSelectSymbol: (symbol: string, name?: string) => void;
 }
 
@@ -33,7 +35,7 @@ const RANGES: Array<{ key: RangeKey; label: string }> = [
   { key: '1y', label: '1年' },
 ];
 
-export function KLineChart({ symbol, name, bars, theme, indices, onSelectSymbol }: Props) {
+export function KLineChart({ symbol, name, bars, theme, indices, market, onSelectSymbol }: Props) {
   const { ref, chart } = useECharts();
   const ctrlRef = useRef<KLineCtrl>({
     daily: bars,
@@ -149,7 +151,7 @@ export function KLineChart({ symbol, name, bars, theme, indices, onSelectSymbol 
               {i.name}
             </button>
           ))}
-          <SearchBox onSelect={(hit) => onSelectSymbol(hit.symbol, hit.name)} />
+          <SearchBox market={market} onSelect={(hit) => onSelectSymbol(hit.symbol, hit.name)} />
         </div>
         <div className="ctrl">
           <span className="lbl">均线</span>

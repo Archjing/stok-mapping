@@ -240,6 +240,14 @@ quant:
       reference_and_fx:
         symbols: ["^NDX", "NVDA", "CNY=X"]
         purpose: "纳指、英伟达和人民币汇率的参考背景"
+      dashboard_indices:
+        symbols: ["^IXIC", "^NYA", "VOX", "^SOX"]
+        purpose: "美股单标的看板预设指数（纳斯达克/纽约/通信服务VOX/费城半导体）"
+        asset_types:
+          "^IXIC": index
+          "^NYA": index
+          "VOX": etf
+          "^SOX": index
   cross_market_reference_history:
     enabled: true
     path: "data/cross_market_reference_history.sqlite"

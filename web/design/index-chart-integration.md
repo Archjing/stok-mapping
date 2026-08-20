@@ -74,13 +74,21 @@ GET /api/market/search?q=600519|茅台                  # 代码/名称搜索（
 ## 6. 分阶段（在 worktree 内）
 
 > 状态更新于 2026-08-16。已确认决策：主题沿用 index-chart 现有明暗配色；认证 D6 只要求写端点；远端=本机动态 + 静态快照。
+> 状态更新于 2026-08-20（统一动态看板）：对照看板截断根因 = qfq 列缺 9 天 + 静态快照冻结于构建时；已回填修复。按用户决策「统一到动态看板」：`web/ui` 为唯一动态看板（实时读 DB），静态 index-chart 降级为离线快照并重建止血一次；对照看板默认标的池与 index-chart 对齐（4 指数 + 10 个股候选 chip，仅 3 指数勾选）。端口约定：后端 **8010**，8000 被本机 oMLX 模型服务占用严禁使用。
 
 - **P0 骨架 ✅ 完成**（commit `36bf51d4`）：FastAPI 薄 API（`/api/market/{instruments,bars,search}` 只读直查 sqlite）+ Vite+React+TS 骨架（dev 代理 /api→8010）。注：8000 被本机模型服务占用，FastAPI 开发端口用 **8010**。
 - **P1a 单指数 K线图迁移 ✅ 完成**（commits `767a4245`/`80a45f5b`/`007d023e`/`5a40a314`）：纯逻辑 `aggregate/dashboard/data-types` 原样迁入 `web/ui/src/lib`；`<KLineChart>`（蜡烛 + MA 开关 + 缩放粒度日/周/月/年K + 区间 + 读数条）接 `/api/market/bars/{symbol}`；指数切换固定 4 个核心指数；视觉照搬旧 `web/index-chart`。
-- **P1b 对照看板 + 个股搜索动态加载 ⏳ 待做**：
+- **P1b 对照看板 + 个股搜索动态加载 ✅ 完成**（2026-08-20 收尾）：
   1. `<ComparisonDashboard>` 组件（多标的 checkbox + 归一化窗口/首日/波动率/z-score + 对比方式蜡烛/收盘/均线），复用 `dashboard.ts` 归一化引擎与 `/api/market/instruments|bars`；
   2. 个股搜索：`/api/market/search` + 输入框 → 「近一年先行（`?recent=1y`）渲染 + 后台拉全量补全」+ 前端缓存；
-  3. 视图切换（单指数 / 对照看板）挂回顶栏。
+  3. 视图切换（单指数 / 对照看板）挂回顶栏；
+  4. **默认标的池对齐**：`DASHBOARD_STOCKS`（10 只）加入 `selected`（候选 chip，不勾选不画线），`stockMeta` 预填名称，与静态 index-chart 的 14 标的池一致。
+- **P1c 单标的看板扩展：cn_panic + 美股单标的 ✅ 完成**（2026-08-20）：
+  1. **A股单标的加入自定义恐慌指数**：`CN_PANIC_HO30` 作为第 5 个预设指数（`CN_SINGLE_INDICES`），后端从 `china_options.sqlite` 的 `china_option_index_values` 读收盘值并合成 o=h=l=c 供 K 线渲染；
+  2. **美股单标的看板**：`ViewMode` 扩展为 `cn-single / cn-dash / us-single`，导航改为「A股单标的 / A股对照 / 美股单标的」；布局版式与 A股单标的完全一致（`<KLineChart>` 复用，`market` prop 区分市场）；
+  3. **美股预设指数**：纳斯达克 `^IXIC`、纽约 `^NYA`、`^VOX`（Yahoo 无指数行情，用同名 VOX ETF 数据、界面显示 ^VOX）、费城半导体 `^SOX`；数据源 `us_market_history.sqlite` 的 `us_daily_bars`（market 列区分 US_INDEX/US_ETF）；
+  4. **后端**：`/api/market/bars/{symbol}` 与 `/api/market/search` 增加 `market=cn|us` 参数；美股搜索按 `us_daily_bars` 实际存在 symbol + 内置名称表（`US_SYMBOL_NAMES`）；
+  5. 配置：`config.yaml` 新增 `dashboard_indices` 标的组（^IXIC/^NYA/VOX/^SOX + asset_types）纳入维护抓取。
 - **P2 M1 其余只读页**：账户/观察池/对照图（复用 `quant.reporting`）。
 - **P3 M2 写操作**：任务队列（`web_jobs` + 进程池）+ 写端点 + `run_index`。
 

@@ -11,7 +11,7 @@ import {
   type DashRangeKey,
 } from '../chart/dashboardChart';
 import { fetchBars, type Bar, type SearchHit } from '../api/market';
-import { CORE_INDICES, coreIndexName } from '../lib/instruments';
+import { CORE_INDICES, DASHBOARD_STOCKS, coreIndexName } from '../lib/instruments';
 import {
   MA_SPANS,
   NORM_LABEL,
@@ -55,13 +55,19 @@ function todayStr(d: Date): string {
 export function ComparisonDashboard({ theme }: Props) {
   const { ref, chart } = useECharts();
   const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(['SH.000001', 'SZ.399001', 'SH.000300', 'SZ.399006']),
+    () =>
+      new Set([
+        ...CORE_INDICES.map((i) => i.symbol),
+        ...DASHBOARD_STOCKS.map((s) => s.symbol),
+      ]),
   );
   // 「池成员」与「是否显示线」分离：点击 chip 只切换 enabled（列表不清除），× 才从池移除
   const [enabled, setEnabled] = useState<Set<string>>(
     () => new Set(['SH.000001', 'SZ.399001', 'SZ.399006']),
   );
-  const [stockMeta, setStockMeta] = useState<Record<string, { name: string }>>({});
+  const [stockMeta, setStockMeta] = useState<Record<string, { name: string }>>(() =>
+    Object.fromEntries(DASHBOARD_STOCKS.map((s) => [s.symbol, { name: s.name }])),
+  );
   const [barsMap, setBarsMap] = useState<Record<string, Bar[]>>({});
   const [mode, setMode] = useState<DashMode>('close');
   const [maSpan, setMaSpan] = useState<MaSpan>(20);
