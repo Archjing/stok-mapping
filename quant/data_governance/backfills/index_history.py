@@ -173,6 +173,7 @@ def update_index_daily_tail_from_config(
     *,
     end_date: str,
     max_requests_per_minute: int = 120,
+    symbols: list[str] | None = None,
 ) -> IndexHistoryBackfillResult:
     """Incrementally fill each index's missing tail up to ``end_date``.
 
@@ -182,6 +183,10 @@ def update_index_daily_tail_from_config(
     one extra look-back day so the window is never empty).  Existing rows are
     left untouched, which keeps the daily job O(missing days) instead of
     re-pulling each index's full history.
+
+    ``symbols`` optionally restricts the update to an explicit set of local
+    index symbols (e.g. the core dashboard indices).  When omitted, every CN
+    index present in the table is processed as before.
     """
     from datetime import date as _date
     from datetime import timedelta as _timedelta
@@ -200,6 +205,7 @@ def update_index_daily_tail_from_config(
     table = safe_identifier(table_name)
 
     end_dt = _date.fromisoformat(end_date)
+    requested_symbols = None if symbols is None else {str(s) for s in symbols}
     warnings: list[str] = []
     if not tushare_available(tcfg):
         return IndexHistoryBackfillResult(
@@ -224,6 +230,8 @@ def update_index_daily_tail_from_config(
         symbols: list[str] = []
         local_max: dict[str, _date] = {}
         for symbol, max_date in rows:
+            if requested_symbols is not None and str(symbol) not in requested_symbols:
+                continue
             symbols.append(str(symbol))
             if max_date:
                 local_max[str(symbol)] = _date.fromisoformat(str(max_date)[:10])

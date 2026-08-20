@@ -552,6 +552,20 @@ QUANT_SITE_SYNC_PASSWORD=your-password
 ./.venv/bin/python -m quant.cli update-history --config config.yaml --no-build-universe
 ```
 
+`update-index-history`：A 股指数日线尾部增量更新（`market_index_bars`）。默认遍历库内全部 CN 指数；用 `--symbols` 只更新指定指数，用于收盘后快速刷新看板核心指数。
+
+```bash
+# 全量指数尾部补数（调度器默认 16:35 任务）
+./.venv/bin/python -m quant.cli update-index-history --config config.yaml
+
+# 只刷新四个看板核心指数（调度器 15:05 快速任务）
+./.venv/bin/python -m quant.cli update-index-history --config config.yaml \
+  --symbols SH.000001 SZ.399001 SH.000300 SZ.399006
+
+# 指定截止日期（默认今天）
+./.venv/bin/python -m quant.cli update-index-history --config config.yaml --end-date 2026-08-19
+```
+
 `update-us-market-history`：US market 本地库增量更新。
 
 ```bash

@@ -230,6 +230,16 @@ def register_data_update_commands(subparsers: argparse._SubParsersAction) -> Non
     index_tail_parser.add_argument("--config", default="config.yaml", help="Path to config file")
     index_tail_parser.add_argument("--end-date", default=None, help="End date in YYYY-MM-DD. Defaults to today.")
     index_tail_parser.add_argument(
+        "--symbols",
+        nargs="*",
+        default=None,
+        help=(
+            "Optional explicit list of local index symbols to update, e.g. "
+            "SH.000001 SZ.399001 SH.000300 SZ.399006. Defaults to every CN index "
+            "in the table. Used by the fast post-close core-index refresh."
+        ),
+    )
+    index_tail_parser.add_argument(
         "--max-requests-per-minute",
         type=int,
         default=120,
@@ -600,6 +610,7 @@ def handle_data_update_command(args: argparse.Namespace, *, parser: argparse.Arg
             config_path,
             end_date=end_date,
             max_requests_per_minute=int(args.max_requests_per_minute),
+            symbols=getattr(args, "symbols", None),
         )
         color = "green" if result.status in {"ok", "up_to_date", "empty"} else "red"
         update_console.print(f"[{color}]Index daily tail update status: {result.status}[/{color}]")

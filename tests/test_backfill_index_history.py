@@ -144,12 +144,30 @@ def test_backfill_index_history_fetches_and_replaces_window(monkeypatch: pytest.
         ]
 
 
-def test_backfill_index_history_requires_token(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+
+def test_update_index_daily_tail_limits_to_explicit_symbols(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     db_path = _make_db(tmp_path)
     config_path = _write_config(tmp_path, db_path)
-    monkeypatch.delenv("TUSHARE_TOKEN", raising=False)
-    result = index_history.backfill_index_history_from_config(
-        config_path, start_date="2016-01-01", end_date="2016-01-31"
+    monkeypatch.setenv("TUSHARE_TOKEN", "fake-token")
+    requested: list[str] = []
+
+    def fake_fetch(local_symbol, *, ts_code, start_date, end_date, cfg, name=""):
+        requested.append(local_symbol)
+        return pd.DataFrame(
+            [{
+                "market": "CN", "symbol": local_symbol, "date": "2016-05-04", "frequency": "daily",
+                "open": 3000.0, "high": 3100.0, "low": 2990.0, "close": 3050.0,
+                "volume": 1e7, "amount": 2e11, "advances": None, "declines": None,
+                "name": name, "source": "tushare.index_daily",
+            }]
+        )
+
+    monkeypatch.setattr(index_history, "fetch_tushare_index_daily", fake_fetch)
+    result = index_history.update_index_daily_tail_from_config(
+        config_path, end_date="2016-05-04", symbols=["SH.000001"]
     )
-    assert result.status == "missing_tushare_token"
-    assert result.fetched_symbols == 0
+
+    assert requested == ["SH.000001"]
+    assert result.target_symbols == 1
+    assert result.fetched_symbols == 1
+    assert result.missing_symbols == []

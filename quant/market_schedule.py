@@ -63,6 +63,7 @@ _DEFAULT_SCHEDULER: dict[str, str] = {
     "cn_finance_flash_window": "09:15-15:05",
     "etf_5min_window": "09:35-15:00",
     "intraday_bill_window": "09:35-15:00",
+    "core_index_daily_tail": "15:05",
     "china_options_ho": "15:10",
     "europe_london_opening_snapshot": "16:10",
     "europe_frankfurt_opening_snapshot": "16:10",

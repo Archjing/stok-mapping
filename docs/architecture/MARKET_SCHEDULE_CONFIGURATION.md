@@ -61,15 +61,24 @@ market_schedules:
         database_path: "data/hk_market_history.sqlite"
         table: "hk_daily_bars"
   scheduler:                             # 调度触发时间（基准时区=default_timezone）
-    us_market_history: "17:10"           # 盘后美股收盘补抓
-    us_market_history_morning: "07:00"   # 早间补抓上一美股交易日收盘（新增）
+    us_market_history: "05:15"           # 美股收盘后动态锚定（16:00 ET + 15min）
     daily_brief: "07:20"
     etf_opening_snapshot: "09:25"
     etf_5min_window: "09:35-15:00"
     cn_finance_flash_window: "09:15-15:05"
     intraday_bill_window: "09:35-15:00"
+    core_index_daily_tail: "15:05"       # 收盘后快速刷新 4 个核心指数（看板优先）
+    china_options_ho: "15:10"
+    index_daily_tail: "16:35"            # 全量指数尾部补数（保留）
     account_bill_confirm: "16:45"
 ```
+
+`core_index_daily_tail` 与 `index_daily_tail` 的分工：前者在 A 股 15:00 收盘后
+立即用 `update-index-history --symbols SH.000001 SZ.399001 SH.000300 SZ.399006`
+只刷新四个看板核心指数，几秒到几十秒内即可让看板拿到当日数据；后者仍在收盘后
+较晚时段按原逻辑补齐全量（约 995 个）指数。个股日线 `a_share_history` 仍保留在
+收盘后较晚时段，因为其 `daily_basic`（估值）字段通常要到盘后更晚才可用。
+
 
 ## 4. 时区归一化方案
 

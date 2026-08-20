@@ -701,3 +701,19 @@ def test_china_options_ho_is_disabled_by_feature_switch(tmp_path) -> None:
     task = next(item for item in _default_registry(config_path) if item.name == "china_options_ho")
 
     assert task.enabled is False
+
+
+def test_core_index_daily_tail_runs_after_close_with_symbols() -> None:
+    specs = _default_registry(Path("config.yaml"))
+    task = next(item for item in specs if item.name == "core_index_daily_tail")
+
+    assert task.schedule_value == "15:05"
+    assert task.market_calendar == "cn"
+    command = task.command
+    symbols_index = command.index("--symbols")
+    assert command[symbols_index + 1 : symbols_index + 5] == [
+        "SH.000001", "SZ.399001", "SH.000300", "SZ.399006",
+    ]
+    assert task.retry_window_minutes == 30
+    assert task.retry_interval_minutes == 5
+    assert task.max_retries == 6

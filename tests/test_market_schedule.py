@@ -71,7 +71,7 @@ def test_scheduler_time_defaults_match_current_hardcoded_values() -> None:
     assert scheduler_time({}, "us_market_news") == "06:30"
     assert scheduler_time({}, "daily_brief") == "07:20"
     assert scheduler_time({}, "etf_opening_snapshot") == "09:25"
-    assert scheduler_time({}, "us_market_history") == "17:10"
+    assert scheduler_time({}, "us_market_history") == "05:15"
     assert scheduler_time({}, "account_bill_confirm") == "16:45"
     assert scheduler_time({}, "etf_5min_window") == "09:35-15:00"
 
@@ -80,7 +80,7 @@ def test_scheduler_time_reads_config_override() -> None:
     cfg = {"market_schedules": {"scheduler": {"daily_brief": "08:00"}}}
     assert scheduler_time(cfg, "daily_brief") == "08:00"
     # 未覆盖的仍回退默认
-    assert scheduler_time(cfg, "us_market_history") == "17:10"
+    assert scheduler_time(cfg, "us_market_history") == "05:15"
 
 
 def test_aware_now_is_timezone_aware() -> None:

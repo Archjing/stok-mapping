@@ -48,6 +48,10 @@ interface Props {
   theme: Theme;
 }
 
+function todayStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function ComparisonDashboard({ theme }: Props) {
   const { ref, chart } = useECharts();
   const [selected, setSelected] = useState<Set<string>>(
@@ -72,12 +76,14 @@ export function ComparisonDashboard({ theme }: Props) {
   const modeRef = useRef(mode);
   const maSpanRef = useRef(maSpan);
   const normRef = useRef(norm);
+  const barsMapRef = useRef(barsMap);
   const [, setTick] = useState(0);
 
   modeRef.current = mode;
   maSpanRef.current = maSpan;
   normRef.current = norm;
   themeRef.current = theme;
+  barsMapRef.current = barsMap;
 
   const nameOf = useCallback(
     (s: string) => coreIndexName(s) ?? stockMeta[s]?.name ?? s,
@@ -105,6 +111,42 @@ export function ComparisonDashboard({ theme }: Props) {
     return () => {
       alive = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected]);
+
+  // 15:05 后每分钟轮询已选中的核心指数；数据日期变化才更新，全部到今日后停止
+  useEffect(() => {
+    let stopped = false;
+    const tick = async () => {
+      if (stopped) return;
+      const now = new Date();
+      if (now.getHours() < 15 || (now.getHours() === 15 && now.getMinutes() < 5)) return;
+      const today = todayStr(now);
+      const core = CORE_INDICES.map((i) => i.symbol).filter((s) => selected.has(s));
+      let allFresh = core.length > 0;
+      for (const s of core) {
+        const current = barsMapRef.current[s] ?? [];
+        const last = current.length ? current[current.length - 1].d : '';
+        if (last >= today) continue;
+        allFresh = false;
+        try {
+          const recent = await fetchBars(s, { recent: '1y' });
+          const newLast = recent.length ? recent[recent.length - 1].d : '';
+          if (newLast && newLast !== last) {
+            const full = await fetchBars(s);
+            if (full.length && full[full.length - 1].d !== last) {
+              setBarsMap((m) => ({ ...m, [s]: full }));
+            }
+          }
+        } catch {
+          /* 单个失败跳过 */
+        }
+      }
+      if (allFresh) stopped = true;
+    };
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected]);
 

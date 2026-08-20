@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { KLineChart } from '../components/KLineChart';
 import { ComparisonDashboard } from '../components/ComparisonDashboard';
 import { fetchBars } from '../api/market';
@@ -30,6 +30,10 @@ function applyRootTheme(t: Theme): void {
 
 applyRootTheme(initialTheme());
 
+function todayStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 export function MarketChartPage() {
   const [view, setView] = useState<ViewMode>('single');
   const [symbol, setSymbol] = useState('SH.000001');
@@ -39,32 +43,34 @@ export function MarketChartPage() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [autoRefresh, setAutoRefresh] = useState('');
 
-  // 单指数视图：每日 15:05 后自动轮询核心指数，有新数据才更新
-  // 每分钟 tick 检查一次（避免长间隔 setInterval 漂移），每个自然日只检查一次
+  // 单指数视图：15:05 后每分钟轮询核心指数；数据日期未到今日则持续重试，有新数据才更新
+  // （修复：不再"每天只检查一次就放弃"，改为等到最新数据日期变化后停止当天轮询）
+  const lastBarDateRef = useRef(bars.length ? bars[bars.length - 1].d : '');
+  lastBarDateRef.current = bars.length ? bars[bars.length - 1].d : '';
   useEffect(() => {
     if (view !== 'single') return;
     if (!CORE_INDICES.some((i) => i.symbol === symbol)) return;
-    let lastCheckedDate = '';
-    let lastBarDate = bars.length ? bars[bars.length - 1].d : '';
+    let stopped = false;
     const tick = async () => {
+      if (stopped) return;
       const now = new Date();
       if (now.getHours() < 15 || (now.getHours() === 15 && now.getMinutes() < 5)) return;
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      if (lastCheckedDate === today) return;
-      lastCheckedDate = today; // 无论有无新数据，当天只查一次
       try {
         const recent = await fetchBars(symbol, { recent: '1y' });
         const newLast = recent.length ? recent[recent.length - 1].d : '';
-        if (newLast && newLast !== lastBarDate) {
+        if (newLast && newLast !== lastBarDateRef.current) {
           const full = await fetchBars(symbol);
-          if (full.length && full[full.length - 1].d !== lastBarDate) {
+          if (full.length && full[full.length - 1].d !== lastBarDateRef.current) {
             setBars(full);
-            lastBarDate = full[full.length - 1].d;
-            setAutoRefresh(`✓ ${now.toLocaleTimeString()} 已自动更新（15:05 轮询）`);
+            lastBarDateRef.current = full[full.length - 1].d;
+            setAutoRefresh(`✓ ${now.toLocaleTimeString()} 已自动更新（数据日期 ${lastBarDateRef.current}）`);
           }
         }
+        if (lastBarDateRef.current >= todayStr(now)) {
+          stopped = true;
+        }
       } catch {
-        /* 轮询失败静默，明天再试 */
+        /* 轮询失败静默，下个 tick 再试 */
       }
     };
     tick();
