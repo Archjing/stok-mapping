@@ -18,8 +18,10 @@ export interface Bar {
 export interface SearchHit {
   symbol: string;
   name: string;
-  kind: 'index' | 'stock';
+  kind: 'index' | 'stock' | 'etf';
 }
+
+export type Market = 'cn' | 'us';
 
 async function json<T>(url: string): Promise<T> {
   const resp = await fetch(url);
@@ -31,15 +33,21 @@ export function fetchInstruments(): Promise<Instrument[]> {
   return json<{ items: Instrument[] }>('/api/market/instruments').then((d) => d.items);
 }
 
-export function fetchBars(symbol: string, opts?: { recent?: '1y'; start?: string; end?: string }): Promise<Bar[]> {
+export function fetchBars(
+  symbol: string,
+  opts?: { recent?: '1y'; start?: string; end?: string },
+  market: Market = 'cn',
+): Promise<Bar[]> {
   const q = new URLSearchParams();
   if (opts?.recent) q.set('recent', opts.recent);
   if (opts?.start) q.set('start', opts.start);
   if (opts?.end) q.set('end', opts.end);
+  if (market === 'us') q.set('market', 'us');
   const qs = q.toString();
   return json<{ items: Bar[] }>(`/api/market/bars/${encodeURIComponent(symbol)}${qs ? `?${qs}` : ''}`).then((d) => d.items);
 }
 
-export function searchInstruments(q: string): Promise<SearchHit[]> {
-  return json<{ items: SearchHit[] }>(`/api/market/search?q=${encodeURIComponent(q)}`).then((d) => d.items);
+export function searchInstruments(q: string, market: Market = 'cn'): Promise<SearchHit[]> {
+  const m = market === 'us' ? '&market=us' : '';
+  return json<{ items: SearchHit[] }>(`/api/market/search?q=${encodeURIComponent(q)}${m}`).then((d) => d.items);
 }

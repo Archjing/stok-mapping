@@ -19,6 +19,41 @@ from fastapi.staticfiles import StaticFiles
 ROOT = Path(__file__).resolve().parents[2]  # worktree 仓库根（web/app/main.py -> web -> 根）
 
 DEFAULT_DB = ROOT / "data" / "a_share_history.sqlite"
+US_DB = ROOT / "data" / "us_market_history.sqlite"
+OPTIONS_DB = ROOT / "data" / "china_options.sqlite"
+
+# 美股已知名称（us_daily_bars 无名称表；搜索/展示用）
+US_SYMBOL_NAMES: dict[str, str] = {
+    "^IXIC": "纳斯达克",
+    "^NYA": "纽约",
+    "VOX": "^VOX",
+    "^SOX": "^SOX",
+    "^NDX": "纳斯达克100",
+    "^VIX": "VIX恐慌",
+    "^TNX": "10年美债",
+    "^FVX": "5年美债",
+    "^IRX": "3月美债",
+    "AAPL": "苹果",
+    "MSFT": "微软",
+    "GOOGL": "谷歌",
+    "AMZN": "亚马逊",
+    "META": "Meta",
+    "NVDA": "英伟达",
+    "AMD": "超威半导体",
+    "TSM": "台积电",
+    "ASML": "阿斯麦",
+    "AMAT": "应用材料",
+    "LRCX": "泛林",
+    "INTC": "英特尔",
+    "SMH": "半导体ETF",
+    "KWEB": "中概互联ETF",
+    "BABA": "阿里巴巴",
+    "JD": "京东",
+    "CNY=X": "离岸人民币",
+    "HYG": "高收益债ETF",
+    "LQD": "投资级债ETF",
+    "GC=F": "COMEX黄金",
+}
 
 
 def db_path() -> Path:
@@ -149,6 +184,110 @@ def search_instruments(q: str, kind: str | None) -> list[dict[str, Any]]:
         conn.close()
 
 
+def _us_connect() -> sqlite3.Connection:
+    if not US_DB.exists():
+        raise HTTPException(status_code=503, detail=f"数据库不存在：{US_DB}")
+    return sqlite3.connect(f"file:{US_DB}?mode=ro", uri=True)
+
+
+def _options_connect() -> sqlite3.Connection:
+    if not OPTIONS_DB.exists():
+        raise HTTPException(status_code=503, detail=f"数据库不存在：{OPTIONS_DB}")
+    return sqlite3.connect(f"file:{OPTIONS_DB}?mode=ro", uri=True)
+
+
+def get_us_bars(
+    symbol: str,
+    *,
+    start: str | None,
+    end: str | None,
+    recent: str | None,
+) -> list[dict[str, Any]]:
+    conn = _us_connect()
+    try:
+        sql = (
+            "SELECT date AS d, open AS o, high AS h, low AS l, close AS c "
+            "FROM us_daily_bars WHERE symbol = ? AND close IS NOT NULL"
+        )
+        params: list[Any] = [symbol]
+        if start:
+            sql += " AND date >= ?"
+            params.append(start)
+        if end:
+            sql += " AND date <= ?"
+            params.append(end)
+        if recent == "1y":
+            sql += " AND date >= ?"
+            params.append((date.today() - timedelta(days=365)).isoformat())
+        sql += " ORDER BY date ASC"
+        return _rows(conn, sql, tuple(params))
+    finally:
+        conn.close()
+
+
+def get_cn_panic_bars(
+    *,
+    start: str | None,
+    end: str | None,
+    recent: str | None,
+) -> list[dict[str, Any]]:
+    """CN_PANIC_HO30 是收盘值序列（无 OHLC），合成 o=h=l=c=value 供 K 线渲染。"""
+    conn = _options_connect()
+    try:
+        sql = (
+            "SELECT trade_date AS d, value AS c "
+            "FROM china_option_index_values WHERE index_id = 'CN_PANIC_HO30' AND value IS NOT NULL"
+        )
+        params: list[Any] = []
+        if start:
+            sql += " AND trade_date >= ?"
+            params.append(start)
+        if end:
+            sql += " AND trade_date <= ?"
+            params.append(end)
+        if recent == "1y":
+            sql += " AND trade_date >= ?"
+            params.append((date.today() - timedelta(days=365)).isoformat())
+        sql += " ORDER BY trade_date ASC"
+        rows = _rows(conn, sql, tuple(params))
+        return [{"d": r["d"], "o": r["c"], "h": r["c"], "l": r["c"], "c": r["c"]} for r in rows]
+    finally:
+        conn.close()
+
+
+def search_us_instruments(q: str) -> list[dict[str, Any]]:
+    """美股搜索：DB 中实际存在的 symbol 前缀匹配 + 内置名称表匹配。"""
+    conn = _us_connect()
+    try:
+        like = f"%{q.upper()}%"
+        rows = _rows(
+            conn,
+            "SELECT DISTINCT symbol FROM us_daily_bars WHERE UPPER(symbol) LIKE ? ORDER BY symbol LIMIT 30",
+            (like,),
+        )
+    finally:
+        conn.close()
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for r in rows:
+        sym = r["symbol"]
+        seen.add(sym)
+        out.append(
+            {
+                "symbol": sym,
+                "name": US_SYMBOL_NAMES.get(sym, sym),
+                "kind": "index" if sym.startswith("^") else "etf" if sym == "VOX" else "stock",
+            }
+        )
+    for sym, name in US_SYMBOL_NAMES.items():
+        if q.lower() in name.lower() and sym not in seen:
+            seen.add(sym)
+            out.append(
+                {"symbol": sym, "name": name, "kind": "index" if sym.startswith("^") else "stock"}
+            )
+    return out[:30]
+
+
 app = FastAPI(title="stok-mapping web", version="0.1.0")
 
 app.add_middleware(
@@ -176,15 +315,27 @@ def bars(
     end: str | None = Query(default=None),
     adjust: str = Query(default="qfq"),
     recent: str | None = Query(default=None),
+    market: str = Query(default="cn"),
 ) -> dict[str, Any]:
-    items = get_bars(symbol, start=start, end=end, adjust=adjust, recent=recent)
+    if market == "us":
+        items = get_us_bars(symbol, start=start, end=end, recent=recent)
+    elif symbol == "CN_PANIC_HO30":
+        items = get_cn_panic_bars(start=start, end=end, recent=recent)
+    else:
+        items = get_bars(symbol, start=start, end=end, adjust=adjust, recent=recent)
     if not items:
         raise HTTPException(status_code=404, detail=f"未找到 {symbol} 的行情数据")
     return {"symbol": symbol, "items": items}
 
 
 @app.get("/api/market/search")
-def search(q: str = Query(min_length=1), kind: str | None = Query(default=None)) -> dict[str, Any]:
+def search(
+    q: str = Query(min_length=1),
+    kind: str | None = Query(default=None),
+    market: str = Query(default="cn"),
+) -> dict[str, Any]:
+    if market == "us":
+        return {"items": search_us_instruments(q)}
     return {"items": search_instruments(q, kind)}
 
 

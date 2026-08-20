@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { searchInstruments, type SearchHit } from '../api/market';
+import { searchInstruments, type Market, type SearchHit } from '../api/market';
 
 interface Props {
   placeholder?: string;
+  market?: Market;
   onSelect: (hit: SearchHit) => void;
 }
 
-export function SearchBox({ placeholder = '搜索代码/名称', onSelect }: Props) {
+export function SearchBox({ placeholder = '搜索代码/名称', market = 'cn', onSelect }: Props) {
   const [q, setQ] = useState('');
   const [hits, setHits] = useState<SearchHit[]>([]);
   const [open, setOpen] = useState(false);
@@ -22,14 +23,14 @@ export function SearchBox({ placeholder = '搜索代码/名称', onSelect }: Pro
     clearTimeout(timer.current);
     timer.current = window.setTimeout(async () => {
       try {
-        setHits(await searchInstruments(query));
+        setHits(await searchInstruments(query, market));
         setOpen(true);
       } catch {
         setHits([]);
       }
     }, 250);
     return () => clearTimeout(timer.current);
-  }, [q]);
+  }, [q, market]);
 
   return (
     <div className="searchbox">
@@ -53,7 +54,7 @@ export function SearchBox({ placeholder = '搜索代码/名称', onSelect }: Pro
               setQ('');
               setOpen(false);
             } else if (q.trim()) {
-              searchInstruments(q.trim())
+              searchInstruments(q.trim(), market)
                 .then((r) => {
                   if (r.length > 0) {
                     onSelect(r[0]);
@@ -79,7 +80,9 @@ export function SearchBox({ placeholder = '搜索代码/名称', onSelect }: Pro
             >
               <span className="sb-name">{h.name}</span>
               <span className="sb-code">{h.symbol}</span>
-              <span className={`sb-kind ${h.kind}`}>{h.kind === 'index' ? '指数' : '个股'}</span>
+              <span className={`sb-kind ${h.kind}`}>
+                {h.kind === 'index' ? '指数' : h.kind === 'etf' ? 'ETF' : '个股'}
+              </span>
             </li>
           ))}
         </ul>
