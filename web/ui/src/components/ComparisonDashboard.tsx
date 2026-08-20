@@ -11,7 +11,7 @@ import {
   type DashRangeKey,
 } from '../chart/dashboardChart';
 import { fetchBars, type Bar, type SearchHit } from '../api/market';
-import { CORE_INDICES, DASHBOARD_STOCKS, coreIndexName } from '../lib/instruments';
+import { CORE_INDICES, CN_SINGLE_INDICES, DASHBOARD_STOCKS, coreIndexName } from '../lib/instruments';
 import {
   MA_SPANS,
   NORM_LABEL,
@@ -57,7 +57,7 @@ export function ComparisonDashboard({ theme }: Props) {
   const [selected, setSelected] = useState<Set<string>>(
     () =>
       new Set([
-        ...CORE_INDICES.map((i) => i.symbol),
+        ...CN_SINGLE_INDICES.map((i) => i.symbol),
         ...DASHBOARD_STOCKS.map((s) => s.symbol),
       ]),
   );
@@ -272,7 +272,7 @@ export function ComparisonDashboard({ theme }: Props) {
           <span className="lbl">标的</span>
           <SearchBox onSelect={addStock} />
           <div className="checks chips-row">
-            {CORE_INDICES.map((i) => (
+            {CN_SINGLE_INDICES.map((i) => (
               <label key={i.symbol} className={`chip${enabled.has(i.symbol) ? ' on' : ''}`}>
                 <span className="dot" style={{ background: colorMap.get(i.symbol) }} />
                 <input

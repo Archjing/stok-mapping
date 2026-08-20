@@ -37,7 +37,8 @@ export const DASHBOARD_STOCKS = [
 ] as const;
 
 export function coreIndexName(symbol: string): string | undefined {
-  return CORE_INDICES.find((i) => i.symbol === symbol)?.name;
+  // A股单标的/对照看板的指数预设（4 核心 + 自定义恐慌指数），用于区分指数 chip 与个股 chip
+  return CN_SINGLE_INDICES.find((i) => i.symbol === symbol)?.name;
 }
 
 export function dashboardStockName(symbol: string): string | undefined {
