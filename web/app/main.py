@@ -26,10 +26,9 @@ OPTIONS_DB = ROOT / "data" / "china_options.sqlite"
 US_SYMBOL_NAMES: dict[str, str] = {
     "^IXIC": "纳斯达克",
     "^NYA": "纽约",
-    "VOX": "^VOX",
+    "^VIX": "VIX恐慌",
     "^SOX": "^SOX",
     "^NDX": "纳斯达克100",
-    "^VIX": "VIX恐慌",
     "^TNX": "10年美债",
     "^FVX": "5年美债",
     "^IRX": "3月美债",
@@ -276,7 +275,7 @@ def search_us_instruments(q: str) -> list[dict[str, Any]]:
             {
                 "symbol": sym,
                 "name": US_SYMBOL_NAMES.get(sym, sym),
-                "kind": "index" if sym.startswith("^") else "etf" if sym == "VOX" else "stock",
+                "kind": "index" if sym.startswith("^") else "stock",
             }
         )
     for sym, name in US_SYMBOL_NAMES.items():

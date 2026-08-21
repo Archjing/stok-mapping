@@ -11,14 +11,11 @@ export const CN_PANIC_INDEX = { symbol: 'CN_PANIC_HO30', name: 'A股恐慌' } as
 /** A股单标的看板指数预设：4 核心指数 + 自定义恐慌指数。 */
 export const CN_SINGLE_INDICES = [...CORE_INDICES, CN_PANIC_INDEX] as const;
 
-/**
- * 美股单标的看板指数预设。
- * 注：^VOX（通信服务）Yahoo 无行情数据，用同名 VOX ETF 数据、界面仍显示 "^VOX"。
- */
+/** 美股单标的看板指数预设。 */
 export const US_INDICES = [
   { symbol: '^IXIC', name: '纳斯达克' },
   { symbol: '^NYA', name: '纽约' },
-  { symbol: 'VOX', name: '^VOX' },
+  { symbol: '^VIX', name: 'VIX恐慌' },
   { symbol: '^SOX', name: '^SOX' },
 ] as const;
 

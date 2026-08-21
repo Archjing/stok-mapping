@@ -86,9 +86,9 @@ GET /api/market/search?q=600519|茅台                  # 代码/名称搜索（
 - **P1c 单标的看板扩展：cn_panic + 美股单标的 ✅ 完成**（2026-08-20）：
   1. **A股单标的加入自定义恐慌指数**：`CN_PANIC_HO30` 作为第 5 个预设指数（`CN_SINGLE_INDICES`），后端从 `china_options.sqlite` 的 `china_option_index_values` 读收盘值并合成 o=h=l=c 供 K 线渲染；
   2. **美股单标的看板**：`ViewMode` 扩展为 `cn-single / cn-dash / us-single`，导航改为「A股单标的 / A股对照 / 美股单标的」；布局版式与 A股单标的完全一致（`<KLineChart>` 复用，`market` prop 区分市场）；
-  3. **美股预设指数**：纳斯达克 `^IXIC`、纽约 `^NYA`、`^VOX`（Yahoo 无指数行情，用同名 VOX ETF 数据、界面显示 ^VOX）、费城半导体 `^SOX`；数据源 `us_market_history.sqlite` 的 `us_daily_bars`（market 列区分 US_INDEX/US_ETF）；
+  3. **美股预设指数**：纳斯达克 `^IXIC`、纽约 `^NYA`、VIX 恐慌 `^VIX`、费城半导体 `^SOX`；数据源 `us_market_history.sqlite` 的 `us_daily_bars`（market 列区分 US_INDEX/US_ETF）；
   4. **后端**：`/api/market/bars/{symbol}` 与 `/api/market/search` 增加 `market=cn|us` 参数；美股搜索按 `us_daily_bars` 实际存在 symbol + 内置名称表（`US_SYMBOL_NAMES`）；
-  5. 配置：`config.yaml` 新增 `dashboard_indices` 标的组（^IXIC/^NYA/VOX/^SOX + asset_types）纳入维护抓取。
+  5. 配置：`config.yaml` 新增 `dashboard_indices` 标的组（^IXIC/^NYA/^VIX/^SOX + asset_types）纳入维护抓取。
 - **P2 M1 其余只读页**：账户/观察池/对照图（复用 `quant.reporting`）。
 - **P3 M2 写操作**：任务队列（`web_jobs` + 进程池）+ 写端点 + `run_index`。
 
