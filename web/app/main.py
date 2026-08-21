@@ -15,6 +15,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 ROOT = Path(__file__).resolve().parents[2]  # worktree 仓库根（web/app/main.py -> web -> 根）
 
@@ -339,6 +340,20 @@ def search(
 
 
 # 生产托管前端构建产物（web/ui/dist 存在时）
+class SPAStaticFiles(StaticFiles):
+    """SPA history 模式回退：静态文件未命中（如刷新 /market/cn 深链）时返回 index.html。
+    注意：Starlette 1.x 对未命中路径是抛出 HTTPException(404)，而非返回 404 Response，故需捕获。
+    """
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as ex:
+            if ex.status_code == 404:
+                return await super().get_response("index.html", scope)
+            raise
+
+
 _ui_dist = ROOT / "web" / "ui" / "dist"
 if _ui_dist.is_dir():
-    app.mount("/", StaticFiles(directory=_ui_dist, html=True), name="ui")
+    app.mount("/", SPAStaticFiles(directory=_ui_dist, html=True), name="ui")
