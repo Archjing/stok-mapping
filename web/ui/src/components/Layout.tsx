@@ -1,7 +1,7 @@
 import { Link, NavLink, Outlet, useNavigation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import type { Theme } from '../chart/theme';
-import { ThemeContext } from './ThemeContext';
+import type { AppTheme } from '../chart/theme';
+import { ThemeContext, applyRootTheme, loadTheme, saveTheme } from './ThemeContext';
 
 /** 导航项：label + 目标路由。首页也带同一导航栏。 */
 const NAV: Array<{ to: string; label: string }> = [
@@ -11,28 +11,28 @@ const NAV: Array<{ to: string; label: string }> = [
   { to: '/market/us', label: '美股单标的' },
 ];
 
-function initialTheme(): Theme {
-  try {
-    return (localStorage.getItem('index-chart-theme') as Theme) || 'dark';
-  } catch {
-    return 'dark';
-  }
-}
-function applyRootTheme(t: Theme): void {
-  document.documentElement.dataset.theme = t;
-}
-
-/** 顶栏右侧：主题切换按钮。 */
-function ThemeToggle({ theme, setTheme }: { theme: Theme; setTheme: (t: Theme) => void }) {
+/** 顶栏右侧：主题切换按钮（临时版，Task 6 由 ThemeSwitcher 取代）。 */
+function ThemeToggle({ theme, setTheme }: { theme: AppTheme; setTheme: (t: AppTheme) => void }) {
+  const next: AppTheme = { themeId: 'nous', mode: theme.mode === 'dark' ? 'light' : 'dark' };
   return (
     <button
       className="icon-btn"
-      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      onClick={() => setTheme(next)}
       title="切换明暗主题"
     >
-      {theme === 'dark' ? '☀️' : '🌙'}
+      {theme.mode === 'dark' ? '☀️' : '🌙'}
     </button>
   );
+}
+
+/** 初始主题（临时版：兼容旧 key，nous + 明暗；Task 6 改用 loadTheme）。 */
+function initialTheme(): AppTheme {
+  try {
+    const legacy = localStorage.getItem('index-chart-theme');
+    return { themeId: 'nous', mode: legacy === 'light' ? 'light' : 'dark' };
+  } catch {
+    return { themeId: 'nous', mode: 'dark' };
+  }
 }
 
 /** 顶栏左侧：品牌 + 副标题。 */
@@ -68,17 +68,21 @@ function Navbar({ className }: { className?: string }) {
   );
 }
 
-/** 全局布局：顶栏导航 + 内容区（<Outlet />）。 */
+/** 全局布局：顶栏导航 + 内容区（<Outlet />）。临时版，Task 6 重写为双层。 */
 export function Layout() {
-  const [theme, setTheme] = useState<Theme>(initialTheme);
+  const [theme, setTheme] = useState<AppTheme>(loadTheme);
 
   useEffect(() => {
     applyRootTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    saveTheme(theme);
+  }, [theme]);
+
   return (
     <ThemeContext.Provider value={theme}>
-      <div className="page" data-theme={theme}>
+      <div className="page">
         <header className="toolbar">
           <Brand />
           <Navbar />

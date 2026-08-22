@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useECharts } from '../chart/useECharts';
 import { pal } from '../chart/theme';
-import type { Theme } from '../chart/theme';
+import type { AppTheme } from '../chart/theme';
 import {
   buildDashOption,
   dashZoomRange,
@@ -45,7 +45,7 @@ const RANGES: Array<{ key: DashRangeKey; label: string }> = [
 ];
 
 interface Props {
-  theme: Theme;
+  theme: AppTheme;
 }
 
 function todayStr(d: Date): string {

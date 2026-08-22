@@ -12,7 +12,7 @@ import {
   type RangeKey,
 } from '../chart/kline';
 import { pal } from '../chart/theme';
-import type { Theme } from '../chart/theme';
+import type { AppTheme } from '../chart/theme';
 import { MA_SPANS, type MaSpan } from '../lib/dashboard';
 import { TF_LABEL } from '../lib/aggregate';
 import type { IndexBar } from '../lib/data-types';
@@ -22,7 +22,7 @@ interface Props {
   symbol: string;
   name: string;
   bars: IndexBar[];
-  theme: Theme;
+  theme: AppTheme;
   indices: ReadonlyArray<{ symbol: string; name: string }>;
   market: Market;
   onSelectSymbol: (symbol: string, name?: string) => void;

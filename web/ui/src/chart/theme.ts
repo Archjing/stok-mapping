@@ -1,6 +1,13 @@
 import type { MaSpan } from '../lib/dashboard';
 
-export type Theme = 'dark' | 'light';
+export type Mode = 'dark' | 'light';
+export type ThemeId = 'nous' | 'belafonte';
+
+/** 主题选择：主题注册表 id + 明暗模式。 */
+export interface AppTheme {
+  themeId: ThemeId;
+  mode: Mode;
+}
 
 export interface ThemePalette {
   bg: string;
@@ -17,38 +24,47 @@ export interface ThemePalette {
   ma: Record<MaSpan, string>;
 }
 
-/** index-chart 现有明暗配色（沿用，暂不并入 Belafonte） */
-export const THEMES: Record<Theme, ThemePalette> = {
-  dark: {
-    bg: '#151d2b',
-    panel: '#151d2b',
-    border: '#2b3950',
-    text: '#eef3fa',
-    dim: '#a2b3c8',
-    axisLine: '#3a4a66',
-    splitLine: '#202b3d',
-    tooltipBg: '#1a2434',
-    tooltipBorder: '#33415c',
-    up: '#ef232a',
-    down: '#14b143',
-    ma: { 5: '#f6d365', 10: '#ff8fab', 20: '#b388ff', 30: '#6ee7b7', 60: '#4fc3f7' },
+/** 主题注册表（每主题每模式一套；与 index.css --ui-* 同步维护，CSS 为事实源）。
+ * 完整色值表：docs/WEBSITE_NAVIGATION_STRUCTURE.md §10.1 */
+export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
+  nous: {
+    dark: {
+      bg: '#12378f', panel: '#12378f', border: '#3158ad',
+      text: '#ffe6cb', dim: '#b5c7f3',
+      axisLine: '#3a63bd', splitLine: '#234a9c',
+      tooltipBg: '#183f9a', tooltipBorder: '#3158ad',
+      up: '#ef232a', down: '#14b143',
+      ma: { 5: '#f6d365', 10: '#ff8fab', 20: '#b388ff', 30: '#6ee7b7', 60: '#4fc3f7' },
+    },
+    light: {
+      bg: '#ffffff', panel: '#ffffff', border: 'rgba(0,83,253,0.22)',
+      text: '#17171a', dim: '#666678',
+      axisLine: '#0053fd', splitLine: 'rgba(0,83,253,0.24)',
+      tooltipBg: '#f2f5ff', tooltipBorder: 'rgba(0,83,253,0.22)',
+      up: '#dc2626', down: '#16a34a',
+      ma: { 5: '#eab308', 10: '#ec4899', 20: '#8b5cf6', 30: '#10b981', 60: '#0ea5e9' },
+    },
   },
-  light: {
-    bg: '#ffffff',
-    panel: '#ffffff',
-    border: '#c9d3df',
-    text: '#101827',
-    dim: '#56697e',
-    axisLine: '#8fa1b8',
-    splitLine: '#e6ebf2',
-    tooltipBg: '#ffffff',
-    tooltipBorder: '#c9d3df',
-    up: '#dc2626',
-    down: '#16a34a',
-    ma: { 5: '#eab308', 10: '#ec4899', 20: '#8b5cf6', 30: '#10b981', 60: '#0ea5e9' },
+  belafonte: {
+    dark: {
+      bg: '#281822', panel: '#281822', border: '#3d2d36',
+      text: '#b88f55', dim: '#96754e',
+      axisLine: '#3d2d36', splitLine: '#2a1e26',
+      tooltipBg: '#2a1e26', tooltipBorder: '#3d2d36',
+      up: '#d94a48', down: '#14b143',
+      ma: { 5: '#f6d365', 10: '#ff8fab', 20: '#b388ff', 30: '#6ee7b7', 60: '#4fc3f7' },
+    },
+    light: {
+      bg: '#ded8c8', panel: '#ded8c8', border: '#b8b0a4',
+      text: '#45373c', dim: '#5e5252',
+      axisLine: '#8a827b', splitLine: '#e8e4dc',
+      tooltipBg: '#f3ead6', tooltipBorder: '#b8b0a4',
+      up: '#be100e', down: '#16a34a',
+      ma: { 5: '#d08b30', 10: '#8b5cf6', 20: '#426a79', 30: '#16a34a', 60: '#0ea5e9' },
+    },
   },
 };
 
-export function pal(theme: Theme): ThemePalette {
-  return THEMES[theme];
+export function pal(t: AppTheme): ThemePalette {
+  return THEMES[t.themeId][t.mode];
 }
