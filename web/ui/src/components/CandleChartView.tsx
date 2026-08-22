@@ -37,21 +37,37 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           borderColor: p.border,
           textStyle: { color: p.text, fontSize: 12 },
           formatter: function (params: any) {
-            return params.map((p: any) => {
-              const dataArr = p.data; // [open, close, low, high]
-              const open = dataArr[0];
-              const close = dataArr[1];
-              const low = dataArr[2];
-              const high = dataArr[3];
-              const change = close - open;
-              const pct = (change / open) * 100;
-              const isSource = p.seriesName === data.source.label;
-              const color = change >= 0
-                ? (isSource ? p.soxUp : p.up)
-                : (isSource ? p.soxDown : p.down);
-              return `${p.seriesName} <span style="color:${color}">${pct.toFixed(2)}%</span><br>
-                开 ${open.toFixed(2)}　收 ${close.toFixed(2)}　低 ${low.toFixed(2)}　高 ${high.toFixed(2)}`;
-            }).join('<br>');
+            return params
+              .map((item: any) => {
+                const dataArr = item.data; // [open, close, low, high]，保持数组结构不变
+                const open = dataArr[0];
+                const close = dataArr[1];
+                const low = dataArr[2];
+                const high = dataArr[3];
+                const change = close - open;
+                const pct = (change / open) * 100;
+                const isSource = item.seriesName === data.source.label;
+                const changeColor =
+                  change >= 0 ? (isSource ? p.soxUp : p.up) : (isSource ? p.soxDown : p.down);
+                // 复刻 ECharts 默认蜡烛 tooltip 视觉：marker + 系列名 + OHLC 值（右对齐）
+                const marker =
+                  `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${changeColor};"></span>`;
+                const nameStyle = `font-size:12px;color:${p.text};font-weight:400`;
+                const valueStyle = `font-size:14px;color:${p.text};font-weight:900`;
+                const values = [open, close, low, high]
+                  .map((v) => v.toFixed(2))
+                  .join('&nbsp;&nbsp;');
+                return (
+                  `<div style="margin:0;line-height:1;">` +
+                  marker +
+                  `<span style="${nameStyle};margin-left:2px">${item.seriesName}</span>` +
+                  `<span style="color:${changeColor};font-weight:900;margin-left:4px">${pct.toFixed(2)}%</span>` +
+                  `<span style="float:right;margin-left:20px;${valueStyle}">${values}</span>` +
+                  `<div style="clear:both"></div>` +
+                  `</div>`
+                );
+              })
+              .join('<div style="margin:10px 0 0;line-height:1;"></div>');
           },
         },
         grid: { left: 66, right: 70, top: 40, bottom: 64 },
