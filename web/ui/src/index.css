@@ -271,8 +271,8 @@ body {
 .sidebar-item.active { background: var(--ui-accent); color: var(--ui-accent-fg); }
 .sidebar-icon { font-size: 15px; flex-shrink: 0; }
 
-/* 收起态：44px 图标窄条（无箭头按钮），右缘线把手展开 */
-.page.sidebar-collapsed .sidebar-head { display: none; }
+/* 收起态：44px 图标窄条（无箭头按钮），右缘线把手展开/收起 */
+.page.sidebar-collapsed .sidebar-brand { display: none; }
 .page.sidebar-collapsed .sidebar-nav { padding: 8px 6px; }
 .page.sidebar-collapsed .sidebar-item { justify-content: center; padding: 8px 0; }
 .page.sidebar-collapsed .sidebar-label { display: none; }
@@ -282,9 +282,8 @@ body {
 .page.sidebar-collapsed .sidebar-footer .ts-label,
 .page.sidebar-collapsed .sidebar-footer .ts-caret { display: none; }
 
-/* 线把手：窄条右缘一条 hairline 细线（点击展开） */
+/* 线把手：侧栏右缘一条可见细线，点击切换展开/收起（唯一导航收起入口） */
 .sidebar-handle {
-  display: none;
   width: 12px;
   flex-shrink: 0;
   position: relative;
@@ -302,7 +301,6 @@ body {
   transition: background 150ms ease-out;
 }
 .sidebar-handle:hover::before { background: var(--ui-accent); }
-.page.sidebar-collapsed .sidebar-handle { display: block; }
 
 /* 侧栏底部：主题切换入口 */
 .sidebar-footer { margin-top: auto; padding: 8px; border-top: 1px solid var(--ui-hairline); }

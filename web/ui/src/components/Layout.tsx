@@ -15,15 +15,13 @@ function initialCollapsed(): boolean {
   }
 }
 
-/** 侧栏（第一层）：领域切换；收起为 44px 窄条（箭头按钮位置/形式不变）。 */
+/** 侧栏（第一层）：领域切换；收起为 44px 窄条；展开/收起都由右缘线把手控制。 */
 function Sidebar({
   collapsed,
-  onToggle,
   theme,
   onThemeChange,
 }: {
   collapsed: boolean;
-  onToggle: () => void;
   theme: AppTheme;
   onThemeChange: (t: AppTheme) => void;
 }) {
@@ -35,9 +33,6 @@ function Sidebar({
         <Link to="/market/cn" className="sidebar-brand">
           stok-mapping
         </Link>
-        <button className="icon-btn sidebar-toggle" onClick={onToggle} title={collapsed ? '展开侧栏' : '收起侧栏'}>
-          {collapsed ? '▶' : '◀'}
-        </button>
       </div>
       <nav className="sidebar-nav">
         {DOMAINS.map((d) => (
@@ -108,11 +103,15 @@ export function Layout() {
       <div className={`page${collapsed ? ' sidebar-collapsed' : ''}`}>
         <Sidebar
           collapsed={collapsed}
-          onToggle={() => setCollapsed((c) => !c)}
           theme={theme}
           onThemeChange={setTheme}
         />
-        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏" aria-label="展开侧栏" />
+        <button
+          className="sidebar-handle"
+          onClick={() => setCollapsed((c) => !c)}
+          title={collapsed ? '展开侧栏' : '收起侧栏'}
+          aria-label={collapsed ? '展开侧栏' : '收起侧栏'}
+        />
         <div className="page-main">
           <header className="toolbar">
             <TopNav domain={domain} />
