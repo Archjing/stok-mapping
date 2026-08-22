@@ -112,6 +112,7 @@ export function Layout() {
           theme={theme}
           onThemeChange={setTheme}
         />
+        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏" aria-label="展开侧栏" />
         <div className="page-main">
           <header className="toolbar">
             <TopNav domain={domain} />
