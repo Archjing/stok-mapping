@@ -1,4 +1,4 @@
-import { createBrowserRouter, Navigate, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { CnSinglePage } from './pages/CnSinglePage';
@@ -6,8 +6,10 @@ import { CnDashPage } from './pages/CnDashPage';
 import { UsSinglePage } from './pages/UsSinglePage';
 
 /** 路由：Layout 承载侧栏(首层)+顶栏(第二层)，各域页作为 Outlet。
- * 设计依据：docs/WEBSITE_NAVIGATION_STRUCTURE.md §4/§8。 */
-const router = createBrowserRouter([
+ * 设计依据：docs/WEBSITE_NAVIGATION_STRUCTURE.md §4/§8。
+ * 路由模式：默认 history（本地 8010）；快照构建用 VITE_ROUTER_MODE=hash
+ * （静态托管下深链刷新不 404，见 scripts/sync_dashboard_snapshot.sh）。 */
+const routes = [
   {
     path: '/',
     element: <Layout />,
@@ -50,7 +52,12 @@ const router = createBrowserRouter([
       { path: '*', element: <Navigate to="/market/cn" replace /> },
     ],
   },
-]);
+];
+
+const router =
+  import.meta.env.VITE_ROUTER_MODE === 'hash'
+    ? createHashRouter(routes)
+    : createBrowserRouter(routes);
 
 export function App() {
   return <RouterProvider router={router} />;
