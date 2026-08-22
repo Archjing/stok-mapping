@@ -15,8 +15,18 @@ function initialCollapsed(): boolean {
   }
 }
 
-/** 侧栏（第一层）：领域切换；收起后宽度 0，由 .sidebar-handle 展开。 */
-function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+/** 侧栏（第一层）：领域切换；收起为 44px 窄条（箭头按钮位置/形式不变）。 */
+function Sidebar({
+  collapsed,
+  onToggle,
+  theme,
+  onThemeChange,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  theme: AppTheme;
+  onThemeChange: (t: AppTheme) => void;
+}) {
   const location = useLocation();
   const activeId = domainForPath(location.pathname)?.id;
   return (
@@ -42,6 +52,9 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
           </NavLink>
         ))}
       </nav>
+      <div className="sidebar-footer">
+        <ThemeSwitcher theme={theme} onChange={onThemeChange} />
+      </div>
     </aside>
   );
 }
@@ -93,16 +106,15 @@ export function Layout() {
   return (
     <ThemeContext.Provider value={theme}>
       <div className={`page${collapsed ? ' sidebar-collapsed' : ''}`}>
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏">
-          ▶
-        </button>
+        <Sidebar
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((c) => !c)}
+          theme={theme}
+          onThemeChange={setTheme}
+        />
         <div className="page-main">
           <header className="toolbar">
             <TopNav domain={domain} />
-            <div className="toolbar-right">
-              <ThemeSwitcher theme={theme} onChange={setTheme} />
-            </div>
           </header>
           <main className="content">
             <Outlet />
