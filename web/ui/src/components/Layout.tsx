@@ -94,7 +94,9 @@ export function Layout() {
     <ThemeContext.Provider value={theme}>
       <div className={`page${collapsed ? ' sidebar-collapsed' : ''}`}>
         <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
-        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏" />
+        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏">
+          ▶
+        </button>
         <div className="page-main">
           <header className="toolbar">
             <TopNav domain={domain} />

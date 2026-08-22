@@ -51,26 +51,26 @@
   --ui-shadow-nous: 0 6px 28px rgba(15, 23, 42, 0.12);
 }
 
-/* ── belafonte night：深酒红 + 金色（静态站点原主题） ── */
+/* ── belafonte night：深酒红 + 金色（静态站点原主题；accent 取 accent-bg/accent-text 语义保证选中对比） ── */
 [data-theme='belafonte'][data-mode='dark'] {
   --ui-bg-app: #20111b; --ui-bg-panel: #281822; --ui-bg-subtle: #2a1e26; --ui-bg-quaternary: #3d2d36;
   --ui-bg-sidebar: #20111b; --ui-bg-popover: #281822; --ui-input-bg: #3d2d36;
   --ui-text-primary: #b88f55; --ui-text-secondary: #96754e; --ui-text-tertiary: #6f5a43;
   --ui-stroke-primary: #4a3a44; --ui-stroke-secondary: #3d2d36; --ui-stroke-tertiary: #3d2d36;
-  --ui-accent: #5a8a9a; --ui-accent-fg: #7fb4c4; --ui-accent-secondary: #233840;
+  --ui-accent: #233840; --ui-accent-fg: #7fb4c4; --ui-accent-secondary: #5a8a9a;
   --ui-danger: #d94a48; --ui-warm: #eaa549;
   --ui-up: #d94a48; --ui-down: #14b143;
   --ui-ma-5: #f6d365; --ui-ma-10: #ff8fab; --ui-ma-20: #b388ff; --ui-ma-30: #6ee7b7; --ui-ma-60: #4fc3f7;
   --ui-shadow-nous: 0 1px 3px rgba(0, 0, 0, 0.25);
 }
 
-/* ── belafonte day：暖羊皮纸 ── */
+/* ── belafonte day：暖羊皮纸（accent-bg 浅底 + accent-text 深字） ── */
 [data-theme='belafonte'][data-mode='light'] {
   --ui-bg-app: #fffaed; --ui-bg-panel: #ded8c8; --ui-bg-subtle: #e8e4dc; --ui-bg-quaternary: #ccc5b8;
   --ui-bg-sidebar: #fffaed; --ui-bg-popover: #ded8c8; --ui-input-bg: #b8b0a4;
   --ui-text-primary: #45373c; --ui-text-secondary: #5e5252; --ui-text-tertiary: #8a827b;
   --ui-stroke-primary: #8a827b; --ui-stroke-secondary: #b8b0a4; --ui-stroke-tertiary: #b8b0a4;
-  --ui-accent: #426a79; --ui-accent-fg: #2d4d59; --ui-accent-secondary: #cbd5d9;
+  --ui-accent: #cbd5d9; --ui-accent-fg: #2d4d59; --ui-accent-secondary: #426a79;
   --ui-danger: #be100e; --ui-warm: #d08b30;
   --ui-up: #be100e; --ui-down: #16a34a;
   --ui-ma-5: #d08b30; --ui-ma-10: #ec4899; --ui-ma-20: #8b5cf6; --ui-ma-30: #10b981; --ui-ma-60: #0ea5e9;
@@ -260,9 +260,23 @@ body {
 .sidebar-item:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
 .sidebar-item.active { background: var(--ui-accent); color: var(--ui-accent-fg); }
 .sidebar-icon { font-size: 15px; flex-shrink: 0; }
-.sidebar-handle { display: none; width: 8px; flex-shrink: 0; cursor: pointer; padding: 0; border: none; background: var(--ui-bg-sidebar); }
-.sidebar-handle:hover { background: var(--ui-accent); opacity: 0.6; }
-.page.sidebar-collapsed .sidebar-handle { display: block; }
+.sidebar-handle {
+  display: none;
+  width: 16px;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 0;
+  border: none;
+  background: var(--ui-bg-sidebar);
+  color: var(--ui-text-tertiary);
+  font-size: 10px;
+}
+.page.sidebar-collapsed .sidebar-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-handle:hover { background: var(--ui-accent); color: var(--ui-accent-fg); opacity: 1; }
 .page-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
 .topnav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
 .topnav-link { padding: 6px 12px; border-radius: 6px; font-size: 13.5px; color: var(--ui-text-secondary); text-decoration: none; }
@@ -273,6 +287,24 @@ body {
 
 /* ===== 主题选择器（浮动层规范）===== */
 .theme-switcher { position: relative; }
+.theme-switcher-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ui-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.theme-switcher-btn:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
+.swatch { display: inline-flex; gap: 3px; }
+.swatch i { width: 10px; height: 10px; border-radius: 50%; border: 1px solid var(--ui-stroke-tertiary); }
+.ts-caret { font-size: 10px; color: var(--ui-text-tertiary); }
 .theme-menu {
   position: absolute;
   right: 0;

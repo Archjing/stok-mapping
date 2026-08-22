@@ -32,8 +32,14 @@ export function ThemeSwitcher({
 
   return (
     <div className="theme-switcher" ref={rootRef}>
-      <button className="icon-btn theme-switcher-btn" onClick={() => setOpen((v) => !v)} title="切换主题">
-        🎨 {current.label}
+      <button className="theme-switcher-btn" onClick={() => setOpen((v) => !v)} title="切换主题">
+        <span className="swatch" aria-hidden>
+          <i style={{ background: 'var(--ui-accent)' }} />
+          <i style={{ background: 'var(--ui-bg-panel)' }} />
+          <i style={{ background: 'var(--ui-warm)' }} />
+        </span>
+        <span>{current.label}</span>
+        <span className="ts-caret">▾</span>
       </button>
       {open && (
         <div className="theme-menu">
