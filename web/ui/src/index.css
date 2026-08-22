@@ -422,7 +422,7 @@ body {
 }
 .report-table td { padding: 7px 10px; border-bottom: 1px solid var(--ui-hairline); white-space: nowrap; }
 .report-table tbody tr:hover td { background: var(--ui-bg-subtle); }
-.report-table td.num-right { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.report-table td.num-right, .report-table th.num-right { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .report-table td.num-center { text-align: center; }
 .report-table td.mono { font-family: var(--font-mono); font-size: 12.5px; }
 .report-table tbody tr:last-child td { border-bottom: none; }
