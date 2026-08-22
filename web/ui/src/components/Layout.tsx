@@ -25,16 +25,6 @@ function ThemeToggle({ theme, setTheme }: { theme: AppTheme; setTheme: (t: AppTh
   );
 }
 
-/** 初始主题（临时版：兼容旧 key，nous + 明暗；Task 6 改用 loadTheme）。 */
-function initialTheme(): AppTheme {
-  try {
-    const legacy = localStorage.getItem('index-chart-theme');
-    return { themeId: 'nous', mode: legacy === 'light' ? 'light' : 'dark' };
-  } catch {
-    return { themeId: 'nous', mode: 'dark' };
-  }
-}
-
 /** 顶栏左侧：品牌 + 副标题。 */
 function Brand() {
   return (
