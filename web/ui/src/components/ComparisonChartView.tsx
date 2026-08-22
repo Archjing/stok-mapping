@@ -21,8 +21,7 @@ export function ComparisonChartView({ data, theme }: { data: ComparisonData; the
         const idx = dates.indexOf(s.targetDate);
         if (idx < 0) return null;
         return {
-          coord: [s.targetDate, tgt[idx]],
-          value: `${s.direction === 'up' ? '+' : ''}${s.change}%`,
+          value: [s.targetDate, tgt[idx]],
           itemStyle: {
             color: s.direction === 'up' ? p.up : p.down,
             borderColor: p.bg,
@@ -32,13 +31,12 @@ export function ComparisonChartView({ data, theme }: { data: ComparisonData; the
       })
       .filter((x): x is NonNullable<typeof x> => x !== null);
 
+    // markArea.data 要求嵌套 [start, end] 数组对
     const runAreas = (runs: ComparisonRun[], color: string) =>
-      runs.map((r) => ({
-        name: r.start,
-        xAxis: r.start,
-        xAxis1: r.end,
-        itemStyle: { color, opacity: 0.12 },
-      }));
+      runs.map((r) => [
+        { xAxis: r.start, itemStyle: { color, opacity: 0.12 } },
+        { xAxis1: r.end },
+      ]);
 
     chart.setOption(
       {
