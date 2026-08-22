@@ -901,23 +901,35 @@ STORAGES = ("us_daily_bars", "etf_qfq")
 
 
 @app.get("/api/research/symbols")
-def api_research_symbols() -> dict[str, list[str]]:
-    """各存储类型的可用标的总览（任意两标的对比的选择源）。"""
-    result: dict[str, list[str]] = {"us_daily_bars": [], "etf_qfq": []}
+def api_research_symbols() -> dict[str, list[dict[str, str]]]:
+    """各存储类型的可用标的（symbol + 名称），供任意两标的对比选择。"""
+    result: dict[str, list[dict[str, str]]] = {"us_daily_bars": [], "etf_qfq": []}
     us_db = ROOT / "data" / "us_market_history.sqlite"
     if us_db.is_file():
         con = sqlite3.connect(us_db)
-        result["us_daily_bars"] = [
-            row[0] for row in con.execute("SELECT DISTINCT symbol FROM us_daily_bars ORDER BY symbol")
-        ]
+        rows = con.execute(
+            """
+            SELECT DISTINCT b.symbol, COALESCE(i.purpose, '')
+            FROM us_daily_bars b
+            LEFT JOIN us_market_instruments i ON b.symbol = i.symbol
+            ORDER BY b.symbol
+            """
+        ).fetchall()
+        result["us_daily_bars"] = [{"symbol": symbol, "label": label or symbol} for symbol, label in rows]
         con.close()
     etf_db = ROOT / "data" / "etf_history.sqlite"
     if etf_db.is_file():
         con = sqlite3.connect(etf_db)
         try:
-            result["etf_qfq"] = [
-                row[0] for row in con.execute("SELECT DISTINCT symbol FROM market_etf_daily_bars ORDER BY symbol")
-            ]
+            rows = con.execute(
+                """
+                SELECT DISTINCT b.symbol, COALESCE(m.name, m.short_name, '')
+                FROM market_etf_daily_bars b
+                LEFT JOIN market_etfs m ON b.symbol = m.symbol
+                ORDER BY b.symbol
+                """
+            ).fetchall()
+            result["etf_qfq"] = [{"symbol": symbol, "label": label or symbol} for symbol, label in rows]
         except sqlite3.OperationalError:
             pass
         con.close()
@@ -967,9 +979,17 @@ def api_research_wiki():
 
     cfg = load_config(CONFIG_PATH)
     source = _wiki_index_source(cfg)
-    if source is None or not source.is_file():
-        raise HTTPException(status_code=404, detail="wiki_index_source 未配置或文件缺失")
     from fastapi.responses import Response
+
+    if source is None or not source.is_file():
+        placeholder = (
+            '<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8"><title>A股影响因子全景图</title>'
+            '<style>body{margin:0;padding:40px;font-family:system-ui;color:#5e5252;background:#fffaed}'
+            'h2{margin:0 0 8px;color:#45373c}a{color:#426a79}</style></head>'
+            '<body><h2>WIKI 未配置</h2><p>config.yaml 的 reporting.wiki_index_source 未指向可用的 marklogseq 导出文件。</p>'
+            '<p><a href="../wiki">&larr; 返回上一级</a></p></body></html>'
+        )
+        return Response(placeholder, media_type="text/html; charset=utf-8")
 
     html_text = source.read_text(encoding="utf-8")
     # 与 site build 相同的默认页与折叠调整
