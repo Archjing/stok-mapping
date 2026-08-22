@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchAccount, type AccountMeta } from '../api/accounts';
+import { StrategyExplain } from '../components/StrategyExplain';
 
 /** 账户主页：资产摘要卡 + 快捷入口（移植自原静态站 accounts/<slug>/index.html）。 */
 export function AccountPage() {
@@ -57,6 +58,7 @@ export function AccountPage() {
           <strong>{meta.position_start_date || '暂无'}</strong>
         </div>
       </div>
+      <StrategyExplain accountId={meta.slug} />
       <section className="bill-section">
         <h3 className="section-title">快捷入口</h3>
         <div className="quick-links">
@@ -71,6 +73,10 @@ export function AccountPage() {
           <Link to={`/accounts/${meta.slug}/ledger`} className="quick-card">
             <span>LEDGER</span>
             <strong>完整交易台账</strong>
+          </Link>
+          <Link to={`/accounts/${meta.slug}/charts`} className="quick-card">
+            <span>CHARTS</span>
+            <strong>跨市场映射对照图</strong>
           </Link>
           <Link to="/accounts" className="quick-card">
             <span>CONSOLE</span>

@@ -10,6 +10,7 @@ export interface AccountMeta {
   stock_asset: string;
   target_exposure: string;
   slug: string;
+  strategy_id?: string;
 }
 
 export interface WatchCell {
@@ -55,6 +56,21 @@ export interface LedgerData {
   sections: LedgerSection[];
 }
 
+export interface StrategyData {
+  strategy_id: string;
+  name: string;
+  target_symbol?: string;
+  target_name?: string;
+  note?: string;
+  sections: { heading: string; paragraphs: string[] }[];
+  research_example: {
+    period: string;
+    headers: string[];
+    rows: string[][];
+    terms: string;
+  } | null;
+}
+
 export interface MarketSnapshotRow {
   类别?: string;
   用途?: string;
@@ -95,3 +111,5 @@ export const fetchWatchlist = (slug: string): Promise<WatchlistData> =>
   get(`/api/accounts/${slug}/watchlist`);
 export const fetchBill = (slug: string): Promise<BillData> => get(`/api/accounts/${slug}/bill`);
 export const fetchLedger = (slug: string): Promise<LedgerData> => get(`/api/accounts/${slug}/ledger`);
+export const fetchStrategy = (slug: string): Promise<StrategyData> =>
+  get(`/api/accounts/${slug}/strategy`);

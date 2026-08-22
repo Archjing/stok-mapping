@@ -446,3 +446,31 @@ body {
 }
 .brief-status.ready { color: var(--ui-down); border-color: color-mix(in srgb, var(--ui-down) 40%, transparent); }
 .brief-status.warning { color: var(--ui-warm); border-color: color-mix(in srgb, var(--ui-warm) 40%, transparent); }
+
+/* ===== 顶栏下拉菜单（模拟账户）===== */
+.nav-menu { position: relative; display: inline-flex; }
+.nav-menu-btn { display: inline-flex; align-items: center; gap: 5px; }
+.nav-menu-caret { font-size: 9px; color: var(--ui-text-tertiary); }
+.nav-menu-panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  min-width: 230px; padding: 4px;
+  background: var(--ui-bg-popover);
+  border: 1px solid var(--ui-stroke-nous);
+  box-shadow: var(--ui-shadow-nous);
+  display: flex; flex-direction: column;
+}
+.nav-menu-item {
+  appearance: none; border: none; background: none; text-align: left;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 10px; font-size: 13px; color: var(--ui-text-secondary);
+  cursor: pointer; transition: background 150ms ease-out, color 150ms ease-out;
+}
+.nav-menu-item:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
+.nav-menu-tag { font-size: 11px; color: var(--ui-text-tertiary); border: 1px solid var(--ui-hairline); padding: 0 6px; flex-shrink: 0; }
+.nav-menu-empty { padding: 8px 10px; font-size: 13px; color: var(--ui-text-tertiary); }
+
+/* ===== 策略解释（账户页）===== */
+.strategy-explain { margin-top: 18px; }
+.strategy-heading { font-size: 14px; font-weight: 700; margin: 14px 0 8px; }
+.strategy-body { font-size: 13px; line-height: 1.7; color: var(--ui-text-primary); margin: 6px 0; }
+.strategy-example { margin-top: 8px; }

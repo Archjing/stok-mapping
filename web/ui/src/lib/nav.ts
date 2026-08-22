@@ -6,6 +6,8 @@ export type DomainId = 'market' | 'research' | 'intel' | 'accounts' | 'config' |
 export interface NavPage {
   to: string;
   label: string;
+  /** 渲染为下拉菜单（子项动态，如模拟账户列表）；true 时忽略 to 的导航语义。 */
+  menu?: boolean;
 }
 
 export interface Domain {
@@ -29,9 +31,9 @@ export const DOMAINS: Domain[] = [
     id: 'research', label: '研究', icon: '🔬', defaultPath: '/research/strategies',
     pages: [
       { to: '/research/strategies', label: '策略' },
-      { to: '/research/runs/new', label: '回测' },
-      { to: '/research/admission', label: '准入' },
-      { to: '/research/runs', label: '对比' },
+      { to: '/research/sox-vs-512480', label: 'SOX对照' },
+      { to: '/research/vix-vs-512480', label: 'VIX对照' },
+      { to: '/research/wiki', label: '全景图' },
     ],
   },
   {
@@ -47,6 +49,7 @@ export const DOMAINS: Domain[] = [
     pages: [
       { to: '/accounts', label: '总览' },
       { to: '/accounts/brief', label: '每日简报' },
+      { to: '/accounts', label: '模拟账户', menu: true },
     ],
   },
   {

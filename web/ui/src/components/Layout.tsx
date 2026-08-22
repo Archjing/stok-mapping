@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { AppTheme } from '../chart/theme';
 import { ThemeContext, applyRootTheme, loadTheme, saveTheme } from './ThemeContext';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { AccountsMenu } from './AccountsMenu';
 import { DOMAINS, domainForPath, type Domain } from '../lib/nav';
 
 const SIDEBAR_KEY = 'website-sidebar-collapsed';
@@ -59,18 +60,22 @@ function TopNav({ domain }: { domain: Domain }) {
   const nav = useNavigation();
   return (
     <nav className={`topnav${nav.state === 'loading' ? ' loading' : ''}`}>
-      {domain.pages.map((p) => (
-        <NavLink
-          key={p.to}
-          to={p.to}
-          end={p.to === domain.defaultPath}
-          className={({ isActive, isPending }) =>
-            isPending ? 'topnav-link pending' : isActive ? 'topnav-link active' : 'topnav-link'
-          }
-        >
-          {p.label}
-        </NavLink>
-      ))}
+      {domain.pages.map((p) =>
+        p.menu ? (
+          <AccountsMenu key={`${p.to}-menu`} />
+        ) : (
+          <NavLink
+            key={p.to}
+            to={p.to}
+            end={p.to === domain.defaultPath}
+            className={({ isActive, isPending }) =>
+              isPending ? 'topnav-link pending' : isActive ? 'topnav-link active' : 'topnav-link'
+            }
+          >
+            {p.label}
+          </NavLink>
+        ),
+      )}
     </nav>
   );
 }

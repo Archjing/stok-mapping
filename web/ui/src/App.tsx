@@ -10,6 +10,9 @@ import { WatchlistPage } from './pages/WatchlistPage';
 import { BillPage } from './pages/BillPage';
 import { LedgerPage } from './pages/LedgerPage';
 import { BriefPage } from './pages/BriefPage';
+import { ResearchComparisonPage } from './pages/ResearchComparisonPage';
+import { AccountChartsPage } from './pages/AccountChartsPage';
+import { WikiPage } from './pages/WikiPage';
 
 /** 路由：Layout 承载侧栏(首层)+顶栏(第二层)，各域页作为 Outlet。
  * 设计依据：docs/WEBSITE_NAVIGATION_STRUCTURE.md §4/§8。
@@ -28,8 +31,11 @@ const routes = [
       { path: 'market/dash', element: <CnDashPage /> },
       { path: 'market/us', element: <UsSinglePage /> },
 
-      // 研究（占位）
+      // 研究（占位；对照图已补全，策略/回测后续）
       { path: 'research/strategies', element: <PlaceholderPage title="策略列表" desc="已注册策略卡片（32 个）——M2 实施" /> },
+      { path: 'research/sox-vs-512480', element: <ResearchComparisonPage slug="sox-vs-512480" title="^SOX 与半导体 ETF（512480）对照图" /> },
+      { path: 'research/vix-vs-512480', element: <ResearchComparisonPage slug="vix-vs-512480" title="^VIX 与半导体 ETF（512480）对照图" /> },
+      { path: 'research/wiki', element: <WikiPage /> },
       { path: 'research/runs/new', element: <PlaceholderPage title="回测运行器" desc="preset / strategy-set / run 配置选择——M2 实施" /> },
       { path: 'research/admission', element: <PlaceholderPage title="准入" desc="admission 窗口矩阵 / 约束审查——M2 实施" /> },
       { path: 'research/runs', element: <PlaceholderPage title="运行对比" desc="run 索引横向对比——M2 实施" /> },
@@ -46,6 +52,7 @@ const routes = [
       { path: 'accounts/:accountId/watchlist', element: <WatchlistPage /> },
       { path: 'accounts/:accountId/bill', element: <BillPage /> },
       { path: 'accounts/:accountId/ledger', element: <LedgerPage /> },
+      { path: 'accounts/:accountId/charts', element: <AccountChartsPage /> },
 
       // 配置（占位；策略参数编辑器 M1.5 只读版先行）
       { path: 'config/strategies', element: <PlaceholderPage title="策略参数" desc="run 配置编辑器——M1.5 只读版先行" /> },

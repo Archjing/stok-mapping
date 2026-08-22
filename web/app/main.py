@@ -383,6 +383,7 @@ def _accounts_metas(q: dict[str, Any]) -> list[dict[str, Any]]:
         frames = q["read_frames"](account)
         meta = q["meta_for_account"](account, frames)
         meta["slug"] = slug(str(account.account_id))
+        meta["strategy_id"] = str(getattr(account, "strategy_id", "") or "")
         metas.append(meta)
     return metas
 
@@ -689,6 +690,185 @@ def api_account_ledger(account_id: str) -> dict[str, Any]:
         },
     ]
     return {"account_id": account_id, "name": str(account.name), "sections": sections}
+
+
+# ═══════════ 研究域：对照图 + WIKI（补全原静态站 research/ 与 wiki/） ═══════════
+# 原静态站遗漏内容：research/vix-vs-512480、research/sox-vs-512480、每账户 mapping charts、wiki 全景图。
+# 对照图复用 market_comparison_chart.build_comparison_chart_data（与 site build 同源）。
+VIX_512480_COMPARISON_CONFIG: Any = None
+
+
+def _vix_comparison_config() -> Any:
+    """延迟构造 VIX 对照图配置（避免模块顶层依赖 quant.reporting 类型）。"""
+    from datetime import date
+
+    from quant.reporting.market_comparison_chart import ComparisonChartConfig, ComparisonSeriesConfig
+
+    return ComparisonChartConfig(
+        slug="vix-vs-512480",
+        title="^VIX 与半导体 ETF（512480）对照图",
+        source=ComparisonSeriesConfig(
+            symbol="^VIX",
+            label="^VIX（恐慌指数）",
+            storage="us_daily_bars",
+        ),
+        target=ComparisonSeriesConfig(
+            symbol="SH.512480",
+            label="SH.512480 前复权收盘价（实际交易标的）",
+            storage="etf_qfq",
+        ),
+        start_date=date(2025, 11, 3),
+        observation_band=None,
+        daily_mapping_pct=0.5,
+        consecutive_days=3,
+        consecutive_daily_change_pct=0.0,
+    )
+
+
+@app.get("/api/research/comparison/{slug}")
+def api_research_comparison(slug: str) -> dict[str, Any]:
+    from quant.reporting.market_comparison_chart import build_comparison_chart_data
+    from quant.reporting.quant_static_site import SOX_512480_COMPARISON_CONFIG
+
+    configs = {
+        "sox-vs-512480": SOX_512480_COMPARISON_CONFIG,
+        "vix-vs-512480": _vix_comparison_config(),
+    }
+    config = configs.get(slug)
+    if config is None:
+        raise HTTPException(status_code=404, detail=f"未知对照图 {slug}")
+    data = build_comparison_chart_data(root=ROOT, config=config)
+    if data is None:
+        raise HTTPException(status_code=404, detail=f"对照图 {slug} 数据不足（本地历史缺失）")
+    return data
+
+
+@app.get("/api/accounts/{account_id}/charts")
+def api_account_charts(account_id: str) -> dict[str, Any]:
+    account = _account_by_slug(account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+    from quant.config import load_config
+    from quant.reporting.market_comparison_chart import build_comparison_chart_data
+    from quant.strategies import get_strategy
+
+    cfg = load_config(CONFIG_PATH)
+    strategy_id = str(getattr(account, "strategy_id", "") or "")
+    try:
+        strategy = get_strategy(strategy_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"策略 {strategy_id} 未注册") from None
+    global_strategy_cfg = dict(cfg.get("walk_forward", {}).get("strategy_v2", {}) or {})
+    charts = []
+    try:
+        items = strategy.account_mapping_charts(global_strategy_cfg, dict(getattr(account, "strategy_params", {}) or {}))
+    except Exception:  # noqa: BLE001 — 策略未实现映射图时跳过
+        items = []
+    for item in items:
+        data = build_comparison_chart_data(root=ROOT, config=item.chart)
+        charts.append(
+            {
+                "slug": item.chart.slug,
+                "title": item.chart.title,
+                "button_label": item.button_label,
+                "button_kicker": item.button_kicker,
+                "data": data,
+            }
+        )
+    return {"account_id": account_id, "charts": charts}
+
+
+@app.get("/api/research/wiki")
+def api_research_wiki():
+    """A股影响因子全景图（marklogseq 静态导出，自包含 HTML，前端 iframe 嵌入）。"""
+    from quant.config import load_config
+    from quant.reporting.quant_static_site import _wiki_index_source
+
+    cfg = load_config(CONFIG_PATH)
+    source = _wiki_index_source(cfg)
+    if source is None or not source.is_file():
+        raise HTTPException(status_code=404, detail="wiki_index_source 未配置或文件缺失")
+    from fastapi.responses import Response
+
+    html_text = source.read_text(encoding="utf-8")
+    # 与 site build 相同的默认页与折叠调整
+    html_text = html_text.replace(
+        'window.MARKLOGSEQ_DEFAULT_PAGE="cn_gdp"', 'window.MARKLOGSEQ_DEFAULT_PAGE="a_share_factor_overview"'
+    )
+    return Response(html_text, media_type="text/html; charset=utf-8")
+
+
+@app.get("/api/accounts/{account_id}/strategy")
+def api_account_strategy(account_id: str) -> dict[str, Any]:
+    """该账户执行的量化策略详细解释（原静态站账户主页"这套策略怎么交易"区，结构化输出）。"""
+    account = _account_by_slug(account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+    from quant.config import load_config
+
+    cfg = load_config(CONFIG_PATH)
+    strategy_id = str(getattr(account, "strategy_id", "") or "")
+    if strategy_id == "cross_market_semiconductor_timing_etf_v1":
+        base = dict(
+            (cfg.get("walk_forward", {}).get("strategy_v2", {}).get("cross_market_semiconductor_timing", {}) or {})
+        )
+        base.update(dict(getattr(account, "strategy_params", {}) or {}))
+        target = str(base.get("target_symbol", "SH.512480"))
+        is_scheduled_close = target == "SH.588200"
+        vix = 20 if is_scheduled_close else 19
+        target_name = "科创芯片ETF（588200）" if is_scheduled_close else "国联安半导体ETF（512480）"
+        exit_rule = "不设盘中追踪止损，在 T+1 日 14:55 清仓。" if is_scheduled_close else "从日内高点回落 2% 时卖出；未触发则 14:55 清仓。"
+        discount = float(base.get("limit_order_discount", 0.012))
+        if is_scheduled_close:
+            period = "2022-10-26 至 2026-08-07"
+            example_rows = [
+                ["策略：SOX + VIX 映射择时", "+53.1%", "+12.4%", "0.77", "-14.8%", "26.0%", "+204.2%"],
+                ["SH.588200 买入持有", "+256.6%", "+40.4%", "1.00", "-48.1%", "100.0%", "+256.6%"],
+                ["沪深 300 买入持有", "+28.4%", "+7.1%", "0.48", "-24.8%", "100.0%", "+28.4%"],
+            ]
+        else:
+            period = "2021-05-13 至 2026-08-07"
+            example_rows = [
+                ["策略：SOX + VIX 映射择时", "+67.5%", "+10.8%", "0.87", "-13.6%", "23.0%", "+293.6%"],
+                ["SH.512480 买入持有", "+129.0%", "+17.5%", "0.62", "-62.5%", "100.0%", "+129.0%"],
+                ["沪深 300 买入持有", "-6.0%", "-1.2%", "0.02", "-40.9%", "100.0%", "-6.0%"],
+            ]
+        return {
+            "strategy_id": strategy_id,
+            "name": "跨市场半导体择时（^SOX + ^VIX → A股半导体ETF）",
+            "target_symbol": target,
+            "target_name": target_name,
+            "sections": [
+                {
+                    "heading": "这套策略怎么交易",
+                    "paragraphs": [
+                        f"它用上一交易日美股费城半导体指数（^SOX）的涨跌和恐慌指数（^VIX）筛选次日 A 股的 {target_name}（{target}）。美股收盘后，信号在下一次 A 股开盘时才可执行。",
+                        f"开仓条件：r_SOX = SOX收盘(D) / SOX收盘(D−1) − 1；当 r_SOX > 0.5% 且 VIX < {vix} 时才考虑买入。SOX 涨幅超过 1% 是强信号，按开盘价买入，目标仓位 60%；0.5% 至 1% 是弱信号，按 开盘价 × (1 − {discount:.1%}) 挂限价单，目标仓位 50%。",
+                        "弱信号未成交：当天价格没有触及限价就撤单，不追价；因此不会使用当天未来价格来决定成交。",
+                        f"卖出规则：{exit_rule} 买入后遵守 ETF 的 T+1 规则，不留隔夜仓位。",
+                        "交易口径：使用 5 分钟 K 线判断限价成交和盘中止损；按 100 份整手、账户佣金、最低佣金与滑点计算。回测和模拟账户采用同一套撮合规则。",
+                        "跨市场映射风险：SOX 上涨不等于 A 股半导体 ETF 必然上涨。汇率、国内政策、行业供需、开盘跳空和流动性都可能使映射失效；策略结果不构成收益承诺或投资建议。",
+                    ],
+                }
+            ],
+            "research_example": {
+                "period": period,
+                "headers": ["对象", "总收益", "年化收益率", "夏普比率", "最大回撤", "平均资金占用", "已投入资本回报率"],
+                "rows": example_rows,
+                "terms": (
+                    "总收益和年化收益率均以账户总资产为分母。平均资金占用是每日目标仓位的平均值，也可理解为资金利用率；"
+                    "已投入资本回报率 = 总收益 ÷ 平均资金占用。夏普比率衡量单位波动对应的历史收益；最大回撤是历史峰值至谷底的最大跌幅。"
+                    "历史研究结果不代表当前模拟账户业绩，也不构成未来收益承诺。"
+                ),
+            },
+        }
+    return {
+        "strategy_id": strategy_id,
+        "name": str(getattr(account, "name", "")),
+        "note": "该策略暂无原站详细说明；账户口径见账单与台账。",
+        "sections": [],
+        "research_example": None,
+    }
 
 
 # 生产托管前端构建产物（web/ui/dist 存在时）
