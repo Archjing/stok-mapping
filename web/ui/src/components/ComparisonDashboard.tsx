@@ -267,10 +267,8 @@ export function ComparisonDashboard({ theme }: Props) {
   return (
     <div className="dash">
       <section className="controls">
-        {/* 从左至右：标的标签 → 搜索框 → 对照池 chips */}
+        {/* 第一行：对照池 chips——市场指数单独一行，可增删的个股池另起一行 */}
         <div className="ctrl ctrl-wide">
-          <span className="lbl">标的</span>
-          <SearchBox onSelect={addStock} />
           <div className="checks chips-row">
             {CN_SINGLE_INDICES.map((i) => (
               <label key={i.symbol} className={`chip${enabled.has(i.symbol) ? ' on' : ''}`}>
@@ -283,6 +281,8 @@ export function ComparisonDashboard({ theme }: Props) {
                 <span>{i.name}</span>
               </label>
             ))}
+          </div>
+          <div className="checks chips-row">
             {[...selected]
               .filter((s) => !coreIndexName(s))
               .map((s) => (
@@ -308,7 +308,10 @@ export function ComparisonDashboard({ theme }: Props) {
               ))}
           </div>
         </div>
+        {/* 第二行：标的搜索 + 对比 + 区间 */}
         <div className="ctrl">
+          <span className="lbl">标的</span>
+          <SearchBox onSelect={addStock} />
           <span className="lbl">对比</span>
           <div className="seg">
             {MODES.map((m) => (
@@ -334,8 +337,6 @@ export function ComparisonDashboard({ theme }: Props) {
               ))}
             </div>
           )}
-        </div>
-        <div className="ctrl">
           <span className="lbl">区间</span>
           <div className="seg">
             {RANGES.map((r) => (

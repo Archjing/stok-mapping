@@ -10,7 +10,6 @@ export function CnSinglePage() {
       coreSymbols={CORE_INDICES.map((i) => i.symbol)}
       initialSymbol="SH.000001"
       initialName="上证指数"
-      marketLabel="A股"
     />
   );
 }

@@ -30,7 +30,6 @@ export function SingleIndexPage({
   coreSymbols,
   initialSymbol,
   initialName,
-  marketLabel,
 }: {
   market: Market;
   indices: ReadonlyArray<SymbolName>;
@@ -38,7 +37,6 @@ export function SingleIndexPage({
   coreSymbols: ReadonlyArray<string>;
   initialSymbol: string;
   initialName: string;
-  marketLabel: string;
 }) {
   const [symbol, setSymbol] = useState(initialSymbol);
   const [name, setName] = useState(initialName);
@@ -111,12 +109,6 @@ export function SingleIndexPage({
   return (
     <div className="page-view">
       {error && <p className="error">{error}</p>}
-      <div className="view-head">
-        <div className="view-title">
-          <span className="view-market-tag">{marketLabel}</span>
-          <h2 className="view-name">{name}<span className="view-code">{symbol}</span></h2>
-        </div>
-      </div>
 
       {bars.length > 0 && (
         <KLineChart

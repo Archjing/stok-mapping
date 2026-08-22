@@ -10,7 +10,6 @@ export function UsSinglePage() {
       coreSymbols={US_INDICES.map((i) => i.symbol)}
       initialSymbol="^IXIC"
       initialName="纳斯达克"
-      marketLabel="美股"
     />
   );
 }

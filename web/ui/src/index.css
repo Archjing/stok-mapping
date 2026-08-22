@@ -176,6 +176,7 @@ body {
 .dash { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0 22px; gap: 10px; }
 .ctrl-wide { flex: 1 1 100%; }
 .chips-row { align-items: center; }
+.checks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .chip-x { appearance: none; border: none; background: transparent; color: var(--dim); font-size: 15px; line-height: 1; padding: 0 0 0 2px; cursor: pointer; }
 .chip-x:hover { color: var(--text); }
 
