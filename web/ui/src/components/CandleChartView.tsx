@@ -49,8 +49,7 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
               const color = change >= 0
                 ? (isSource ? p.soxUp : p.up)
                 : (isSource ? p.soxDown : p.down);
-              const prefix = change >= 0 ? '+' : '-';
-              return `${p.seriesName} <span style="color:${color}">${prefix}${pct.toFixed(2)}%</span><br>
+              return `${p.seriesName} <span style="color:${color}">${pct.toFixed(2)}%</span><br>
                 开 ${open.toFixed(2)}　收 ${close.toFixed(2)}　低 ${low.toFixed(2)}　高 ${high.toFixed(2)}`;
             }).join('<br>');
           },
