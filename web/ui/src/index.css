@@ -5,7 +5,16 @@
    ═══════════════════════════════════════════ */
 :root {
   --ui-radius-scalar: 1;
+  /* Hermes 圆角体系（scalar=1 时：xs 2px / sm 4px / md 8px / lg 10px / xl 12px） */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-full: 9999px;
   --ui-stroke-nous: color-mix(in srgb, currentColor 3%, transparent);
+  /* 分栏 hairline：极淡的随文字色细线（Hermes 风格，分隔不用实色边框） */
+  --ui-hairline: color-mix(in srgb, currentColor 8%, transparent);
 
   /* Hermes 桌面字体栈（presets.ts SYSTEM_SANS/SYSTEM_MONO + 中文 fallback） */
   --font-sans: 'Segoe WPC', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
@@ -91,6 +100,7 @@ body {
 .toolbar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   padding: 14px 22px 10px;
+  border-bottom: 1px solid var(--ui-hairline);
 }
 .brand h1 { margin: 0; font-size: 17px; font-weight: 700; }
 .brand p { margin: 3px 0 0; font-size: 12.5px; color: var(--dim); }
@@ -98,11 +108,12 @@ body {
 
 .icon-btn {
   appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--text);
-  width: 38px; height: 38px; border-radius: 10px; font-size: 17px; cursor: pointer;
+  width: 38px; height: 38px; border-radius: var(--radius-sm); font-size: 17px; cursor: pointer;
+  transition: border-color 150ms ease-out, background 150ms ease-out, color 150ms ease-out;
 }
 .icon-btn:hover { border-color: var(--accent); }
 
-.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--panel); box-shadow: var(--shadow); flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--panel); box-shadow: var(--shadow); flex-wrap: wrap; }
 .seg button {
   appearance: none; border: none; background: transparent; color: var(--dim);
   padding: 7px 12px; font-size: 13.5px; cursor: pointer;
@@ -128,18 +139,18 @@ body {
 .ctrl { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .lbl { font-size: 11.5px; font-weight: 600; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; }
 
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dim); padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--chip-bg); cursor: pointer; user-select: none; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dim); padding: 5px 11px; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--chip-bg); cursor: pointer; user-select: none; transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out; }
 .chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .chip input { display: none; }
 .chip.on { color: var(--text); border-color: var(--accent); }
 
-.controls button { appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--dim); padding: 6px 12px; font-size: 13.5px; border-radius: 8px; cursor: pointer; }
+.controls button { appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--dim); padding: 6px 12px; font-size: 13.5px; border-radius: var(--radius-sm); cursor: pointer; transition: border-color 150ms ease-out, background 150ms ease-out, color 150ms ease-out; }
 .controls button:hover { color: var(--text); }
 .controls button.active { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
 
-.chart-box { flex: 1 1 auto; min-height: 300px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: var(--panel); box-shadow: var(--shadow); }
+.chart-box { flex: 1 1 auto; min-height: 300px; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--panel); box-shadow: var(--shadow); }
 
-.status { padding: 8px 22px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--border); line-height: 1.6; }
+.status { padding: 8px 22px; font-size: 13px; color: var(--dim); border-top: 1px solid var(--ui-hairline); line-height: 1.6; }
 .auto-refresh { margin-left: 14px; color: var(--accent); }
 
 /* ---- 搜索框 ---- */
@@ -248,7 +259,7 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--ui-bg-sidebar);
-  border-right: 1px solid var(--ui-stroke-tertiary);
+  border-right: 1px solid var(--ui-hairline);
   overflow: hidden;
   transition: width 0.25s ease;
 }
@@ -256,7 +267,7 @@ body {
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 10px; }
 .sidebar-brand { font-weight: 700; font-size: 13px; color: var(--ui-text-primary); white-space: nowrap; text-decoration: none; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
-.sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px; color: var(--ui-text-secondary); white-space: nowrap; text-decoration: none; }
+.sidebar-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-sm); color: var(--ui-text-secondary); white-space: nowrap; text-decoration: none; transition: background 150ms ease-out, color 150ms ease-out; }
 .sidebar-item:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
 .sidebar-item.active { background: var(--ui-accent); color: var(--ui-accent-fg); }
 .sidebar-icon { font-size: 15px; flex-shrink: 0; }
@@ -279,7 +290,7 @@ body {
 .sidebar-handle:hover { background: var(--ui-accent); color: var(--ui-accent-fg); opacity: 1; }
 .page-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
 .topnav { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
-.topnav-link { padding: 6px 12px; border-radius: 6px; font-size: 13.5px; color: var(--ui-text-secondary); text-decoration: none; }
+.topnav-link { padding: 6px 12px; border-radius: var(--radius-sm); font-size: 13.5px; color: var(--ui-text-secondary); text-decoration: none; transition: background 150ms ease-out, color 150ms ease-out; }
 .topnav-link:hover { color: var(--ui-text-primary); background: var(--ui-bg-subtle); }
 .topnav-link.active { color: var(--ui-text-primary); font-weight: 600; }
 .topnav.loading { animation: navbarPulse 1s ease infinite; }
@@ -312,7 +323,7 @@ body {
   z-index: 50;
   min-width: 160px;
   padding: 4px;
-  border-radius: calc(var(--ui-radius-scalar) * 0.5rem);
+  border-radius: var(--radius-md);
   background: var(--ui-bg-popover);
   border: 1px solid var(--ui-stroke-nous);
   box-shadow: var(--ui-shadow-nous);
@@ -322,13 +333,30 @@ body {
 }
 .theme-menu-item {
   padding: 7px 10px;
-  border-radius: calc(var(--ui-radius-scalar) * 0.375rem);
+  border-radius: var(--radius-xs);
   background: none;
   border: none;
   color: var(--ui-text-secondary);
   font-size: 13px;
   text-align: left;
   cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out;
 }
 .theme-menu-item:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
 .theme-menu-item.active { color: var(--ui-text-primary); font-weight: 600; }
+
+/* ===== Hermes 风格：焦点环 + 滚动条 ===== */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ui-accent) 55%, transparent);
+  outline-offset: 1px;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: var(--ui-stroke-tertiary);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--ui-text-tertiary); }
+::-webkit-scrollbar-track { background: transparent; }
