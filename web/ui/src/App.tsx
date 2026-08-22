@@ -4,6 +4,10 @@ import { PlaceholderPage } from './components/PlaceholderPage';
 import { CnSinglePage } from './pages/CnSinglePage';
 import { CnDashPage } from './pages/CnDashPage';
 import { UsSinglePage } from './pages/UsSinglePage';
+import { AccountsPage } from './pages/AccountsPage';
+import { AccountPage } from './pages/AccountPage';
+import { WatchlistPage } from './pages/WatchlistPage';
+import { BriefPage } from './pages/BriefPage';
 
 /** 路由：Layout 承载侧栏(首层)+顶栏(第二层)，各域页作为 Outlet。
  * 设计依据：docs/WEBSITE_NAVIGATION_STRUCTURE.md §4/§8。
@@ -34,8 +38,10 @@ const routes = [
       { path: 'intel/signals', element: <PlaceholderPage title="信号构建" desc="情报 → 策略信号（预留设计）——M2 实施" /> },
 
       // 账户（占位；动态刷新 P2）
-      { path: 'accounts', element: <PlaceholderPage title="账户总览" desc="模拟账户列表 + 总资产 + 自动刷新开关——P2 实施" /> },
-      { path: 'accounts/premarket', element: <PlaceholderPage title="盘前观察池" desc="复用 quant.reporting watchlist——P2 实施" /> },
+      { path: 'accounts', element: <AccountsPage /> },
+      { path: 'accounts/brief', element: <BriefPage /> },
+      { path: 'accounts/:accountId', element: <AccountPage /> },
+      { path: 'accounts/:accountId/watchlist', element: <WatchlistPage /> },
 
       // 配置（占位；策略参数编辑器 M1.5 只读版先行）
       { path: 'config/strategies', element: <PlaceholderPage title="策略参数" desc="run 配置编辑器——M1.5 只读版先行" /> },

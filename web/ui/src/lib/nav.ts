@@ -46,7 +46,7 @@ export const DOMAINS: Domain[] = [
     id: 'accounts', label: '账户', icon: '💰', defaultPath: '/accounts',
     pages: [
       { to: '/accounts', label: '总览' },
-      { to: '/accounts/premarket', label: '盘前观察池' },
+      { to: '/accounts/brief', label: '每日简报' },
     ],
   },
   {

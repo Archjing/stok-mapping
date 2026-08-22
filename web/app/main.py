@@ -339,6 +339,144 @@ def search(
     return {"items": search_instruments(q, kind)}
 
 
+# ═══════════ 账户域（P2：复用 quant.reporting 只读，口径与 CLI 一致） ═══════════
+# 数据链路与 `quant site build` / `daily-brief` 完全相同：
+#   accounts = load_simulated_accounts(config) → SQLite 帧 → _meta_for_account
+#   watchlist = export_premarket_watchlist(account_id=...)（复用 panel 缓存）
+WATCHLIST_HEADERS = [
+    "动作", "信号动作", "股票代码", "股票名称", "收盘价", "当前权重", "目标权重",
+    "权重变化", "持仓天数", "动量分数", "当日排名", "信号持有天数", "成交价口径",
+    "最大成交参与率", "执行风险提示", "账户说明", "观察理由",
+]
+
+
+def _quant() -> dict[str, Any]:
+    """延迟导入 quant.*（依赖仓库根路径与全量依赖，避免 web 独立运行被拖累）。"""
+    from quant.execution.accounts import load_simulated_accounts
+    from quant.reporting.premarket_watchlist import (
+        _cell_title,
+        _display_cell,
+        _watchlist_cell_class,
+        export_premarket_watchlist,
+    )
+    from quant.reporting.quant_static_site import _meta_for_account, _read_account_frames
+
+    return {
+        "load_accounts": load_simulated_accounts,
+        "export_watchlist": export_premarket_watchlist,
+        "display_cell": _display_cell,
+        "cell_title": _cell_title,
+        "cell_class": _watchlist_cell_class,
+        "meta_for_account": _meta_for_account,
+        "read_frames": _read_account_frames,
+    }
+
+
+def _accounts_metas(q: dict[str, Any]) -> list[dict[str, Any]]:
+    import yaml
+
+    from quant.reporting.paths import slug
+
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")) or {}
+    metas = []
+    for account in q["load_accounts"](cfg, ROOT):
+        frames = q["read_frames"](account)
+        meta = q["meta_for_account"](account, frames)
+        meta["slug"] = slug(str(account.account_id))
+        metas.append(meta)
+    return metas
+
+
+@app.get("/api/accounts")
+def api_accounts() -> dict[str, Any]:
+    return {"accounts": _accounts_metas(_quant())}
+
+
+@app.get("/api/accounts/brief")
+def api_accounts_brief() -> dict[str, Any]:
+    metas = _accounts_metas(_quant())
+    latest_dates = sorted(m.get("latest_bill_date") for m in metas if m.get("latest_bill_date"))
+    return {
+        "accounts": metas,
+        "account_count": len(metas),
+        "ready_accounts": sum(1 for m in metas if m.get("latest_bill_date")),
+        "latest_bill_date": latest_dates[-1] if latest_dates else "暂无",
+    }
+
+
+@app.get("/api/accounts/{account_id}")
+def api_account_detail(account_id: str) -> dict[str, Any]:
+    import yaml
+
+    q = _quant()
+    from quant.reporting.paths import slug
+
+    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")) or {}
+    for account in q["load_accounts"](cfg, ROOT):
+        if slug(str(account.account_id)) != account_id:
+            continue
+        frames = q["read_frames"](account)
+        meta = q["meta_for_account"](account, frames)
+        meta.update(
+            {
+                "slug": account_id,
+                "strategy_id": str(getattr(account, "strategy_id", "") or ""),
+                "simulation_start_date": str(getattr(account, "simulation_start_date", "") or ""),
+                "initial_cash": getattr(account, "initial_cash", None),
+                "price_mode": str(getattr(account, "price_mode", "") or ""),
+                "name": str(account.name),
+            }
+        )
+        return meta
+    raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+
+
+@app.get("/api/accounts/{account_id}/watchlist")
+def api_account_watchlist(account_id: str) -> dict[str, Any]:
+    q = _quant()
+    try:
+        result = q["export_watchlist"](config_path=ROOT / "config.yaml", account_id=account_id)
+    except Exception as exc:  # noqa: BLE001 — 面板/数据缺失统一转 404
+        raise HTTPException(status_code=404, detail=f"观察池生成失败：{exc}") from exc
+
+    import pandas as pd
+
+    watchlist = pd.read_csv(result["watchlist"], encoding="utf-8-sig")
+    rows = []
+    for _, row in watchlist.iterrows():
+        action = str(row.get("动作", ""))
+        cls = ""
+        if "买" in action or "加仓" in action:
+            cls = "buy"
+        elif "卖" in action or "减仓" in action:
+            cls = "sell"
+        elif "持有" in action:
+            cls = "hold"
+        cells = []
+        for header in WATCHLIST_HEADERS:
+            if header not in watchlist.columns:
+                cells.append({"value": "", "title": "", "cls": ""})
+                continue
+            raw = row[header]
+            display = q["display_cell"](header, raw)
+            cells.append(
+                {"value": display, "title": q["cell_title"](header, raw, display), "cls": q["cell_class"](header)}
+            )
+        rows.append({"class": cls, "cells": cells})
+    return {
+        "account_id": account_id,
+        "headers": WATCHLIST_HEADERS,
+        "rows": rows,
+        "overview_cards": [
+            {"label": "当前策略", "value": str(result.get("strategy_display_name", "") or "")},
+            {"label": "信号日期", "value": str(result.get("signal_date", "") or "")},
+            {"label": "盘前检查时间", "value": str(result.get("check_time", "") or "")},
+            {"label": "观察池行数", "value": str(result.get("rows", 0))},
+        ],
+        "account_summary_cards": result.get("account_summary_cards") or [],
+    }
+
+
 # 生产托管前端构建产物（web/ui/dist 存在时）
 class SPAStaticFiles(StaticFiles):
     """SPA history 模式回退：静态文件未命中（如刷新 /market/cn 深链）时返回 index.html。
