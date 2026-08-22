@@ -902,6 +902,23 @@ def api_research_comparison(slug: str) -> dict[str, Any]:
 STORAGES = ("us_daily_bars", "etf_qfq")
 
 
+# 常用标的的中文名映射（本地无名称表，补全下拉/输入框可读性；未知回落 purpose/symbol）
+KNOWN_SYMBOL_NAMES: dict[str, str] = {
+    "^SOX": "费城半导体指数",
+    "^VIX": "CBOE 恐慌指数",
+    "^IXIC": "纳斯达克综合指数",
+    "^NDX": "纳斯达克100",
+    "^DJI": "道琼斯工业平均",
+    "^GSPC": "标普500",
+    "SH.512480": "国联安半导体ETF",
+    "SH.588200": "科创芯片ETF",
+    "SH.510050": "华夏上证50ETF",
+    "SH.510300": "华泰柏瑞沪深300ETF",
+    "SH.510500": "南方中证500ETF",
+    "SH.159915": "易方达创业板ETF",
+}
+
+
 @app.get("/api/research/symbols")
 def api_research_symbols() -> dict[str, list[dict[str, str]]]:
     """各存储类型的可用标的（symbol + 名称），供任意两标的对比选择。"""
@@ -917,21 +934,18 @@ def api_research_symbols() -> dict[str, list[dict[str, str]]]:
             ORDER BY b.symbol
             """
         ).fetchall()
-        result["us_daily_bars"] = [{"symbol": symbol, "label": label or symbol} for symbol, label in rows]
+        result["us_daily_bars"] = [
+            {"symbol": symbol, "label": str(KNOWN_SYMBOL_NAMES.get(symbol, purpose or symbol))} for symbol, purpose in rows
+        ]
         con.close()
     etf_db = ROOT / "data" / "etf_history.sqlite"
     if etf_db.is_file():
         con = sqlite3.connect(etf_db)
         try:
-            rows = con.execute(
-                """
-                SELECT DISTINCT b.symbol, COALESCE(m.name, m.short_name, '')
-                FROM market_etf_daily_bars b
-                LEFT JOIN market_etfs m ON b.symbol = m.symbol
-                ORDER BY b.symbol
-                """
-            ).fetchall()
-            result["etf_qfq"] = [{"symbol": symbol, "label": label or symbol} for symbol, label in rows]
+            rows = con.execute("SELECT DISTINCT symbol FROM market_etf_daily_bars ORDER BY symbol").fetchall()
+            result["etf_qfq"] = [
+                {"symbol": symbol, "label": KNOWN_SYMBOL_NAMES.get(symbol, symbol)} for (symbol,) in rows
+            ]
         except sqlite3.OperationalError:
             pass
         con.close()

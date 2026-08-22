@@ -31,7 +31,7 @@ export function SearchSymbolBox({ placeholder = '搜索代码/名称', options, 
   return (
     <div className="searchbox">
       <input
-        value={open ? q : current?.symbol ?? ''}
+        value={open ? q : current ? `${current.label} ${current.symbol}` : ''}
         placeholder={placeholder}
         onChange={(e) => {
           setQ(e.target.value);
