@@ -41,11 +41,11 @@ export function AccountsMenu() {
   return (
     <div className="nav-menu" ref={rootRef}>
       <button
-        className={`topnav-link nav-menu-btn${open ? ' active' : ''}`}
+        className={`nav-menu-btn${open ? ' active' : ''}`}
         onClick={() => setOpen((v) => !v)}
         title="已启用的模拟账户"
       >
-        {open ? '模拟账户' : '模拟账户'}
+        模拟账户
         <span className="nav-menu-caret">{open ? '▲' : '▼'}</span>
       </button>
       {open && (

@@ -449,7 +449,24 @@ body {
 
 /* ===== 顶栏下拉菜单（模拟账户）===== */
 .nav-menu { position: relative; display: inline-flex; }
-.nav-menu-btn { display: inline-flex; align-items: center; gap: 5px; }
+.nav-menu-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  color: var(--ui-text-secondary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.nav-menu-btn:hover { color: var(--ui-text-primary); background: var(--ui-bg-subtle); }
+.nav-menu-btn.active { color: var(--ui-text-primary); font-weight: 600; }
 .nav-menu-caret { font-size: 9px; color: var(--ui-text-tertiary); }
 .nav-menu-panel {
   position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
