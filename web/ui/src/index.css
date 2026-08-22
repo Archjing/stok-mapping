@@ -1,30 +1,72 @@
-/* index-chart 现有明暗配色（沿用，暂不并入 Belafonte） */
-[data-theme='dark'] {
-  --bg: #0b0f17;
-  --panel: #151d2b;
-  --panel2: #1c2636;
-  --border: #2b3950;
-  --text: #eef3fa;
-  --dim: #a2b3c8;
-  --accent: #5b9cf5;
-  --accent-text: #ffffff;
-  --shadow: 0 6px 28px rgba(0, 0, 0, 0.4);
-  --chip-bg: #1c2636;
-  --warn: #f2cc60;
+/* ═══════════════════════════════════════════
+   UI token 体系 — 语义层 --ui-* + 主题注册表值层
+   主题：nous（Hermes 默认）/ belafonte（静态站点原主题）
+   事实源：docs/WEBSITE_NAVIGATION_STRUCTURE.md §10
+   ═══════════════════════════════════════════ */
+:root {
+  --ui-radius-scalar: 1;
+  --ui-stroke-nous: color-mix(in srgb, currentColor 3%, transparent);
+
+  /* 旧变量别名（惰性引用 --ui-*，随主题块解析；迁移完成后逐步移除） */
+  --bg: var(--ui-bg-app);
+  --panel: var(--ui-bg-panel);
+  --panel2: var(--ui-bg-subtle);
+  --border: var(--ui-stroke-tertiary);
+  --text: var(--ui-text-primary);
+  --dim: var(--ui-text-secondary);
+  --accent: var(--ui-accent);
+  --accent-text: var(--ui-accent-fg);
+  --chip-bg: var(--ui-bg-subtle);
+  --warn: var(--ui-warm);
+  --shadow: var(--ui-shadow-nous);
 }
 
-[data-theme='light'] {
-  --bg: #edf1f6;
-  --panel: #ffffff;
-  --panel2: #f5f7fa;
-  --border: #c9d3df;
-  --text: #101827;
-  --dim: #56697e;
-  --accent: #2563eb;
-  --accent-text: #ffffff;
-  --shadow: 0 6px 28px rgba(15, 23, 42, 0.1);
-  --chip-bg: #f5f7fa;
-  --warn: #b45309;
+/* ── nous dark：品牌蓝 + 奶油 ── */
+[data-theme='nous'][data-mode='dark'] {
+  --ui-bg-app: #0d2f86; --ui-bg-panel: #12378f; --ui-bg-subtle: #183f9a; --ui-bg-quaternary: #1b45a4;
+  --ui-text-primary: #ffe6cb; --ui-text-secondary: #b5c7f3; --ui-text-tertiary: #8f9fd8;
+  --ui-stroke-primary: #3a63bd; --ui-stroke-secondary: #234a9c; --ui-stroke-tertiary: #3158ad;
+  --ui-accent: #ffe6cb; --ui-accent-fg: #0d2f86; --ui-accent-secondary: #1540b1;
+  --ui-danger: #c0473a; --ui-warm: #e8a33d;
+  --ui-up: #ef232a; --ui-down: #14b143;
+  --ui-ma-5: #f6d365; --ui-ma-10: #ff8fab; --ui-ma-20: #b388ff; --ui-ma-30: #6ee7b7; --ui-ma-60: #4fc3f7;
+  --ui-shadow-nous: 0 6px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* ── nous light：冷白 + Nous 蓝 ── */
+[data-theme='nous'][data-mode='light'] {
+  --ui-bg-app: #f8faff; --ui-bg-panel: #ffffff; --ui-bg-subtle: #f2f5ff; --ui-bg-quaternary: #eff4ff;
+  --ui-text-primary: #17171a; --ui-text-secondary: #666678; --ui-text-tertiary: #9aa0b4;
+  --ui-stroke-primary: rgba(0, 83, 253, 0.30); --ui-stroke-secondary: rgba(0, 83, 253, 0.24); --ui-stroke-tertiary: rgba(0, 83, 253, 0.22);
+  --ui-accent: #0053fd; --ui-accent-fg: #fcfcfc; --ui-accent-secondary: #e6eeff;
+  --ui-danger: #c72e4d; --ui-warm: #e8a33d;
+  --ui-up: #dc2626; --ui-down: #16a34a;
+  --ui-ma-5: #eab308; --ui-ma-10: #ec4899; --ui-ma-20: #8b5cf6; --ui-ma-30: #10b981; --ui-ma-60: #0ea5e9;
+  --ui-shadow-nous: 0 6px 28px rgba(15, 23, 42, 0.12);
+}
+
+/* ── belafonte night：深酒红 + 金色（静态站点原主题） ── */
+[data-theme='belafonte'][data-mode='dark'] {
+  --ui-bg-app: #20111b; --ui-bg-panel: #281822; --ui-bg-subtle: #2a1e26; --ui-bg-quaternary: #3d2d36;
+  --ui-text-primary: #b88f55; --ui-text-secondary: #96754e; --ui-text-tertiary: #6f5a43;
+  --ui-stroke-primary: #4a3a44; --ui-stroke-secondary: #3d2d36; --ui-stroke-tertiary: #3d2d36;
+  --ui-accent: #5a8a9a; --ui-accent-fg: #7fb4c4; --ui-accent-secondary: #233840;
+  --ui-danger: #d94a48; --ui-warm: #eaa549;
+  --ui-up: #d94a48; --ui-down: #14b143;
+  --ui-ma-5: #f6d365; --ui-ma-10: #ff8fab; --ui-ma-20: #b388ff; --ui-ma-30: #6ee7b7; --ui-ma-60: #4fc3f7;
+  --ui-shadow-nous: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ── belafonte day：暖羊皮纸 ── */
+[data-theme='belafonte'][data-mode='light'] {
+  --ui-bg-app: #fffaed; --ui-bg-panel: #ded8c8; --ui-bg-subtle: #e8e4dc; --ui-bg-quaternary: #ccc5b8;
+  --ui-text-primary: #45373c; --ui-text-secondary: #5e5252; --ui-text-tertiary: #8a827b;
+  --ui-stroke-primary: #8a827b; --ui-stroke-secondary: #b8b0a4; --ui-stroke-tertiary: #b8b0a4;
+  --ui-accent: #426a79; --ui-accent-fg: #2d4d59; --ui-accent-secondary: #cbd5d9;
+  --ui-danger: #be100e; --ui-warm: #d08b30;
+  --ui-up: #be100e; --ui-down: #16a34a;
+  --ui-ma-5: #d08b30; --ui-ma-10: #ec4899; --ui-ma-20: #8b5cf6; --ui-ma-30: #10b981; --ui-ma-60: #0ea5e9;
+  --ui-shadow-nous: 0 1px 2px rgba(69, 55, 60, 0.06);
 }
 
 * { box-sizing: border-box; }
