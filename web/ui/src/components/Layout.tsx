@@ -1,66 +1,78 @@
-import { Link, NavLink, Outlet, useNavigation } from 'react-router-dom';
+import { Link, NavLink, Outlet, useLocation, useNavigation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import type { AppTheme } from '../chart/theme';
 import { ThemeContext, applyRootTheme, loadTheme, saveTheme } from './ThemeContext';
+import { ThemeSwitcher } from './ThemeSwitcher';
+import { DOMAINS, domainForPath, type Domain } from '../lib/nav';
 
-/** 导航项：label + 目标路由。首页也带同一导航栏。 */
-const NAV: Array<{ to: string; label: string }> = [
-  { to: '/', label: '首页' },
-  { to: '/market/cn', label: 'A股单标的' },
-  { to: '/market/dash', label: 'A股对照' },
-  { to: '/market/us', label: '美股单标的' },
-];
+const SIDEBAR_KEY = 'website-sidebar-collapsed';
 
-/** 顶栏右侧：主题切换按钮（临时版，Task 6 由 ThemeSwitcher 取代）。 */
-function ThemeToggle({ theme, setTheme }: { theme: AppTheme; setTheme: (t: AppTheme) => void }) {
-  const next: AppTheme = { themeId: 'nous', mode: theme.mode === 'dark' ? 'light' : 'dark' };
+function initialCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/** 侧栏（第一层）：领域切换；收起后宽度 0，由 .sidebar-handle 展开。 */
+function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  const location = useLocation();
+  const activeId = domainForPath(location.pathname)?.id;
   return (
-    <button
-      className="icon-btn"
-      onClick={() => setTheme(next)}
-      title="切换明暗主题"
-    >
-      {theme.mode === 'dark' ? '☀️' : '🌙'}
-    </button>
+    <aside className={`sidebar${collapsed ? ' collapsed' : ''}`}>
+      <div className="sidebar-head">
+        <Link to="/market/cn" className="sidebar-brand">
+          stok-mapping
+        </Link>
+        <button className="icon-btn sidebar-toggle" onClick={onToggle} title={collapsed ? '展开侧栏' : '收起侧栏'}>
+          {collapsed ? '▶' : '◀'}
+        </button>
+      </div>
+      <nav className="sidebar-nav">
+        {DOMAINS.map((d) => (
+          <NavLink
+            key={d.id}
+            to={d.defaultPath}
+            className={`sidebar-item${activeId === d.id ? ' active' : ''}`}
+            title={d.label}
+          >
+            <span className="sidebar-icon">{d.icon}</span>
+            <span className="sidebar-label">{d.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+    </aside>
   );
 }
 
-/** 顶栏左侧：品牌 + 副标题。 */
-function Brand() {
-  return (
-    <div className="brand">
-      <Link to="/" className="brand-link">
-        <h1>stok-mapping 网站控制台</h1>
-      </Link>
-      <p>A股 / 美股 指数与个股走势 · 归一化对照看板</p>
-    </div>
-  );
-}
-
-/** 顶部固定导航栏。 */
-function Navbar({ className }: { className?: string }) {
+/** 顶栏（第二层）：当前域的子页 tab。 */
+function TopNav({ domain }: { domain: Domain }) {
   const nav = useNavigation();
   return (
-    <nav className={`navbar${nav.state === 'loading' ? ' loading' : ''}${className ? ' ' + className : ''}`}>
-      {NAV.map((n) => (
+    <nav className={`topnav${nav.state === 'loading' ? ' loading' : ''}`}>
+      {domain.pages.map((p) => (
         <NavLink
-          key={n.to}
-          to={n.to}
-          end={n.to === '/'}
+          key={p.to}
+          to={p.to}
+          end={p.to === domain.defaultPath}
           className={({ isActive, isPending }) =>
-            isPending ? 'nav-link pending' : isActive ? 'nav-link active' : 'nav-link'
+            isPending ? 'topnav-link pending' : isActive ? 'topnav-link active' : 'topnav-link'
           }
         >
-          {n.label}
+          {p.label}
         </NavLink>
       ))}
     </nav>
   );
 }
 
-/** 全局布局：顶栏导航 + 内容区（<Outlet />）。临时版，Task 6 重写为双层。 */
+/** 全局布局：侧栏（首层）+ 顶栏（第二层）+ 内容区（<Outlet />）。 */
 export function Layout() {
   const [theme, setTheme] = useState<AppTheme>(loadTheme);
+  const [collapsed, setCollapsed] = useState<boolean>(initialCollapsed);
+  const location = useLocation();
+  const domain = domainForPath(location.pathname) ?? DOMAINS[0];
 
   useEffect(() => {
     applyRootTheme(theme);
@@ -70,23 +82,31 @@ export function Layout() {
     saveTheme(theme);
   }, [theme]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+    } catch {
+      /* 忽略 */
+    }
+  }, [collapsed]);
+
   return (
     <ThemeContext.Provider value={theme}>
-      <div className="page">
-        <header className="toolbar">
-          <Brand />
-          <Navbar />
-          <div className="toolbar-right">
-            <ThemeToggle theme={theme} setTheme={setTheme} />
-          </div>
-        </header>
-
-        <main className="content">
-          <Outlet />
-        </main>
+      <div className={`page${collapsed ? ' sidebar-collapsed' : ''}`}>
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
+        <button className="sidebar-handle" onClick={() => setCollapsed(false)} title="展开侧栏" />
+        <div className="page-main">
+          <header className="toolbar">
+            <TopNav domain={domain} />
+            <div className="toolbar-right">
+              <ThemeSwitcher theme={theme} onChange={setTheme} />
+            </div>
+          </header>
+          <main className="content">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </ThemeContext.Provider>
   );
 }
-
-export { Navbar, Brand, ThemeToggle };
