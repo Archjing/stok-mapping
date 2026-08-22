@@ -24,7 +24,10 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
         legend: {
           top: 8,
           left: 8,
-          data: [data.source.label, data.target.label],
+          data: [
+            { name: `${data.source.label}（橙涨/蓝跌）`, itemStyle: { color: p.soxUp } },
+            { name: `${data.target.label}（红涨/绿跌）`, itemStyle: { color: p.up } },
+          ],
           textStyle: { color: p.dim, fontSize: 11 },
         },
         tooltip: {
@@ -70,10 +73,10 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
             data: toECharts(data.source.data),
             yAxisIndex: 0,
             itemStyle: {
-              color: p.up,
-              color0: p.down,
-              borderColor: p.up,
-              borderColor0: p.down,
+              color: p.soxUp,
+              color0: p.soxDown,
+              borderColor: p.soxUp,
+              borderColor0: p.soxDown,
             },
           },
           {
@@ -82,11 +85,10 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
             data: toECharts(data.target.data),
             yAxisIndex: 1,
             itemStyle: {
-              color: 'rgba(0,0,0,0)',
-              color0: 'rgba(0,0,0,0)',
-              borderColor: p.down,
+              color: p.up,
+              color0: p.down,
+              borderColor: p.up,
               borderColor0: p.down,
-              borderWidth: 1,
             },
           },
         ],
@@ -105,8 +107,8 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
     <div className="page-view">
       <div ref={ref} style={{ width: '100%', height: 520 }} />
       <p className="notice-text">
-        蜡烛对照：{data.source.label}（左轴）与 {data.target.label}（右轴），共同交易日 {data.startDate} 至{' '}
-        {data.endDate}，按各自价位独立缩放。涨红跌绿口径与行情一致。
+        蜡烛对照：{data.source.label}（左轴，<b>橙涨/蓝跌</b>）与 {data.target.label}（右轴，<b>红涨/绿跌</b>）。共同交易日{' '}
+        {data.startDate} 至 {data.endDate}，按各自价位独立缩放。阳线 = 收 &gt; 开，阴线 = 收 &lt; 开。
       </p>
     </div>
   );

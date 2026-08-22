@@ -21,6 +21,9 @@ export interface ThemePalette {
   tooltipBorder: string;
   up: string;
   down: string;
+  /** 美股标的涨/跌色（橙涨/蓝跌）；目标标的使用 A 股通用红涨/绿跌。 */
+  soxUp: string;
+  soxDown: string;
   ma: Record<MaSpan, string>;
 }
 
@@ -34,6 +37,7 @@ export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
       axisLine: '#3a63bd', splitLine: '#234a9c',
       tooltipBg: '#183f9a', tooltipBorder: '#3158ad',
       up: '#ef232a', down: '#14b143',
+      soxUp: '#e8862e', soxDown: '#3b82f6',
       ma: { 5: '#f6d365', 10: '#ff8fab', 20: '#b388ff', 30: '#6ee7b7', 60: '#4fc3f7' },
     },
     light: {
@@ -42,6 +46,7 @@ export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
       axisLine: '#0053fd', splitLine: 'rgba(0,83,253,0.24)',
       tooltipBg: '#f2f5ff', tooltipBorder: 'rgba(0,83,253,0.22)',
       up: '#dc2626', down: '#16a34a',
+      soxUp: '#e8862e', soxDown: '#3b82f6',
       ma: { 5: '#eab308', 10: '#ec4899', 20: '#8b5cf6', 30: '#10b981', 60: '#0ea5e9' },
     },
   },
@@ -52,6 +57,7 @@ export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
       axisLine: '#3d2d36', splitLine: '#2a1e26',
       tooltipBg: '#2a1e26', tooltipBorder: '#3d2d36',
       up: '#d94a48', down: '#14b143',
+      soxUp: '#e8862e', soxDown: '#3b82f6',
       ma: { 5: '#f6d365', 10: '#ff8fab', 20: '#b388ff', 30: '#6ee7b7', 60: '#4fc3f7' },
     },
     light: {
@@ -60,6 +66,7 @@ export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
       axisLine: '#8a827b', splitLine: '#e8e4dc',
       tooltipBg: '#f3ead6', tooltipBorder: '#b8b0a4',
       up: '#be100e', down: '#16a34a',
+      soxUp: '#e8862e', soxDown: '#3b82f6',
       ma: { 5: '#d08b30', 10: '#8b5cf6', 20: '#426a79', 30: '#16a34a', 60: '#0ea5e9' },
     },
   },
