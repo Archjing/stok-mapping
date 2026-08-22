@@ -42,8 +42,10 @@ export function StrategyExplain({ accountId }: { accountId: string }) {
             <table className="report-table">
               <thead>
                 <tr>
-                  {data.research_example.headers.map((h) => (
-                    <th key={h}>{h}</th>
+                  {data.research_example.headers.map((h, i) => (
+                    <th key={h} className={i > 0 ? 'num-right' : ''}>
+                      {h}
+                    </th>
                   ))}
                 </tr>
               </thead>
