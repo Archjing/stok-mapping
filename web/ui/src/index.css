@@ -5,13 +5,13 @@
    ═══════════════════════════════════════════ */
 :root {
   --ui-radius-scalar: 1;
-  /* Hermes 圆角体系（scalar=1 时：xs 2px / sm 4px / md 8px / lg 10px / xl 12px） */
-  --radius-xs: 2px;
-  --radius-sm: 4px;
-  --radius-md: 8px;
+  /* 圆角：仅图表容器（--radius-lg）保留圆角，其余控件直角 */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
   --radius-lg: 10px;
-  --radius-xl: 12px;
-  --radius-full: 9999px;
+  --radius-xl: 0;
+  --radius-full: 0;
   --ui-stroke-nous: color-mix(in srgb, currentColor 3%, transparent);
   /* 分栏 hairline：极淡的随文字色细线（Hermes 风格，分隔不用实色边框） */
   --ui-hairline: color-mix(in srgb, currentColor 8%, transparent);
@@ -128,7 +128,7 @@ body {
 .kline { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0 22px; gap: 10px; }
 
 .readout { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono); font-size: 12.5px; }
-.tf-badge { align-self: center; font-size: 12.5px; font-weight: 600; color: var(--dim); border: 1px solid var(--border); border-radius: 6px; padding: 2px 9px; line-height: 1.4; }
+.tf-badge { align-self: center; font-size: 12.5px; font-weight: 600; color: var(--dim); border: 1px solid var(--border); border-radius: 0; padding: 2px 9px; line-height: 1.4; }
 .r-name { font-size: 15px; font-weight: 700; }
 .r-code { font-size: 12.5px; color: var(--dim); margin-left: 4px; }
 .r-price { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -170,7 +170,7 @@ body {
 .searchbox-menu li:hover { background: var(--panel2); }
 .sb-name { color: var(--text); }
 .sb-code { color: var(--dim); font-size: 12.5px; }
-.sb-kind { margin-left: auto; font-size: 11.5px; color: var(--dim); border: 1px solid var(--border); border-radius: 4px; padding: 0 6px; }
+.sb-kind { margin-left: auto; font-size: 11.5px; color: var(--dim); border: 1px solid var(--border); border-radius: 0; padding: 0 6px; }
 
 /* ---- 对照看板 ---- */
 .dash { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0 22px; gap: 10px; }
@@ -182,7 +182,7 @@ body {
 .chart-wrap { display: flex; gap: 12px; min-height: 0; flex: 1 1 auto; }
 .chart-wrap .chart-box { flex: 1 1 auto; }
 .norm-panel {
-  width: 128px; flex: 0 0 128px; border: 1px solid var(--border); border-radius: var(--radius-lg);
+  width: 128px; flex: 0 0 128px; border: 1px solid var(--border); border-radius: 0;
   background: var(--panel); box-shadow: var(--shadow); padding: 12px 10px; overflow-y: auto;
 }
 .norm-title { font-size: 12px; font-weight: 600; color: var(--dim); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
@@ -205,7 +205,7 @@ body {
 /* ---- 全局导航栏 ---- */
 .navbar {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 5px; border: 1px solid var(--border); border-radius: 12px;
+  padding: 5px; border: 1px solid var(--border); border-radius: 0;
   background: var(--panel); box-shadow: var(--shadow);
 }
 .nav-link {
@@ -241,7 +241,7 @@ body {
 .card {
   display: flex; flex-direction: column; gap: 8px;
   text-decoration: none; color: var(--text);
-  border: 1px solid var(--border); border-radius: 16px; padding: 24px;
+  border: 1px solid var(--border); border-radius: 0; padding: 24px;
   background: var(--panel); box-shadow: var(--shadow);
   transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -326,7 +326,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: 0;
   font-size: 13px;
   font-family: var(--font-sans);
   cursor: pointer;
