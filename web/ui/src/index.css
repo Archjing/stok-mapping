@@ -491,3 +491,18 @@ body {
 .strategy-heading { font-size: 14px; font-weight: 700; margin: 14px 0 8px; }
 .strategy-body { font-size: 13px; line-height: 1.7; color: var(--ui-text-primary); margin: 6px 0; }
 .strategy-example { margin-top: 8px; }
+
+/* ===== 任意两标的对比 ===== */
+.explore-form { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-bottom: 14px; }
+.explore-field { display: flex; align-items: center; gap: 8px; }
+.explore-select, .explore-input {
+  appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  height: 32px; padding: 0 10px; font-size: 13px; border-radius: var(--radius-sm); font-family: var(--font-sans);
+}
+.explore-select:focus, .explore-input:focus { outline: 2px solid color-mix(in srgb, var(--ui-accent) 55%, transparent); }
+.explore-btn {
+  appearance: none; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  height: 32px; padding: 0 14px; font-size: 13px; border-radius: var(--radius-sm); cursor: pointer;
+  transition: background 150ms ease-out, color 150ms ease-out;
+}
+.explore-btn:hover { background: var(--ui-bg-subtle); }

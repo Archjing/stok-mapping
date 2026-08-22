@@ -33,6 +33,7 @@ export const DOMAINS: Domain[] = [
       { to: '/research/strategies', label: '策略' },
       { to: '/research/sox-vs-512480', label: 'SOX对照' },
       { to: '/research/vix-vs-512480', label: 'VIX对照' },
+      { to: '/research/compare', label: '任意对比' },
       { to: '/research/wiki', label: '全景图' },
     ],
   },

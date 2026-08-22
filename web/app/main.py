@@ -838,6 +838,46 @@ def api_account_chart_page(account_id: str, chart_slug: str):
     return Response(_comparison_page_html(config=config, data=data), media_type="text/html; charset=utf-8")
 
 
+@app.get("/api/research/comparison/explore")
+def api_research_comparison_explore(
+    source: str,
+    source_storage: str,
+    target: str,
+    target_storage: str,
+    start: str | None = None,
+    title: str | None = None,
+    band_low: float | None = None,
+    band_high: float | None = None,
+    daily_mapping_pct: float | None = None,
+):
+    """声明式构建任意两标的对照图页：source/target 各配 symbol + storage。"""
+    from datetime import date
+
+    from quant.reporting.market_comparison_chart import (
+        ComparisonChartConfig,
+        ComparisonSeriesConfig,
+        build_comparison_chart_data,
+    )
+
+    if source_storage not in STORAGES or target_storage not in STORAGES:
+        raise HTTPException(status_code=400, detail=f"storage 必须为 {STORAGES}")
+    config = ComparisonChartConfig(
+        slug=f"{source}-vs-{target}",
+        title=title or f"{source} 与 {target} 对照图",
+        source=ComparisonSeriesConfig(symbol=source, label=source, storage=source_storage),
+        target=ComparisonSeriesConfig(symbol=target, label=target, storage=target_storage),
+        start_date=date.fromisoformat(start) if start else date(2025, 1, 1),
+        observation_band=(band_low, band_high) if band_low is not None and band_high is not None else None,
+        daily_mapping_pct=0.5 if daily_mapping_pct is None else daily_mapping_pct,
+        consecutive_days=3,
+        consecutive_daily_change_pct=0.0,
+    )
+    data = build_comparison_chart_data(root=ROOT, config=config)
+    from fastapi.responses import Response
+
+    return Response(_comparison_page_html(config=config, data=data), media_type="text/html; charset=utf-8")
+
+
 @app.get("/api/research/comparison/{slug}")
 def api_research_comparison(slug: str) -> dict[str, Any]:
     from quant.reporting.market_comparison_chart import build_comparison_chart_data
@@ -854,6 +894,34 @@ def api_research_comparison(slug: str) -> dict[str, Any]:
     if data is None:
         raise HTTPException(status_code=404, detail=f"对照图 {slug} 数据不足（本地历史缺失）")
     return data
+
+
+# ═══════════ 任意两标的对比（复用标准化对照图管线）═══════════
+STORAGES = ("us_daily_bars", "etf_qfq")
+
+
+@app.get("/api/research/symbols")
+def api_research_symbols() -> dict[str, list[str]]:
+    """各存储类型的可用标的总览（任意两标的对比的选择源）。"""
+    result: dict[str, list[str]] = {"us_daily_bars": [], "etf_qfq": []}
+    us_db = ROOT / "data" / "us_market_history.sqlite"
+    if us_db.is_file():
+        con = sqlite3.connect(us_db)
+        result["us_daily_bars"] = [
+            row[0] for row in con.execute("SELECT DISTINCT symbol FROM us_daily_bars ORDER BY symbol")
+        ]
+        con.close()
+    etf_db = ROOT / "data" / "etf_history.sqlite"
+    if etf_db.is_file():
+        con = sqlite3.connect(etf_db)
+        try:
+            result["etf_qfq"] = [
+                row[0] for row in con.execute("SELECT DISTINCT symbol FROM market_etf_daily_bars ORDER BY symbol")
+            ]
+        except sqlite3.OperationalError:
+            pass
+        con.close()
+    return result
 
 
 @app.get("/api/accounts/{account_id}/charts")

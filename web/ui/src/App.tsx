@@ -12,6 +12,7 @@ import { LedgerPage } from './pages/LedgerPage';
 import { BriefPage } from './pages/BriefPage';
 import { ResearchComparisonPage } from './pages/ResearchComparisonPage';
 import { AccountChartsPage } from './pages/AccountChartsPage';
+import { ComparePage } from './pages/ComparePage';
 import { WikiPage } from './pages/WikiPage';
 
 /** 路由：Layout 承载侧栏(首层)+顶栏(第二层)，各域页作为 Outlet。
@@ -35,6 +36,7 @@ const routes = [
       { path: 'research/strategies', element: <PlaceholderPage title="策略列表" desc="已注册策略卡片（32 个）——M2 实施" /> },
       { path: 'research/sox-vs-512480', element: <ResearchComparisonPage slug="sox-vs-512480" title="^SOX 与半导体 ETF（512480）对照图" /> },
       { path: 'research/vix-vs-512480', element: <ResearchComparisonPage slug="vix-vs-512480" title="^VIX 与半导体 ETF（512480）对照图" /> },
+      { path: 'research/compare', element: <ComparePage /> },
       { path: 'research/wiki', element: <WikiPage /> },
       { path: 'research/runs/new', element: <PlaceholderPage title="回测运行器" desc="preset / strategy-set / run 配置选择——M2 实施" /> },
       { path: 'research/admission', element: <PlaceholderPage title="准入" desc="admission 窗口矩阵 / 约束审查——M2 实施" /> },
