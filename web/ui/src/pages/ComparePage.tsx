@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { SearchSymbolBox } from '../components/SearchSymbolBox';
+import { CandleChartView } from '../components/CandleChartView';
+import { fetchCandles, type CandleData } from '../api/research';
+import { useTheme } from '../components/ThemeContext';
 
 const STORAGE_LABELS: Record<string, string> = {
   us_daily_bars: '美股日线',
@@ -18,7 +21,9 @@ const PRESETS: { name: string; source: string; source_storage: string; target: s
   { name: '^SOX → 科创芯片ETF 588200', source: '^SOX', source_storage: 'us_daily_bars', target: 'SH.588200', target_storage: 'etf_qfq' },
 ];
 
-/** 任意两标的对比：选源/目标（storage + 可搜索标的）→ 声明式生成原站同款对照图页。 */
+type Mode = 'line' | 'candle';
+
+/** 任意两标的对比：折线（原站 SVG）或蜡烛（ECharts 双 K 线）。 */
 export function ComparePage() {
   const [symbols, setSymbols] = useState<Record<string, SymbolInfo[]>>({ us_daily_bars: [], etf_qfq: [] });
   const [loading, setLoading] = useState(true);
@@ -28,8 +33,12 @@ export function ComparePage() {
   const [target, setTarget] = useState('SH.512480');
   const [start, setStart] = useState('2025-01-01');
   const [end, setEnd] = useState('');
-  const [url, setUrl] = useState('');
+  const [mode, setMode] = useState<Mode>('line');
+  const [lineUrl, setLineUrl] = useState('');
+  const [candleData, setCandleData] = useState<CandleData | null>(null);
+  const [candleLoading, setCandleLoading] = useState(false);
   const [note, setNote] = useState('');
+  const theme = useTheme();
 
   useEffect(() => {
     fetch('/api/research/symbols')
@@ -44,6 +53,8 @@ export function ComparePage() {
   const sourceList = useMemo(() => symbols[sourceStorage] ?? [], [symbols, sourceStorage]);
   const targetList = useMemo(() => symbols[targetStorage] ?? [], [symbols, targetStorage]);
 
+  const params = () => new URLSearchParams({ source, source_storage: sourceStorage, target, target_storage: targetStorage, start }).toString();
+
   const build = () => {
     if (!source || !target) {
       setNote('请先选择源标的与目标标的。');
@@ -54,10 +65,23 @@ export function ComparePage() {
       return;
     }
     setNote('');
-    const params = new URLSearchParams({ source, source_storage: sourceStorage, target, target_storage: targetStorage, start });
-    if (end) params.set('end', end);
-    params.set('title', `${source} 与 ${target} 对照图`);
-    setUrl(`/api/research/comparison/explore?${params.toString()}`);
+    const base = params();
+    if (mode === 'line') {
+      setCandleData(null);
+      const p = new URLSearchParams(base);
+      if (end) p.set('end', end);
+      p.set('title', `${source} 与 ${target} 对照图`);
+      setLineUrl(`/api/research/comparison/explore?${p.toString()}`);
+    } else {
+      setLineUrl('');
+      setCandleLoading(true);
+      const p = new URLSearchParams(base);
+      if (end) p.set('end', end);
+      fetchCandles({ source, source_storage: sourceStorage, target, target_storage: targetStorage, start, end })
+        .then((d) => setCandleData(d))
+        .catch((e) => setNote(`蜡烛图加载失败：${e}`))
+        .finally(() => setCandleLoading(false));
+    }
   };
 
   const applyPreset = (p: (typeof PRESETS)[number]) => {
@@ -109,32 +133,32 @@ export function ComparePage() {
           <span className="explore-dash">–</span>
           <input className="explore-input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         </div>
+        <div className="seg">
+          <button className={mode === 'line' ? 'active' : ''} onClick={() => setMode('line')}>
+            折线
+          </button>
+          <button className={mode === 'candle' ? 'active' : ''} onClick={() => setMode('candle')}>
+            蜡烛
+          </button>
+        </div>
         <button className="explore-btn" onClick={build} disabled={loading}>
           {loading ? '加载标的……' : '生成对照图'}
         </button>
       </div>
       {note && <p className="notice-text">{note}</p>}
-      {url && (
+      {mode === 'line' && lineUrl && (
         <>
           <div className="explore-result-head">
             <h3 className="section-title">{source} 与 {target} 对照图</h3>
-            <button
-              className="explore-chip"
-              onClick={() => {
-                navigator.clipboard?.writeText(window.location.origin + url);
-                setNote('链接已复制。');
-              }}
-            >
+            <button className="explore-chip" onClick={() => { navigator.clipboard?.writeText(window.location.origin + lineUrl); setNote('链接已复制。'); }}>
               复制链接
             </button>
           </div>
-          <iframe
-            title={`${source} 与 ${target}`}
-            src={url}
-            style={{ width: '100%', height: 560, border: '1px solid var(--ui-hairline)' }}
-          />
+          <iframe title={`${source} 与 ${target}`} src={lineUrl} style={{ width: '100%', height: 560, border: '1px solid var(--ui-hairline)' }} />
         </>
       )}
+      {mode === 'candle' && candleData && <CandleChartView data={candleData} theme={theme} />}
+      {mode === 'candle' && candleLoading && !candleData && <p className="dim-text">载入蜡烛图……</p>}
     </div>
   );
 }

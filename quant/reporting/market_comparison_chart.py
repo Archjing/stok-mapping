@@ -260,6 +260,65 @@ def _source_path() -> Path:
     return Path(__file__).with_name("static") / "research" / "market-comparison.html"
 
 
+def _load_candles(*, root: Path, series: ComparisonSeriesConfig, start_date: pd.Timestamp, end_date: date | None = None) -> pd.DataFrame:
+    """读取完整 OHLC（蜡烛图数据），storage 分支与 _load_series 一致。"""
+    if series.storage == "us_daily_bars":
+        database_path = root / "data" / "us_market_history.sqlite"
+        if not database_path.is_file():
+            return pd.DataFrame(columns=["date", "open", "high", "low", "close"])
+        sql = "SELECT date, open, high, low, close FROM us_daily_bars WHERE symbol = ? AND date >= ?"
+        params: list[Any] = [series.symbol, start_date.date().isoformat()]
+        if end_date is not None:
+            sql += " AND date <= ?"
+            params.append(end_date.isoformat())
+        sql += " ORDER BY date"
+        with sqlite3.connect(database_path) as connection:
+            return pd.read_sql_query(sql, connection, params=params)
+    if series.storage == "etf_qfq":
+        database_path = root / "data" / "etf_history.sqlite"
+        if not database_path.is_file() or end_date is None:
+            return pd.DataFrame(columns=["date", "open", "high", "low", "close"])
+        frame = ETFHistoryReader(database_path).load_qfq_asof(
+            series.symbol, start_date.date(), end_date, end_date
+        )
+        wanted = [c for c in ("date", "open", "high", "low", "close") if c in frame.columns]
+        return frame[wanted].copy()
+    raise ValueError(f"unsupported comparison series storage: {series.storage}")
+
+
+def build_comparison_candle_data(*, root: Path, config: ComparisonChartConfig) -> dict[str, Any] | None:
+    """构建双蜡烛图数据：source/target 各自完整 OHLC，按共同交易日对齐。"""
+    source = _load_candles(root=root, series=config.source, start_date=config.start_timestamp, end_date=config.end_timestamp)
+    if source.empty:
+        return None
+    source["date"] = pd.to_datetime(source["date"], errors="coerce")
+    target_end = config.end_timestamp.date() if config.end_timestamp is not None else source["date"].max().date()
+    target = _load_candles(root=root, series=config.target, start_date=config.start_timestamp, end_date=target_end)
+    if target.empty:
+        return None
+    target["date"] = pd.to_datetime(target["date"], errors="coerce")
+    paired = source.merge(target, on="date", how="inner", suffixes=("_source", "_target")).dropna().sort_values("date")
+    if paired.empty:
+        return None
+    records = paired.to_dict("records")
+
+    def candle(row: dict[str, Any], suffix: str) -> list[float]:
+        return [
+            round(float(row[f"open{suffix}"]), 4),
+            round(float(row[f"high{suffix}"]), 4),
+            round(float(row[f"low{suffix}"]), 4),
+            round(float(row[f"close{suffix}"]), 4),
+        ]
+
+    return {
+        "source": {"symbol": config.source.symbol, "label": config.source.label, "data": [candle(r, "_source") for r in records]},
+        "target": {"symbol": config.target.symbol, "label": config.target.label, "data": [candle(r, "_target") for r in records]},
+        "dates": [pd.Timestamp(r["date"]).strftime("%Y-%m-%d") for r in records],
+        "startDate": pd.Timestamp(records[0]["date"]).strftime("%Y-%m-%d"),
+        "endDate": pd.Timestamp(records[-1]["date"]).strftime("%Y-%m-%d"),
+    }
+
+
 def render_comparison_chart_fragment(
     *,
     data: dict[str, Any] | None,

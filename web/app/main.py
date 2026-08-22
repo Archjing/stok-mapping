@@ -880,6 +880,42 @@ def api_research_comparison_explore(
     return Response(_comparison_page_html(config=config, data=data), media_type="text/html; charset=utf-8")
 
 
+@app.get("/api/research/comparison/candles")
+def api_research_comparison_candles(
+    source: str,
+    source_storage: str,
+    target: str,
+    target_storage: str,
+    start: str | None = None,
+    end: str | None = None,
+):
+    """双蜡烛图数据（OHLC 按共同交易日对齐），供前端 ECharts candlestick 渲染。"""
+    from datetime import date
+
+    from quant.reporting.market_comparison_chart import (
+        ComparisonChartConfig,
+        ComparisonSeriesConfig,
+        build_comparison_candle_data,
+    )
+
+    if source_storage not in STORAGES or target_storage not in STORAGES:
+        raise HTTPException(status_code=400, detail=f"storage 必须为 {STORAGES}")
+    config = ComparisonChartConfig(
+        slug=f"{source}-vs-{target}",
+        title=f"{source} 与 {target} 对照图",
+        source=ComparisonSeriesConfig(symbol=source, label=source, storage=source_storage),
+        target=ComparisonSeriesConfig(symbol=target, label=target, storage=target_storage),
+        start_date=date.fromisoformat(start) if start else date(2025, 1, 1),
+        end_date=date.fromisoformat(end) if end else None,
+        consecutive_days=3,
+        consecutive_daily_change_pct=0.0,
+    )
+    data = build_comparison_candle_data(root=ROOT, config=config)
+    if data is None:
+        raise HTTPException(status_code=404, detail="蜡烛图数据不足（本地历史缺失）")
+    return data
+
+
 @app.get("/api/research/comparison/{slug}")
 def api_research_comparison(slug: str) -> dict[str, Any]:
     from quant.reporting.market_comparison_chart import build_comparison_chart_data

@@ -43,6 +43,21 @@ export interface AccountChartItem {
   data: ComparisonData | null;
 }
 
+export interface CandleSeries {
+  symbol: string;
+  label: string;
+  /** ECharts candlestick 序列（open/high/low/close） */
+  data: number[][];
+}
+
+export interface CandleData {
+  source: CandleSeries;
+  target: CandleSeries;
+  dates: string[];
+  startDate: string;
+  endDate: string;
+}
+
 async function get<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -53,5 +68,19 @@ export const fetchComparison = (slug: string): Promise<ComparisonData> =>
   get(`/api/research/comparison/${slug}`);
 export const fetchAccountCharts = (accountId: string): Promise<{ charts: AccountChartItem[] }> =>
   get(`/api/accounts/${accountId}/charts`);
+
+export interface ExploreParams {
+  source: string;
+  source_storage: string;
+  target: string;
+  target_storage: string;
+  start?: string;
+  end?: string;
+}
+
+export const fetchCandles = (p: ExploreParams): Promise<CandleData> => {
+  const qs = new URLSearchParams({ ...p });
+  return get(`/api/research/comparison/candles?${qs.toString()}`);
+};
 
 export type { WatchlistData };
