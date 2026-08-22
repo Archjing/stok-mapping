@@ -37,37 +37,68 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           borderColor: p.border,
           textStyle: { color: p.text, fontSize: 12 },
           formatter: function (params: any) {
-            return params
-              .map((item: any) => {
-                const dataArr = item.data; // [open, close, low, high]，保持数组结构不变
-                const open = dataArr[0];
-                const close = dataArr[1];
-                const low = dataArr[2];
-                const high = dataArr[3];
-                const change = close - open;
-                const pct = (change / open) * 100;
-                const isSource = item.seriesName === data.source.label;
-                const changeColor =
-                  change >= 0 ? (isSource ? p.soxUp : p.up) : (isSource ? p.soxDown : p.down);
-                // 复刻 ECharts 默认蜡烛 tooltip 视觉：marker + 系列名 + OHLC 值（右对齐）
-                const marker =
-                  `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:${changeColor};"></span>`;
-                const nameStyle = `font-size:12px;color:${p.text};font-weight:400`;
-                const valueStyle = `font-size:14px;color:${p.text};font-weight:900`;
-                const values = [open, close, low, high]
-                  .map((v) => v.toFixed(2))
-                  .join('&nbsp;&nbsp;');
-                return (
-                  `<div style="margin:0;line-height:1;">` +
-                  marker +
-                  `<span style="${nameStyle};margin-left:2px">${item.seriesName}</span>` +
-                  `<span style="color:${changeColor};font-weight:900;margin-left:4px">${pct.toFixed(2)}%</span>` +
-                  `<span style="float:right;margin-left:20px;${valueStyle}">${values}</span>` +
-                  `<div style="clear:both"></div>` +
-                  `</div>`
-                );
-              })
-              .join('<div style="margin:10px 0 0;line-height:1;"></div>');
+            // 复刻 ECharts 默认蜡烛 tooltip：日期标题 + 每个标的区块（名称行 + OHLC 四行）。
+            // 只在“● 名称”行右侧追加当日涨跌幅（右对齐、颜色随涨跌），其余行保持默认。
+            var axisLabel = params.length ? params[0].axisValueLabel || params[0].axisValue : '';
+            var nameStyle = 'font-size:12px;color:' + p.text + ';font-weight:400';
+            var valueStyle = 'font-size:14px;color:' + p.text + ';font-weight:900';
+            var dims = [
+              { key: 'open', name: 'open' },
+              { key: 'close', name: 'close' },
+              { key: 'lowest', name: 'lowest' },
+              { key: 'highest', name: 'highest' },
+            ];
+            function fmt(v: number) {
+              return v.toLocaleString('en-US', { maximumFractionDigits: 20 });
+            }
+            var html =
+              '<div style="margin:0;line-height:1;">' +
+              '<div style="' + nameStyle + ';line-height:1;">' + axisLabel + '</div>' +
+              params
+                .map(function (item: any) {
+                  var dataArr = item.data; // [open, close, lowest, highest]
+                  var open = dataArr[0];
+                  var close = dataArr[1];
+                  var lowest = dataArr[2];
+                  var highest = dataArr[3];
+                  var change = close - open;
+                  var pct = (change / open) * 100;
+                  var isSource = item.seriesName === data.source.label;
+                  var changeColor =
+                    change >= 0 ? (isSource ? p.soxUp : p.up) : (isSource ? p.soxDown : p.down);
+                  var subMarker =
+                    '<span style="display:inline-block;vertical-align:middle;margin-right:8px;margin-left:3px;border-radius:4px;width:4px;height:4px;background-color:' +
+                    changeColor +
+                    ';"></span>';
+                  var ohlc = [open, close, lowest, highest];
+                  var label = [dims[0].name, dims[1].name, dims[2].name, dims[3].name];
+                  var subRows = ohlc
+                    .map(function (v, i) {
+                      return (
+                        '<div style="margin:10px 0 0;line-height:1;">' +
+                        subMarker +
+                        '<span style="' + nameStyle + ';margin-left:2px">' + label[i] + '</span>' +
+                        '<span style="float:right;margin-left:20px;' + valueStyle + '">' + fmt(v) + '</span>' +
+                        '<div style="clear:both"></div>' +
+                        '</div>'
+                      );
+                    })
+                    .join('');
+                  return (
+                    '<div style="margin:10px 0 0;line-height:1;">' +
+                    (item.marker || '') +
+                    '<span style="' + nameStyle + ';margin-left:2px">' + item.seriesName + '</span>' +
+                    '<span style="float:right;margin-left:20px;color:' + changeColor + ';' + valueStyle + '">' +
+                    pct.toFixed(2) + '%' +
+                    '</span>' +
+                    '<div style="clear:both"></div>' +
+                    subRows +
+                    '</div>'
+                  );
+                })
+                .join('') +
+              '</div>';
+            return html;
           },
         },
         grid: { left: 66, right: 70, top: 40, bottom: 64 },
