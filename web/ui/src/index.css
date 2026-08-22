@@ -262,7 +262,7 @@ body {
   border-right: 1px solid var(--ui-hairline);
   transition: width 0.25s ease;
 }
-.page.sidebar-collapsed .sidebar { width: 0; }
+.page.sidebar-collapsed .sidebar { width: 44px; }
 .sidebar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 10px; }
 .sidebar-brand { font-weight: 700; font-size: 13px; color: var(--ui-text-primary); white-space: nowrap; text-decoration: none; }
 .sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 4px 8px; }
@@ -271,7 +271,18 @@ body {
 .sidebar-item.active { background: var(--ui-accent); color: var(--ui-accent-fg); }
 .sidebar-icon { font-size: 15px; flex-shrink: 0; }
 
-/* 收起态：侧栏 0 宽度，左缘仅留一条 hairline 细线（点击展开） */
+/* 收起态：44px 图标窄条（无箭头按钮），右缘线把手展开 */
+.page.sidebar-collapsed .sidebar-head { display: none; }
+.page.sidebar-collapsed .sidebar-nav { padding: 8px 6px; }
+.page.sidebar-collapsed .sidebar-item { justify-content: center; padding: 8px 0; }
+.page.sidebar-collapsed .sidebar-label { display: none; }
+.page.sidebar-collapsed .sidebar-footer { padding: 8px 6px; }
+.page.sidebar-collapsed .sidebar-footer .theme-switcher-btn { justify-content: center; }
+.page.sidebar-collapsed .sidebar-footer .theme-menu { left: 0; right: auto; }
+.page.sidebar-collapsed .sidebar-footer .ts-label,
+.page.sidebar-collapsed .sidebar-footer .ts-caret { display: none; }
+
+/* 线把手：窄条右缘一条 hairline 细线（点击展开） */
 .sidebar-handle {
   display: none;
   width: 12px;
