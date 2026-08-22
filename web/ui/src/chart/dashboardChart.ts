@@ -13,7 +13,7 @@ import {
   type Normalization,
 } from '../lib/dashboard';
 import type { IndexBar } from '../lib/data-types';
-import type { ThemePalette } from './theme';
+import { CHART_FONT, type ThemePalette } from './theme';
 
 export type DashRangeKey = 'all' | '5y' | '3y' | '1y' | 'custom';
 
@@ -64,6 +64,7 @@ export function buildDashOption(
   return {
     backgroundColor: p.bg,
     animation: false,
+    textStyle: { fontFamily: CHART_FONT },
     grid: { left: 72, right: 24, top: 20, bottom: 74 },
     xAxis: {
       type: 'category',

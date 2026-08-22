@@ -7,6 +7,10 @@
   --ui-radius-scalar: 1;
   --ui-stroke-nous: color-mix(in srgb, currentColor 3%, transparent);
 
+  /* Hermes 桌面字体栈（presets.ts SYSTEM_SANS/SYSTEM_MONO + 中文 fallback） */
+  --font-sans: 'Segoe WPC', 'Segoe UI', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono: Menlo, Monaco, 'SF Mono', 'Courier Prime', monospace;
+
   /* 旧变量别名（惰性引用 --ui-*，随主题块解析；迁移完成后逐步移除） */
   --bg: var(--ui-bg-app);
   --panel: var(--ui-bg-panel);
@@ -21,25 +25,27 @@
   --shadow: var(--ui-shadow-nous);
 }
 
-/* ── nous dark：品牌蓝 + 奶油 ── */
+/* ── nous dark：品牌蓝 + 奶油（复刻 Hermes nousTheme darkColors） ── */
 [data-theme='nous'][data-mode='dark'] {
   --ui-bg-app: #0d2f86; --ui-bg-panel: #12378f; --ui-bg-subtle: #183f9a; --ui-bg-quaternary: #1b45a4;
-  --ui-text-primary: #ffe6cb; --ui-text-secondary: #b5c7f3; --ui-text-tertiary: #8f9fd8;
+  --ui-bg-sidebar: #09286f; --ui-bg-popover: #123a96; --ui-input-bg: #0b2566;
+  --ui-text-primary: #ffe6cb; --ui-text-secondary: #b5c7f3; --ui-text-tertiary: color-mix(in srgb, var(--ui-text-primary) 54%, transparent);
   --ui-stroke-primary: #3a63bd; --ui-stroke-secondary: #234a9c; --ui-stroke-tertiary: #3158ad;
   --ui-accent: #ffe6cb; --ui-accent-fg: #0d2f86; --ui-accent-secondary: #1540b1;
-  --ui-danger: #c0473a; --ui-warm: #e8a33d;
+  --ui-danger: #c0473a; --ui-warm: #cf806d;
   --ui-up: #ef232a; --ui-down: #14b143;
   --ui-ma-5: #f6d365; --ui-ma-10: #ff8fab; --ui-ma-20: #b388ff; --ui-ma-30: #6ee7b7; --ui-ma-60: #4fc3f7;
   --ui-shadow-nous: 0 6px 28px rgba(0, 0, 0, 0.45);
 }
 
-/* ── nous light：冷白 + Nous 蓝 ── */
+/* ── nous light：冷白 + Nous 蓝（复刻 Hermes nousTheme colors） ── */
 [data-theme='nous'][data-mode='light'] {
   --ui-bg-app: #f8faff; --ui-bg-panel: #ffffff; --ui-bg-subtle: #f2f5ff; --ui-bg-quaternary: #eff4ff;
-  --ui-text-primary: #17171a; --ui-text-secondary: #666678; --ui-text-tertiary: #9aa0b4;
+  --ui-bg-sidebar: #f3f7ff; --ui-bg-popover: #ffffff; --ui-input-bg: rgba(0, 83, 253, 0.30);
+  --ui-text-primary: #17171a; --ui-text-secondary: #666678; --ui-text-tertiary: color-mix(in srgb, var(--ui-text-primary) 54%, transparent);
   --ui-stroke-primary: rgba(0, 83, 253, 0.30); --ui-stroke-secondary: rgba(0, 83, 253, 0.24); --ui-stroke-tertiary: rgba(0, 83, 253, 0.22);
   --ui-accent: #0053fd; --ui-accent-fg: #fcfcfc; --ui-accent-secondary: #e6eeff;
-  --ui-danger: #c72e4d; --ui-warm: #e8a33d;
+  --ui-danger: #c72e4d; --ui-warm: #cf806d;
   --ui-up: #dc2626; --ui-down: #16a34a;
   --ui-ma-5: #eab308; --ui-ma-10: #ec4899; --ui-ma-20: #8b5cf6; --ui-ma-30: #10b981; --ui-ma-60: #0ea5e9;
   --ui-shadow-nous: 0 6px 28px rgba(15, 23, 42, 0.12);
@@ -48,6 +54,7 @@
 /* ── belafonte night：深酒红 + 金色（静态站点原主题） ── */
 [data-theme='belafonte'][data-mode='dark'] {
   --ui-bg-app: #20111b; --ui-bg-panel: #281822; --ui-bg-subtle: #2a1e26; --ui-bg-quaternary: #3d2d36;
+  --ui-bg-sidebar: #20111b; --ui-bg-popover: #281822; --ui-input-bg: #3d2d36;
   --ui-text-primary: #b88f55; --ui-text-secondary: #96754e; --ui-text-tertiary: #6f5a43;
   --ui-stroke-primary: #4a3a44; --ui-stroke-secondary: #3d2d36; --ui-stroke-tertiary: #3d2d36;
   --ui-accent: #5a8a9a; --ui-accent-fg: #7fb4c4; --ui-accent-secondary: #233840;
@@ -60,6 +67,7 @@
 /* ── belafonte day：暖羊皮纸 ── */
 [data-theme='belafonte'][data-mode='light'] {
   --ui-bg-app: #fffaed; --ui-bg-panel: #ded8c8; --ui-bg-subtle: #e8e4dc; --ui-bg-quaternary: #ccc5b8;
+  --ui-bg-sidebar: #fffaed; --ui-bg-popover: #ded8c8; --ui-input-bg: #b8b0a4;
   --ui-text-primary: #45373c; --ui-text-secondary: #5e5252; --ui-text-tertiary: #8a827b;
   --ui-stroke-primary: #8a827b; --ui-stroke-secondary: #b8b0a4; --ui-stroke-tertiary: #b8b0a4;
   --ui-accent: #426a79; --ui-accent-fg: #2d4d59; --ui-accent-secondary: #cbd5d9;
@@ -74,7 +82,7 @@ html, body, #root { margin: 0; height: 100%; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-sans);
   transition: background 0.25s ease, color 0.25s ease;
 }
 
@@ -108,7 +116,7 @@ body {
 /* ---- K 线组件 ---- */
 .kline { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; padding: 0 22px; gap: 10px; }
 
-.readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; }
+.readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 16px; font-family: var(--font-mono); font-size: 12.5px; }
 .tf-badge { align-self: center; font-size: 12.5px; font-weight: 600; color: var(--dim); border: 1px solid var(--border); border-radius: 6px; padding: 2px 9px; }
 .r-name { font-size: 15px; font-weight: 700; }
 .r-code { font-size: 12.5px; color: var(--dim); margin-left: 4px; }
@@ -239,7 +247,7 @@ body {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ui-bg-app);
+  background: var(--ui-bg-sidebar);
   border-right: 1px solid var(--ui-stroke-tertiary);
   overflow: hidden;
   transition: width 0.25s ease;
@@ -252,7 +260,7 @@ body {
 .sidebar-item:hover { background: var(--ui-bg-subtle); color: var(--ui-text-primary); }
 .sidebar-item.active { background: var(--ui-accent); color: var(--ui-accent-fg); }
 .sidebar-icon { font-size: 15px; flex-shrink: 0; }
-.sidebar-handle { display: none; width: 8px; flex-shrink: 0; cursor: pointer; padding: 0; border: none; background: var(--ui-bg-app); }
+.sidebar-handle { display: none; width: 8px; flex-shrink: 0; cursor: pointer; padding: 0; border: none; background: var(--ui-bg-sidebar); }
 .sidebar-handle:hover { background: var(--ui-accent); opacity: 0.6; }
 .page.sidebar-collapsed .sidebar-handle { display: block; }
 .page-main { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; }
@@ -273,7 +281,7 @@ body {
   min-width: 160px;
   padding: 4px;
   border-radius: calc(var(--ui-radius-scalar) * 0.5rem);
-  background: var(--ui-bg-panel);
+  background: var(--ui-bg-popover);
   border: 1px solid var(--ui-stroke-nous);
   box-shadow: var(--ui-shadow-nous);
   display: flex;

@@ -9,7 +9,7 @@ import {
 } from '../lib/aggregate';
 import { MA_SPANS, sma, type MaSpan } from '../lib/dashboard';
 import type { IndexBar } from '../lib/data-types';
-import type { ThemePalette } from './theme';
+import { CHART_FONT, type ThemePalette } from './theme';
 
 export type RangeKey = 'all' | '5y' | '3y' | '1y' | 'custom';
 
@@ -85,6 +85,7 @@ export function buildOption(
   return {
     backgroundColor: p.bg,
     animation: false,
+    textStyle: { fontFamily: CHART_FONT },
     grid: { left: 72, right: 24, top: 20, bottom: 74 },
     xAxis: {
       type: 'category',

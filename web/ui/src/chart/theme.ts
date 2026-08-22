@@ -68,3 +68,6 @@ export const THEMES: Record<ThemeId, Record<Mode, ThemePalette>> = {
 export function pal(t: AppTheme): ThemePalette {
   return THEMES[t.themeId][t.mode];
 }
+
+/** ECharts 数字/文本字体（与 index.css --font-mono 一致，Hermes 风格）。 */
+export const CHART_FONT = 'Menlo, Monaco, "SF Mono", "Courier Prime", monospace';
