@@ -38,15 +38,19 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           textStyle: { color: p.text, fontSize: 12 },
           formatter: function (params: any) {
             // 复刻 ECharts 默认蜡烛 tooltip：日期标题 + 每个标的区块（名称行 + OHLC 四行）。
-            // 只在“● 名称”行右侧追加当日涨跌幅（右对齐、颜色随涨跌），其余行保持默认。
-            var axisLabel = params.length ? params[0].axisValueLabel || params[0].axisValue : '';
+            // 名称行右侧追加当日涨跌幅（昨收口径：今收 vs 前一交易日收盘），颜色随涨跌。
+            // 所有颜色标记（名称圆点 / OHLC 小圆点 / 涨跌幅数字）统一用同一 changeColor，避免不一致。
+            var axisLabel = params.length
+              ? params[0].axisValueLabel || params[0].axisValue
+              : '';
             var nameStyle = 'font-size:12px;color:' + p.text + ';font-weight:400';
             var valueStyle = 'font-size:14px;color:' + p.text + ';font-weight:900';
+            var gap = 'margin:10px 0 0;line-height:1;';
             var dims = [
-              { key: 'open', name: 'open' },
-              { key: 'close', name: 'close' },
-              { key: 'lowest', name: 'lowest' },
-              { key: 'highest', name: 'highest' },
+              { name: 'open' },
+              { name: 'close' },
+              { name: 'lowest' },
+              { name: 'highest' },
             ];
             function fmt(v: number) {
               return v.toLocaleString('en-US', { maximumFractionDigits: 20 });
@@ -56,28 +60,37 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
               '<div style="' + nameStyle + ';line-height:1;">' + axisLabel + '</div>' +
               params
                 .map(function (item: any) {
-                  var dataArr = item.data; // [open, close, lowest, highest]
+                  var dataArr = item.data; // [open, close, lowest, highest]（至 ECharts 顺序）
                   var open = dataArr[0];
                   var close = dataArr[1];
                   var lowest = dataArr[2];
                   var highest = dataArr[3];
-                  var change = close - open;
-                  var pct = (change / open) * 100;
+                  var idx = item.dataIndex;
                   var isSource = item.seriesName === data.source.label;
-                  var changeColor =
-                    change >= 0 ? (isSource ? p.soxUp : p.up) : (isSource ? p.soxDown : p.down);
+                  // 昨收口径的当日涨跌幅
+                  var raw = isSource ? data.source.data : data.target.data;
+                  var prevClose = idx > 0 ? Number(raw[idx - 1][3]) : NaN;
+                  var hasPrev = !isNaN(prevClose) && prevClose > 0;
+                  var change = hasPrev ? close - prevClose : NaN;
+                  var pct = hasPrev ? (change / prevClose) * 100 : NaN;
+                  var changeColor = hasPrev
+                    ? (change >= 0 ? (isSource ? p.soxUp : p.up) : (isSource ? p.soxDown : p.down))
+                    : p.dim;
+                  var bigMarker =
+                    '<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:' +
+                    changeColor +
+                    ';"></span>';
                   var subMarker =
                     '<span style="display:inline-block;vertical-align:middle;margin-right:8px;margin-left:3px;border-radius:4px;width:4px;height:4px;background-color:' +
                     changeColor +
                     ';"></span>';
                   var ohlc = [open, close, lowest, highest];
-                  var label = [dims[0].name, dims[1].name, dims[2].name, dims[3].name];
                   var subRows = ohlc
                     .map(function (v, i) {
                       return (
-                        '<div style="margin:10px 0 0;line-height:1;">' +
+                        '<div style="' + gap + '">' +
                         subMarker +
-                        '<span style="' + nameStyle + ';margin-left:2px">' + label[i] + '</span>' +
+                        '<span style="' + nameStyle + ';margin-left:2px">' + dims[i].name + '</span>' +
                         '<span style="float:right;margin-left:20px;' + valueStyle + '">' + fmt(v) + '</span>' +
                         '<div style="clear:both"></div>' +
                         '</div>'
@@ -85,11 +98,11 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                     })
                     .join('');
                   return (
-                    '<div style="margin:10px 0 0;line-height:1;">' +
-                    (item.marker || '') +
+                    '<div style="' + gap + '">' +
+                    bigMarker +
                     '<span style="' + nameStyle + ';margin-left:2px">' + item.seriesName + '</span>' +
                     '<span style="float:right;margin-left:20px;color:' + changeColor + ';' + valueStyle + '">' +
-                    pct.toFixed(2) + '%' +
+                    (hasPrev ? pct.toFixed(2) + '%' : '—') +
                     '</span>' +
                     '<div style="clear:both"></div>' +
                     subRows +
