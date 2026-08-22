@@ -343,6 +343,7 @@ def search(
 # 数据链路与 `quant site build` / `daily-brief` 完全相同：
 #   accounts = load_simulated_accounts(config) → SQLite 帧 → _meta_for_account
 #   watchlist = export_premarket_watchlist(account_id=...)（复用 panel 缓存）
+CONFIG_PATH = ROOT / "config.yaml"
 WATCHLIST_HEADERS = [
     "动作", "信号动作", "股票代码", "股票名称", "收盘价", "当前权重", "目标权重",
     "权重变化", "持仓天数", "动量分数", "当日排名", "信号持有天数", "成交价口径",
@@ -373,11 +374,10 @@ def _quant() -> dict[str, Any]:
 
 
 def _accounts_metas(q: dict[str, Any]) -> list[dict[str, Any]]:
-    import yaml
-
+    from quant.config import load_config
     from quant.reporting.paths import slug
 
-    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")) or {}
+    cfg = load_config(CONFIG_PATH)
     metas = []
     for account in q["load_accounts"](cfg, ROOT):
         frames = q["read_frames"](account)
@@ -406,12 +406,12 @@ def api_accounts_brief() -> dict[str, Any]:
 
 @app.get("/api/accounts/{account_id}")
 def api_account_detail(account_id: str) -> dict[str, Any]:
-    import yaml
+    from quant.config import load_config
 
     q = _quant()
     from quant.reporting.paths import slug
 
-    cfg = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8")) or {}
+    cfg = load_config(CONFIG_PATH)
     for account in q["load_accounts"](cfg, ROOT):
         if slug(str(account.account_id)) != account_id:
             continue
