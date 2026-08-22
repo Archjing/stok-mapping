@@ -1,13 +1,39 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as echarts from 'echarts';
 import type { CandleData } from '../api/research';
 import type { AppTheme } from '../chart/theme';
 import { pal } from '../chart/theme';
 
+/** 涨跌幅计算口径 */
+export type ChangeBasis = 'closePrevClose' | 'closeOpen' | 'openPrevClose';
+
+/** 口径选项（含描述） */
+const BASIS_OPTIONS: { key: ChangeBasis; label: string }[] = [
+  { key: 'closePrevClose', label: '今收 vs 昨收' },
+  { key: 'closeOpen', label: '今收 vs 今开' },
+  { key: 'openPrevClose', label: '今开 vs 昨收' },
+];
+
+/** 按口径计算涨跌幅百分比。无昨收或基准非正时返回 hasPrev=false */
+function calcPct(mode: ChangeBasis, open: number, close: number, prevClose: number): { pct: number; hasPrev: boolean } {
+  if (mode === 'closeOpen') {
+    if (open <= 0) return { pct: NaN, hasPrev: false };
+    return { pct: ((close - open) / open) * 100, hasPrev: true };
+  }
+  // 需要昨收
+  if (isNaN(prevClose) || prevClose <= 0) return { pct: NaN, hasPrev: false };
+  if (mode === 'openPrevClose') {
+    return { pct: ((open - prevClose) / prevClose) * 100, hasPrev: true };
+  }
+  // closePrevClose
+  return { pct: ((close - prevClose) / prevClose) * 100, hasPrev: true };
+}
+
 /** 双蜡烛对照图（ECharts candlestick，source 左轴 / target 右轴，独立价格尺度）。 */
 export function CandleChartView({ data, theme }: { data: CandleData; theme: AppTheme }) {
   const ref = useRef<HTMLDivElement>(null);
   const p = pal(theme);
+  const [basis, setBasis] = useState<ChangeBasis>('closePrevClose');
 
   useEffect(() => {
     const el = ref.current;
@@ -38,9 +64,10 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           textStyle: { color: p.text, fontSize: 12 },
           formatter: function (params: any) {
             // 复刻 ECharts 默认蜡烛 tooltip：日期标题 + 每个标的区块（名称行 + OHLC 四行）。
-            // 名称行右侧追加当日涨跌幅，标准单日口径：(今收 - 昨收) / 昨收。
-            // 颜色统一用 item.color（ECharts 按内部 sign 判定选好的蜡烛填充色），
-            // 保证名称圆点 / OHLC 小圆点 / 涨跌幅数字与图上 bar 实体颜色完全一致。
+            // 名称行右侧追加当日涨跌幅，口径由 basis 决定。
+            // 颜色分两类：
+            //   - bar 相关标记（名称大圆点 / OHLC 小圆点）用 item.color（ECharts 按阴阳判定），对齐 bar 实体
+            //   - 涨跌幅数字按所选口径的正负 → 源标的橙/蓝、目标标的红/绿，独立于 bar 颜色
             var axisLabel = params.length
               ? params[0].axisValueLabel || params[0].axisValue
               : '';
@@ -67,20 +94,23 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                   var lowest = dataArr[2];
                   var highest = dataArr[3];
                   var isSource = item.seriesName === data.source.label;
-                  // 标准单日涨跌幅：(今收 - 昨收) / 昨收
                   var raw = isSource ? data.source.data : data.target.data; // [open, high, low, close]
                   var idx = item.dataIndex;
                   var prevClose = idx > 0 ? Number(raw[idx - 1][3]) : NaN;
-                  var hasPrev = !isNaN(prevClose) && prevClose > 0;
-                  var pct = hasPrev ? ((close - prevClose) / prevClose) * 100 : NaN;
-                  var color = item.color || p.text;
+                  var r = calcPct(basis, open, close, prevClose);
+                  // bar 相关标记颜色：跟随 ECharts 阴阳判定
+                  var barColor = item.color || p.text;
+                  // 涨跌幅数字颜色：按口径正负，独立于 bar
+                  var baseUp = isSource ? p.soxUp : p.up;
+                  var baseDown = isSource ? p.soxDown : p.down;
+                  var pctColor = r.hasPrev ? (r.pct >= 0 ? baseUp : baseDown) : p.dim;
                   var bigMarker =
                     '<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:' +
-                    color +
+                    barColor +
                     ';"></span>';
                   var subMarker =
                     '<span style="display:inline-block;vertical-align:middle;margin-right:8px;margin-left:3px;border-radius:4px;width:4px;height:4px;background-color:' +
-                    color +
+                    barColor +
                     ';"></span>';
                   var ohlc = [open, close, lowest, highest];
                   var subRows = ohlc
@@ -99,8 +129,8 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                     '<div style="' + gap + '">' +
                     bigMarker +
                     '<span style="' + nameStyle + ';margin-left:2px">' + item.seriesName + '</span>' +
-                    '<span style="float:right;margin-left:20px;color:' + color + ';' + valueStyle + '">' +
-                    (hasPrev ? pct.toFixed(2) + '%' : '—') +
+                    '<span style="float:right;margin-left:20px;color:' + pctColor + ';' + valueStyle + '">' +
+                    (r.hasPrev ? r.pct.toFixed(2) + '%' : '—') +
                     '</span>' +
                     '<div style="clear:both"></div>' +
                     subRows +
@@ -176,16 +206,31 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
       window.removeEventListener('resize', onResize);
       chart.dispose();
     };
-  }, [data, theme]);
+  }, [data, theme, basis]);
 
   return (
     <div className="page-view">
+      <div className="basis-switch" role="radiogroup" aria-label="涨跌幅口径">
+        <span className="basis-label">涨跌幅：</span>
+        {BASIS_OPTIONS.map((opt) => (
+          <button
+            key={opt.key}
+            type="button"
+            role="radio"
+            aria-checked={basis === opt.key}
+            className={basis === opt.key ? 'basis-btn is-active' : 'basis-btn'}
+            onClick={() => setBasis(opt.key)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
       <div ref={ref} style={{ width: '100%', height: 520 }} />
       <p className="notice-text">
         蜡烛对照：{data.source.label}（左轴，
         <b style={{ color: p.soxUp }}>橙涨</b>/<b style={{ color: p.soxDown }}>蓝跌</b>）与 {data.target.label}（右轴，
         <b style={{ color: p.up }}>红涨</b>/<b style={{ color: p.down }}>绿跌</b>）。共同交易日{' '}
-        {data.startDate} 至 {data.endDate}，按各自价位独立缩放。阳线 = 收 &gt; 开，阴线 = 收 &lt; 开。
+        {data.startDate} 至 {data.endDate}，按各自价位独立缩放。涨跌幅数字颜色随所选口径正负变化，bar 颜色随阴阳线。
       </p>
     </div>
   );

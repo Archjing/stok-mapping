@@ -506,6 +506,30 @@ body {
   transition: background 150ms ease-out, color 150ms ease-out;
 }
 .explore-btn:hover { background: var(--ui-bg-subtle); }
+.basis-switch { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.basis-label { font-size: 13px; color: var(--ui-text-secondary); }
+.basis-btn {
+  appearance: none;
+  border: 1px solid var(--ui-stroke-tertiary);
+  background: var(--ui-bg-subtle);
+  color: var(--ui-text-tertiary);
+  padding: 0 12px;
+  font-size: 13px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 150ms ease-out, background 150ms ease-out, color 150ms ease-out;
+}
+.basis-btn:hover { color: var(--ui-text-primary); border-color: var(--ui-stroke-secondary); }
+.basis-btn.is-active {
+  background: var(--ui-accent);
+  border-color: var(--ui-accent);
+  color: var(--ui-accent-fg);
+  font-weight: 600;
+}
 /* 任意对比增强 */
 .explore-presets { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
 .explore-chip {
