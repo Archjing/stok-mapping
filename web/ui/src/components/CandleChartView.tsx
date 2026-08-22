@@ -36,6 +36,19 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           backgroundColor: p.panel,
           borderColor: p.border,
           textStyle: { color: p.text, fontSize: 12 },
+          formatter: function (params: any) {
+            const p = params[0];
+            const seriesName = p.seriesName;
+            const dataArr = p.data; // [open, close, low, high]
+            const change = dataArr[1] - dataArr[0];
+            const isSource = seriesName === data.source.label;
+            const color = change >= 0
+              ? (isSource ? p.soxUp : p.up)
+              : (isSource ? p.soxDown : p.down);
+            const prefix = change >= 0 ? '+' : '-';
+            const absChange = Math.abs(change).toFixed(2);
+            return `${seriesName} <span style="color:${color}">${prefix}${absChange}</span>`;
+          },
         },
         grid: { left: 66, right: 70, top: 40, bottom: 64 },
         xAxis: {
