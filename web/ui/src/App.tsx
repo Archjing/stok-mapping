@@ -7,6 +7,8 @@ import { UsSinglePage } from './pages/UsSinglePage';
 import { AccountsPage } from './pages/AccountsPage';
 import { AccountPage } from './pages/AccountPage';
 import { WatchlistPage } from './pages/WatchlistPage';
+import { BillPage } from './pages/BillPage';
+import { LedgerPage } from './pages/LedgerPage';
 import { BriefPage } from './pages/BriefPage';
 
 /** 路由：Layout 承载侧栏(首层)+顶栏(第二层)，各域页作为 Outlet。
@@ -42,6 +44,8 @@ const routes = [
       { path: 'accounts/brief', element: <BriefPage /> },
       { path: 'accounts/:accountId', element: <AccountPage /> },
       { path: 'accounts/:accountId/watchlist', element: <WatchlistPage /> },
+      { path: 'accounts/:accountId/bill', element: <BillPage /> },
+      { path: 'accounts/:accountId/ledger', element: <LedgerPage /> },
 
       // 配置（占位；策略参数编辑器 M1.5 只读版先行）
       { path: 'config/strategies', element: <PlaceholderPage title="策略参数" desc="run 配置编辑器——M1.5 只读版先行" /> },

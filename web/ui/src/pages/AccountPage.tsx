@@ -64,13 +64,13 @@ export function AccountPage() {
             <span>WATCHLIST</span>
             <strong>最新盘前观察池</strong>
           </Link>
-          <Link to={`/accounts/${meta.slug}`} className="quick-card">
+          <Link to={`/accounts/${meta.slug}/bill`} className="quick-card">
             <span>BILL</span>
-            <strong>最新模拟交易账单（建设中）</strong>
+            <strong>最新模拟交易账单</strong>
           </Link>
-          <Link to={`/accounts/${meta.slug}`} className="quick-card">
+          <Link to={`/accounts/${meta.slug}/ledger`} className="quick-card">
             <span>LEDGER</span>
-            <strong>完整交易台账（建设中）</strong>
+            <strong>完整交易台账</strong>
           </Link>
           <Link to="/accounts" className="quick-card">
             <span>CONSOLE</span>

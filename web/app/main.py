@@ -434,8 +434,37 @@ def api_account_detail(account_id: str) -> dict[str, Any]:
 @app.get("/api/accounts/{account_id}/watchlist")
 def api_account_watchlist(account_id: str) -> dict[str, Any]:
     q = _quant()
+    from quant.config import load_config
+
+    cfg = load_config(CONFIG_PATH)
+    account = next(
+        (a for a in q["load_accounts"](cfg, ROOT) if str(a.account_id) == account_id or slug_of(a) == account_id),
+        None,
+    )
+    # 单 ETF 日内账户：观察池 = 市场快照 + 研究上下文 + 美股新闻（site build 同源）
+    if account is not None and str(getattr(account, "execution_model", "")) == "single_etf_intraday":
+        from quant.reporting.semiconductor_timing_watchlist import (
+            _load_market_snapshot,
+            _load_research_market_context,
+            _load_us_market_news,
+        )
+
+        snapshot, market_error = _load_market_snapshot(ROOT, cfg)
+        research, research_error = _load_research_market_context(ROOT, cfg)
+        news, ingested_at, news_error = _load_us_market_news(ROOT, cfg)
+        return {
+            "account_id": account_id,
+            "kind": "market_snapshot",
+            "snapshot": snapshot,
+            "market_error": market_error,
+            "research_rows": research,
+            "research_error": research_error,
+            "news": news,
+            "news_ingested_at": ingested_at,
+            "news_error": news_error,
+        }
     try:
-        result = q["export_watchlist"](config_path=ROOT / "config.yaml", account_id=account_id)
+        result = q["export_watchlist"](config_path=CONFIG_PATH, account_id=account_id)
     except Exception as exc:  # noqa: BLE001 — 面板/数据缺失统一转 404
         raise HTTPException(status_code=404, detail=f"观察池生成失败：{exc}") from exc
 
@@ -465,6 +494,7 @@ def api_account_watchlist(account_id: str) -> dict[str, Any]:
         rows.append({"class": cls, "cells": cells})
     return {
         "account_id": account_id,
+        "kind": "stock_watchlist",
         "headers": WATCHLIST_HEADERS,
         "rows": rows,
         "overview_cards": [
@@ -475,6 +505,190 @@ def api_account_watchlist(account_id: str) -> dict[str, Any]:
         ],
         "account_summary_cards": result.get("account_summary_cards") or [],
     }
+
+
+def slug_of(account: Any) -> str:
+    from quant.reporting.paths import slug
+
+    return slug(str(getattr(account, "account_id", "")))
+
+
+def _account_by_slug(account_id: str) -> Any | None:
+    from quant.config import load_config
+
+    q = _quant()
+    cfg = load_config(CONFIG_PATH)
+    for account in q["load_accounts"](cfg, ROOT):
+        if str(getattr(account, "account_id", "")) == account_id or slug_of(account) == account_id:
+            return account
+    return None
+
+
+def _bill_tables(account: Any, frames: dict[str, Any]) -> dict[str, Any]:
+    """最新账单日账单：账户总览 / 每日资产 / 交易明细 / 持仓明细（列与格式化同 account_bill.py）。"""
+    import pandas as pd
+
+    from quant.reporting.account_bill import format_money, format_num, format_pct
+
+    assets, trades, positions = frames["assets"], frames["trades"], frames["positions"]
+    if assets.empty:
+        return {"bill_date": "", "tables": []}
+    bill_date = str(assets.iloc[0]["brief_date"])
+    day_assets = assets[assets["brief_date"] == bill_date] if "brief_date" in assets.columns else assets
+    day_trades = trades[trades["brief_date"] == bill_date] if not trades.empty and "brief_date" in trades.columns else trades
+    day_positions = (
+        positions[positions["brief_date"] == bill_date] if not positions.empty and "brief_date" in positions.columns else positions
+    )
+
+    money_cols = {"total_asset", "stock_asset", "cash_asset", "daily_pnl", "estimated_trade_amount", "price", "amount", "cost", "close", "market_value", "initial_cash"}
+    pct_cols = {"daily_return", "target_exposure", "target_weight", "weight_before", "weight_after", "weight_change", "max_participation_rate"}
+    num_cols = {"shares", "lots", "raw_shares", "estimated_volume", "lot_size", "unfilled_orders"}
+
+    def fmt(frame: Any, cols: list[tuple[str, str]]) -> list[dict[str, str]]:
+        out = []
+        for _, row in frame.iterrows():
+            item = {}
+            for key, label in cols:
+                if key not in frame.columns:
+                    item[key] = ""
+                    continue
+                value = row[key]
+                if key in money_cols:
+                    item[key] = format_money(value)
+                elif key in pct_cols:
+                    item[key] = format_pct(value)
+                elif key in num_cols:
+                    item[key] = format_num(value, 2)
+                else:
+                    item[key] = "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
+            out.append(item)
+        return out
+
+    account_summary = [["账户 ID", str(getattr(account, "account_id", ""))], ["账户名称", str(getattr(account, "name", ""))]]
+    if not assets.empty and "initial_cash" in assets.columns:
+        account_summary.append(["初始资产", format_money(assets.iloc[0].get("initial_cash"))])
+    tables = [
+        {"title": "账户总览", "columns": [("key", "项目"), ("value", "值")], "rows": [{"key": k, "value": v} for k, v in account_summary]},
+        {
+            "title": "每日资产",
+            "columns": [
+                ("brief_date", "账户日期"), ("total_asset", "总资产"), ("stock_asset", "股票资产"),
+                ("cash_asset", "现金资产"), ("daily_pnl", "收益额"), ("daily_return", "收益率"),
+                ("target_exposure", "实际股票暴露"), ("estimated_trade_amount", "成交金额"),
+            ],
+            "rows": fmt(day_assets, [("brief_date", "账户日期"), ("total_asset", "总资产"), ("stock_asset", "股票资产"), ("cash_asset", "现金资产"), ("daily_pnl", "收益额"), ("daily_return", "收益率"), ("target_exposure", "实际股票暴露"), ("estimated_trade_amount", "成交金额")]),
+        },
+        {
+            "title": "交易明细",
+            "columns": [
+                ("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"), ("signal_date", "信号日期"),
+                ("trade_time", "交易时间"), ("price", "价格"), ("amount", "金额"), ("cost", "交易成本"),
+                ("shares", "股数"), ("lots", "手数"), ("trade_status", "成交状态"),
+            ],
+            "rows": fmt(day_trades, [("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"), ("signal_date", "信号日期"), ("trade_time", "交易时间"), ("price", "价格"), ("amount", "金额"), ("cost", "交易成本"), ("shares", "股数"), ("lots", "手数"), ("trade_status", "成交状态")]),
+        },
+        {
+            "title": "持仓明细",
+            "columns": [
+                ("symbol", "股票代码"), ("name", "股票名称"), ("close", "收盘价"), ("target_weight", "权重"),
+                ("market_value", "市值"), ("shares", "股数"), ("lots", "手数"),
+            ],
+            "rows": fmt(day_positions, [("symbol", "股票代码"), ("name", "股票名称"), ("close", "收盘价"), ("target_weight", "权重"), ("market_value", "市值"), ("shares", "股数"), ("lots", "手数")]),
+        },
+    ]
+    return {"bill_date": bill_date, "tables": tables}
+
+
+@app.get("/api/accounts/{account_id}/bill")
+def api_account_bill(account_id: str) -> dict[str, Any]:
+    account = _account_by_slug(account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+    frames = _quant()["read_frames"](account)
+    return {"account_id": account_id, "name": str(account.name), **_bill_tables(account, frames)}
+
+
+@app.get("/api/accounts/{account_id}/ledger")
+def api_account_ledger(account_id: str) -> dict[str, Any]:
+    account = _account_by_slug(account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+    q = _quant()
+    frames = q["read_frames"](account)
+    import pandas as pd
+
+    from quant.reporting.account_bill import format_money, format_num, format_pct
+
+    money_cols = {"total_asset", "stock_asset", "cash_asset", "daily_pnl", "estimated_trade_amount", "price", "amount", "cost", "close", "market_value"}
+    pct_cols = {"daily_return", "target_exposure", "target_weight", "weight_before", "weight_after", "weight_change"}
+    num_cols = {"shares", "lots", "estimated_volume", "unfilled_orders", "requested_shares", "filled_shares"}
+
+    def rows_for(frame: Any, cols: list[tuple[str, str]]) -> list[dict[str, str]]:
+        out = []
+        for _, row in frame.iterrows():
+            item = {}
+            for key, _label in cols:
+                if key not in frame.columns:
+                    item[key] = ""
+                    continue
+                value = row[key]
+                if key in money_cols:
+                    item[key] = format_money(value)
+                elif key in pct_cols:
+                    item[key] = format_pct(value)
+                elif key in num_cols:
+                    item[key] = format_num(value, 2)
+                else:
+                    item[key] = "" if value is None or (isinstance(value, float) and pd.isna(value)) else str(value)
+            out.append(item)
+        return out
+
+    assets = frames["assets"]
+    trades = frames["trades"]
+    positions = frames["positions"]
+    order_events = frames["order_events"]
+    recent_dates = sorted({str(v)[:10] for frame in (positions, order_events) for v in frame["brief_date"].dropna().astype(str)})[-3:] if not positions.empty else []
+    recent_positions = positions[positions["brief_date"].astype(str).str[:10].isin(recent_dates)] if not positions.empty else positions
+    recent_events = order_events[order_events["brief_date"].astype(str).str[:10].isin(recent_dates)] if not order_events.empty else order_events
+
+    sections = [
+        {
+            "title": "每日资产（全部账单日）",
+            "columns": [
+                ("brief_date", "账单日"), ("total_asset", "总资产"), ("stock_asset", "股票资产"), ("cash_asset", "现金资产"),
+                ("daily_pnl", "当日收益"), ("daily_return", "当日收益率"), ("target_exposure", "仓位"),
+                ("estimated_trade_amount", "成交金额"), ("unfilled_orders", "未成交数"), ("block_reason_counts", "拦截原因"),
+            ],
+            "rows": rows_for(assets, [("brief_date", "账单日"), ("total_asset", "总资产"), ("stock_asset", "股票资产"), ("cash_asset", "现金资产"), ("daily_pnl", "当日收益"), ("daily_return", "当日收益率"), ("target_exposure", "仓位"), ("estimated_trade_amount", "成交金额"), ("unfilled_orders", "未成交数"), ("block_reason_counts", "拦截原因")]),
+        },
+        {
+            "title": "成交明细（全部历史成交）",
+            "columns": [
+                ("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"),
+                ("trade_time", "成交时间"), ("price", "价格"), ("amount", "金额"), ("shares", "股数"),
+                ("lots", "手数"), ("trade_status", "成交状态"), ("block_reasons", "说明"),
+            ],
+            "rows": rows_for(trades, [("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"), ("trade_time", "成交时间"), ("price", "价格"), ("amount", "金额"), ("shares", "股数"), ("lots", "手数"), ("trade_status", "成交状态"), ("block_reasons", "说明")]),
+        },
+        {
+            "title": "持仓快照（最近3个账单日）",
+            "columns": [
+                ("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("close", "收盘价"),
+                ("target_weight", "权重"), ("market_value", "市值"), ("shares", "股数"), ("lots", "手数"),
+            ],
+            "rows": rows_for(recent_positions, [("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("close", "收盘价"), ("target_weight", "权重"), ("market_value", "市值"), ("shares", "股数"), ("lots", "手数")]),
+        },
+        {
+            "title": "执行事件（最近3个账单日）",
+            "columns": [
+                ("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"),
+                ("event_type", "事件类型"), ("target_weight", "目标权重"), ("requested_shares", "计划股数"),
+                ("filled_shares", "成交股数"), ("trade_status", "状态"), ("block_reasons", "原因"),
+            ],
+            "rows": rows_for(recent_events, [("brief_date", "账单日"), ("symbol", "股票代码"), ("name", "股票名称"), ("side", "方向"), ("event_type", "事件类型"), ("target_weight", "目标权重"), ("requested_shares", "计划股数"), ("filled_shares", "成交股数"), ("trade_status", "状态"), ("block_reasons", "原因")]),
+        },
+    ]
+    return {"account_id": account_id, "name": str(account.name), "sections": sections}
 
 
 # 生产托管前端构建产物（web/ui/dist 存在时）
