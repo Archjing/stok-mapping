@@ -297,8 +297,8 @@ body {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 1px;
-  background: var(--ui-hairline);
+  width: 2px;
+  background: var(--ui-stroke-tertiary);
   transition: background 150ms ease-out;
 }
 .sidebar-handle:hover::before { background: var(--ui-accent); }
