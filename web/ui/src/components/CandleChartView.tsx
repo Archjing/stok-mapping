@@ -38,7 +38,7 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           textStyle: { color: p.text, fontSize: 12 },
           formatter: function (params: any) {
             // 复刻 ECharts 默认蜡烛 tooltip：日期标题 + 每个标的区块（名称行 + OHLC 四行）。
-            // 名称行右侧追加当日涨跌幅（今开→今收口径：收盘 vs 开盘）。
+            // 名称行右侧追加当日涨跌幅，标准单日口径：(今收 - 昨收) / 昨收。
             // 颜色统一用 item.color（ECharts 按内部 sign 判定选好的蜡烛填充色），
             // 保证名称圆点 / OHLC 小圆点 / 涨跌幅数字与图上 bar 实体颜色完全一致。
             var axisLabel = params.length
@@ -66,9 +66,13 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                   var close = dataArr[1];
                   var lowest = dataArr[2];
                   var highest = dataArr[3];
-                  // 今开 → 今收 口径的当日涨跌幅
-                  var pct = ((close - open) / open) * 100;
-                  // 颜色：优先用 ECharts 已判定好的蜡烛填充色，100% 对齐 bar 实体
+                  var isSource = item.seriesName === data.source.label;
+                  // 标准单日涨跌幅：(今收 - 昨收) / 昨收
+                  var raw = isSource ? data.source.data : data.target.data; // [open, high, low, close]
+                  var idx = item.dataIndex;
+                  var prevClose = idx > 0 ? Number(raw[idx - 1][3]) : NaN;
+                  var hasPrev = !isNaN(prevClose) && prevClose > 0;
+                  var pct = hasPrev ? ((close - prevClose) / prevClose) * 100 : NaN;
                   var color = item.color || p.text;
                   var bigMarker =
                     '<span style="display:inline-block;margin-right:4px;border-radius:10px;width:10px;height:10px;background-color:' +
@@ -96,7 +100,7 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                     bigMarker +
                     '<span style="' + nameStyle + ';margin-left:2px">' + item.seriesName + '</span>' +
                     '<span style="float:right;margin-left:20px;color:' + color + ';' + valueStyle + '">' +
-                    pct.toFixed(2) + '%' +
+                    (hasPrev ? pct.toFixed(2) + '%' : '—') +
                     '</span>' +
                     '<div style="clear:both"></div>' +
                     subRows +
