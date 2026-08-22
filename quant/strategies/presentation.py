@@ -30,6 +30,7 @@ class ComparisonChartConfig:
     source: ComparisonSeriesConfig
     target: ComparisonSeriesConfig
     start_date: str | date
+    end_date: str | date | None = None
     observation_band: tuple[float, float] | None = None
     daily_mapping_pct: float | None = 0.5
     absolute_threshold: float | None = None
@@ -52,6 +53,12 @@ class ComparisonChartConfig:
     @property
     def start_timestamp(self) -> pd.Timestamp:
         return pd.Timestamp(self.start_date)
+
+    @property
+    def end_timestamp(self) -> pd.Timestamp | None:
+        if self.end_date is None:
+            return None
+        return pd.Timestamp(self.end_date)  # type: ignore[return-value]
 
 
 @dataclass(frozen=True)

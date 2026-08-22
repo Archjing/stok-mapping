@@ -211,17 +211,14 @@ def _load_series(*, root: Path, series: ComparisonSeriesConfig, start_date: pd.T
         database_path = root / "data" / "us_market_history.sqlite"
         if not database_path.is_file():
             return pd.DataFrame(columns=["date", "close"])
+        sql = "SELECT date, close FROM us_daily_bars WHERE symbol = ? AND date >= ?"
+        params: list[Any] = [series.symbol, start_date.date().isoformat()]
+        if end_date is not None:
+            sql += " AND date <= ?"
+            params.append(end_date.isoformat())
+        sql += " ORDER BY date"
         with sqlite3.connect(database_path) as connection:
-            return pd.read_sql_query(
-                """
-                SELECT date, close
-                FROM us_daily_bars
-                WHERE symbol = ? AND date >= ?
-                ORDER BY date
-                """,
-                connection,
-                params=(series.symbol, start_date.date().isoformat()),
-            )
+            return pd.read_sql_query(sql, connection, params=params)
     if series.storage == "etf_qfq":
         database_path = root / "data" / "etf_history.sqlite"
         if not database_path.is_file() or end_date is None:
@@ -241,15 +238,20 @@ def build_comparison_chart_data(*, root: Path, config: ComparisonChartConfig) ->
     按 config 指定的 storage 读取源/目标序列 (美股日线或 ETF 前复权),
     清洗对齐后交给 build_comparison_chart_data_from_frames 组装载荷.
     """
-    source = _load_series(root=root, series=config.source, start_date=config.start_timestamp)
+    source = _load_series(
+        root=root, series=config.source, start_date=config.start_timestamp, end_date=config.end_timestamp
+    )
     source = _clean_prices(source, start_date=config.start_timestamp)
     if source.empty:
         return None
+    target_end = source["date"].max().date()
+    if config.end_timestamp is not None:
+        target_end = min(target_end, config.end_timestamp.date())
     target = _load_series(
         root=root,
         series=config.target,
         start_date=config.start_timestamp,
-        end_date=source["date"].max().date(),
+        end_date=target_end,
     )
     return build_comparison_chart_data_from_frames(source, target, config=config)
 

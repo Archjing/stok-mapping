@@ -517,3 +517,4 @@ body {
 .explore-symbol { max-width: 260px; }
 .explore-result-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 6px; }
 .explore-select:disabled, .explore-input:disabled { opacity: 0.6; cursor: not-allowed; }
+.explore-dash { color: var(--ui-text-tertiary); }

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { SearchSymbolBox } from '../components/SearchSymbolBox';
 
 const STORAGE_LABELS: Record<string, string> = {
   us_daily_bars: '美股日线',
@@ -17,7 +18,7 @@ const PRESETS: { name: string; source: string; source_storage: string; target: s
   { name: '^SOX → 科创芯片ETF 588200', source: '^SOX', source_storage: 'us_daily_bars', target: 'SH.588200', target_storage: 'etf_qfq' },
 ];
 
-/** 任意两标的对比：选源/目标（storage + symbol）→ 声明式生成原站同款对照图页。 */
+/** 任意两标的对比：选源/目标（storage + 可搜索标的）→ 声明式生成原站同款对照图页。 */
 export function ComparePage() {
   const [symbols, setSymbols] = useState<Record<string, SymbolInfo[]>>({ us_daily_bars: [], etf_qfq: [] });
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,7 @@ export function ComparePage() {
   const [targetStorage, setTargetStorage] = useState('etf_qfq');
   const [target, setTarget] = useState('SH.512480');
   const [start, setStart] = useState('2025-01-01');
+  const [end, setEnd] = useState('');
   const [url, setUrl] = useState('');
   const [note, setNote] = useState('');
 
@@ -47,15 +49,14 @@ export function ComparePage() {
       setNote('请先选择源标的与目标标的。');
       return;
     }
+    if (start && end && end < start) {
+      setNote('结束日期不能早于起始日期。');
+      return;
+    }
     setNote('');
-    const params = new URLSearchParams({
-      source,
-      source_storage: sourceStorage,
-      target,
-      target_storage: targetStorage,
-      start,
-      title: `${source} 与 ${target} 对照图`,
-    });
+    const params = new URLSearchParams({ source, source_storage: sourceStorage, target, target_storage: targetStorage, start });
+    if (end) params.set('end', end);
+    params.set('title', `${source} 与 ${target} 对照图`);
     setUrl(`/api/research/comparison/explore?${params.toString()}`);
   };
 
@@ -65,38 +66,6 @@ export function ComparePage() {
     setTargetStorage(p.target_storage);
     setTarget(p.target);
   };
-
-  const select = (
-    label: string,
-    storage: string,
-    setStorage: (v: string) => void,
-    setSymbol: (v: string) => void,
-    symbol: string,
-    list: SymbolInfo[],
-  ) => (
-    <div className="explore-field">
-      <span className="lbl">{label}</span>
-      <select className="explore-select" value={storage} onChange={(e) => setStorage(e.target.value)}>
-        {Object.entries(STORAGE_LABELS).map(([k, v]) => (
-          <option key={k} value={k}>
-            {v}
-          </option>
-        ))}
-      </select>
-      <select
-        className="explore-select explore-symbol"
-        value={symbol}
-        onChange={(e) => setSymbol(e.target.value)}
-        disabled={loading || list.length === 0}
-      >
-        {list.map((s) => (
-          <option key={s.symbol} value={s.symbol}>
-            {s.symbol} · {s.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
 
   return (
     <div className="page-view">
@@ -112,11 +81,33 @@ export function ComparePage() {
         ))}
       </div>
       <div className="explore-form">
-        {select('源标的', sourceStorage, setSourceStorage, setSource, source, sourceList)}
-        {select('目标', targetStorage, setTargetStorage, setTarget, target, targetList)}
         <div className="explore-field">
-          <span className="lbl">起始日期</span>
+          <span className="lbl">源标的</span>
+          <select className="explore-select" value={sourceStorage} onChange={(e) => { setSourceStorage(e.target.value); setSource(''); }}>
+            {Object.entries(STORAGE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <SearchSymbolBox options={sourceList} value={source} onSelect={(s) => setSource(s.symbol)} />
+        </div>
+        <div className="explore-field">
+          <span className="lbl">目标</span>
+          <select className="explore-select" value={targetStorage} onChange={(e) => { setTargetStorage(e.target.value); setTarget(''); }}>
+            {Object.entries(STORAGE_LABELS).map(([k, v]) => (
+              <option key={k} value={k}>
+                {v}
+              </option>
+            ))}
+          </select>
+          <SearchSymbolBox options={targetList} value={target} onSelect={(s) => setTarget(s.symbol)} />
+        </div>
+        <div className="explore-field">
+          <span className="lbl">起止</span>
           <input className="explore-input" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
+          <span className="explore-dash">–</span>
+          <input className="explore-input" type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
         </div>
         <button className="explore-btn" onClick={build} disabled={loading}>
           {loading ? '加载标的……' : '生成对照图'}
@@ -126,9 +117,7 @@ export function ComparePage() {
       {url && (
         <>
           <div className="explore-result-head">
-            <h3 className="section-title">
-              {source} 与 {target} 对照图
-            </h3>
+            <h3 className="section-title">{source} 与 {target} 对照图</h3>
             <button
               className="explore-chip"
               onClick={() => {
