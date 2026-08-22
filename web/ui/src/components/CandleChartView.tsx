@@ -88,19 +88,20 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
               '<div style="' + nameStyle + ';line-height:1;">' + axisLabel + '</div>' +
               params
                 .map(function (item: any) {
-                  var dataArr = item.data; // [open, close, lowest, highest]（ECharts 顺序）
-                  var open = dataArr[0];
-                  var close = dataArr[1];
-                  var lowest = dataArr[2];
-                  var highest = dataArr[3];
-                  var isSource = item.seriesName === data.source.label;
-                  var raw = isSource ? data.source.data : data.target.data; // [open, high, low, close]
+                  // 用我们自己传给后端的数据数组（[open, high, low, close]），顺序确定，避免 ECharts 重排混淆。
+                  var raw = item.seriesName === data.source.label ? data.source.data : data.target.data;
                   var idx = item.dataIndex;
+                  var open = Number(raw[idx][0]);
+                  var high = Number(raw[idx][1]);
+                  var low = Number(raw[idx][2]);
+                  var close = Number(raw[idx][3]);
+                  var hasData = !isNaN(open) && !isNaN(close);
+                  var isSource = item.seriesName === data.source.label;
                   var prevClose = idx > 0 ? Number(raw[idx - 1][3]) : NaN;
                   var r = calcPct(basis, open, close, prevClose);
                   // bar 相关标记颜色：跟随 ECharts 阴阳判定
                   var barColor = item.color || p.text;
-                  // 涨跌幅数字颜色：按口径正负，独立于 bar
+                  // 涨跌幅数字颜色：按所选口径正负，独立于 bar
                   var baseUp = isSource ? p.soxUp : p.up;
                   var baseDown = isSource ? p.soxDown : p.down;
                   var pctColor = r.hasPrev ? (r.pct >= 0 ? baseUp : baseDown) : p.dim;
@@ -112,14 +113,16 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                     '<span style="display:inline-block;vertical-align:middle;margin-right:8px;margin-left:3px;border-radius:4px;width:4px;height:4px;background-color:' +
                     barColor +
                     ';"></span>';
-                  var ohlc = [open, close, lowest, highest];
+                  var ohlc = [open, close, low, high]; // 对应 dims: open/close/lowest/highest
                   var subRows = ohlc
                     .map(function (v, i) {
                       return (
                         '<div style="' + gap + '">' +
                         subMarker +
                         '<span style="' + nameStyle + ';margin-left:2px">' + dims[i].name + '</span>' +
-                        '<span style="float:right;margin-left:20px;' + valueStyle + '">' + fmt(v) + '</span>' +
+                        '<span style="float:right;margin-left:20px;' + valueStyle + '">' +
+                        (isNaN(v) ? '—' : fmt(v)) +
+                        '</span>' +
                         '<div style="clear:both"></div>' +
                         '</div>'
                       );
@@ -130,7 +133,7 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
                     bigMarker +
                     '<span style="' + nameStyle + ';margin-left:2px">' + item.seriesName + '</span>' +
                     '<span style="float:right;margin-left:20px;color:' + pctColor + ';' + valueStyle + '">' +
-                    (r.hasPrev ? r.pct.toFixed(2) + '%' : '—') +
+                    (hasData && r.hasPrev ? r.pct.toFixed(2) + '%' : '—') +
                     '</span>' +
                     '<div style="clear:both"></div>' +
                     subRows +
