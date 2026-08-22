@@ -7,12 +7,12 @@ import { pal } from '../chart/theme';
 /** 双蜡烛对照图（ECharts candlestick，source 左轴 / target 右轴，独立价格尺度）。 */
 export function CandleChartView({ data, theme }: { data: CandleData; theme: AppTheme }) {
   const ref = useRef<HTMLDivElement>(null);
+  const p = pal(theme);
 
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
     const chart = echarts.init(el);
-    const p = pal(theme);
     // ECharts candlestick 序列顺序：[open, close, low, high]；后端给的是 [open, high, low, close]
     const toECharts = (rows: number[][]) => rows.map((r) => [r[0], r[3], r[2], r[1]]);
 
@@ -107,7 +107,9 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
     <div className="page-view">
       <div ref={ref} style={{ width: '100%', height: 520 }} />
       <p className="notice-text">
-        蜡烛对照：{data.source.label}（左轴，<b>橙涨/蓝跌</b>）与 {data.target.label}（右轴，<b>红涨/绿跌</b>）。共同交易日{' '}
+        蜡烛对照：{data.source.label}（左轴，
+        <b style={{ color: p.soxUp }}>橙涨</b>/<b style={{ color: p.soxDown }}>蓝跌</b>）与 {data.target.label}（右轴，
+        <b style={{ color: p.up }}>红涨</b>/<b style={{ color: p.down }}>绿跌</b>）。共同交易日{' '}
         {data.startDate} 至 {data.endDate}，按各自价位独立缩放。阳线 = 收 &gt; 开，阴线 = 收 &lt; 开。
       </p>
     </div>
