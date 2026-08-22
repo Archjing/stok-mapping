@@ -36,6 +36,24 @@ export function CandleChartView({ data, theme }: { data: CandleData; theme: AppT
           backgroundColor: p.panel,
           borderColor: p.border,
           textStyle: { color: p.text, fontSize: 12 },
+          formatter: function (params: any) {
+            return params.map((p: any) => {
+              const dataArr = p.data; // [open, close, low, high]
+              const open = dataArr[0];
+              const close = dataArr[1];
+              const low = dataArr[2];
+              const high = dataArr[3];
+              const change = close - open;
+              const pct = (change / open) * 100;
+              const isSource = p.seriesName === data.source.label;
+              const color = change >= 0
+                ? (isSource ? p.soxUp : p.up)
+                : (isSource ? p.soxDown : p.down);
+              const prefix = change >= 0 ? '+' : '-';
+              return `${p.seriesName} <span style="color:${color}">${prefix}${pct.toFixed(2)}%</span><br>
+                开 ${open.toFixed(2)}　收 ${close.toFixed(2)}　低 ${low.toFixed(2)}　高 ${high.toFixed(2)}`;
+            }).join('<br>');
+          },
         },
         grid: { left: 66, right: 70, top: 40, bottom: 64 },
         xAxis: {
