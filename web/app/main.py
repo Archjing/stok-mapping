@@ -725,6 +725,119 @@ def _vix_comparison_config() -> Any:
     )
 
 
+def _comparison_page_html(*, config: Any, data: dict[str, Any] | None) -> str:
+    """生成原静态站同款对照图研究页（SVG 模板 + 说明文字，Belafonte 明暗配色内联）。
+
+    复用原站链路：build_comparison_chart_data → render_comparison_chart_fragment，
+    说明文字与 _comparison_research_meta_html 同源。CSS 变量内联（iframe 无外部样式表）。
+    """
+    import html as html_mod
+
+    from quant.reporting.market_comparison_chart import render_comparison_chart_fragment
+
+    if data is None:
+        meta = "本次构建未找到同时覆盖源序列与目标序列的本地历史数据；页面保留，但暂不展示图表。"
+        chart_html = ""
+    else:
+        meta = (
+            f"<strong>数据区间：</strong>{data['startDate']} 至 {data['endDate']}。"
+            f"{html_mod.escape(str(data['source']['label']))} 与 {html_mod.escape(str(data['target']['label']))}使用日收盘；"
+            "仅保留双方均有收盘价的共同交易日，并按首日归一化为 100。"
+            "本图用于历史对照，不构成交易信号或投资建议。"
+        )
+        chart_html = render_comparison_chart_fragment(data=data)
+    title = html_mod.escape(getattr(config, "title", "对照图"))
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{title}</title>
+  <style>
+    :root {{
+      --bg:#fffaed; --text:#45373c; --text-muted:#5e5252; --accent:#426a79;
+      --focus-strong:#d08b30; --red-text:#be100e; --bg-card:#ded8c8; --border:#b8b0a4;
+    }}
+    :root.dark {{
+      --bg:#20111b; --text:#b88f55; --text-muted:#96754e; --accent:#5a8a9a;
+      --focus-strong:#eaa549; --red-text:#d94a48; --bg-card:#281822; --border:#3d2d36;
+    }}
+    body {{ margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif; }}
+    .research-chart-page {{ max-width:1340px; margin:0 auto; padding:16px 20px; }}
+    .title-row {{ display:flex; align-items:baseline; gap:12px; margin-bottom:10px; }}
+    .title-row h1 {{ margin:0; font-size:17px; }}
+    .generated-at {{ font-size:12px; color:var(--text-muted); }}
+    .research-meta {{ margin:0 0 14px; font-size:12.5px; color:var(--text-muted); line-height:1.6; }}
+    .research-meta strong {{ color:var(--text); }}
+    .theme-toggle {{
+      appearance:none; border:1px solid var(--border); background:transparent; color:var(--text-muted);
+      padding:3px 10px; font-size:12px; cursor:pointer; margin-left:auto;
+    }}
+    .theme-toggle:hover {{ color:var(--text); border-color:var(--accent); }}
+    #market-comparison {{
+      --foreground:var(--text); --muted-foreground:var(--text-muted);
+      --viz-series-1:var(--accent); --viz-series-2:var(--focus-strong);
+      --red:var(--red-text); --green:#4e8b57; --background:var(--bg);
+      --popover:var(--bg-card); --popover-foreground:var(--text); --font-size-base:12px;
+    }}
+  </style>
+</head>
+<body>
+<main class="research-chart-page">
+  <div class="title-row"><h1>{title}</h1><span class="generated-at">研究对照图</span>
+    <button class="theme-toggle" onclick="document.documentElement.classList.toggle('dark')">明暗</button></div>
+  <p class="research-meta">{meta}</p>
+  {chart_html}
+</main>
+</body>
+</html>"""
+
+
+@app.get("/api/research/comparison/{slug}/page")
+def api_research_comparison_page(slug: str):
+    """原站同款研究页（SVG 图 + 说明文字），前端 iframe 嵌入。"""
+    from quant.reporting.market_comparison_chart import build_comparison_chart_data
+    from quant.reporting.quant_static_site import SOX_512480_COMPARISON_CONFIG
+
+    configs = {
+        "sox-vs-512480": SOX_512480_COMPARISON_CONFIG,
+        "vix-vs-512480": _vix_comparison_config(),
+    }
+    config = configs.get(slug)
+    if config is None:
+        raise HTTPException(status_code=404, detail=f"未知对照图 {slug}")
+    data = build_comparison_chart_data(root=ROOT, config=config)
+    from fastapi.responses import Response
+
+    return Response(_comparison_page_html(config=config, data=data), media_type="text/html; charset=utf-8")
+
+
+@app.get("/api/accounts/{account_id}/chart-page/{chart_slug}")
+def api_account_chart_page(account_id: str, chart_slug: str):
+    """账户映射图原站同款页面（config 取自策略动态声明）。"""
+    account = _account_by_slug(account_id)
+    if account is None:
+        raise HTTPException(status_code=404, detail=f"未找到账户 {account_id}")
+    from quant.config import load_config
+    from quant.reporting.market_comparison_chart import build_comparison_chart_data
+    from quant.strategies import get_strategy
+
+    cfg = load_config(CONFIG_PATH)
+    strategy = get_strategy(str(account.strategy_id))
+    global_strategy_cfg = dict(cfg.get("walk_forward", {}).get("strategy_v2", {}) or {})
+    try:
+        items = strategy.account_mapping_charts(global_strategy_cfg, dict(getattr(account, "strategy_params", {}) or {}))
+    except Exception:  # noqa: BLE001
+        items = []
+    config = next((item.chart for item in items if item.chart.slug == chart_slug), None)
+    if config is None:
+        raise HTTPException(status_code=404, detail=f"账户 {account_id} 无映射图 {chart_slug}")
+    data = build_comparison_chart_data(root=ROOT, config=config)
+    from fastapi.responses import Response
+
+    return Response(_comparison_page_html(config=config, data=data), media_type="text/html; charset=utf-8")
+
+
 @app.get("/api/research/comparison/{slug}")
 def api_research_comparison(slug: str) -> dict[str, Any]:
     from quant.reporting.market_comparison_chart import build_comparison_chart_data

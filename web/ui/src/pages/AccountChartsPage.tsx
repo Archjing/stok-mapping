@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchAccountCharts, type AccountChartItem } from '../api/research';
-import { ComparisonChartView } from '../components/ComparisonChartView';
 import { StrategyExplain } from '../components/StrategyExplain';
-import { useTheme } from '../components/ThemeContext';
 
-/** 账户跨市场映射对照图（原静态站 accounts/<slug>/research/<chart-slug>/）。 */
+/** 账户跨市场映射对照图：iframe 嵌入原站同款研究页（原静态站 accounts/<slug>/research/）。 */
 export function AccountChartsPage() {
   const { accountId = '' } = useParams();
   const [charts, setCharts] = useState<AccountChartItem[]>([]);
   const [error, setError] = useState('');
-  const theme = useTheme();
 
   useEffect(() => {
     let alive = true;
@@ -30,15 +27,20 @@ export function AccountChartsPage() {
       </div>
       {error && <p className="error">{error}</p>}
       {!error && charts.length === 0 && <p className="dim-text">该账户暂无映射图。</p>}
-      {charts.map((item) =>
-        item.data ? (
-          <ComparisonChartView key={item.slug} data={item.data} theme={theme} />
-        ) : (
-          <p key={item.slug} className="dim-text">
-            {item.button_label}：数据不足
-          </p>
-        ),
-      )}
+      {charts.map((item) => (
+        <iframe
+          key={item.slug}
+          title={item.title}
+          src={`/api/accounts/${accountId}/chart-page/${item.slug}`}
+          style={{
+            width: '100%',
+            height: 560,
+            border: '1px solid var(--ui-hairline)',
+            background: 'transparent',
+            marginBottom: 14,
+          }}
+        />
+      ))}
       <StrategyExplain accountId={accountId} />
     </div>
   );
