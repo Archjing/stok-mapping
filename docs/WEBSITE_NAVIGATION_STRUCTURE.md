@@ -418,3 +418,25 @@ Night（dark，深酒红）：
 | `web/ui/src/components/Layout.tsx` | 侧栏/顶栏用语义 token；集成 ThemeSwitcher |
 | 新组件 | 按变体规范建（Button 等，随功能页推进） |
 | 本文档 | 本规范为唯一 UI token 事实源 |
+
+---
+
+## 11. 远端发布（2026-08-22 核实修正）
+
+> 修正 `web/design/index-chart-integration.md` §5 的旧结论（"远端静态托管、不能跑 FastAPI"）：**实际已配置 FRP 动态反代**。
+
+**架构**（已核实远端 `/etc/nginx/conf.d/share.spidermanread.men.conf`）：
+
+```
+https://share.spidermanread.men/quant-dashboard/
+  → nginx location /quant-dashboard/ { proxy_pass http://127.0.0.1:8010/; }
+  → frps TCP 代理端口 8010（frpc type=tcp remotePort=8010，去前缀转发 /quant-dashboard/xxx → /xxx）
+  → 本机 Mac 127.0.0.1:8010（uvicorn web.app.main:app + web/ui/dist）
+```
+
+- 远端是**动态反代**，本机 dist 更新即生效（StaticFiles 实时读盘），history 路由深链也 OK（proxy 透传 + SPAStaticFiles 回退）
+- `/var/www/share/quant-dashboard/` 静态目录存在但 nginx 不使用（勿依赖）
+
+**发布命令**：`scripts/publish_dashboard.sh`（构建 dist → 确保本机 8010 → 对比远端 bundle 验证）。依赖：本机 8010 常驻 + frpc 隧道在线。
+
+**静态快照兜底**（如未来要离线分享）：`VITE_ROUTER_MODE=hash npm run build -- --outDir dist-dashboard --base=./` 产出 hash 路由版（静态托管深链不 404），rsync 到远端静态目录——当前无此需求，脚本未保留。
