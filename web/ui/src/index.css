@@ -147,7 +147,8 @@ body {
 .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dim); padding: 0 11px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-full); background: var(--chip-bg); cursor: pointer; user-select: none; transition: border-color 150ms ease-out, color 150ms ease-out, background 150ms ease-out; }
 .chip .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
 .chip input { display: none; }
-.chip.on { color: var(--text); border-color: var(--accent); }
+.chip.on { background: var(--ui-accent); border-color: var(--ui-accent); color: var(--ui-accent-fg); }
+.chip.on .chip-x { color: inherit; }
 
 .chart-box { flex: 1 1 auto; min-height: 300px; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--panel); box-shadow: var(--shadow); }
 
@@ -177,8 +178,8 @@ body {
 .ctrl-wide { flex: 1 1 100%; }
 .chips-row { align-items: center; }
 .checks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.chip-x { appearance: none; border: none; background: transparent; color: var(--dim); font-size: 15px; line-height: 1; padding: 0 0 0 2px; cursor: pointer; }
-.chip-x:hover { color: var(--text); }
+.controls .chip-x { appearance: none; border: none; background: transparent; color: var(--dim); font-size: 15px; line-height: 1; padding: 0 0 0 2px; height: auto; cursor: pointer; }
+.controls .chip-x:hover { color: var(--text); }
 
 .chart-wrap { display: flex; gap: 12px; min-height: 0; flex: 1 1 auto; }
 .chart-wrap .chart-box { flex: 1 1 auto; }
