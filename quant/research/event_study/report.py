@@ -46,6 +46,8 @@ def _load_docs(
     provider: str | None,
     event_type: str | None,
     direction: str | None = None,
+    topic_tag: str | None = None,
+    topic_value: str | None = None,
 ) -> pd.DataFrame:
     if not corpus_db.is_file():
         return pd.DataFrame()
@@ -61,6 +63,10 @@ def _load_docs(
         # direction is stored as a derived `direction=...` tag in the topics column
         clauses.append("topics LIKE ?")
         params.append(f"%direction={direction}%")
+    if topic_tag and topic_value:
+        # generic tag filter, e.g. topic_tag='rating', topic_value='买入'
+        clauses.append("topics LIKE ?")
+        params.append(f"%{topic_tag}={topic_value}%")
     where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
     sql = f"""
         SELECT document_id, provider, event_type, published_at, title, raw_text, symbols, topics
@@ -161,6 +167,8 @@ def run_event_study(
     provider: str | None = None,
     event_type: str | None = None,
     direction: str | None = None,
+    topic_tag: str | None = None,
+    topic_value: str | None = None,
     industries: list[str] | None = None,
     start_date: str | None = None,
     end_date: str | None = None,
@@ -173,12 +181,13 @@ def run_event_study(
 
     ``direction`` optionally filters by the derived ``direction=...`` tag in the
     ``topics`` column (e.g. ``预增`` / ``预减`` / ``扭亏``).
+    ``topic_tag``/``topic_value`` filter by a generic tag, e.g. rating=买入.
     ``industries`` optionally restricts to stocks in the given market industries.
     """
     windows = windows or DEFAULT_WINDOWS
     corpus_path = Path(corpus_db)
     market_path = Path(market_db)
-    docs = _load_docs(corpus_path, provider, event_type, direction)
+    docs = _load_docs(corpus_path, provider, event_type, direction, topic_tag, topic_value)
     if industries:
         industry_symbols = _load_industry_symbols(market_path, industries)
         if industry_symbols:
